@@ -1,136 +1,175 @@
-<!-- resources/views/backend/properties/form_components/step6.blade.php -->
 @php
-if(isset($property)){
-    $propertyType = $property->property_type ?? '';
-    $propertyPrice = $property->price ?? ''; 
-    $lettingPrice = $property->letting_price ?? ''; 
-    $groundRent = $property->ground_rent ?? ''; 
-    $serviceCharge = $property->service_charge ?? ''; 
-    $annualCouncilTax = $property->annual_council_tax ?? ''; 
-    $councilTaxBand = $property->council_tax_band ?? ''; 
-    $tenure = $property->tenure ?? ''; 
-    $lengthOfLease = $property->length_of_lease ?? ''; 
-}else{
-    $propertyType = '';
-    $propertyPrice = ''; 
-    $lettingPrice = ''; 
-    $groundRent = ''; 
-    $serviceCharge = ''; 
-    $annualCouncilTax = ''; 
-    $councilTaxBand = ''; 
-    $tenure = ''; 
-    $lengthOfLease = ''; 
-}
+    $currentStep = 6 ;
+    $stations = isset($property->nearest_station) ? $property->nearest_station : '';
+    $schools = isset($property->nearest_school) ? $property->nearest_school : '';
 @endphp
+<!-- resources/views/backend/properties/form_components/step6.blade.php -->
 
-<form id="property-form-step-6" class="rs_steps" method="POST" action="{{ route('admin.properties.store') }}">
+
+<form id="property-form-step-{{ $currentStep }}" class="rs_steps" method="POST"
+    action="{{ route('admin.properties.store') }}">
     @csrf
     <!-- Hidden field for property ID with isset check -->
-    <input type="hidden" id="property_id" class="property_id" name="property_id" value="{{ session('property_id') ?? (isset($property) ? $property->id : '') }}">
+    <input type="hidden" id="property_id" class="property_id" name="property_id"
+        value="{{ session('property_id') ?? (isset($property) ? $property->id : '') }}">
 
-    <label class="main_title">Price</label>
+    <label class="main_title">Accessiblity</label>
 
-    <div class="property-form-data-attribute" data-step-name="Price" data-step-number="6" data-step-title="Price"></div>
+    <div class="property-form-data-attribute" data-step-name="Accessiblity" data-step-number="{{ $currentStep }}"
+        data-step-title="Accessiblity"></div>
 
-    <div class="steps_wrapper">
+    <div class="row h_100_vh">
+        <div class="col-lg-6 col-12">
 
-       <!-- Listing Sale Price Input (Show only if type is sales or both) -->
-       @if($propertyType == 'sales' || $propertyType == 'both')
-            <div class="form-group">
-                <label for="lprice">Listing Sale Price</label>
-                <div class="price_input_wrapper">
-                    <div class="pound_sign">£</div>
-                    <input type="text" name="price" id="price" class="form-control" value="{{ $propertyPrice }}">
+            <div class="steps_wrapper">
+
+                {{-- <div class="form-group">
+                    <x-backend.input-comp class="" inputOpt="input_custom_icon" inputType="text" rightIcon=""
+                        inputName="school_name" placeHolder="School Name" isLabel={{ false }}
+                        label="Nearest School" isDate={{ false }} isIcon={{ true }} iconName="bi-plus"
+                        onIconClick="onIconClick" />
+                    @error('school_name')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                    <ul class="input_list_items">
+                        <li><span>Hampton High</span> <i class="bi bi-x-lg x_icon"></i> </li>
+                        <li><span>Tower House School</span> <i class="bi bi-x-lg x_icon"></i></li>
+                    </ul>
+                </div> --}}
+                {{-- <div class="form-group">
+                    <x-backend.input-comp class="" inputOpt="input_custom_icon" inputType="text" rightIcon=""
+                        inputName="relegious_places" placeHolder="Relegious Places" isLabel={{ false }}
+                        label="Nearest Relegious Places" isDate={{ false }} isIcon={{ true }}
+                        iconName="bi-plus" onIconClick="onIconClick" />
+                    @error('relegious_places')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                    <ul class="input_list_items">
+                        <li><span>Tonbridge Street</span> <i class="bi bi-x-lg x_icon"></i> </li>
+                        <li><span>East Sheen</span> <i class="bi bi-x-lg x_icon"></i></li>
+                    </ul>
+                </div> --}}
+                <div class="form-group">
+                    <div class="rs_sub_title">Access Arrangement</div>
+                    <textarea name="access_arrangement" required>{{ isset($property) && $property->access_arrangement ? $property->access_arrangement : '' }}</textarea>
+                    @error('access_arrangement')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
                 </div>
-                @error('price')
-                    <div class="text-danger">{{ $message }}</div>
-                @enderror
-            </div>
-        @endif
 
-        <!-- Letting Price Input (Show only if type is letting or both) -->
-        @if($propertyType == 'lettings' || $propertyType == 'both')
-            <div class="form-group">
-                <label for="letting_price">Letting Price</label>
-                <div class="price_input_wrapper">
-                    <div class="pound_sign">£</div>
-                    <input type="text" name="letting_price" id="letting_price" class="form-control" value="{{ $lettingPrice }}">
+                <div class="form-group">
+                    <div class="rs_sub_title">Key Highlights</div>
+                    <textarea name="key_highlights" required>{{ isset($property) && $property->key_highlights ? $property->key_highlights : '' }}</textarea>
+                    @error('key_highlights')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
                 </div>
-                @error('letting_price')
-                    <div class="text-danger">{{ $message }}</div>
-                @enderror
+                {{-- <!-- Nearest Station -->
+                <div class="form-group">
+                    <div class="rs_sub_title">Nearest Station</div>
+                    @php
+                        // If nearest_station is not null, decode the comma-separated string into an array
+                        $stations = isset($property->nearest_station) ? $property->nearest_station : '';
+                    @endphp
+                    <input id="station_name" type="text" class="tagify-input" placeholder="Station Name">
+                    <input type="hidden" name="nearest_station" value="{{ $stations }}" class="hidden-input" required>
+                    @error('nearest_station')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <!-- Nearest School -->
+                <div class="form-group">
+                    <div class="rs_sub_title">Nearest School</div>
+                    @php
+                        // Get nearest_school as comma-separated IDs
+                        $schools = isset($property->nearest_school) ? $property->nearest_school : '';
+                    @endphp
+                    <input id="school_name" type="text" class="tagify-input" placeholder="School Name">
+                    <input type="hidden" name="nearest_school" value="{{ $schools }}" class="hidden-input" required>
+                    @error('nearest_school')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                </div> --}}
+
+                <!-- Nearest Station -->
+                <div class="form-group">
+                    <div class="rs_sub_title">Nearest Station</div>
+                    <input id="station_name" type="text" class="tagify-input" placeholder="Station Name"
+                           data-source="stations"
+                           data-values="{{ $stations }}"
+                           data-id-value="{{ json_encode($allstations) }}"
+                           data-options="{{ json_encode(['maxTags' => 5, 'dropdownEnabled' => 1, 'maxItems' => 10, 'searchKeys' => ['name'], 'closeOnSelect' => false])  }}">
+                    <input type="hidden" name="nearest_station" value="{{ $stations }}" class="hidden-input" required>
+                    @error('nearest_station')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <!-- Nearest School -->
+                <div class="form-group">
+                    <div class="rs_sub_title">Nearest School</div>
+                    <input id="school_name" type="text" class="tagify-input" placeholder="School Name"
+                           data-source="schools"
+                           data-values="{{ $schools }}"
+                           data-id-value="{{ json_encode($allschools) }}"
+                           data-options="{{ json_encode(['maxTags' => 5, 'dropdownEnabled' => 1, 'maxItems' => 10, 'searchKeys' => ['name'], 'closeOnSelect' => false])  }}">
+                    <input type="hidden" name="nearest_school" value="{{ $schools }}" class="hidden-input" required>
+                    @error('nearest_school')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                </div>
+
+
+                <div class="form-group">
+                    <div class="rs_sub_title">Nearest Religious Places (Distance in KM)</div>
+                    @php
+                        // If nearest_religious_places is not null, decode the JSON and use it; otherwise, use empty values
+                        $religiousPlaces =
+                            isset($property) && $property->nearest_religious_places
+                                ? json_decode($property->nearest_religious_places)
+                                : ['masjid' => '', 'church' => '', 'mandir' => ''];
+                    @endphp
+                    <input type="number" pattern="[0-9]" class="form-control mt-2" inputmode="numeric"
+                        name="nearest_religious_places[masjid]" value="{{ $religiousPlaces->masjid ?? '' }}"
+                        placeholder="Masjid" required>
+                    <input type="number" pattern="[0-9]" class="form-control mt-2" inputmode="numeric"
+                        name="nearest_religious_places[church]" value="{{ $religiousPlaces->church ?? '' }}"
+                        placeholder="Church" required>
+                    <input type="number" pattern="[0-9]" class="form-control mt-2" inputmode="numeric"
+                        name="nearest_religious_places[mandir]" value="{{ $religiousPlaces->mandir ?? '' }}"
+                        placeholder="Mandir" required>
+                    @error('nearest_religious_places')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                </div>
+
+
+                <div class="form-group">
+                    <label for="useful_information">Useful Information</label>
+                    <input type="text" name="useful_information" id="useful_information" class="form-control"
+                        value="{{ isset($property) && $property->useful_information ? $property->useful_information : '' }}"
+                        required>
+                    @error('useful_information')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="footer_btn">
+                    <div class="row">
+                        <div class="col-6">
+                            <button type="button" class="btn btn_outline_secondary w-100 previous-step"
+                                data-previous-step="{{ $currentStep - 1 }}"
+                                data-current-step="{{ $currentStep }}">Previous</button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn_secondary w-100 next-step"
+                                data-next-step="{{ $currentStep + 1 }}"
+                                data-current-step="{{ $currentStep }}">Next</button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        @endif
-
-        <div class="form-group">
-            <label for="ground_rent">Ground Rent</label>
-            <div class="price_input_wrapper">
-                <div class="pound_sign">£</div>
-                <input type="text" name="ground_rent" id="ground_rent" class="form-control" value="{{ $groundRent }}">
-            </div>
-            @error('ground_rent')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
         </div>
-
-        <div class="form-group">
-            <label for="service_charge">Service Charge</label>
-            <div class="price_input_wrapper">
-                <div class="pound_sign">£</div>
-                <input type="text" name="service_charge" id="service_charge" class="form-control" value="{{ $serviceCharge }}">
-            </div>
-            @error('service_charge')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
-        </div>
-
-        <div class="form-group">
-            <label for="annual_council_tax">Annual Council Tax</label>
-            <div class="price_input_wrapper">
-                <div class="pound_sign">£</div>
-                <input type="text" name="annual_council_tax" id="annual_council_tax" class="form-control" value="{{ $annualCouncilTax }}">
-            </div>
-            @error('annual_council_tax')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
-        </div>
-
-        <div class="form-group">
-            <label for="council_tax_band">Council Tax Band</label>
-            <div class="price_input_wrapper">
-                <div class="pound_sign">£</div>
-                <input type="text" name="council_tax_band" id="council_tax_band" class="form-control" value="{{ $councilTaxBand }}">
-            </div>
-            @error('council_tax_band')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
-        </div>
-
-        <div class="form-group">
-            <label for="tenure">Tenure</label>
-            <select name="tenure" id="tenure" class="form-control">
-                <option value="leasehold" {{ $tenure == 'leasehold' ? 'selected' : '' }}>Leasehold</option>
-                <option value="leasehold2" {{ $tenure == 'leasehold2' ? 'selected' : '' }}>Leasehold 2</option>
-            </select>
-            @error('tenure')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
-        </div>
-
-        <div class="form-group">
-            <label for="length_of_lease">Length of Lease</label>
-            <input type="text" name="length_of_lease" id="length_of_lease" class="form-control" value="{{ $lengthOfLease }}">
-            @error('length_of_lease')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
-        </div>
-
-        <div class="row">
-            <div class="col-12 col-md-6">
-                <button type="button" class="btn btn-secondary w-100 previous-step" data-previous-step="5" data-current-step="6">Previous</button>
-            </div>
-            <div class="col-12 col-md-6">
-                <button type="button" class="btn btn-primary w-100 next-step" data-next-step="7" data-current-step="6">Next</button>
-        </div> 
-    </div> 
+    </div>
 </form>

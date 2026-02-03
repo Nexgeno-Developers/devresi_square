@@ -37,7 +37,7 @@
                         <form method="POST" action="{{ route('admin.properties.restore', $property->id) }}"
                             style="display:inline;">
                             @csrf
-                            <button type="submit" class="btn btn-success btn-sm">Restore</button>
+                            <button type="submit" class="btn btn_secondary btn-sm">Restore</button>
                         </form>
                     </td>
                 </tr>

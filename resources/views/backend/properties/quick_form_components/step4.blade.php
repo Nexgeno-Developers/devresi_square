@@ -8,7 +8,7 @@
                     <img src="{{ asset('asset/images/svg/icons/bath.svg') }}" alt="Property Address">
                 </div>
                 <div class="left_title">
-                    How many <span class="secondary-color">Bathrooms</span><br /> do you have?
+                    Number of <span class="secondary-color">Bathrooms</span><br /> ?
                 </div>
             </div>
         </div>

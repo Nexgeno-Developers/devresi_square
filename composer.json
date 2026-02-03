@@ -9,7 +9,12 @@
         "intervention/image": "^2.5",
         "laracasts/flash": "^3.2",
         "laravel/framework": "^11.9",
-        "laravel/tinker": "^2.9"
+        "laravel/tinker": "^2.9",
+        "mpdf/mpdf": "^8.2",
+        "niklasravnsborg/laravel-pdf": "^4.1",
+        "owen-it/laravel-auditing": "^14.0",
+        "rlanvin/php-rrule": "^2.6",
+        "spatie/laravel-permission": "^6.20"
     },
     "require-dev": {
         "barryvdh/laravel-debugbar": "^3.14",

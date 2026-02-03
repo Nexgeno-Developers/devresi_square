@@ -62,6 +62,6 @@
 
     <input type="text" name="price" placeholder="Price" required>
     <input type="date" name="available_from" required>
-    <button type="submit" class="btn btn-success">Add Property</button>
+    <button type="submit" class="btn btn_secondary">Add Property</button>
 </form>
 <div class="alert alert-warning mt-2">Remember to fill in all details later!</div>

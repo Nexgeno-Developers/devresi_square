@@ -8,7 +8,7 @@
                     <i class="bi bi-cup-hot-fill"></i>
                 </div>
                 <div class="left_title">
-                    Is you property <br/><span class="secondary-color">Furnish</span>?
+                    Is your property <br/><span class="secondary-color">Furnished</span>?
                 </div>
             </div>
         </div>
@@ -22,19 +22,19 @@
                 <div class="right_content_wrapper">
                     <div class="form-group">
                         <div class="radio_bts_square_icon rs_furnishing">
-                            <input type="radio" class="propertyType" name="frunishing_type"
+                            <input type="radio" class="furnish-radio" name="frunishing_type"
                                 id="frunishing_type_furnished" value="furnished" {{ (isset($property) && $property->frunishing_type == 'furnished') ? 'checked' : '' }} required>
                             <label for="frunishing_type_furnished">
                                 {{-- <img src="{{ asset('asset/images/svg/apartment_600.svg') }}" alt="apartment"> --}}
                                 Furnished
                             </label>
-                            <input type="radio" class="propertyType" name="frunishing_type"
+                            <input type="radio" class="furnish-radio" name="frunishing_type"
                                 id="frunishing_type_unfurnished" value="unfurnished" {{ (isset($property) && $property->frunishing_type == 'unfurnished') ? 'checked' : '' }} required>
                             <label for="frunishing_type_unfurnished">
                                 {{-- <img src="{{ asset('asset/images/svg/flat_600.svg') }}" alt="flat"> --}}
                                 Unfurnished
                             </label>
-                            <input type="radio" class="propertyType" name="frunishing_type"
+                            <input type="radio" class="furnish-radio" name="frunishing_type"
                                 id="frunishing_type_semi_furnished" value="semi_furnished" {{ (isset($property) && $property->frunishing_type == 'semi_furnished') ? 'checked' : '' }} required>
                             <label for="frunishing_type_semi_furnished">
                                 {{-- <img src="{{ asset('asset/images/svg/bungalow_600.svg') }}" alt="bungalow"> --}}

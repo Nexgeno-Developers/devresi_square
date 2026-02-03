@@ -6672,6 +6672,122 @@ input[type="number"] {
 }
 
 
+/*text editor - summernote */
+.note-editor .note-dropzone {
+    opacity: 0 !important;
+}
+
+.note-editor.note-frame {
+    border: 1px solid #dfdfe6;
+    box-shadow: none;
+    background: #f7f8fa;
+}
+
+.note-editor.note-frame .panel-heading.note-toolbar {
+    background: #f7f8fa;
+}
+
+.note-editor .card-header.note-toolbar {
+    padding: 5px 10px 10px 10px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    display: block;
+    min-height: auto;
+}
+
+.note-editor.note-frame .note-statusbar {
+    border-color: #dfdfe6;
+    background-color: #f7f8fa;
+}
+
+.note-editor.note-airframe .note-statusbar .note-resizebar .note-icon-bar,
+.note-editor.note-frame .note-statusbar .note-resizebar .note-icon-bar {
+    border-color: #afafb9;
+}
+
+.note-toolbar .note-btn {
+    border-color: #dfdfe6;
+}
+
+.note-popover .popover-content .note-color .note-dropdown-menu .note-palette .note-color-reset:hover,
+.note-popover .popover-content .note-color .note-dropdown-menu .note-palette .note-color-select:hover,
+.note-toolbar .note-color .note-dropdown-menu .note-palette .note-color-reset:hover,
+.note-toolbar .note-color .note-dropdown-menu .note-palette .note-color-select:hover {
+    background-color: var(--primary);
+    color: var(--white);
+}
+
+.note-popover .popover-content .note-btn-group .note-table,
+.note-toolbar .note-btn-group .note-table,
+.note-editor .note-toolbar .dropdown-menu {
+    min-width: 190px;
+}
+
+.note-popover .popover-content .note-color-all .note-dropdown-menu,
+.note-toolbar .note-color-all .note-dropdown-menu {
+    min-width: 340px;
+}
+
+.note-dropdown-menu .dropdown-item>* {
+    padding: 0 !important;
+}
+
+.note-dropdown-menu .dropdown-item h1 {
+    font-size: 2rem;
+}
+
+.note-dropdown-menu .dropdown-item h2 {
+    font-size: 1.75rem;
+}
+
+.note-dropdown-menu .dropdown-item h3 {
+    font-size: 1.5rem;
+}
+
+.note-dropdown-menu .dropdown-item h4 {
+    font-size: 1.25rem;
+}
+
+.note-dropdown-menu .dropdown-item h5 {
+    font-size: 1rem;
+}
+
+.note-dropdown-menu .dropdown-item h6 {
+    font-size: 0.875rem;
+}
+
+.note-modal .note-group-select-from-files {
+    display: none !important;
+}
+
+@media (max-width: 575px) {
+    .note-video-clip {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .aiz-card-box .disc-amount {
+        margin-right: -60%;
+        opacity: 0 !important;
+    }
+
+    .px-xs-0 {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+}
+
+.aiz-editor-data img {
+    max-width: 100% !important;
+    height: auto !important;
+}
+.note-content img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 10px 0;
+}
+
 /*ecom pos ui*/
 .aiz-pos-product-list {
     overflow-y: auto;

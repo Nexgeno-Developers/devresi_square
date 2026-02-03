@@ -7,7 +7,8 @@ $stepNames = [
 4 => 'Bathrooms',
 5 => 'Reception',
 6 => 'Funishing',
-7 => 'Price',
+7 => 'Amenity',
+8 => 'Price',
 ];
 /*
 function getBreadcrumb($step)
@@ -32,25 +33,25 @@ return $breadcrumb[$step] ?? 'Unknown Step';
 
     <h4 class="mb-4">Quick Add Property</h4>
     <div class="qap_breadcrumb">
-            <!-- @for ($i = 1; $i <= count($stepNames); $i++) 
+            {{-- @for ($i = 1; $i <= count($stepNames); $i++)
                 <div class="form-check {{ session('current_step') == $i ? 'active' : '' }}">
                     <input class="form-check-input" type="radio" name="step" data-property-id="" id="step{{ $i }}" value="{{ $i }}" {{ session('current_step') == $i || $i == 1 ? 'checked' : '' }}>
                     <label class="form-check-label {{ session('current_step') == $i ? 'active' : '' }}" for="step{{ $i }}">
                         {{ $stepNames[$i] ?? 'Unknown Step'}}
                     </label>
                 </div>
-            @endfor -->
+            @endfor --}}
             @for ($i = 1; $i <= count($stepNames); $i++)
                 <div class="form-check {{ $currentStep == $i ? 'active' : '' }}">
-                    <input 
-                        class="form-check-input" 
-                        type="radio" 
-                        name="step" 
-                        id="step{{ $i }}" 
-                        value="{{ $i }}" 
+                    <input
+                        class="form-check-input"
+                        type="radio"
+                        name="step"
+                        id="step{{ $i }}"
+                        value="{{ $i }}"
                         {{ $currentStep == $i || ($i == 1 && !$property) ? 'checked' : '' }}
                         {{ $i <= $currentStep ? '' : 'disabled' }}>
-                    
+
                     <label class="form-check-label {{ $currentStep == $i ? 'active' : '' }}" for="step{{ $i }}">{{ $stepNames[$i] ?? 'Unknown Step'}}</label>
                 </div>
             @endfor
@@ -59,16 +60,18 @@ return $breadcrumb[$step] ?? 'Unknown Step';
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-12 render_blade">
-            @include('backend.properties.quick_form_components.step' . session('current_step', 1))
+            @include('backend.properties.quick_form_components.step' . session('current_step', 1), ['countries' => $countries])
             <!-- Default to step 1 -->
         </div>
     </div>
 </div>
 
+@include('backend.partials.assets.select2')
 
 @section('page.scripts')
 <script>
 $(document).ready(function() {
+    initSelect2('.select2');
     // General function to handle sending form data and navigating steps
     function handleStepChange(currentStep, targetStep, previous = null) {
         // Check if navigating to a previous step
@@ -165,6 +168,11 @@ $(document).ready(function() {
                 if (!$('#property_id').val()) {
                     $('#property_id').val(propertyId);
                 }
+                    
+                // Initialize select2 if elements with class 'select2' exist
+                if ($('.select2').length) {
+                    initSelect2('.select2');
+                }
             },
             error: function() {
                 toastr.error('Unable to load step. Please try again.', 'Error');
@@ -186,7 +194,7 @@ $(document).ready(function() {
         e.preventDefault();
         const currentStep = $(this).data('current-step');
         const targetStep = $(this).data('previous-step');
-        const previous = true; 
+        const previous = true;
 
         handleStepChange(currentStep, targetStep, previous);
     });
@@ -198,13 +206,27 @@ $(document).ready(function() {
     });
 
     // Handle Next and Previous button clicks
-    $(document).on('click', '.propertyType', function(e) {
-        e.preventDefault();
-        const currentStep3 = $('.next-step').data('current-step');
-        const targetStep4 = $('.next-step').data('next-step');
+    // $(document).on('click', '.propertyType', function(e) {
+    //     e.preventDefault();
+    //     const currentStep3 = $('.next-step').data('current-step');
+    //     const targetStep4 = $('.next-step').data('next-step');
 
-        handleStepChange(currentStep3, targetStep4);
+    //     handleStepChange(currentStep3, targetStep4);
+    // });
+
+    $(document).on('change', 'input[name="specific_property_type"], input[name="property_type"]', function () {
+        const hasSpecificType = $('input[name="specific_property_type"]:checked').length > 0;
+        const hasPropertyType = $('input[name="property_type"]:checked').length > 0;
+
+        if (hasSpecificType && hasPropertyType) {
+            const currentStep = $('.next-step').data('current-step');
+            const nextStep = $('.next-step').data('next-step');
+
+            handleStepChange(currentStep, nextStep);
+        }
     });
+
+
     // // Function to check if both Bedrooms and Reception Rooms have been selected
     // function checkSelectionsAndSubmit() {
     //     const bedroomSelected = $('input[name="bedroom"]:checked').val();
@@ -265,9 +287,13 @@ $(document).ready(function() {
         const parkingSelected = $('input[name="parking"]:checked').val();
         const gardenSelected = $('input[name="garden"]:checked').val();
         const balconySelected = $('input[name="balcony"]:checked').val();
+        const parkingLocation = $('.parking-location').val();
+
+        // Condition: If parking is selected as "Yes", parking_location must not be empty
+        const isParkingValid = (parkingSelected === '1') ? !!parkingLocation : true;
 
         // If both parkings and balcony Rooms are selected, submit the form
-        if (parkingSelected && gardenSelected && balconySelected) {
+        if (parkingSelected && isParkingValid && gardenSelected && balconySelected) {
             const currentStep13 = $('.next-step').data('current-step');
             const targetStep14 = $('.next-step').data('next-step');
 
@@ -277,6 +303,7 @@ $(document).ready(function() {
     $(document).on('click', '.parking-radio', checkSelectionsAndSubmit);
     $(document).on('click', '.garden-radio', checkSelectionsAndSubmit);
     $(document).on('click', '.balcony-radio', checkSelectionsAndSubmit);
+    $(document).on('input', '.parking-location', checkSelectionsAndSubmit);
 
     /* Quick Step 8 */
     function checkStep8AndSubmit() {

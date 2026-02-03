@@ -19,7 +19,26 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RoleSeeder::class,
             UserSeeder::class,
+            NoteTypeSeeder::class,
+            DesignationSeeder::class,
+            BranchesTableSeeder::class,
+            StationNamesTableSeeder::class,
+            SchoolNamesTableSeeder::class,
+            ReligiousPlacesTableSeeder::class,
+            EstateChargesItemsSeeder::class,
+            EstateChargesSeeder::class,
+            OwnerGroupSeeder::class,
+            UserCategorySeeder::class,
+            UsersSeeder::class,
             CurrencySeeder::class,
+            PropertiesTableSeeder::class,
+            PropertyResponsibilitySeeder::class,
+            ComplianceTypeSeeder::class,
+            JobTypesSeeder::class,
+            LocalAuthoritySeeder::class,
+            CountrySeeder::class,
+            NationalitySeeder::class,
+            EventTypeSeeder::class,
         ]);
 
         // User::factory()->create([

@@ -1,15 +1,21 @@
+@php $currentStep = 1 ; @endphp
 <!-- resources/views/backend/properties/form_components/step1.blade.php -->
 <div class="row">
-<div class="col-md-8">
+<div class="col-md-5">
 
-    <form id="property-form-step-1" class="rs_steps" method="POST" action="{{ route('admin.properties.store') }}">
+    <form id="property-form-step-{{ $currentStep }}" class="rs_steps" method="POST" action="{{ route('admin.properties.store') }}">
     @csrf
     <!-- Hidden field for property ID with isset check -->
     <input type="hidden" name="property_id" value="{{ session('property_id') ?? (isset($property) ? $property->id : '') }}">
     <label class="main_title">Property Address</label>
 
+    <div class="form-group">
+        <label for="address_search">Search Property Address</label>
+        <input type="text" id="address_search" class="form-control" placeholder="Enter UK property address">
+    </div>
+
     <div class="steps_wrapper">
-        <div class="property-form-data-attribute" data-step-name="Property Address" data-step-number="1"
+        <div class="property-form-data-attribute" data-step-name="Property Address" data-step-number="{{ $currentStep }}"
             data-step-title="Property address"></div>
         <div class="form-group">
             <label for="prop_name">Property Name</label>
@@ -37,22 +43,26 @@
                 <div class="text-danger">{{ $message }}</div>
             @enderror
         </div>
-        <div class="form-group">
-            <label for="country">Country</label>
-            <input required type="text" name="country" id="country" class="form-control" value="{{ (isset($property) && $property->country) ? $property->country : '' }}">
-            @error('country')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
+        <div class="row">
+            <div class="form-group col-lg-8 col-12">
+                <label for="country">Country</label>
+                <input required type="text" name="country" id="country" class="form-control" value="{{ (isset($property) && $property->country) ? $property->country : '' }}">
+                @error('country')
+                    <div class="text-danger">{{ $message }}</div>
+                @enderror
+            </div>
+            <div class="form-group col-lg-4 col-12">
+                <label for="postcode">Postcode</label>
+                <input required type="text" name="postcode" id="postcode" class="form-control"
+                    value="{{ (isset($property) && $property->postcode) ? $property->postcode : '' }}">
+                @error('postcode')
+                    <div class="text-danger">{{ $message }}</div>
+                @enderror
+            </div>
         </div>
-        <div class="form-group">
-            <label for="postcode">Postcode</label>
-            <input required type="text" name="postcode" id="postcode" class="form-control"
-                value="{{ (isset($property) && $property->postcode) ? $property->postcode : '' }}">
-            @error('postcode')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
+        <div class="footer_btn">
+            <button type="button" class="btn btn_secondary btn-sm next-step w-100" data-next-step="{{ $currentStep + 1 }}" data-current-step="{{ $currentStep }}">Next</button>
         </div>
-        <button type="button" class="btn btn-primary btn-sm next-step" data-next-step="2" data-current-step="1">Next</button>
     </div>
     </form>
 </div>

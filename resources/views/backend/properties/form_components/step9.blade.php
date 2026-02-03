@@ -1,69 +1,130 @@
-<!-- resources/views/backend/properties/form_components/step9.blade.php -->
-<form id="property-form-step-9" class="rs_steps" method="POST" action="{{ route('admin.properties.store') }}">
+@php $currentStep = 9 ; @endphp
+<!-- resources/views/backend/properties/form_components/step8.blade.php -->
+<form id="property-form-step-{{ $currentStep }}" class="rs_steps" method="POST" action="{{ route('admin.properties.store') }}"
+    enctype="multipart/form-data">
     @csrf
     <!-- Hidden field for property ID with isset check -->
-    <input type="hidden" id="property_id" class="property_id" name="property_id" value="{{ session('property_id') ?? (isset($property) ? $property->id : '') }}">
-    <input type="hidden" name="step" value="9">
+    <input type="hidden" id="property_id" class="property_id" name="property_id"
+        value="{{ session('property_id') ?? (isset($property) ? $property->id : '') }}">
 
-    <label class="main_title">Responsibility</label>
+    <div class="main_title">Media</div>
 
-    <div class="steps_wrapper property-form-data-attribute" data-step-name="Responsibility" data-step-number="9" data-step-title="Responsibility">
+    <div class="steps_wrapper" data-step-name="Media" data-step-number="{{ $currentStep }}" data-step-title="Media">
+{{--
+<!-- old-code -->
+        <div class="form-group rs_upload_btn">
+            <h5 class="sub_title mt-4">Photos</h5>
+            <div class="media_wrapper">
+                <div class="media_content">
+                    <div class="image_wrapper">
+                        <!-- Preview images will be dynamically added here -->
+                    </div>
+                    <div class="media_upload">
+                        <div for="photos">Upload Photos</div>
+                        <input type="file" name="photos[]" id="photos" class="form-control" multiple accept="image/*"
+                            onchange="previewMultipleImage(this)">
+                        @error('photos.*')
+                            <div class="text-danger">{{ $message }}</div>
+                        @enderror
+                    </div>
 
-
-        <div class="form-group">
-            <label for="designation">Designation</label>
-            <select name="designation" id="designation" class="form-control" required>
-                <option value="" disabled {{ (isset($property) && $property->designation == '') ? 'selected' : '' }}>Select a service</option>
-                <option value="estate_agent" {{ (isset($property) && $property->designation == 'estate_agent') ? 'selected' : '' }}>Estate Agent</option>
-                <option value="landlord" {{ (isset($property) && $property->designation == 'landlord') ? 'selected' : '' }}>Landlord</option>
-                <option value="tenant" {{ (isset($property) && $property->designation == 'tenant') ? 'selected' : '' }}>Tenant</option>
-                <option value="manager" {{ (isset($property) && $property->designation == 'manager') ? 'selected' : '' }}>Manager</option>
-            </select>
-            @error('designation')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
-        </div>
-
-        <div class="form-group">
-            <label for="branch">Branch</label>
-            <select name="branch" id="branch" class="form-control" required>
-                <option value="" disabled {{ (isset($property) && $property->branch == '') ? 'selected' : '' }}>Select a service</option>
-                <option value="branch1" {{ (isset($property) && $property->branch == 'branch1') ? 'selected' : '' }}>Branch1</option>
-                <option value="branch2" {{ (isset($property) && $property->branch == 'branch2') ? 'selected' : '' }}>Branch2</option>
-                <option value="branch3" {{ (isset($property) && $property->branch == 'branch3') ? 'selected' : '' }}>Branch3</option>
-                <option value="branch4" {{ (isset($property) && $property->branch == 'branch4') ? 'selected' : '' }}>Branch4</option>
-            </select>
-            @error('branch')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
-        </div>
-
-        <div class="form-group">
-            <label for="commission_percentage">Commission (%)</label>
-            <input required type="text" name="commission_percentage" id="commission_percentage" class="form-control" value="{{ (isset($property) && $property->commission_percentage) ? $property->commission_percentage : '' }}">
-            @error('commission_percentage')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
-        </div>
-
-        <div class="form-group">
-            <label for="commission_amount">Commission (£)</label>
-            <div class="price_input_wrapper">
-                <div class="pound_sign">£</div>
-                <input required type="text" name="commission_amount" id="commission_amount" class="form-control" value="{{ (isset($property) && $property->commission_amount) ? $property->commission_amount : '' }}">
+                    @if($property && $property->photos)
+                        @foreach(json_decode($property->photos) as $photoPath)
+                            <img src="{{ asset('storage/' . $photoPath) }}" alt="Uploaded Photo" width="100">
+                        @endforeach
+                    @endif
+                </div>
             </div>
-            @error('commission_amount')
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
+        </div>
+
+        <!-- aiz-uploader  -->
+        <div class="form-group row">
+            <label class="col-md-3 col-form-label" for="signinSrEmail">Gallery Images</label>
+            <div class="col-md-8">
+                <div class="input-group" data-toggle="aizuploader" data-type="image" data-multiple="true">
+                    <div class="input-group-prepend">
+                        <div class="input-group-text bg-soft-secondary font-weight-medium">Browse</div>
+                    </div>
+                    <div class="form-control file-amount">Choose File</div>
+                    <input id="sort-the-photo" type="hidden" name="photos" value="" class="selected-files">
+                </div>
+                <div id="sort-photo" class="file-preview box sm">
+                </div>
+            </div>
+        </div>
+
+--}}
+        <div class="form-group rs_upload_btn">
+            <h5 class="sub_title mt-4">Photos <small>(Living Room, Reception, Bed Room, Bath Room, Garden, Hallway, Exterior - Cover Image)</small></h5>
+            <div class="media_wrapper">
+                <div class="input-group" data-toggle="aizuploader" data-type="image" data-multiple="true">
+                    <label class="col-form-label" for="photos">Photos</label>
+                    <div class="d-none input-group-prepend">
+                        <div class="input-group-text bg-soft-secondary font-weight-medium">Browse</div>
+                    </div>
+                    <div class="d-none form-control file-amount">Choose File</div>
+                    <input id="photos" id="photos" type="hidden" name="photos" value="{{ isset($property) && isset($property->photos) ? $property->photos : '' }}" class="selected-files">
+                </div>
+                <div class="d-flex gap-3 file-preview box sm">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group rs_upload_btn">
+            <h5 class="sub_title mt-4">Floor Plan</h5>
+            <div class="media_wrapper">
+                <div class="input-group" data-toggle="aizuploader" data-type="image" data-multiple="true">
+                    <label for="floor_plan">Upload Floor Plan Photos</label>
+                    <div class="d-none input-group-prepend">
+                        <div class="input-group-text bg-soft-secondary font-weight-medium">Browse</div>
+                    </div>
+                    <div class="d-none form-control file-amount">Choose File</div>
+                    <input id="floor_plan" type="hidden" name="floor_plan" value="{{ isset($property) && isset($property->floor_plan) ? $property->floor_plan : '' }}" class="selected-files">
+                </div>
+                <div class="d-flex gap-3 file-preview box sm">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group rs_upload_btn">
+            <h5 class="sub_title mt-4">View 360</h5>
+            <div class="media_wrapper">
+                <div class="input-group" data-toggle="aizuploader" data-type="image" data-multiple="true">
+                    <label for="view_360">Upload 360 View Photos</label>
+                    <div class="d-none input-group-prepend">
+                        <div class="input-group-text bg-soft-secondary font-weight-medium">Browse</div>
+                    </div>
+                    <div class="d-none form-control file-amount">Choose File</div>
+                    <input type="hidden" id="view_360" name="view_360" value="{{ isset($property) && isset($property->view_360) ? $property->view_360 : '' }}" class="selected-files">
+                </div>
+                <div class="d-flex gap-3 file-preview box sm">
+                </div>
+            </div>
         </div>
 
         <div class="row">
-            <div class="col-12 col-md-6">
-                <button type="button" class="btn btn-secondary w-100 previous-step" data-previous-step="8" data-current-step="9">Previous</button>
-            </div>
-            <div class="col-12 col-md-6">
-                <button type="submit" class="btn btn-primary w-100 last-step-submit" data-current-step="9">Submit</button>
-        </div>
-    </div>
+            <div class="col-lg-6 col-12">
+                <div class="form-group rs_upload_btn">
+                    <h5 class="sub_title mt-4">Video URL</h5>
+                    <label for="video_url">Video URL</label>
+                    <input required type="url" name="video_url" id="video_url" class="form-control" value="{{ isset($property) && $property->video_url ? $property->video_url : '' }}">
+                    @error('video_url')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                </div>
 
+                <div class="footer_btn">
+                    <div class="row mt-lg-4">
+                        <div class="col-6">
+                            <button type="button" class="btn btn_outline_secondary w-100 previous-step" data-previous-step="{{ $currentStep - 1 }}"
+                                data-current-step="{{ $currentStep }}">Previous</button>
+                        </div>
+                        <div class="col-6">
+                            <button type="button" class="btn btn_secondary w-100 next-step" data-next-step="{{ $currentStep + 1 }}"
+                                data-current-step="{{ $currentStep }}">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 </form>

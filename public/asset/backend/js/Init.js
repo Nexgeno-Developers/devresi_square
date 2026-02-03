@@ -89,6 +89,20 @@ function initSelect2(selector) {
     $(selector).select2();
 }
 
+function initSelect3(selector) {
+    $(selector).select2({
+        minimumInputLength: 3,
+        minimumResultsForSearch: 0,
+        placeholder: 'Start typing at least 3 characters',
+        language: {
+            inputTooShort: function () {
+                return "Please enter 3 or more characters";
+            }
+        }
+    });
+}
+
+
 //Form Submition
 function ajaxSubmit(e, form, callBackFunction) {
     if (form.valid()) {
@@ -116,10 +130,11 @@ function ajaxSubmit(e, form, callBackFunction) {
                 $(btn).css("pointer-events", "inherit");
 
                 if (response.status) {
-                    Command: toastr["success"](
-                        response.notification,
-                        "Success"
-                    );
+                    // Command: toastr["success"](
+                    //     response.notification,
+                    //     "Success"
+                    // );
+                    AIZ.plugins.notify('success', response.message);
                     callBackFunction(response);
                 } else {
                     if (typeof response.notification === "object") {
@@ -192,3 +207,138 @@ function initTrumbowyg(target) {
 function destroyTrumbowyg(target) {
     $(target).trumbowyg("destroy");
 }
+
+function openImageModal(imageSrc) {
+    $("#previewImage").attr("src", imageSrc); // Set image source
+    $("#imagePreviewModal").modal("show"); // Show modal
+}
+
+// Hide modal when close button is clicked
+$("#closeModalBtn").click(function () {
+    $("#imagePreviewModal").modal("hide");
+});
+
+// Hide modal when clicking outside modal content
+$(document).on("click", function (event) {
+    if (!$(event.target).closest(".modal-content").length) {
+        $("#imagePreviewModal").modal("hide");
+    }
+});
+$(document).on('click', '.toggle-link', function() {
+    const target = $(this).data('target');
+    const shortText = $('#' + target + '_short');
+    const fullText = $('#' + target + '_full');
+
+    if (fullText.hasClass('d-none')) {
+        shortText.addClass('d-none');
+        fullText.removeClass('d-none');
+        $(this).text('Show Less');
+    } else {
+        shortText.removeClass('d-none');
+        fullText.addClass('d-none');
+        $(this).text('Show More');
+    }
+});
+
+function toggleDescriptions() {
+    let propertyType = $('input[name="property_type"]:checked').val();
+    
+    // Show/hide based on selected type
+    if (propertyType === 'sales') {
+        $('.sales_description').show();
+        $('.lettings_description').hide();
+    } else if (propertyType === 'lettings') {
+        $('.sales_description').hide();
+        $('.lettings_description').show();
+    } else if (propertyType === 'both') {
+        $('.sales_description').show();
+        $('.lettings_description').show();
+    } else {
+        $('.sales_description, .lettings_description').hide();
+    }
+}
+
+toggleDescriptions();
+
+$(document).on('change', 'input[name="property_type"]', function() {
+    toggleDescriptions();
+});
+
+function toggleEPCRating() {
+    if ($('input[name="epc_required"]:checked').val() === '1') {
+        $('#epc_rating_container').show();
+    } else {
+        $('#epc_rating_container').hide();
+    }
+}
+toggleEPCRating();
+$(document).on('change', 'input[name="epc_required"]', function() {
+    toggleEPCRating();
+});
+
+/**
+ * Initialize “Other Religious Places” add/remove + reindexing.
+ *
+ * @param {string} wrapperSel   Selector for the container (e.g. '#places-wrapper')
+ * @param {string} addBtnSel    Selector for the “Add More” button (e.g. '#add-place-btn')
+ */
+// function initPlaces(wrapperSel, addBtnSel) {
+//     const $wrapper = $(wrapperSel);
+//     const $addBtn   = $(addBtnSel);
+  
+//     // 1️⃣ Row template with a placeholder __IDX__
+//     const rowTpl = `
+//       <div class="input-group mb-2 place-entry">
+//         <input 
+//           type="text" 
+//           name="nearest_places[__IDX__][name]" 
+//           class="form-control" 
+//           placeholder="Place name" 
+//           required
+//         >
+//         <input 
+//           type="number" 
+//           name="nearest_places[__IDX__][distance]" 
+//           class="form-control" 
+//           placeholder="Distance (KM)" 
+//           required
+//         >
+//         <button class="btn btn-danger remove-place" type="button">-</button>
+//       </div>`;
+  
+//     // 2️⃣ Re-index every .place-entry in the wrapper
+//     function reIndex() {
+//       $wrapper.find('.place-entry').each(function(i, el) {
+//         const $el = $(el);
+//         $el.find('input[name$="[name]"]')
+//            .attr('name', `nearest_places[${i}][name]`);
+//         $el.find('input[name$="[distance]"]')
+//            .attr('name', `nearest_places[${i}][distance]`);
+//       });
+//     }
+  
+//     // 3️⃣ Add Row handler
+//     $addBtn.off('click.place').on('click.place', () => {
+//       // append with a dummy index, then reindex
+//       $wrapper.append(rowTpl.replace(/__IDX__/g, $wrapper.children().length));
+//       reIndex();
+//     });
+  
+//     // 4️⃣ Remove Row handler (delegated)
+//     $wrapper.off('click.place', '.remove-place')
+//             .on('click.place', '.remove-place', function() {
+//       $(this).closest('.place-entry').remove();
+//       reIndex();
+//     });
+  
+//     // 5️⃣ Initial reIndex to clean up any server-rendered rows
+//     reIndex();
+//   }
+  
+//   // — call on DOM ready —
+//   $(function(){
+//     initPlaces('#places-wrapper', '#add-place-btn');
+//   });
+
+// //can use in anywhere initPlaces('#places-wrapper', '#add-place-btn');
+  

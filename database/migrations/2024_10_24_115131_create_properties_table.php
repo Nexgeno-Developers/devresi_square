@@ -12,12 +12,18 @@ return new class extends Migration {
     {
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
+            $table->string('prop_ref_no')->nullable();
             $table->string('prop_name')->nullable();
             $table->string('line_1')->nullable();
             $table->string('line_2')->nullable();
             $table->string('city')->nullable();
-            $table->string('country')->nullable();
+            // $table->string('country')->nullable();
+            $table->unsignedBigInteger('country')->nullable(); // Create the column
+            $table->foreign('country')->references('id')->on('countries')->onDelete('set null'); // Define the foreign key constraint
+            $table->string('county', 155)->nullable();
+            $table->string('currency', 155)->nullable();
             $table->string('postcode')->nullable();
+            $table->string('frunishing_type')->nullable();
             $table->string('property_type')->nullable();
             $table->string('transaction_type')->nullable();
             $table->string('specific_property_type')->nullable();
@@ -25,34 +31,57 @@ return new class extends Migration {
             $table->string('bathroom')->nullable();
             $table->string('reception')->nullable();
             $table->string('parking')->nullable();
+            $table->string('parking_location',50)->nullable();
             $table->string('balcony')->nullable();
             $table->string('garden')->nullable();
             $table->string('service')->nullable();
+            $table->string('management')->nullable();
             $table->string('collecting_rent')->nullable();
             $table->string('floor')->nullable();
             $table->decimal('square_feet', 10, 4)->nullable();
             $table->decimal('square_meter', 10, 4)->nullable();
             $table->string('aspects')->nullable();
-            $table->string('current_status')->nullable();
-            $table->string('status_description',555)->nullable();
+            $table->string('sales_current_status',155)->nullable();
+            $table->string('letting_current_status',155)->nullable();
+            $table->longText('sales_status_description')->nullable();
+            $table->longText('letting_status_description')->nullable();
             $table->date('available_from')->nullable();
+            $table->boolean('pets_allow')->default(0)->comment('1 for yes, 0 for no');
             $table->json('market_on')->nullable();
-            $table->json('features')->nullable(); // Stores multiple photo URLs as JSON array
+            $table->json('features')->nullable(); // Stores as JSON array
             $table->string('furniture',555)->nullable();
             $table->string('kitchen',555)->nullable();
             $table->string('heating_cooling',555)->nullable();
             $table->string('safety',555)->nullable();
             $table->string('other',555)->nullable();
-            $table->decimal('price', 10, 2)->nullable();
-            $table->decimal('ground_rent', 10, 2)->nullable();
-            $table->decimal('service_charge', 10, 2)->nullable();
+            $table->string('access_arrangement',255)->nullable();
+            $table->string('key_highlights',255)->nullable();
+            $table->string('nearest_station')->nullable();
+            $table->string('nearest_school')->nullable();
+            $table->json('nearest_religious_places')->nullable();
+            $table->string('useful_information',255)->nullable();
+            $table->decimal('price', 12, 2)->nullable();
+            $table->decimal('ground_rent', 12, 2)->nullable();
+            $table->decimal('service_charge', 12, 2)->nullable();
+            $table->decimal('estate_charge', 12, 2)->nullable();
+            $table->decimal('miscellaneous_charge', 12, 2)->nullable();
+            $table->unsignedBigInteger('estate_charges_id')->nullable(); // Create the column
+
+            // // Define the foreign key constraint
+            // $table->foreign('estate_charges_id')
+            //       ->references('id')
+            //       ->on('estate_charges')
+            //       ->onDelete('cascade'); // Automatically delete related records when estate_charges is deleted
+
             $table->decimal('annual_council_tax', 10, 2)->nullable();
             $table->string('council_tax_band')->nullable();
+            $table->string('local_authority',255)->nullable();
             $table->decimal('letting_price', 10, 2)->nullable();
             $table->string('tenure')->nullable();
             $table->integer('length_of_lease')->nullable();
             $table->string('epc_rating')->nullable();
             $table->boolean('is_gas')->nullable();
+            $table->boolean('gas_safe_acknowledged')->nullable();
             $table->string('photos', 2000)->nullable();
             $table->string('floor_plan', 2000)->nullable();
             $table->string('view_360', 2000)->nullable();
@@ -64,12 +93,15 @@ return new class extends Migration {
             $table->string('branch')->nullable();
             $table->decimal('commission_percentage', 5, 2)->nullable();
             $table->decimal('commission_amount', 10, 2)->nullable();
+            $table->longText('imp_notes')->nullable();
             $table->integer('step')->nullable();
             $table->integer('quick_step')->nullable();
-            $table->foreignId('added_by')->constrained('users')->onDelete('cascade');
+            $table->foreignId('added_by')->nullable()->constrained('users')->onDelete('set null');
+            // $table->foreignId('added_by')->constrained('users')->onDelete('cascade');
             $table->foreignId('deleted_by')->nullable()->constrained('users')->onDelete('set null');
             $table->softDeletes();
             $table->timestamps();
+
         });
 
         // Schema::create('properties', function (Blueprint $table) {
@@ -111,9 +143,9 @@ return new class extends Migration {
 
     protected $casts = [
         'market_on' => 'array',
-        'photos' => 'array',
-        'floor_plan' => 'array',
-        'view_360' => 'array',
+        // 'photos' => 'array',
+        // 'floor_plan' => 'array',
+        // 'view_360' => 'array',
         // 'video_url' => 'array',
     ];
 

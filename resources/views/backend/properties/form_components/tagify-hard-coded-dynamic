@@ -1,0 +1,27 @@
+{{-- <!-- Nearest Station -->
+                <div class="form-group">
+                    <div class="rs_sub_title">Nearest Station</div>
+                    @php
+                        // If nearest_station is not null, decode the comma-separated string into an array
+                        $stations = isset($property->nearest_station) ? $property->nearest_station : '';
+                    @endphp
+                    <input id="station_name" type="text" class="tagify-input" placeholder="Station Name">
+                    <input type="hidden" name="nearest_station" value="{{ $stations }}" class="hidden-input" required>
+                    @error('nearest_station')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <!-- Nearest School -->
+                <div class="form-group">
+                    <div class="rs_sub_title">Nearest School</div>
+                    @php
+                        // Get nearest_school as comma-separated IDs
+                        $schools = isset($property->nearest_school) ? $property->nearest_school : '';
+                    @endphp
+                    <input id="school_name" type="text" class="tagify-input" placeholder="School Name">
+                    <input type="hidden" name="nearest_school" value="{{ $schools }}" class="hidden-input" required>
+                    @error('nearest_school')
+                        <div class="text-danger">{{ $message }}</div>
+                    @enderror
+                </div> --}}

@@ -1,5 +1,8 @@
 <!-- resources/views/backend/properties/quick_form_components/step3.blade.php -->
-@php $currentStep = 2 ; @endphp
+@php
+    $propertyType = $property->property_type ?? '';
+    $currentStep = 2 ; 
+@endphp
 <div class="container-fluid mt-4 quick_add_property">
     <div class="row property_type_wrapper">
         <div class="col-md-6 col-12 left_col">
@@ -8,7 +11,7 @@
                     <i class="bi bi-building-fill"></i>
                 </div>
                 <div class="left_title">
-                    What<br /> <span class="secondary-color">type of property</span><br /> do you have?
+                    Tell us about your<br /> <span class="secondary-color">property</span><br /> ?
                 </div>
             </div>
         </div>
@@ -22,25 +25,25 @@
                 <div class="right_content_wrapper">
                     <div class="form-group">
                         <div class="radio_bts_square_icon">
-                            <input type="radio" class="propertyType" name="specific_property_type"
+                            <input type="radio" class="specificPropertyType" name="specific_property_type"
                                 id="specific_property_type_appartment" value="appartment" {{ (isset($property) && $property->specific_property_type == 'appartment') ? 'checked' : '' }} required>
                             <label for="specific_property_type_appartment">
                                 <img src="{{ asset('asset/images/svg/apartment_600.svg') }}" alt="apartment">
                                 Apartment
                             </label>
-                            <input type="radio" class="propertyType" name="specific_property_type"
+                            <input type="radio" class="specificPropertyType" name="specific_property_type"
                                 id="specific_property_type_flat" value="flat" {{ (isset($property) && $property->specific_property_type == 'flat') ? 'checked' : '' }} required>
                             <label for="specific_property_type_flat">
                                 <img src="{{ asset('asset/images/svg/flat_600.svg') }}" alt="flat">
                                 Flat
                             </label>
-                            <input type="radio" class="propertyType" name="specific_property_type"
+                            <input type="radio" class="specificPropertyType" name="specific_property_type"
                                 id="specific_property_type_bunglow" value="bunglow" {{ (isset($property) && $property->specific_property_type == 'bunglow') ? 'checked' : '' }} required>
                             <label for="specific_property_type_bunglow">
                                 <img src="{{ asset('asset/images/svg/bungalow_600.svg') }}" alt="bungalow">
                                 Bungalow
                             </label>
-                            <input type="radio" class="propertyType" name="specific_property_type"
+                            <input type="radio" class="specificPropertyType" name="specific_property_type"
                                 id="specific_property_type_house" value="house" {{ (isset($property) && $property->specific_property_type == 'house') ? 'checked' : '' }} required>
                             <label for="specific_property_type_house">
                                 <img src="{{ asset('asset/images/svg/house_600.svg') }}" alt="house">
@@ -48,6 +51,25 @@
                             </label>
                         </div>
                         @error('reception')
+                            <div class="text-danger">{{ $message }}</div>
+                        @enderror
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label d-block">Listing Type</label>
+                        <div class="radio_bts_square_icon rs_furnishing">
+                            <input class="hidden propertyType" type="radio" name="property_type" id="property_type_sales" value="sales" 
+                                    {{ (isset($property) && $propertyType == 'sales') ? 'checked' : '' }} required />
+                            <label class="checkbox_btn" for="property_type_sales">Sales</label>
+
+                             <input class="hidden propertyType" type="radio" name="property_type" id="property_type_lettings" value="lettings" 
+                                    {{ (isset($property) && $propertyType == 'lettings') ? 'checked' : '' }} required />
+                            <label class="checkbox_btn" for="property_type_lettings">Lettings</label>
+
+                            <input class="hidden propertyType" type="radio" name="property_type" id="property_type_both" value="both" 
+                                    {{ (isset($property) && $propertyType == 'both') ? 'checked' : '' }} required />
+                            <label class="checkbox_btn" for="property_type_both">Both</label>
+                        </div>
+                        @error('property_type')
                             <div class="text-danger">{{ $message }}</div>
                         @enderror
                     </div>

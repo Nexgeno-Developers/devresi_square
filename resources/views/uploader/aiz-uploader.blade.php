@@ -69,11 +69,11 @@
 						<button type="button" class="btn-link btn btn-sm p-0 aiz-uploader-selected-clear">Clear</button>
 					</div>
 					<div class="mb-0 ml-3">
-						<button type="button" class="btn btn-sm btn-primary" id="uploader_prev_btn">Prev</button>
-						<button type="button" class="btn btn-sm btn-primary" id="uploader_next_btn">Next</button>
+						<button type="button" class="btn btn-sm btn_secondary" id="uploader_prev_btn">Prev</button>
+						<button type="button" class="btn btn-sm btn_secondary" id="uploader_next_btn">Next</button>
 					</div>
 				</div>
-				<button type="button" class="btn btn-sm btn-primary" data-toggle="aizUploaderAddSelected">Add Files</button>
+				<button type="button" class="btn btn-sm btn_secondary" data-toggle="aizUploaderAddSelected">Add Files</button>
 			</div>
 		</div>
 	</div>

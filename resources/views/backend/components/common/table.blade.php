@@ -3,25 +3,43 @@
         <table class="table rs_table {{ $class }}">
             <thead>
                 <tr>
-                    @foreach($headers as $header)
-                        <th>{{ $header }}</th>
+                    @foreach ($headers as $header)
+                        @if ($header !== 'id')
+                            <th>{{ $header }}</th>
+                        @endif
                     @endforeach
-                    <th>Actions</th> <!-- Add an extra header for the actions column -->
+                    @if($actionBtn == True)
+                        <th></th>
+                    @endif
                 </tr>
             </thead>
             <tbody>
-                @foreach($rows as $row)
+                @foreach ($rows as $row)
                     <tr>
-                        @foreach($row as $cell)
-                            <td>{{ $cell }}</td>
+                        {{-- {{dd($rows)}} --}}
+                        @foreach ($row as $key => $value)
+                            @if ($key !== 'id' && $key !== 'updated_at')
+                                @if ($key === 'created_at' && $value)
+                                    <td>{{ \Carbon\Carbon::parse($value)->format('d-m-Y') }}</td>
+                                @else
+                                    <td>{{ $value }}</td>
+                                @endif
+                            @endif
                         @endforeach
-                        <td>
-                            @php 
-                            $countries = [ 'edit' => 'Edit', 'delete' => 'Delete' ]; 
-                            $selectedCountry = 'edit'; 
-                            @endphp
-                            <x-backend.dropdown :options="$countries" :selected="$selectedCountry" isIcon={{true}} class="right_icon" />
-                        </td> <!-- Add an action cell with an icon -->
+                        @if($actionBtn == True )
+                            <td>
+                                @php 
+                                    $options = [ 'edit' => 'Edit', 'delete' => 'Delete' ]; 
+                                    $selectedOptions = 'edit'; 
+                                @endphp
+                                <x-backend.forms.dropdown
+                                class='right_icon'
+                                :options="$options"
+                                :selected="$selectedOptions"
+                                isIcon="{{true}}"
+                            />
+                            </td>
+                        @endif
                     </tr>
                 @endforeach
             </tbody>
@@ -31,19 +49,21 @@
         <div class="rs_mobile_table">
             @foreach($rows as $row)
                 <div class="data-row">
-                    @foreach($row as $index => $value)
+                    @foreach($row as $key => $value)
                         <div class="tr_row">
-                            <div>{{ $headers[$index] }}</div>
-                            <div>{{ $value }}</div>
+                            {{-- <div>{{ $headers[$index] }}</div> --}}
+                            @if ($key !== 'id')
+                                <div class="text_right fw_normal">{{ $value }}</div>
+                            @endif
                         </div>
+                    @endforeach
+                    <div class="flex">
+                        @foreach($options as $value => $label)
+                        <a class="btn" href="#" onclick="selectOption('{{ $value }}', '{{ $label }}')">{{ $label }}</a>
                         @endforeach
-                        <div class="flex">
-                            @foreach($countries as $value => $label)
-                            <a class="btn" href="#" onclick="selectOption('{{ $value }}', '{{ $label }}')">{{ $label }}</a>
-                            @endforeach
-                        </div>
+                    </div>
                 </div>
             @endforeach
         </div>
     </div>
-</table>
+</div>

@@ -95,7 +95,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                     _method: "DELETE",
                                     _token: AIZ.data.csrf,
                                 },
-                                success: function () {
+                                success: function (response) {
                                     AIZ.uploader.data.selectedFiles = AIZ.uploader.data.selectedFiles.filter(
                                         function (item) {
                                             return (
@@ -118,6 +118,11 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                             "/aiz-uploader/get_uploaded_files"
                                     );
                                     AIZ.uploader.data.clickedForDelete = null;
+                                    // if (response.status) {
+                                    AIZ.plugins.notify('success', response.message);
+                                    // } else {
+                                    // AIZ.plugins.notify('danger', response.message);
+                                    // }
                                     $("#aizUploaderDelete").modal("hide");
                                 },
                             });
@@ -131,6 +136,13 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                 var elem = $(this);
                 elem.on("click", function (e) {
                     var value = $(this).data("value");
+                    // if it's not already selected, and we're at the max, block it
+                    if (!AIZ.uploader.data.selectedFiles.includes(value)
+                        && AIZ.uploader.data.selectedFiles.length >= AIZ.uploader.data.maxFiles) {
+                    alert("You can only select up to " + AIZ.uploader.data.maxFiles + " files.");
+                    return;
+                    }
+
                     var valueObject =
                         AIZ.uploader.data.allFiles[
                             AIZ.uploader.data.allFiles.findIndex(
@@ -405,7 +417,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                 data[i].file_name +
                                 '" class="img-fit">';
                         } else {
-                            thumb = '<i class="la la-file-text"></i>';
+                            thumb = '<i class="fa-solid fa-file"></i>';
                         }
                         var html =
                             '<div class="aiz-file-box-wrap" aria-hidden="' +
@@ -414,24 +426,24 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                             data[i].selected +
                             '">' +
                             '<div class="aiz-file-box">' +
-                            // '<div class="dropdown-file">' +
-                            // '<a class="dropdown-link" data-toggle="dropdown">' +
-                            // '<i class="la la-ellipsis-v"></i>' +
-                            // "</a>" +
-                            // '<div class="dropdown-menu dropdown-menu-right">' +
-                            // '<a href="' +
-                            // AIZ.data.fileBaseUrl +
-                            // data[i].file_name +
-                            // '" target="_blank" download="' +
-                            // data[i].file_original_name +
-                            // "." +
-                            // data[i].extension +
-                            // '" class="dropdown-item"><i class="la la-download mr-2"></i>Download</a>' +
-                            // '<a href="#" class="dropdown-item aiz-uploader-delete" data-id="' +
-                            // data[i].id +
-                            // '"><i class="la la-trash mr-2"></i>Delete</a>' +
-                            // "</div>" +
-                            // "</div>" +
+                            '<div class="dropdown-file">' +
+                            '<a class="dropdown-link" data-toggle="dropdown">' +
+                            '<i class="fa-solid fa-ellipsis-v"></i>' +
+                            "</a>" +
+                            '<div class="dropdown-menu dropdown-menu-right">' +
+                            '<a href="' +
+                            AIZ.data.fileBaseUrl +
+                            data[i].file_name +
+                            '" target="_blank" download="' +
+                            data[i].file_original_name +
+                            "." +
+                            data[i].extension +
+                            '" class="dropdown-item"><i class="fa fa-download mr-2"></i>Download</a>' +
+                            '<a href="#" class="dropdown-item aiz-uploader-delete" data-id="' +
+                            data[i].id +
+                            '"><i class="fa fa-trash mr-2"></i>Delete</a>' +
+                            "</div>" +
+                            "</div>" +
                             '<div class="card card-file aiz-uploader-select" title="' +
                             data[i].file_original_name +
                             "." +
@@ -499,7 +511,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                         data[i].file_name +
                                         '" class="img-fit">';
                                 } else {
-                                    thumb = '<i class="la la-file-text"></i>';
+                                    thumb = '<i class="fa-solid fa-file"></i>';
                                 }
                                 var html =
                                     '<div class="mt-2 file-preview-item" data-id="' +
@@ -528,8 +540,8 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                     "</p>" +
                                     "</div>" +
                                     '<div class="remove">' +
-                                    '<button class="btn btn-sm btn-link remove-attachment" type="button">' +
-                                    '<i class="fa fa-close"></i>' +
+                                    '<button class="btn-sm btn-link remove-attachment" type="button">' +
+                                    '<i class="fa-solid fa-x"></i>' +
                                     "</button>" +
                                     "</div>" +
                                     "</div>";
@@ -562,8 +574,8 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                 //     "</p>" +
                                 //     "</div>" +
                                 //     '<div class="remove">' +
-                                //     '<button class="btn btn-sm btn-link remove-attachment" type="button">' +
-                                //     '<i class="fa fa-close"></i>' +
+                                //     '<button class="btn-sm btn-link remove-attachment" type="button">' +
+                                //     '<i class="fa-solid fa-x"></i>' +
                                 //     "</button>" +
                                 //     "</div>" +
                                 //     "</div>";
@@ -599,7 +611,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
             //                 AIZ.uploader.data.allFiles[index].file_name +
             //                 '" class="img-fit">';
             //         } else {
-            //             thumb = '<i class="la la-file-text"></i>';
+            //             thumb = '<i class="fa-solid fa-file"></i>';
             //         }
             //         var html =
             //             '<div class="d-flex justify-content-between align-items-center mt-2 file-preview-item" data-id="' +
@@ -628,8 +640,8 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
             //             "</p>" +
             //             "</div>" +
             //             '<div class="remove">' +
-            //             '<button class="btn btn-sm btn-link remove-attachment" type="button">' +
-            //             '<i class="la la-close"></i>' +
+            //             '<button class="btn-sm btn-link remove-attachment" type="button">' +
+            //             '<i class="fa-solid fa-x"></i>' +
             //             "</button>" +
             //             "</div>" +
             //             "</div>";
@@ -680,6 +692,10 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
             // $("body").append('<div class="aiz-uploader-backdrop"></div>');
 
             var elem = $(elem);
+            
+            // read the HTML attribute; if not present, fall back to no‐limit
+            AIZ.uploader.data.maxFiles = parseInt(elem.data('max-files')) || Infinity;
+            
             var multiple = multiple;
             var type = type;
             var oldSelectedFiles = selectd;
@@ -814,7 +830,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                             data[i].file_name +
                                             '" class="img-fit">';
                                     } else {
-                                        thumb = '<i class="la la-file-text"></i>';
+                                        thumb = '<i class="fa-solid fa-file"></i>';
                                     }
                                     var html =
                                         '<div class="d-flex justify-content-between align-items-center mt-2 file-preview-item" data-id="' +
@@ -843,8 +859,8 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                                         "</p>" +
                                         "</div>" +
                                         '<div class="remove">' +
-                                        '<button class="btn btn-sm btn-link remove-attachment" type="button">' +
-                                        '<i class="la la-close"></i>' +
+                                        '<button class="btn-sm btn-link remove-attachment" type="button">' +
+                                        '<i class="fa-solid fa-x"></i>' +
                                         "</button>" +
                                         "</div>" +
                                         "</div>";
@@ -943,13 +959,37 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                 format = (typeof format == 'undefined') ? false : format;
 
                 $this.summernote({
+                    codeviewFilter: false,
+                    codeviewIframeFilter: false,
                     toolbar: buttons,
                     placeholder: placeholder,
                     height: minHeight,
                     callbacks: {
-                        onImageUpload: function (data) {
-                            data.pop();
+                        onImageUpload: function (files) {
+                            let editor = $(this); // the active editor
+                            for (let i = 0; i < files.length; i++) {
+                                uploadImageToServer(files[i], editor);
+                            }
+                            // for (let i = 0; i < files.length; i++) {
+                            //     let reader = new FileReader();
+                            //     reader.onload = (e) => {
+                            //         $(this).summernote('insertImage', e.target.result, 'image');
+                            //     };
+                            //     reader.readAsDataURL(files[i]); // Read image as Base64
+                            // }
                         },
+                        
+                        // onImageUpload: function (data) {
+                            // data.pop();
+                            
+                            // for (let i = 0; i < files.length; i++) {
+                            //     let reader = new FileReader();
+                            //     reader.onloadend = function () {
+                            //         $('.aiz-text-editor').summernote('insertImage', reader.result, 'image');
+                            //     };
+                            //     reader.readAsDataURL(files[i]);
+                            // }
+                        // },
                         onPaste: function (e) {
                             if(format){
                                 var bufferText = ((e.originalEvent || e).clipboardData || window.clipboardData).getData('Text');
@@ -1112,7 +1152,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                 {
                     // settings
                     showProgressbar: true,
-                    delay: 2500,
+                    delay: 3000,
                     mouse_over: "pause",
                     placement: {
                         from: "bottom",
@@ -1125,7 +1165,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                     type: type,
                     template:
                         '<div data-notify="container" class="aiz-notify alert alert-{0}" role="alert">' +
-                        '<button type="button" aria-hidden="true" data-notify="dismiss" class="close"><i class="las la-times"></i></button>' +
+                        '<button type="button" aria-hidden="true" data-notify="dismiss" class="close"><i class="fa-solid fa-x"></i></button>' +
                         '<span data-notify="message">{2}</span>' +
                         '<div class="progress" data-notify="progressbar">' +
                         '<div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"></div>' +
@@ -1907,7 +1947,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
     // AIZ.plugins.metismenu();
     AIZ.plugins.bootstrapSelect();
     AIZ.plugins.tagify();
-    AIZ.plugins.textEditor();
+    // AIZ.plugins.textEditor();
     // AIZ.plugins.tooltip();
     AIZ.plugins.countDown();
     AIZ.plugins.dateRange();

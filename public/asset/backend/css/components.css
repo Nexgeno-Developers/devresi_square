@@ -1,0 +1,256 @@
+
+/* =============================================================================
+                                         Inputs  
+
+with icon || without icon || dates input || price input 
+=============================================================================*/
+.rs_input{
+    input{
+        border: unset;
+        width: 100%;
+    }
+    &.input_price,
+    &.input_search{
+        border-radius: 5px;
+        padding: 8px 12px;
+        border: 1px solid var(--primary-300);
+        display: flex;
+        gap: 8px;
+        input{
+            border: unset;
+            &:focus-visible{
+                outline: unset;
+            }
+            width: 65%;
+        }
+    }
+    &.input_search{
+        input{
+            width: 88%;
+        }
+    }
+    &.input_custom_icon{
+        border-radius: 5px;
+        padding: 8px 12px;
+        border: 1px solid var(--primary-300);
+        display: flex;
+        gap: 8px;
+        justify-content: space-between;
+        input{
+            border: unset;
+            &:focus-visible{
+                outline: unset;
+            }
+            width: 86%;
+        }
+        .right_icon{
+            i{
+                &::before{
+                    vertical-align: -0.22em;
+                }
+                &.bi-plus{
+                    &::before{
+                    font-size: 28px !important;
+                    background: var(--primary);
+                    border-radius: 5px;
+                    color: var(--white);
+                    cursor: pointer;
+                    }
+                }
+            }
+        }
+    }
+    &.with_label{
+        input{
+            border:0;
+            &:focus-visible{
+                outline: unset;
+            }
+        }
+
+    }
+    &.with_date{
+        border-radius: 5px;
+        padding: 8px 12px;
+        border: 1px solid var(--primary-300);
+        input{
+            &:focus-visible{
+                outline: unset;
+            }
+        }
+
+    }
+    .right_icon{
+        color:var(--primary-600);
+    }
+}
+
+
+/* =============================================================================
+                                    Dropdown  
+                                         
+
+=============================================================================*/
+.dropdown{
+    background-color: var(--white);
+    padding: 8px 16px;
+    border-radius: 6px;
+    &:has(.rs_icon_dropdown){
+        background-color: unset;
+        width: fit-content;
+        padding: unset;
+    }
+    .rs_icon_dropdown{
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        &::after{
+            content: "\f013";
+            -webkit-font-smoothing: antialiased;
+            display: var(--fa-display, inline-block);
+            font-style: normal;
+            font-variant: normal;
+            line-height: 1;
+            text-rendering: auto;
+            font-family: var(--fa-style-family, "Font Awesome 6 Free");
+            font-weight: var(--fa-style, 900);
+        }
+        &:hover{
+            background-color: var(--primary-200);
+            border-radius: 6px;
+        }
+    }
+    &:has(.right_icon){
+        width: fit-content;
+        .dropdown-menu {
+            right: 0;
+            left: unset;
+        }
+    }
+    
+    .rs_icon_dropdown{
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        position: relative;
+        &::after{
+            content: "\f013";
+            -webkit-font-smoothing: antialiased;
+            display: var(--fa-display, inline-block);
+            font-style: normal;
+            font-variant: normal;
+            line-height: 1;
+            text-rendering: auto;
+            font-family: var(--fa-style-family, "Font Awesome 6 Free");
+            font-weight: var(--fa-style, 900);
+            border: none;
+        }
+        &:hover{
+            background-color: var(--primary-200);
+            border-radius: 6px;
+        }
+    }
+    &:has(.right_icon){
+        width: fit-content;
+    }  
+    
+    .rs_dropdown{
+        display: flex;
+        justify-content: space-between;
+    }
+    .dropdown-menu{
+        left: 0;
+        right: 0;
+        top: 40px;
+    }
+}
+
+/* =============================================================================
+                                    Search  
+=============================================================================*/
+.rs_search{
+    border: 1px solid var(--primary-200);
+    border-radius: 6px;
+    padding: 2px 8px;
+    display: flex;
+    align-items: center;
+    background: var(--white);
+    input{
+        border: unset;
+        width: 90%;
+        &:focus,
+        &:focus-visible{
+            border: unset;
+            outline: unset;
+        }
+    }
+}
+
+/* =============================================================================
+                                    Buttons  
+                                         
+ Mobile Button
+=============================================================================*/
+
+.mobile_footer{
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    padding: 16px;
+    box-shadow: 0px -3px 5px #0000005c;
+    border-radius: 20px 20px 0 0;
+
+    .pvdh_btns_wrapper{
+        display: flex;
+        gap: 16px;
+        a{
+            width: 100%;
+        }
+        .add_property_mobile{
+            min-height: 50px;
+            min-width: 50px;
+            border-radius: 100%;
+            right: 15px;
+            bottom: 104px;
+            position: fixed;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            .icon_btn{
+                position: relative;
+                &::after{
+                    content: '+';
+                    position: absolute;
+                    top: -44px;
+                    left: -20px;
+                    font-size: 60px;
+                    font-weight: 600;
+                }
+            }
+        }
+    }
+    a.mobile_icon_btn{
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: var(--primary-700);
+        text-align: center;
+        span{
+            font-size: 14px;
+        }
+        i.bi{
+            font-size: 24px;
+        }
+     }
+}

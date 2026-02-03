@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Backend;
 
-use Illuminate\Http\Request;
 use App\Models\Upload;
-use Illuminate\Support\Facades\Response;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Facades\Image;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Response;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AizUploadController
 {
@@ -211,7 +212,7 @@ class AizUploadController
         return $uploads->paginate(60)->appends(request()->query());
     }
 
-    public function destroy($id)
+    /*public function destroy($id)
     {
         $upload = Upload::findOrFail($id);
         $user = current_user();
@@ -235,6 +236,48 @@ class AizUploadController
             flash('File deleted successfully')->success();
         }
         return back();
+    }*/
+
+    public function destroy($id)
+    {
+        $upload = Upload::findOrFail($id);
+        // 1) Check if the Upload model uses SoftDeletes
+        $usesSoftDeletes = in_array(
+            SoftDeletes::class,
+            class_uses($upload)
+        );
+        try {
+            if (! $usesSoftDeletes) {
+                // 1) Always try deleting from the “public” disk (storage/app/public → public/storage)
+                if (Storage::disk('public')->exists($upload->file_name)) {
+                    Storage::disk('public')->delete($upload->file_name);
+                }
+
+                // 2) If you ever wrote directly into public/ via Image::save(...)
+                $directPublic = public_path($upload->file_name);
+                if (file_exists($directPublic)) {
+                    @unlink($directPublic);
+                }
+            }
+            if (env('FILESYSTEM_DRIVER') == 's3') {
+                Storage::disk('s3')->delete($upload->file_name);
+                if (file_exists(public_path() . '/' . $upload->file_name)) {
+                    unlink(public_path() . '/' . $upload->file_name);
+                }
+            } else {
+                unlink(public_path() . '/' . $upload->file_name);
+            }
+            $upload->delete();
+            $response = [
+                'message' => 'File deleted successfully'
+            ];
+        } catch (\Exception $e) {
+            $upload->delete();
+            $response = [
+                'message' => 'File deleted successfully'
+            ];
+        }
+        return $response;
     }
 
     public function bulk_uploaded_files_delete(Request $request)

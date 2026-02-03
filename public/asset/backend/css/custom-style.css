@@ -1,0 +1,42 @@
+.user-dropdown-toggle {
+    min-width: 200px; /* optional minimum width */
+    max-width: 300px;
+}
+
+.profile-img {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+}
+
+.default-profile-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+}
+
+.user-info {
+    min-width: 0; /* important for text-truncate */
+    overflow: hidden;
+}
+
+.role-text {
+    font-size: 0.8rem;
+}
+
+.user-dropdown-menu {
+    min-width: 250px !important; /* consistent dropdown width */
+    max-width: 300px;
+}
+
+.profile-img-small {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+}
+
+.default-profile-icon-small {
+    width: 60px;
+    height: 60px;
+    font-size: 20px;
+}

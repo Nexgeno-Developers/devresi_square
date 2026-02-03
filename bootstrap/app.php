@@ -4,6 +4,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use App\Http\Middleware\EnsureTokenIsValid;
+use Spatie\Permission\Middleware\RoleMiddleware;
+use Spatie\Permission\Middleware\PermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -36,7 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'subscribed' => EnsureTokenIsValid::class,
             // Route middleware aliases
-            'role' => \App\Http\Middleware\RoleMiddleware::class,
+            // 'role' => \App\Http\Middleware\RoleMiddleware::class,
             'auth' => \App\Http\Middleware\Authenticate::class,
             'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
             'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
@@ -45,6 +47,8 @@ return Application::configure(basePath: dirname(__DIR__))
             // 'password.confirm' => \Illuminate\Auth\Middleware\EnsureFrontendRequestsAreStateful::class,
             'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            'permission' => PermissionMiddleware::class,
+            'role'       => RoleMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
