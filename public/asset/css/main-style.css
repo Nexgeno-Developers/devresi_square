@@ -1,0 +1,449 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=Tajawal:wght@300;400&display=swap');
+
+
+:root{
+    --black: #000;
+    --white: #fff;
+    --primary: #000;
+    --secondary: #FF5C1D;
+
+    /* primary Shades */
+    --primary-50:#F8FAFC ;
+    --primary-100:#F1F5F9 ;
+    --primary-200:#E2E8F0 ;
+    --primary-300:#CBD5E1 ;
+    --primary-400:#94A3B8 ;
+    --primary-500:#64748B ;
+    --primary-600:#475569 ;
+    --primary-700:#334155 ;
+    --primary-800:#1E293B ;
+    --primary-900:#0F172A ;
+    --primary-950:#020617 ;
+
+    /* Secondary Shades */
+    --secondary-50:#FFEFE8 ;
+    --secondary-100:#FFCCB9 ;
+    --secondary-200:#FFB497 ;
+    --secondary-300:#FF9268 ;
+    --secondary-400:#FF7D4A ;
+    --secondary-500:#FF5C1D ;
+    --secondary-600:#E8541A ;
+    --secondary-700:#B54115 ;
+    --secondary-800:#8C3310 ;
+    --secondary-900:#6B270C ;
+
+    --primary-color: var(--primary);
+    --primary-color-dark: var(--primary-600);
+    --primary-color-light: var(--primary-400);
+    --primary-color-disable: var(--primary-300);;
+
+    --secondary-color: var(--secondary);
+    --secondary-color-dark: var(--secondary-600);
+    --secondary-color-light: var(--secondary-400);
+
+    --primary-bg: var(--primary-color);
+    --primary-bg-dark: var(--primary-color-dark);
+    --primary-bg-light: var(--primary-color-light);
+
+    --secondary-bg: var(--secondary-color);
+    --secondary-bg-dark: var(--secondary-color-dark);
+    --secondary-bg-light: var(--secondary-color-light);
+
+}
+
+/* color classes */
+    .black{color: var(--black);}
+    .white{color: var(--white);}
+    .primary{color: var(--primary);}
+    .primary{color: var(--secondary);}
+
+    /* primary Shades */
+    .primary-50{ color: var(--primary-50) }
+    .primary-100{ color:var(--primary-100) }
+    .primary-200{ color:var(--primary-200) }
+    .primary-300{ color:var(--primary-300) }
+    .primary-400{ color:var(--primary-400) }
+    .primary-500{ color:var(--primary-500) }
+    .primary-600{ color:var(--primary-600) }
+    .primary-700{ color:var(--primary-700) }
+    .primary-800{ color:var(--primary-800) }
+    .primary-900{ color:var(--primary-900) }
+    .primary-950{ color:var(--primary-950) }
+
+    /* Secondary Shades */
+    .secondary-50{  color: var(--secondary-50)}
+    .secondary-100{ color: var(--secondary-100)}
+    .secondary-200{ color: var(--secondary-200)}
+    .secondary-300{ color: var(--secondary-300)}
+    .secondary-400{ color: var(--secondary-400)}
+    .secondary-500{ color: var(--secondary-500)}
+    .secondary-600{ color: var(--secondary-600)}
+    .secondary-700{ color: var(--secondary-700)}
+    .secondary-800{ color: var(--secondary-800)}
+    .secondary-900{ color: var(--secondary-900)}
+
+    .primary-color{ color: var(--primary-color);}
+    .primary-color-dark{ color: var(--primary-color-dark-600);}
+    .primary-color-light{ color: var(--primary-color-light-400);}
+    .primary-color-disable{ color: var(--primary-color-disable-300);}
+
+    .secondary-color{ color: var(--secondary);}
+    .secondary-color-dark{ color: var(--secondary-color-dark);}
+    .secondary-color-light{ color: var(--secondary-color-light);}
+
+    .primary-bg{ background-color: var(--primary-bg);}
+    .primary-bg-dark{ background-color: var(--primary-bg-dark);}
+    .primary-bg-light{ background-color: var(--primary-bg-light); }
+
+    .secondary-bg{ background-color: var(--secondary-bg);}
+    .secondary-bg-dark{ background-color: var(--secondary-bg-dark);}
+    .secondary-bg-light{ background-color: var(--secondary-bg-light); }
+
+body{
+    font-family: 'Poppins', Arial, Helvetica, sans-serif;
+}
+
+/* ========================================
+              Over write
+==========================================*/
+.btn{
+    height: 48px;
+}
+a.btn{
+    padding: 8px 10px;
+    height: unset;
+}
+.btn:hover {
+    background-color: var(--primary-bg-dark);
+    border-color: var(--primary-bg-dark);
+    border: unset;
+}
+.btn_primary {
+    --bs-btn-color: #fff !important;
+    --bs-btn-bg: var(--primary-bg) !important;
+    --bs-btn-border-color: var(--primary-bg) !important;
+    --bs-btn-hover-color: #fff !important;
+    --bs-btn-hover-bg:  var(--primary-bg-light) !important;
+    --bs-btn-hover-border-color: var(--primary-bg-dark) !important;
+    --bs-btn-focus-shadow-rgb: 49, 132, 253 !important;
+    --bs-btn-active-color: #fff !important;
+    --bs-btn-active-bg: var(--primary-bg-dark) !important;
+    --bs-btn-active-border-color: var(--primary-bg-dark) !important;
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125) !important;
+    --bs-btn-disabled-color: #fff !important;
+    --bs-btn-disabled-bg: var(--primary-bg) !important;
+    --bs-btn-disabled-border-color: var(--primary-bg) !important;
+    border: unset;
+}
+
+.btn_secondary {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: var(--secondary-bg);
+    --bs-btn-border-color: var(--secondary-bg);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg:  var(--secondary-bg-light);
+    --bs-btn-hover-border-color: var(--secondary-bg-dark);
+    --bs-btn-focus-shadow-rgb: 49, 132, 253;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: var(--secondary-bg-dark);
+    --bs-btn-active-border-color: var(--secondary-bg-dark);
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --bs-btn-disabled-color: #fff;
+    --bs-btn-disabled-bg: var(--secondary-bg);
+    --bs-btn-disabled-border-color: var(--secondary-bg);
+    border: unset;
+}
+
+.btn_secondary:hover {
+    background-color: var(--secondary-bg-dark) !important;
+    border-color: var(--secondary-bg-dark) !important;
+    border: unset !important;
+}
+
+.btn-check:checked+.btn, .btn.active, .btn.show, .btn:first-child:active, :not(.btn-check)+.btn:active {
+    color: var(--white) !important;
+    background-color: var(--secondary-bg-dark) !important;
+    border-color: unset !important;
+}
+
+.btn_outline_secondary {
+    --bs-btn-color: #6c757d;
+    --bs-btn-border-color: var(--secondary);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--secondary-300);
+    --bs-btn-hover-border-color: #6c757d;
+    --bs-btn-focus-shadow-rgb: 108, 117, 125;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #6c757d;
+    --bs-btn-active-border-color: #6c757d;
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --bs-btn-disabled-color: #6c757d;
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: #6c757d;
+    --bs-gradient: none;
+}
+
+.btn_outline_primary {
+    --bs-btn-color: #6c757d;
+    --bs-btn-border-color: var(--primary);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: var(--primary-300);
+    --bs-btn-hover-border-color: #6c757d;
+    --bs-btn-focus-shadow-rgb: 108, 117, 125;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #6c757d;
+    --bs-btn-active-border-color: #6c757d;
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --bs-btn-disabled-color: #6c757d;
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: #6c757d;
+    --bs-gradient: none;
+}
+
+
+a:hover {
+    --bs-link-color-rgb: unset;
+}
+/* ========================================
+              Basics
+==========================================*/
+.w_full {width: 100%; }
+
+.h_full {height: 100%; }
+
+.flex {display: flex; }
+
+.block {display: block; }
+
+.justify_start {justify-items: start; }
+
+.justify_around {justify-content: space-around; }
+
+.justify_between {justify-content: space-between; }
+
+.justify_evenly {justify-content: space-evenly; }
+
+.items_center {align-items: center; }
+
+.items_start {align-items: start; }
+
+.flex{ display: flex; }
+.flex_row{ flex-direction: row; }
+.flex_col{ flex-direction: column; }
+.align_center{ align-items: center; }
+.justify_center{ justify-content: center; }
+.align_start{ align-items: start; }
+.justify_start{ justify-content: start; }
+.align_end{ align-items: end; }
+.justify_end{ justify-content: end; }
+
+.gap_8 {gap: 8px; }
+
+.gap_16 {gap: 16px; }
+
+.gap_32 {gap: 32px; }
+
+
+.border_bottom{
+    border-bottom: 1px solid var(--primary-300);
+    padding-bottom: 16px;
+    margin-bottom: 0;
+}
+
+hr{
+    border-bottom: 1px solid var(--primary-300);
+    margin: 16px 0;
+}
+
+a{text-decoration: none; color: var(--primary);}
+a:hover{font-weight: 500;}
+
+ul{
+    list-style: none;
+    padding: 0;
+    li{
+        margin-bottom: 8px;
+    }
+}
+
+/* Chrome, Safari, Edge, Opera */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* ========================================
+Alerts
+==========================================*/
+
+.alert_wrapper {
+    display: flex;
+    gap: 3px;
+    flex-direction: column;
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    z-index: 999;
+}
+
+/* ========================================
+Radio Buttons
+==========================================*/
+.rs_radio_btns{
+    display: flex;
+    gap: 42px;
+    flex-wrap: wrap;
+    row-gap: 8px;
+}
+.rs_radio_btns>div{
+    display: flex;
+    gap: 8px;
+}
+
+.rs_radio_btns input[type='radio']+label:hover{
+    color: var(--secondary);
+}
+
+.rs_radio_btns input[type='radio']::before {
+    width: 18px;
+    height: 18px;
+    border-radius: 15px;
+    top: 2px;
+    left: -1px;
+    position: relative;
+    background-color: var(--white);
+    content: '';
+    display: inline-block;
+    visibility: visible;
+    border: 2px solid var(--primary-400);
+}
+
+.rs_radio_btns input[type='radio']:checked::before {
+    width: 18px;
+    height: 18px;
+    border-radius: 15px;
+    top: 2px;
+    left: -1px;
+    position: relative;
+    background-color: var(--primary);
+    content: '';
+    display: inline-block;
+    visibility: visible;
+    border: 2px solid var(--primary);
+}
+
+.rs_radio_btns input[type="radio"]:checked+label{
+    color: var(--primary);
+    font-weight: 500;
+}
+
+/* ----------- Radio Square buttons ------------ */
+.radio_bts_square{
+    display: flex;
+    gap: 8px;
+
+}
+.radio_bts_square input[type="radio"] {
+    display: none;
+    visibility: hidden;
+}
+.radio_bts_square label{
+    cursor: pointer;
+}
+.radio_bts_square label{
+    border: 1px solid var(--primary);
+    border-radius: 3px;
+    padding: 10px 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: fit-content;
+}
+.radio_bts_square label:hover,
+.radio_bts_square input[type="radio"]:checked+label{
+    background-color: var(--primary);
+    color: var(--white);
+}
+
+/* ----------- Radio Square buttons for icon ------------ */
+.radio_bts_square_icon{
+    display: flex;
+    gap: 12px;
+}
+.radio_bts_square_icon input[type="radio"] {
+    display: none;
+    visibility: hidden;
+}
+.radio_bts_square_icon label{
+    cursor: pointer;
+}
+.radio_bts_square_icon label{
+    border: 1px solid var(--primary);
+    border-radius: 3px;
+    padding: 10px 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 150px;
+    height: 150px;
+    flex-direction: column;
+    box-shadow: 0px 2px 4px 0px rgba(0, 0, 0, 0.15);
+    
+}
+.radio_bts_square_icon label:hover,
+.radio_bts_square_icon input[type="radio"]:checked+label{
+    border: 1px solid var(--secondary);
+    color: var(--secondary);
+    box-shadow: unset;
+}
+
+/* ========================================
+File upload
+==========================================*/
+.rs_upload_btn input[type="file"] {
+    display: none;
+}
+
+.rs_upload_btn label{
+    border: 2px dotted var(--primary-400);
+    border-radius: 5px;
+    width: 200px;
+    height: 200px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    text-align: center;
+}
+
+/* ========================================
+scrollbar
+==========================================*/
+
+/* width */
+::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  /* Track */
+  ::-webkit-scrollbar-track {
+    box-shadow: inset 0 0 5px var(--primary-500); 
+    border-radius: 10px;
+  }
+   
+  /* Handle */
+  ::-webkit-scrollbar-thumb {
+    background: var(--primary-color-dark);
+    border-radius: 10px;
+  }
+  
+  /* Handle on hover */
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color-dark);
+  }
