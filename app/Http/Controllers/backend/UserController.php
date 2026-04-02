@@ -227,9 +227,18 @@ class UserController
             ['name' => 'Compliance'],
             ['name' => 'Documents'],
             ['name' => 'Notes'],
+            ['name' => 'Statement'],
         ];
 
-        $content = $this->getTabContent($tabName, $userId, $user); // Dynamically get content for the tab and property
+        if (strtolower($tabName) === 'statement' && $request->query('format') === 'csv') {
+            $filters = $this->statementFilters($request);
+            $statement = app(\App\Services\Accounting\StatementService::class)
+                ->contactStatement($user->id, $user->company_id ?? null, $filters['date_from'], $filters['date_to']);
+            $statement['summary']['balance_due'] = $statement['closing'];
+            return $this->streamStatementCsv($user, $statement);
+        }
+
+        $content = $this->getTabContent($request, $tabName, $userId, $user); // Dynamically get content for the tab and property
 
         // Check if the request is via AJAX (this handles dynamic content loading)
         if ($request->ajax()) {
@@ -240,7 +249,7 @@ class UserController
         // return view('backend.users.index', compact('users', 'categories','tabs', 'tabName', 'userId', 'user', 'content'));
     }
 
-    private function getTabContent($tabname, $userId, $user)
+    private function getTabContent(Request $request, $tabname, $userId, $user)
     {
         switch (strtolower($tabname)) {
             case 'contact':
@@ -314,7 +323,18 @@ class UserController
                 $noteTypes = NoteType::all();
                 return view('backend.users.tabs.notes', compact('userId', 'user', 'notes', 'noteTypes'))->render();
                 // return view('backend.users.tabs.notes', compact('userId', 'user'))->render();
-    
+
+            case 'statement':
+                $filters = $this->statementFilters($request);
+                $statement = app(\App\Services\Accounting\StatementService::class)
+                    ->contactStatement($user->id, $user->company_id ?? null, $filters['date_from'], $filters['date_to']);
+                $statement['summary']['balance_due'] = $statement['closing'];
+                return view('backend.users.tabs.statement', [
+                    'user' => $user,
+                    'filters' => $filters,
+                    'statement' => $statement,
+                ])->render();
+
             default:
                 return 'Tab content not found';
         }
@@ -1051,4 +1071,64 @@ class UserController
         }
     }
 
+    private function statementFilters(Request $request): array
+    {
+        $preset = $request->query('preset', 'this_month');
+        $from = $request->query('date_from');
+        $to = $request->query('date_to');
+        $today = now();
+
+        switch ($preset) {
+            case 'last_month':
+                $start = $today->copy()->subMonthNoOverflow()->startOfMonth();
+                $end = $today->copy()->subMonthNoOverflow()->endOfMonth();
+                break;
+            case 'ytd':
+                $start = $today->copy()->startOfYear();
+                $end = $today;
+                break;
+            case 'custom':
+                $start = $from ? \Carbon\Carbon::parse($from) : $today->copy()->startOfMonth();
+                $end = $to ? \Carbon\Carbon::parse($to) : null;
+                break;
+            case 'this_month':
+            default:
+                $start = $today->copy()->startOfMonth();
+                $end = $today;
+                break;
+        }
+
+        return [
+            'preset' => $preset,
+            'date_from' => $start->toDateString(),
+            'date_to' => $end?->toDateString(),
+        ];
+    }
+
+    private function streamStatementCsv(User $user, array $statement)
+    {
+        return response()->streamDownload(function () use ($user, $statement) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ["Statement for {$user->name}", "{$statement['from']} - {$statement['to']}"]);
+            fputcsv($out, []);
+            fputcsv($out, ['Beginning Balance', number_format($statement['opening'], 2)]);
+            fputcsv($out, ['Invoiced', number_format($statement['summary']['invoiced'] ?? 0, 2)]);
+            fputcsv($out, ['Paid', number_format($statement['summary']['paid'] ?? 0, 2)]);
+            fputcsv($out, ['Balance Due', number_format($statement['summary']['balance_due'] ?? $statement['closing'], 2)]);
+            fputcsv($out, []);
+            fputcsv($out, ['Date', 'Details', 'Debit', 'Credit', 'Delta', 'Running']);
+            fputcsv($out, ['', 'Opening Balance', '', '', '', number_format($statement['opening'], 2)]);
+            foreach ($statement['lines'] as $line) {
+                fputcsv($out, [
+                    $line['date'],
+                    trim(($line['memo'] ?? '') . ' ' . ($line['account_code'] ?? '') . ' ' . ($line['account_name'] ?? '')),
+                    number_format($line['debit'], 2),
+                    number_format($line['credit'], 2),
+                    number_format($line['delta'], 2),
+                    number_format($line['running'], 2),
+                ]);
+            }
+            fclose($out);
+        }, 'contact-statement.csv', ['Content-Type' => 'text/csv']);
+    }
 }

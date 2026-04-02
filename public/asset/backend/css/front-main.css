@@ -502,6 +502,7 @@ form {
 .nav-second-level .sidebar-sub-sub-list-item {
     padding: 5px 10px;
     margin-bottom: 0;
+    white-space: nowrap;
 }
 
 .components li.sidebar-list-item {

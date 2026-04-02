@@ -38,6 +38,9 @@
                 <ul class="navbar-nav ms-auto">               
                     @if (Auth::check())                  
                         <li class="nav-item">
+                            <a class="nav-link" href="{{ route('customer.statements') }}">My Statement</a>
+                        </li>
+                        <li class="nav-item">
                             <form action="{{ route('logout') }}" method="POST" class="d-inline">
                                 @csrf
                                 <button type="submit" class="nav-link btn btn-link">Logout</button>

@@ -127,6 +127,8 @@ class Invoice extends Model
                 'invoices.invoice_number',
                 'invoices.property_id',
                 'invoices.total_amount',
+                'invoices.user_id',
+                'users.name as user_name',
                 DB::raw("COALESCE(SUM(
                     CASE 
                         WHEN transactions.status = 'completed' AND transactions.transaction_type = 'credit' THEN transactions.amount
@@ -135,8 +137,9 @@ class Invoice extends Model
                     END
                 ), 0) as paid_amount"),
             ])
+            ->leftJoin('users', 'users.id', '=', 'invoices.user_id')
             ->leftJoin('transactions', 'transactions.invoice_id', '=', 'invoices.id')
-            ->groupBy('invoices.id', 'invoices.invoice_number', 'invoices.property_id', 'invoices.total_amount');
+            ->groupBy('invoices.id', 'invoices.invoice_number', 'invoices.property_id', 'invoices.total_amount', 'invoices.user_id', 'users.name');
 
         if (!is_null($q) && $q !== '') {
             $query->where(function ($w) use ($q) {
@@ -168,6 +171,8 @@ class Invoice extends Model
                 'text' => "{$inv->invoice_number} — £" . number_format($total, 2),
                 'outstanding' => $outstanding,
                 'property_id' => $inv->property_id,
+                'user_id' => $inv->user_id,
+                'user_name' => $inv->user_name,
                 'total_amount' => $total,
             ];
         })->values();
@@ -190,6 +195,8 @@ class Invoice extends Model
             'text' => "{$this->invoice_number} — £" . number_format($total, 2),
             'outstanding' => $outstanding,
             'property_id' => $this->property_id,
+            'user_id' => $this->user_id,
+            'user_name' => optional($this->user)->name,
             'total_amount' => $total,
         ];
     }

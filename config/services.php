@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'stripe' => [
+        // Test/sandbox keys
+        'test_key' => env('STRIPE_PUBLISHABLE_TEST'),
+        'test_secret' => env('STRIPE_TEST_SECRET'),
+    ],
+
 ];

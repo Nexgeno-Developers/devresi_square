@@ -4,6 +4,10 @@ namespace Database\Seeders;
 
 use App\Models\User;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Database\Seeders\CurrencySeeder;
+use Database\Seeders\RoleSeeder;
+use Database\Seeders\UserSeeder;
+use Database\Seeders\GlAccountSeeder;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -29,7 +33,6 @@ class DatabaseSeeder extends Seeder
             EstateChargesSeeder::class,
             OwnerGroupSeeder::class,
             UserCategorySeeder::class,
-            UsersSeeder::class,
             CurrencySeeder::class,
             PropertiesTableSeeder::class,
             PropertyResponsibilitySeeder::class,
@@ -39,6 +42,8 @@ class DatabaseSeeder extends Seeder
             CountrySeeder::class,
             NationalitySeeder::class,
             EventTypeSeeder::class,
+            GlAccountSeeder::class,
+            SysAccountingSeeder::class,
         ]);
 
         // User::factory()->create([

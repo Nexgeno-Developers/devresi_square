@@ -866,33 +866,189 @@
             </li>
         @endcanany
 
-        <!-- Account Headers -->
-        @canany(['view account headers'])
-            <li class="sidebar-list-item submenu_wrapper">
-                <a href="#accountHeadersSubmenu" data-bs-toggle="collapse"
-                    aria-expanded="{{ areActiveRoutes(['backend.account_headers.index'], 'true') }}"
-                    class="dropdown-toggle {{ areActiveRoutes(['backend.account_headers.index']) }}">
-                    <span class="icon_wrapper pb_25">
-                        <i class="fa-solid fa-file-invoice-dollar"></i> Account Headers
-                    </span>
-                    <i class="fa fa-angle-down"></i>
-                </a>
+        <li class="sidebar-list-item submenu_wrapper">
+            <a href="#accountingSubmenu" data-bs-toggle="collapse"
+                aria-expanded="{{ request()->routeIs('backend.accounting.*') ? 'true' : 'false' }}"
+                class="dropdown-toggle {{ request()->routeIs('backend.accounting.*') ? 'active' : '' }}">
+                <span class="icon_wrapper pb_25">
+                    <i class="fa-solid fa-calculator"></i> Accounting
+                </span>
+                <i class="fa fa-angle-down"></i>
+            </a>
 
-                <ul class="nav-second-level list-unstyled collapse {{ areActiveRoutes(['backend.account_headers.index'], 'show') }}"
-                    id="accountHeadersSubmenu">
+            <ul class="nav-second-level list-unstyled collapse {{ request()->routeIs('backend.accounting.*') ? 'show' : '' }}"
+                id="accountingSubmenu">
 
-                    @can('view account headers')
-                        @component('components.backend.common.sidebar-sublink')
-                            @slot('class') {{ areActiveRoutes(['backend.account_headers.index']) }} @endslot
-                            @slot('link') {{ route('backend.account_headers.index') }} @endslot
-                            @slot('link_name') Account Headers @endslot
-                        @endcomponent
-                    @endcan
+                <li class="sidebar-sub-list-item submenu_wrapper">
+                    <a href="#accountingMastersSubmenu" data-bs-toggle="collapse"
+                        aria-expanded="{{ request()->routeIs('backend.accounting.masters.*') ? 'true' : 'false' }}"
+                        class="dropdown-toggle {{ request()->routeIs('backend.accounting.masters.*') ? 'active' : '' }}">
+                        <span class="icon_wrapper">Masters</span>
+                        <i class="fa fa-angle-down"></i>
+                    </a>
+                    <ul class="nav-third-level collapse list-unstyled {{ request()->routeIs('backend.accounting.masters.*') ? 'show' : '' }}"
+                        id="accountingMastersSubmenu">
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.masters.banks.*') ? 'active' : '' }}" href="{{ route('backend.accounting.masters.banks.index') }}">Banks</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.masters.payment_methods.*') ? 'active' : '' }}" href="{{ route('backend.accounting.masters.payment_methods.index') }}">Payment Method</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.masters.income_categories.*') ? 'active' : '' }}" href="{{ route('backend.accounting.masters.income_categories.index') }}">Income Category</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.masters.expense_categories.*') ? 'active' : '' }}" href="{{ route('backend.accounting.masters.expense_categories.index') }}">Expense Category</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.masters.taxes.*') ? 'active' : '' }}" href="{{ route('backend.accounting.masters.taxes.index') }}">Taxes</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.masters.invoice_headers.*') ? 'active' : '' }}" href="{{ route('backend.accounting.masters.invoice_headers.index') }}">Invoice Headers</a>
+                        </li>
+                    </ul>
+                </li>
 
-                </ul>
-            </li>
-        @endcanany
+                {{-- <li class="sidebar-sub-list-item submenu_wrapper">
+                    <a href="#accountingGlSubmenu" data-bs-toggle="collapse"
+                        aria-expanded="{{ request()->routeIs('backend.accounting.gl_accounts.*') || request()->routeIs('backend.accounting.gl_account_balances.*') || request()->routeIs('backend.accounting.gl_journals.*') || request()->routeIs('backend.accounting.gl_journal_lines.*') ? 'true' : 'false' }}"
+                        class="dropdown-toggle {{ request()->routeIs('backend.accounting.gl_accounts.*') || request()->routeIs('backend.accounting.gl_account_balances.*') || request()->routeIs('backend.accounting.gl_journals.*') || request()->routeIs('backend.accounting.gl_journal_lines.*') ? 'active' : '' }}">
+                        <span class="icon_wrapper">General Ledger</span>
+                        <i class="fa fa-angle-down"></i>
+                    </a>
+                    <ul class="nav-third-level collapse list-unstyled {{ request()->routeIs('backend.accounting.gl_accounts.*') || request()->routeIs('backend.accounting.gl_account_balances.*') || request()->routeIs('backend.accounting.gl_journals.*') || request()->routeIs('backend.accounting.gl_journal_lines.*') ? 'show' : '' }}"
+                        id="accountingGlSubmenu">
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.gl_accounts.*') ? 'active' : '' }}" href="{{ route('backend.accounting.gl_accounts.index') }}">GL Accounts</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.gl_account_balances.*') ? 'active' : '' }}" href="{{ route('backend.accounting.gl_account_balances.index') }}">GL Account Balances</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.gl_journals.*') ? 'active' : '' }}" href="{{ route('backend.accounting.gl_journals.index') }}">GL Journals</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.gl_journal_lines.*') ? 'active' : '' }}" href="{{ route('backend.accounting.gl_journal_lines.index') }}">GL Journal Lines</a>
+                        </li>
+                    </ul>
+                </li> --}}
 
+                <li class="sidebar-sub-list-item submenu_wrapper">
+                    <a href="#accountingSaleSubmenu" data-bs-toggle="collapse"
+                        aria-expanded="{{ request()->routeIs('backend.accounting.sale.*') ? 'true' : 'false' }}"
+                        class="dropdown-toggle {{ request()->routeIs('backend.accounting.sale.*') ? 'active' : '' }}">
+                        <span class="icon_wrapper">Sale</span>
+                        <i class="fa fa-angle-down"></i>
+                    </a>
+                    <ul class="nav-third-level collapse list-unstyled {{ request()->routeIs('backend.accounting.sale.*') ? 'show' : '' }}"
+                        id="accountingSaleSubmenu">
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.sale.invoices.*') ? 'active' : '' }}" href="{{ route('backend.accounting.sale.invoices.index') }}">Invoice</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.sale.credit_notes.*') ? 'active' : '' }}" href="{{ route('backend.accounting.sale.credit_notes.index') }}">Credit Notes</a>
+                        </li>
+                    </ul>
+                </li>
+
+                {{-- <li class="sidebar-sub-list-item submenu_wrapper">
+                    <a href="#accountingPurchaseSubmenu" data-bs-toggle="collapse"
+                        aria-expanded="{{ request()->routeIs('backend.accounting.purchase.*') ? 'true' : 'false' }}"
+                        class="dropdown-toggle {{ request()->routeIs('backend.accounting.purchase.*') ? 'active' : '' }}">
+                        <span class="icon_wrapper">Purchase</span>
+                        <i class="fa fa-angle-down"></i>
+                    </a>
+                    <ul class="nav-third-level collapse list-unstyled {{ request()->routeIs('backend.accounting.purchase.*') ? 'show' : '' }}"
+                        id="accountingPurchaseSubmenu">
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.purchase.invoices.*') ? 'active' : '' }}" href="{{ route('backend.accounting.purchase.invoices.index') }}">Invoice</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.purchase.debit_notes.*') ? 'active' : '' }}" href="{{ route('backend.accounting.purchase.debit_notes.index') }}">Debit Notes</a>
+                        </li>
+                    </ul>
+                </li> --}}
+
+                <li class="sidebar-sub-list-item">
+                    <a class="{{ request()->routeIs('backend.accounting.receipts.*') || request()->routeIs('backend.accounting.receipts.*') ? 'active' : '' }}" href="{{ route('backend.accounting.receipts.index') }}">
+                        <span class="icon_wrapper">Receipts</span>
+                    </a>
+                </li>
+                <li class="sidebar-sub-list-item">
+                    <a class="{{ request()->routeIs('backend.accounting.statements.customers') ? 'active' : '' }}" href="{{ route('backend.accounting.statements.customers') }}">
+                        <span class="icon_wrapper">Customer Statements</span>
+                    </a>
+                </li>
+                <li class="sidebar-sub-list-item">
+                    <a class="{{ request()->routeIs('backend.accounting.statements.accounts') ? 'active' : '' }}" href="{{ route('backend.accounting.statements.accounts') }}">
+                        <span class="icon_wrapper">Account Ledger</span>
+                    </a>
+                </li>
+
+                <li class="sidebar-sub-list-item submenu_wrapper">
+                    <a href="#accountingReportsSubmenu" data-bs-toggle="collapse"
+                        aria-expanded="{{ request()->routeIs('backend.accounting.reports.*') ? 'true' : 'false' }}"
+                        class="dropdown-toggle {{ request()->routeIs('backend.accounting.reports.*') ? 'active' : '' }}">
+                        <span class="icon_wrapper">Reports</span>
+                        <i class="fa fa-angle-down"></i>
+                    </a>
+                    <ul class="nav-third-level collapse list-unstyled {{ request()->routeIs('backend.accounting.reports.*') ? 'show' : '' }}"
+                        id="accountingReportsSubmenu">
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.reports.trial_balance') ? 'active' : '' }}" href="{{ route('backend.accounting.reports.trial_balance') }}">Trial Balance</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.reports.profit_loss') ? 'active' : '' }}" href="{{ route('backend.accounting.reports.profit_loss') }}">Profit & Loss</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.reports.balance_sheet') ? 'active' : '' }}" href="{{ route('backend.accounting.reports.balance_sheet') }}">Balance Sheet</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.reports.ar_aging') ? 'active' : '' }}" href="{{ route('backend.accounting.reports.ar_aging') }}">AR Aging</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.reports.ap_aging') ? 'active' : '' }}" href="{{ route('backend.accounting.reports.ap_aging') }}">AP Aging</a>
+                        </li>
+                    </ul>
+                </li>
+
+                {{-- <li class="sidebar-sub-list-item">
+                    <a class="{{ request()->routeIs('backend.accounting.bank_reconciliation.*') ? 'active' : '' }}" href="{{ route('backend.accounting.bank_reconciliation.index') }}">
+                        <span class="icon_wrapper">Bank Reconciliation</span>
+                    </a>
+                </li>
+
+                <li class="sidebar-sub-list-item">
+                    <a class="{{ request()->routeIs('backend.accounting.fixed_assets.*') ? 'active' : '' }}" href="{{ route('backend.accounting.fixed_assets.index') }}">
+                        <span class="icon_wrapper">Fixed Assets</span>
+                    </a>
+                </li> --}}
+
+                <li class="sidebar-sub-list-item submenu_wrapper">
+                    <a href="#accountingPaymentsSubmenu" data-bs-toggle="collapse"
+                        aria-expanded="{{ request()->routeIs('backend.accounting.payments.*') ? 'true' : 'false' }}"
+                        class="dropdown-toggle {{ request()->routeIs('backend.accounting.payments.*') ? 'active' : '' }}">
+                        <span class="icon_wrapper">Payments</span>
+                        <i class="fa fa-angle-down"></i>
+                    </a>
+                    <ul class="nav-third-level collapse list-unstyled {{ request()->routeIs('backend.accounting.payments.*') ? 'show' : '' }}"
+                        id="accountingPaymentsSubmenu">
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.payments.incomes') ? 'active' : '' }}" href="{{ route('backend.accounting.payments.incomes') }}">Incomes (Deposit)</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.payments.expenses') ? 'active' : '' }}" href="{{ route('backend.accounting.payments.expenses') }}">Expense</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.payments.general') ? 'active' : '' }}" href="{{ route('backend.accounting.payments.general') }}">General Entry</a>
+                        </li>
+                        <li class="sidebar-sub-sub-list-item">
+                            <a class="{{ request()->routeIs('backend.accounting.payments.all') || request()->routeIs('backend.accounting.payments.index') ? 'active' : '' }}" href="{{ route('backend.accounting.payments.all') }}">All Transactions</a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
 
         <!-- marketing -->
         @canany(['manage email templates'])
