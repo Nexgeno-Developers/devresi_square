@@ -1,4 +1,4 @@
-<div class="pv_content_wrapper {{ $cardStyle == 'vertical'? 'vertical_card' : '' }} {{$class}}" data-user-id="{{ $userId }}">
+<div class="pv_content_wrapper {{ $cardStyle == 'vertical'? 'vertical_card' : '' }} {{$class}}" data-user-id="{{ $userId }}" style="cursor: pointer;">
     {{-- <div class="pv_image">
         <img src="{{ asset('/asset/images/temp-user.webp') }}" alt="user">
     </div> --}}

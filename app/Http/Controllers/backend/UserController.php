@@ -2,27 +2,27 @@
 
 namespace App\Http\Controllers\Backend;
 
-use App\Models\User;
+use App\Mail\MailManager;
 use App\Models\Country;
-use App\Models\NoteType;
-use App\Models\Property;
+use App\Models\DocumentType;
+use App\Models\EmailTemplate;
 // use App\Models\BankDetails;
 use App\Models\Nationality;
-use App\Models\DocumentType;
+use App\Models\NoteType;
 // use App\Models\UserCategory;
+use App\Models\Property;
+use App\Models\User;
 use App\Models\UserCategory;
-use Illuminate\Http\Request;
-use App\Models\EmailTemplate;
-use App\Mail\MailManager;
+use App\Services\Accounting\StatementService;
 // use App\Http\Controllers\Backend\NotesController;
-use Spatie\Permission\Models\Role;
-use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use App\Http\Controllers\Backend\NotesController;
-use App\Http\Controllers\Backend\BankDetailController;
+use Spatie\Permission\Models\Role;
 
 class UserController
 {
@@ -32,9 +32,10 @@ class UserController
         // $countryName = Country::find($authUser->country_id)?->name ?? 'N/A';
         // Use cached countries to find the user's country
         $countryName = Country::allCached()->firstWhere('id', $authUser->country_id)->name ?? 'N/A';
+
         return view('backend.users.profile.show', compact('authUser', 'countryName'));
     }
-    
+
     public function profileEdit()
     {
         // Fetch the authenticated user
@@ -42,6 +43,7 @@ class UserController
         $user = User::with('country')->find(auth()->id());
         // $categories = UserCategory::all();
         $countries = Country::allCached();
+
         return view('backend.users.profile.edit', compact('user', 'countries'));
         // return view('backend.users.profile.edit', compact('user', 'categories', 'countries'));
     }
@@ -56,7 +58,7 @@ class UserController
             'middle_name' => 'nullable|string|max:55',
             'last_name' => 'required|string|max:55',
             'phone' => 'required|string|max:20',
-            'email' => 'required|email|max:55|unique:users,email,' . $user->id,
+            'email' => 'required|email|max:55|unique:users,email,'.$user->id,
             'address_line_1' => 'required|string|max:255',
             'address_line_2' => 'nullable|string|max:255',
             'postcode' => 'required|string|max:15',
@@ -79,7 +81,7 @@ class UserController
         // Handle file upload
         if ($request->hasFile('profile_picture')) {
             $file = $request->file('profile_picture');
-            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+            $filename = uniqid().'.'.$file->getClientOriginalExtension();
             $path = $file->storeAs('profile_pictures', $filename, 'public');
 
             // Delete old picture if exists
@@ -89,8 +91,8 @@ class UserController
 
             $user->profile_picture = $path;
         }
-        
-        $fullName = trim($request->input('first_name') . ' ' . $request->input('middle_name') . ' ' . $request->input('last_name'));
+
+        $fullName = trim($request->input('first_name').' '.$request->input('middle_name').' '.$request->input('last_name'));
 
         $user->update([
             'title' => $validatedData['title'],
@@ -110,10 +112,11 @@ class UserController
             'updated_by' => auth()->id(),
             'profile_picture' => $user->profile_picture, // set new path if uploaded
         ]);
-            
+
         // Sync new role (removes old ones and assigns the new one)
         // $user->syncRoles([$validatedData['role']]);
         flash('Profile updated successfully!')->success();
+
         return redirect()->route('admin.users.profile.show');
     }
 
@@ -127,14 +130,16 @@ class UserController
         ]);
 
         // Check if the current password is correct
-        if (!Hash::check($validatedData['current_password'], $user->password)) {
+        if (! Hash::check($validatedData['current_password'], $user->password)) {
             flash('Current password is incorrect.')->error();
+
             return back();
         }
 
         // Prevent password reuse
         if (Hash::check($validatedData['new_password'], $user->password)) {
             flash('New password cannot be the same as your current password.')->error();
+
             return back();
         }
 
@@ -144,6 +149,7 @@ class UserController
         ]);
 
         flash('Password updated successfully!')->success();
+
         return redirect()->route('admin.users.profile.show');
     }
 
@@ -167,6 +173,18 @@ class UserController
             'documents',
         ]);
 
+        // Apply search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $usersQuery->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
         // Apply a category filter if provided
         // if ($request->filled('category')) {
         //     $usersQuery->where('category_id', $request->category);
@@ -176,7 +194,7 @@ class UserController
         if ($request->filled('role')) {
             $usersQuery->role($request->role); // Spatie's `role()` scope
         }
-        
+
         // Fetch all users (newest first)
         // $users = $usersQuery->orderBy('id', 'desc')->exclude('user_type', 'staff')->get();
         // $users = $usersQuery->orderBy('id', 'desc')->whereDoesntHave('roles', function ($query) {
@@ -195,21 +213,39 @@ class UserController
             ->whereDoesntHave('roles', function ($query) {
                 $query->whereIn('name', ['Staff', 'Super Admin']);
             })
-            ->get();
+            ->paginate(15);
 
+        // If AJAX request for user list only (search/pagination)
+        if ($request->ajax() && $request->has('list_only')) {
+            return response()->json([
+                'html' => view('backend.users.partials.user-list', compact('users'))->render(),
+            ]);
+        }
 
         // If no users at all, redirect to quick-create
         if ($users->isEmpty()) {
             flash("You don't have any users yet!")->error();
+
             return redirect()->route('admin.users.create');
         }
 
         // Decide which user/tab to show
         $userId = $request->query('user_id');
-        $tabName   = $request->query('tabname', 'Contact');
+        $tabName = $request->query('tabname', 'Contact');
 
-        // Try to find the requested user or fall back to the most recent
-        $user = $userId ? $users->firstWhere('id', $userId) : null;
+        // Try to find the requested user - fetch directly if user_id is provided
+        if ($userId) {
+            $user = User::with([
+                'roles',
+                'details',
+                'tenancies',
+                'repairIssues',
+                'tenantMembers',
+                'documents',
+            ])->find($userId);
+        } else {
+            $user = null;
+        }
 
         if (! $user) {
             $user = $users->first();
@@ -232,9 +268,10 @@ class UserController
 
         if (strtolower($tabName) === 'statement' && $request->query('format') === 'csv') {
             $filters = $this->statementFilters($request);
-            $statement = app(\App\Services\Accounting\StatementService::class)
+            $statement = app(StatementService::class)
                 ->contactStatement($user->id, $user->company_id ?? null, $filters['date_from'], $filters['date_to']);
             $statement['summary']['balance_due'] = $statement['closing'];
+
             return $this->streamStatementCsv($user, $statement);
         }
 
@@ -245,7 +282,7 @@ class UserController
             return response()->json(['content' => $content, 'tabName' => $tabName]);
         }
 
-        return view('backend.users.index', compact('users', 'roles','tabs', 'tabName', 'userId', 'user', 'content'));
+        return view('backend.users.index', compact('users', 'roles', 'tabs', 'tabName', 'userId', 'user', 'content'));
         // return view('backend.users.index', compact('users', 'categories','tabs', 'tabName', 'userId', 'user', 'content'));
     }
 
@@ -254,14 +291,14 @@ class UserController
         switch (strtolower($tabname)) {
             case 'contact':
                 return view('backend.users.tabs.user_details', compact('userId', 'user'))->render();
-            
+
             case 'appointments':
-                return view('backend.users.tabs.appointments', compact('userId', 'user'))->render();                
-            
+                return view('backend.users.tabs.appointments', compact('userId', 'user'))->render();
+
             case 'link':
                 $propertyIds = [];
 
-                if (!empty($user->selected_properties)) {
+                if (! empty($user->selected_properties)) {
                     $decoded = is_array($user->selected_properties)
                         ? $user->selected_properties
                         : json_decode($user->selected_properties, true);
@@ -271,10 +308,10 @@ class UserController
                     }
                 }
 
-                $properties = !empty($propertyIds)
+                $properties = ! empty($propertyIds)
                     ? Property::whereIn('id', $propertyIds)->get()
                     : collect(); // empty collection if no IDs
-                    
+
                 return view('backend.users.tabs.linked', compact('userId', 'user', 'properties'))->render();
 
             case 'bank':
@@ -284,23 +321,25 @@ class UserController
                 if ($bankDetails->isEmpty()) {
                     $bankDetails = collect();  // Make sure it's an empty collection, not null
                 }
+
                 return view('backend.users.tabs.bank_details', compact('userId', 'user', 'bankDetails'))->render();
-            
+
             case 'user owner':
                 $user->load('creator.roles'); // Eager load role
+
                 return view('backend.users.tabs.user_owner', compact('userId', 'user'))->render();
 
             case 'letters':
                 return view('backend.users.tabs.letters', compact('userId', 'user'))->render();
-    
+
             case 'compliance':
                 // load all nationalities keyed by id→name
                 $nationalities = Nationality::orderBy('name')->pluck('name', 'id');
                 // load all users for the “checked by” dropdown
                 $users = User::orderBy('name')->pluck('name', 'id');
-                
+
                 return view('backend.users.tabs.compliance', compact('userId', 'user', 'users', 'nationalities'))->render();
-    
+
             case 'documents':
                 $documents = $user->documents()->with('documentType')->orderByDesc('updated_at')->paginate(5);
 
@@ -309,9 +348,10 @@ class UserController
                     $documents = collect();  // Make sure it's an empty collection, not null
                 }
                 $documentTypes = DocumentType::all();
+
                 // return 1;
                 return view('backend.users.tabs.documents', compact('userId', 'user', 'documents', 'documentTypes'))->render();
-    
+
             case 'notes':
                 // Fetch the notes related to the specific user by user ID
                 $notes = $user->notes()->with('noteType')->orderByDesc('updated_at')->paginate(5);
@@ -321,14 +361,16 @@ class UserController
                     $notes = collect();  // Make sure it's an empty collection, not null
                 }
                 $noteTypes = NoteType::all();
+
                 return view('backend.users.tabs.notes', compact('userId', 'user', 'notes', 'noteTypes'))->render();
                 // return view('backend.users.tabs.notes', compact('userId', 'user'))->render();
 
             case 'statement':
                 $filters = $this->statementFilters($request);
-                $statement = app(\App\Services\Accounting\StatementService::class)
+                $statement = app(StatementService::class)
                     ->contactStatement($user->id, $user->company_id ?? null, $filters['date_from'], $filters['date_to']);
                 $statement['summary']['balance_due'] = $statement['closing'];
+
                 return view('backend.users.tabs.statement', [
                     'user' => $user,
                     'filters' => $filters,
@@ -346,6 +388,7 @@ class UserController
     public function create(User $user)
     {
         $roles = Role::whereNotIn('name', ['Staff', 'Super Admin'])->get();
+
         return view('backend.users.create', compact('user', 'roles'));
         // $categories = UserCategory::all();
         // return view('backend.users.create', compact('user', 'categories'));
@@ -367,10 +410,10 @@ class UserController
             $user_id = $request->user_id;
 
             // Check if first name, middle name, and last name are present
-            $fullName = trim($request->first_name . ' ' . $request->middle_name . ' ' . $request->last_name);
+            $fullName = trim($request->first_name.' '.$request->middle_name.' '.$request->last_name);
 
             // Store full name if it's not empty
-            if (!empty($fullName)) {
+            if (! empty($fullName)) {
                 $validatedData['name'] = $fullName;
             }
 
@@ -379,8 +422,8 @@ class UserController
                 $user = User::find($user_id);
                 if ($user) {
                     // Log the data before updating
-                    Log::info('Updating user with ID ' . $user_id, $validatedData);
-                    
+                    Log::info('Updating user with ID '.$user_id, $validatedData);
+
                     // Merge new selected properties if provided
                     if ($request->has('selected_properties')) {
                         $validatedData['selected_properties'] = $request->selected_properties;
@@ -391,9 +434,9 @@ class UserController
                     }
 
                     $user->update($validatedData);
-                                                        
+
                     // ✅ Mark as new only if email is present
-                    $isNewUser = !empty($user->email);
+                    $isNewUser = ! empty($user->email);
                 }
             } else {
                 // Create new user only empty user id
@@ -403,29 +446,30 @@ class UserController
                     $user = User::create(array_merge($validatedData, ['added_by' => Auth::id()]));
                 }
             }
-            
+
             // Attach roles
             if ($request->filled('role_ids')) {
                 // Fetch the names of each selected role
                 $roles = Role::whereIn('id', $request->role_ids)->pluck('name')->toArray();
-                
+
                 // Sync the user’s roles (removes any roles not in this array)
                 $user->syncRoles($roles);
             }
-            
+
             // Get total number of steps
             $totalSteps = $this->getTotalQuickSteps();
 
             // ✅ Only if it's the final step AND the user was just created
             if ($request->step >= $totalSteps && $isNewUser) {
-                Log::info('Sending password reset email to user ID ' . $user->id);
+                Log::info('Sending password reset email to user ID '.$user->id);
                 $this->sendPasswordResetMail($user);
             }
-            
+
             // Check if the current step is the last one
             if ($request->step >= $totalSteps) {
                 // Final submission handling
-                flash("User Added/Updated successfully!")->success();
+                flash('User Added/Updated successfully!')->success();
+
                 return view('backend.users.user_form.thankyou');
             }
 
@@ -438,8 +482,8 @@ class UserController
                 $viewData['countries'] = Country::allCached();
             }
 
-            return view('backend.users.user_form.step' . $nextStep, $viewData);
-            
+            return view('backend.users.user_form.step'.$nextStep, $viewData);
+
             // return view('backend.users.user_form.step' . ($request->step + 1), compact('user'));
         } else {
             // If no step is present, return a message (optional)
@@ -454,7 +498,7 @@ class UserController
                 return [
                     // 'category_id' => 'required',
                     // 'role_id' => 'required|exists:roles,id',
-                    'role_ids'   => 'required|array|min:1',
+                    'role_ids' => 'required|array|min:1',
                     'role_ids.*' => 'integer|exists:roles,id',
                 ];
             case 2:
@@ -487,7 +531,7 @@ class UserController
         $stepsDirectory = resource_path('views/backend/users/user_form');
 
         // Get all Blade files in the directory that start with 'step' and count them
-        return count(glob($stepsDirectory . '/step*.blade.php'));
+        return count(glob($stepsDirectory.'/step*.blade.php'));
     }
 
     public function searchProperties(Request $request)
@@ -502,22 +546,22 @@ class UserController
         } else {
             // If no IDs are passed, search properties based on the query (default behavior)
             $query = $request->input('query');
-            $properties = Property::where('prop_ref_no', 'LIKE', '%' . $query . '%')
-                ->orWhere('prop_name', 'LIKE', '%' . $query . '%')
-                ->orWhere('line_1', 'LIKE', '%' . $query . '%')
-                ->orWhere('line_2', 'LIKE', '%' . $query . '%')
-                ->orWhere('city', 'LIKE', '%' . $query . '%')
-                ->orWhere('country', 'LIKE', '%' . $query . '%')
-                ->orWhere('postcode', 'LIKE', '%' . $query . '%')
+            $properties = Property::where('prop_ref_no', 'LIKE', '%'.$query.'%')
+                ->orWhere('prop_name', 'LIKE', '%'.$query.'%')
+                ->orWhere('line_1', 'LIKE', '%'.$query.'%')
+                ->orWhere('line_2', 'LIKE', '%'.$query.'%')
+                ->orWhere('city', 'LIKE', '%'.$query.'%')
+                ->orWhere('country', 'LIKE', '%'.$query.'%')
+                ->orWhere('postcode', 'LIKE', '%'.$query.'%')
                 ->limit(10)
                 ->get(['id', 'prop_ref_no', 'prop_name', 'line_1', 'line_2', 'city', 'country', 'postcode', 'specific_property_type', 'available_from']);
         }
 
         // Return the properties as JSON response
-        return response()->json($properties->map(function($property) {
+        return response()->json($properties->map(function ($property) {
             return [
                 'id' => $property->id,
-                'address' => trim($property->line_1 . ' ' . $property->line_2 . ', ' . $property->city . ', ' . $property->postcode) ?: 'N/A',
+                'address' => trim($property->line_1.' '.$property->line_2.', '.$property->city.', '.$property->postcode) ?: 'N/A',
                 'type' => trim($property->specific_property_type) ?: 'N/A',
                 'availability' => trim($property->available_from) ?: 'N/A',
                 'prop_ref_no' => trim($property->prop_ref_no) ?: 'N/A',
@@ -526,7 +570,6 @@ class UserController
         }));
     }
 
-    
     // public function searchProperties(Request $request)
     // {
     //     // Get the search query from the request
@@ -550,7 +593,6 @@ class UserController
     //     return view('backend.users.user_form.property_search_results', compact('properties'));
     // }
 
-
     public function getQuickStepView($step, Request $request)
     {
         // Get user_id from the session or request
@@ -565,7 +607,7 @@ class UserController
 
         // Check if the step is valid
         if ($step > 0 && $step <= $totalSteps) {
-            return view('backend.users.user_form.step' . $step, compact('user','roles', 'selectedProperties', 'countries')); // Return the corresponding Blade view
+            return view('backend.users.user_form.step'.$step, compact('user', 'roles', 'selectedProperties', 'countries')); // Return the corresponding Blade view
             // return view('backend.users.user_form.step' . $step, compact('user','categories', 'selectedProperties')); // Return the corresponding Blade view
         } else {
             // Return a view with an error message if the step is invalid
@@ -586,21 +628,21 @@ class UserController
         // Create a new user
         $user = User::create([
             // 'category_id'   => $request->category_id ?? 9,
-            'name'          => $validated['name'],
-            'email'         => $validated['email'],
-            'phone'         => $validated['phone'],
-            'created_by'    => Auth::id(),
-            'password'      => Hash::make('password'),
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'created_by' => Auth::id(),
+            'password' => Hash::make('password'),
         ]);
 
         // Assign default role if not provided
         $role = $request->input('role', 'User'); // Use a sensible fallback
         $user->assignRole($role);
-        
+
         // Return the user data as a JSON response
         return response()->json([
             'success' => true,
-            'user' => $user
+            'user' => $user,
         ]);
 
     }
@@ -622,12 +664,12 @@ class UserController
             'country' => 'required|string|max:55',
             'status' => 'required|in:0,1',
             // 'role' => 'required|exists:roles,name',
-            'role_ids'   => 'required|array|min:1',
+            'role_ids' => 'required|array|min:1',
             'role_ids.*' => 'integer|exists:roles,id',
         ]);
 
         // Concatenate first, middle, and last names to create name
-        $fullName = trim($request->first_name . ' ' . $request->middle_name . ' ' . $request->last_name);
+        $fullName = trim($request->first_name.' '.$request->middle_name.' '.$request->last_name);
         // $Category_id = $request->category_id;
         // Store the user
         $user = User::create([
@@ -651,12 +693,13 @@ class UserController
         if ($request->filled('role_ids')) {
             // Fetch the names of each selected role
             $roles = Role::whereIn('id', $request->role_ids)->pluck('name')->toArray();
-            
+
             // Sync the user’s roles (removes any roles not in this array)
             $user->syncRoles($roles);
         }
         // Redirect or return a response
-        flash("User Added Successfully!")->success();
+        flash('User Added Successfully!')->success();
+
         return redirect()->route('admin.users.index');
         // return redirect()->route('users.index')->with('success', 'User created successfully!');
     }
@@ -664,18 +707,16 @@ class UserController
     /**
      * Show the form for editing the specified resource.
      */
-
-     public function edit($id)
-     {
-         $user = User::findOrFail($id); // Fetch the user by ID
-         $roles = Role::whereNotIn('name', ['Staff', 'Super Admin'])->get(); // Fetch roles excluding Staff and Super Admin
+    public function edit($id)
+    {
+        $user = User::findOrFail($id); // Fetch the user by ID
+        $roles = Role::whereNotIn('name', ['Staff', 'Super Admin'])->get(); // Fetch roles excluding Staff and Super Admin
         //  $categories = UserCategory::all(); // Fetch all categories
-         $selectedProperties = json_decode($user->selected_properties, true);
-         return view('backend.users.edit', compact('user', 'roles', 'selectedProperties'));
+        $selectedProperties = json_decode($user->selected_properties, true);
+
+        return view('backend.users.edit', compact('user', 'roles', 'selectedProperties'));
         //  return view('backend.users.edit', compact('user', 'categories', 'selectedProperties'));
-     }
-
-
+    }
 
     public function update(Request $request, $id)
     {
@@ -699,13 +740,13 @@ class UserController
         $user = User::findOrFail($id);
 
         // Concatenate first, middle, and last names to create name
-        $fullName = trim($request->first_name . ' ' . $request->middle_name . ' ' . $request->last_name);
-            
+        $fullName = trim($request->first_name.' '.$request->middle_name.' '.$request->last_name);
+
         // Attach roles
         if ($request->filled('role_ids')) {
             // Fetch the names of each selected role
             $roles = Role::whereIn('id', $request->role_ids)->pluck('name')->toArray();
-            
+
             // Sync the user’s roles (removes any roles not in this array)
             $user->syncRoles($roles);
         }
@@ -730,7 +771,8 @@ class UserController
         ]);
 
         // Redirect or return a response
-        flash("User Updated Successfully!")->success();
+        flash('User Updated Successfully!')->success();
+
         return redirect()->route('admin.users.index');
     }
 
@@ -755,20 +797,19 @@ class UserController
         // return redirect()->route('admin.users.index');
     }
 
-    
     public function loadForm(Request $request)
     {
         $user = User::with('details.user')->find($request->user_id);
         $formType = $request->form_type;
-    
-        if (!$user) {
+
+        if (! $user) {
             return response()->json(['error' => 'user not found'], 404);
         }
-    
+
         $viewPath = "backend.users.popup_forms.$formType";
-    
+
         // Check if the form view exists
-        if (!view()->exists($viewPath)) {
+        if (! view()->exists($viewPath)) {
             return response()->json(['error' => 'Invalid form type'], 400);
         }
 
@@ -779,7 +820,7 @@ class UserController
         //     $note = $user->notes()->findOrFail($request->note_id);
         //     $extraData['note'] = $note;
         // }
-        $html = view($viewPath, array_merge(['user' => $user],['editMode' => true], $extraData))->render();
+        $html = view($viewPath, array_merge(['user' => $user], ['editMode' => true], $extraData))->render();
 
         // Render the form with additional data
         // $html = view($viewPath, [
@@ -793,16 +834,15 @@ class UserController
 
         // Render the form and return it
         // $html = view($viewPath, ['user' => $user, 'editMode' => true])->render();
-        
+
         return response()->json(['success' => true, 'form_html' => $html]);
     }
-    
-    
+
     public function saveForm(Request $request)
     {
         $user = User::find($request->input('user_id'));
         $formType = $request->input('form_type');
-        if (!$user) {
+        if (! $user) {
             return response()->json(['error' => 'user not found'], 404);
         }
 
@@ -811,15 +851,15 @@ class UserController
         // Save the form data based on the form type
         switch ($formType) {
             case 'user_detail':
-                            
+
                 // **Sync the user’s roles** if provided
                 if ($request->filled('role_ids')) {
                     $roleNames = Role::whereIn('id', $request->role_ids)
-                                ->pluck('name')
-                                ->toArray();
+                        ->pluck('name')
+                        ->toArray();
                     $user->syncRoles($roleNames);
                 }
-                
+
                 $data = $request->only([
                     // 'category_id',
                     'first_name',
@@ -835,17 +875,17 @@ class UserController
                 // 2) Prepare detail‐specific data
                 $detailData = [
                     'correspondence_address' => $request->input('correspondence_address', null),
-                    'other'                  => $request->input('other', null),
+                    'other' => $request->input('other', null),
 
                     'allow_email' => $request->boolean('allow_email', false),
-                    'allow_post'  => $request->boolean('allow_post',  false),
-                    'allow_text'  => $request->boolean('allow_text',  false),
-                    'allow_call'  => $request->boolean('allow_call',  false),
+                    'allow_post' => $request->boolean('allow_post', false),
+                    'allow_text' => $request->boolean('allow_text', false),
+                    'allow_call' => $request->boolean('allow_call', false),
 
-                    'occupation'         => $request->input('occupation', null),
-                    'business_name'      => $request->input('business_name', null),
+                    'occupation' => $request->input('occupation', null),
+                    'business_name' => $request->input('business_name', null),
                     'registered_address' => $request->input('registered_address', null),
-                    'vat_number'         => $request->input('vat_number', null),
+                    'vat_number' => $request->input('vat_number', null),
 
                     // Eloquent will cast these arrays to JSON
                     'emails' => array_values(array_filter($request->input('emails', []))),
@@ -886,55 +926,56 @@ class UserController
                     ['user_id' => $user->id],
                     $detailData
                 );
-                break;      
+                break;
             case 'notes':
                 $data = $request->only([
-                    'imp_notes'
+                    'imp_notes',
                 ]);
                 break;
             default:
                 return response()->json(['message' => 'Invalid form type'], 400);
         }
 
-        if (!empty($data)) {
+        if (! empty($data)) {
             $user->update($data);
         }
         // $user->update($data);
-    
+
         // 🛠️ Fix: Re-fetch related data like school/station names
         $extraData = $this->getFormTypeExtras($formType, $user);
 
         // Render updated section
         $updatedView = view("backend.users.popup_forms.$formType", array_merge(['user' => $user], $extraData))->render();
-    
+
         return response()->json([
-            'success' => 'Form updated successfully', 
+            'success' => 'Form updated successfully',
             'updated_html' => $updatedView,
             'status' => true,
-            'message'  => 'Updated successfully',
+            'message' => 'Updated successfully',
         ]);
     }
-    
+
     private function getFormTypeExtras($formType, $user, $noteId = null, $bankId = null, $request = null)
     {
         if ($formType === 'user_detail') {
             // Fetch categories for your filter dropdown
             // $categories = UserCategory::all();
-                
+
             // Fetch full Role models (with id & name), not just names
             $roles = Role::whereNotIn('name', ['Staff', 'Super Admin'])->get();
-            
+
             // return compact('categories');
             return compact('roles');
-        }elseif ($formType === 'compliance') {
+        } elseif ($formType === 'compliance') {
 
             $nationalities = Nationality::orderBy('name')->pluck('name', 'id');
             $users = User::orderBy('name')->pluck('name', 'id');
-            return compact('nationalities','users');
 
-        //}
-        //elseif ($formType === 'notes_tab') {
-            
+            return compact('nationalities', 'users');
+
+            // }
+            // elseif ($formType === 'notes_tab') {
+
             // Prepare the Request object for NotesController
             // $requestData = new Request([
             //     'noteable_type' => get_class($user),  // e.g. App\Models\User
@@ -951,7 +992,7 @@ class UserController
             // // 3) all available note types
             // $noteTypes = NoteType::all();
             // return compact('notes','note', 'noteTypes');
-            
+
             // 1) full list for view mode
             // $notes = $user->notes()->with('noteType')->orderBy('updated_at','desc')->get();
             /*$notesQuery = $user->notes()->with('noteType')->orderByDesc('updated_at');
@@ -983,19 +1024,18 @@ class UserController
             }
             $noteTypes = NoteType::all();
             return compact('notes', 'note', 'noteTypes');*/
-        }elseif ($formType === 'bank_detail') {
+        } elseif ($formType === 'bank_detail') {
             // 1) full list for view mode
-            $bankDetails = $user->bankDetails()->orderByDesc('is_primary')->orderBy('updated_at','desc')->get();
+            $bankDetails = $user->bankDetails()->orderByDesc('is_primary')->orderBy('updated_at', 'desc')->get();
 
-            
             $bankDetail = null;
             if ($bankId) {
                 $bankDetail = $user->bankDetails()
-                                 ->findOrFail($bankId);
+                    ->findOrFail($bankId);
             }
 
             return compact('bankDetails', 'bankDetail');
-        } 
+        }
 
         return [];
     }
@@ -1012,7 +1052,7 @@ class UserController
         if ($term) {
             $query->where(function ($q) use ($term) {
                 $q->where('name', 'like', "%$term%")
-                ->orWhere('email', 'like', "%$term%");
+                    ->orWhere('email', 'like', "%$term%");
             });
         }
 
@@ -1032,7 +1072,6 @@ class UserController
         return response()->json(['results' => $results]);
     }
 
-
     private function sendPasswordResetMail(User $user): void
     {
         try {
@@ -1040,10 +1079,10 @@ class UserController
             $template = EmailTemplate::getByIdentifier('password_reset');
 
             $placeholders = [
-                'user_name'   => $user->name ?? $user->email,
-                'user_email'  => $user->email,
-                'reset_link'  => $resetLink,
-                'crm_name'    => config('app.name'),
+                'user_name' => $user->name ?? $user->email,
+                'user_email' => $user->email,
+                'reset_link' => $resetLink,
+                'crm_name' => config('app.name'),
                 'admin_email' => config('mail.from.address'),
             ];
 
@@ -1051,10 +1090,10 @@ class UserController
                 $renderedHtml = $template->replace($placeholders, ['reset_link']);
                 $subject = render_template($template->subject, $placeholders);
             } else {
-                $subject = 'Set your password for ' . config('app.name');
+                $subject = 'Set your password for '.config('app.name');
                 $renderedHtml = "<p>Hi {$placeholders['user_name']},</p>"
-                    . "<p>Welcome to " . e(config('app.name')) . ". Please set your password:</p>"
-                    . "<p><a href='{$resetLink}'>Set your password</a></p>";
+                    .'<p>Welcome to '.e(config('app.name')).'. Please set your password:</p>'
+                    ."<p><a href='{$resetLink}'>Set your password</a></p>";
             }
 
             Mail::to($user->email)->send(new MailManager([
@@ -1065,7 +1104,7 @@ class UserController
             Log::info("Password reset email sent to {$user->email}");
         } catch (\Exception $e) {
             Log::error("Failed to send password reset email: {$e->getMessage()}", [
-                'email'   => $user->email,
+                'email' => $user->email,
                 'user_id' => $user->id,
             ]);
         }
@@ -1088,8 +1127,8 @@ class UserController
                 $end = $today;
                 break;
             case 'custom':
-                $start = $from ? \Carbon\Carbon::parse($from) : $today->copy()->startOfMonth();
-                $end = $to ? \Carbon\Carbon::parse($to) : null;
+                $start = $from ? Carbon::parse($from) : $today->copy()->startOfMonth();
+                $end = $to ? Carbon::parse($to) : null;
                 break;
             case 'this_month':
             default:
@@ -1121,7 +1160,7 @@ class UserController
             foreach ($statement['lines'] as $line) {
                 fputcsv($out, [
                     $line['date'],
-                    trim(($line['memo'] ?? '') . ' ' . ($line['account_code'] ?? '') . ' ' . ($line['account_name'] ?? '')),
+                    trim(($line['memo'] ?? '').' '.($line['account_code'] ?? '').' '.($line['account_name'] ?? '')),
                     number_format($line['debit'], 2),
                     number_format($line['credit'], 2),
                     number_format($line['delta'], 2),

@@ -89,6 +89,251 @@ class StatementService
         ];
     }
 
+    public function getContactStatementDateRange(int $userId, ?int $companyId): ?array
+    {
+        $accounts = $this->contactAccounts();
+        $accountIds = collect($accounts['ar_ids'] ?? [])
+            ->merge($accounts['adv_ids'] ?? [])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($accountIds)) {
+            return null;
+        }
+
+        $q = \App\Models\GlJournalLine::query()
+            ->join('gl_journals', 'gl_journal_lines.gl_journal_id', '=', 'gl_journals.id')
+            ->where('gl_journal_lines.user_id', $userId)
+            ->whereIn('gl_journal_lines.gl_account_id', $accountIds);
+
+        if ($companyId) {
+            $q->where('gl_journal_lines.company_id', $companyId);
+        }
+
+        $result = $q->selectRaw('MIN(gl_journals.date) as min_date, MAX(gl_journals.date) as max_date')
+            ->first();
+
+        if (!$result || !$result->min_date) {
+            return null;
+        }
+
+        return [
+            'min_date' => $result->min_date,
+            'max_date' => $result->max_date,
+        ];
+    }
+
+    /**
+     * Property statement (shows transactions for tenants + property-linked transactions)
+     */
+    public function propertyStatement(int $propertyId, ?int $companyId, ?string $from, ?string $to): array
+    {
+        [$fromDate, $toDate] = $this->normalizeDates($from, $to);
+        $accounts = $this->contactAccounts();
+
+        // Get all user IDs associated with this property through tenancies and tenant_members
+        $tenantUserIds = \App\Models\TenantMember::query()
+            ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+            ->where('tenancies.property_id', $propertyId)
+            ->whereNotNull('tenant_members.user_id')
+            ->pluck('tenant_members.user_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        // Get user IDs from sale invoices directly linked to this property
+        $propertyLinkedUserIds = \DB::table('sys_sale_invoices')
+            ->where('link_to_type', 'Property')
+            ->where('link_to_id', $propertyId)
+            ->pluck('user_id')
+            ->unique()
+            ->filter()
+            ->values()
+            ->all();
+
+        // Merge all user IDs (tenants + property-linked sale invoices)
+        $userIds = collect($tenantUserIds)
+            ->merge($propertyLinkedUserIds)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($userIds)) {
+            // No transactions found
+            return [
+                'opening' => 0,
+                'closing' => 0,
+                'lines' => collect(),
+                'from' => $fromDate,
+                'to' => $toDate,
+                'summary' => [
+                    'invoiced' => 0,
+                    'paid' => 0,
+                    'balance_due' => 0,
+                ],
+                'warnings' => ['No transactions found for this property.'],
+            ];
+        }
+
+        $opening = $this->sumNetByPropertyUsers($userIds, $companyId, $fromDate, $accounts);
+        $rawLines = $this->linesByPropertyUsers($userIds, $companyId, $fromDate, $toDate, $accounts);
+        [$lines, $closing] = $this->attachRunning($rawLines, $opening, null, $accounts);
+
+        $summary = $this->propertyArSummary($userIds, $companyId, $fromDate, $toDate, $accounts);
+        $summary['totals']['balance_due'] = $closing;
+
+        return [
+            'opening' => $opening,
+            'closing' => $closing,
+            'lines' => $lines,
+            'from' => $fromDate,
+            'to' => $toDate,
+            'summary' => $summary['totals'],
+            'warnings' => $summary['warnings'],
+        ];
+    }
+
+    private function linesByPropertyUsers(array $userIds, ?int $companyId, string $from, ?string $to, array $accounts = []): Collection
+    {
+        $accountIds = collect($accounts['ar_ids'] ?? [])
+            ->merge($accounts['adv_ids'] ?? [])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $q = GlJournalLine::query()
+            ->select([
+                'gl_journal_lines.*',
+                'gl_journals.date',
+                'gl_journals.memo',
+                'gl_journals.source_type',
+                'gl_journals.source_id',
+                'gl_accounts.code',
+                'gl_accounts.name as account_name',
+                'gl_accounts.type as account_type',
+            ])
+            ->join('gl_journals', 'gl_journal_lines.gl_journal_id', '=', 'gl_journals.id')
+            ->join('gl_accounts', 'gl_journal_lines.gl_account_id', '=', 'gl_accounts.id')
+            ->where('gl_journals.date', '>=', $from)
+            ->whereIn('gl_journal_lines.user_id', $userIds);
+
+        if (!empty($accountIds)) {
+            $q->whereIn('gl_journal_lines.gl_account_id', $accountIds);
+        }
+
+        if ($companyId) {
+            $q->where('gl_journal_lines.company_id', $companyId);
+        }
+        if ($to) {
+            $q->where('gl_journals.date', '<=', $to);
+        }
+
+        return $q->orderBy('gl_journals.date')
+            ->orderBy('gl_journal_lines.id')
+            ->get()
+            ->map(fn ($row) => $this->mapLine($row));
+    }
+
+    private function sumNetByPropertyUsers(array $userIds, ?int $companyId, string $before, array $accounts = []): float
+    {
+        $q = GlJournalLine::query()
+            ->join('gl_journals', 'gl_journal_lines.gl_journal_id', '=', 'gl_journals.id')
+            ->join('gl_accounts', 'gl_journal_lines.gl_account_id', '=', 'gl_accounts.id')
+            ->where('gl_journals.date', '<', $before)
+            ->whereIn('gl_journal_lines.user_id', $userIds);
+
+        $accountIds = collect($accounts['ar_ids'] ?? [])
+            ->merge($accounts['adv_ids'] ?? [])
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+        if (!empty($accountIds)) {
+            $q->whereIn('gl_journal_lines.gl_account_id', $accountIds);
+        }
+
+        if ($companyId) {
+            $q->where('gl_journal_lines.company_id', $companyId);
+        }
+
+        return (float) $q->get()->sum(function ($row) use ($accounts) {
+            $scoped = $this->deltaAccountScoped(
+                (int)$row->gl_account_id,
+                (float)$row->debit,
+                (float)$row->credit,
+                $accounts
+            );
+            if ($scoped !== null) {
+                return $scoped;
+            }
+            return $this->delta((float)$row->debit, (float)$row->credit, $row->type);
+        });
+    }
+
+    private function propertyArSummary(array $userIds, ?int $companyId, string $from, ?string $to, array $accounts): array
+    {
+        $warnings = [];
+        $arIds = $accounts['ar_ids'] ?? [];
+        $advIds = $accounts['adv_ids'] ?? [];
+        if (empty($arIds)) {
+            $warnings[] = 'default_ar_account_id is not set; invoiced/paid totals may be zero.';
+        }
+
+        $invoiced = 0.0;
+        $paid = 0.0;
+
+        if (!empty($arIds)) {
+            $q = GlJournalLine::query()
+                ->join('gl_journals', 'gl_journal_lines.gl_journal_id', '=', 'gl_journals.id')
+                ->whereIn('gl_journal_lines.gl_account_id', $arIds)
+                ->where('gl_journals.date', '>=', $from)
+                ->whereIn('gl_journal_lines.user_id', $userIds);
+
+            if ($companyId) {
+                $q->where('gl_journal_lines.company_id', $companyId);
+            }
+            if ($to) {
+                $q->where('gl_journals.date', '<=', $to);
+            }
+
+            $rows = $q->get(['gl_journal_lines.debit', 'gl_journal_lines.credit']);
+            $invoiced = (float) $rows->sum('debit');
+            $paid = (float) $rows->sum('credit');
+        }
+
+        if (!empty($advIds)) {
+            $qAdv = GlJournalLine::query()
+                ->join('gl_journals', 'gl_journal_lines.gl_journal_id', '=', 'gl_journals.id')
+                ->whereIn('gl_journal_lines.gl_account_id', $advIds)
+                ->where('gl_journals.date', '>=', $from)
+                ->whereIn('gl_journal_lines.user_id', $userIds);
+
+            if ($companyId) {
+                $qAdv->where('gl_journal_lines.company_id', $companyId);
+            }
+            if ($to) {
+                $qAdv->where('gl_journals.date', '<=', $to);
+            }
+
+            $advRows = $qAdv->get(['gl_journal_lines.debit', 'gl_journal_lines.credit']);
+            $paid += (float) $advRows->sum('credit') - (float) $advRows->sum('debit');
+        }
+
+        return [
+            'totals' => [
+                'invoiced' => $invoiced,
+                'paid' => $paid,
+                'balance_due' => null,
+            ],
+            'warnings' => $warnings,
+        ];
+    }
+
+
+
     private function arSummary(int $userId, ?int $companyId, string $from, ?string $to, array $accounts): array
     {
         $warnings = [];

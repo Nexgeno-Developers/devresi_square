@@ -10,7 +10,7 @@
             @csrf
 
             {{-- hidden wiring for the resource fields --}}
-            <input type="hidden" name="receiptable_type" id="receiptable_type" value="{{ old('receiptable_type', $defaults['receiptable_type'] ?? '') }}">
+            <input type="hidden" name="receiptable_type" id="receiptable_type" value="{{ old('receiptable_type', $defaults['receiptable_type'] ?? 'user') }}">
             <input type="hidden" name="receiptable_id" id="receiptable_id" value="{{ old('receiptable_id', $defaults['receiptable_id'] ?? '') }}">
             <input type="hidden" name="status" value="{{ old('status', $defaults['status'] ?? 'unapplied') }}">
             <input type="hidden" name="applied_amount" value="{{ old('applied_amount', $defaults['applied_amount'] ?? 0) }}">
@@ -248,7 +248,7 @@
             }
 
             function clearInvoiceContext() {
-                receiptableType.value = '';
+                receiptableType.value = 'user';
                 receiptableId.value = '';
                 if (amountInput) amountInput.removeAttribute('max');
                 if (outstandingBadge) {
@@ -258,6 +258,12 @@
             }
 
             form.addEventListener('submit', (e) => {
+                // If no invoice selected, use user_id as receiptable_id
+                if (!receiptableId.value && userSelect.value) {
+                    receiptableId.value = userSelect.value;
+                    receiptableType.value = 'user';
+                }
+
                 const outstanding = parseFloat(amountInput.max || '0');
                 const amount = parseFloat(amountInput.value || '0');
                 if (receiptableId.value && outstanding && amount > outstanding + 0.0001) {

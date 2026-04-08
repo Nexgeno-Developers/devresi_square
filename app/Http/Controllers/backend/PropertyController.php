@@ -38,24 +38,48 @@ class PropertyController
         // Get logged-in user
         $user = auth()->user();
 
+        // Build base query
+        $propertiesQuery = Property::query();
+
+        // Apply search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $propertiesQuery->where(function ($query) use ($search) {
+                $query->where('prop_name', 'like', "%{$search}%")
+                    ->orWhere('prop_ref_no', 'like', "%{$search}%")
+                    ->orWhere('line_1', 'like', "%{$search}%")
+                    ->orWhere('line_2', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('postcode', 'like', "%{$search}%")
+                    ->orWhere('property_type', 'like', "%{$search}%");
+            });
+        }
+
         // Fetch properties based on role
         if ($user->hasRole('Property Manager') || $user->hasRole('Super Admin')) {
             // Property managers see all properties
-            $properties = Property::orderBy('id', 'desc')->get();
+            $properties = $propertiesQuery->orderBy('id', 'desc')->paginate(15);
         } elseif ($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')  ) {
             // Landlords see only properties they created
-            $properties = Property::where('created_by', $user->id)
+            $properties = $propertiesQuery->where('created_by', $user->id)
                 ->orderBy('id', 'desc')
-                ->get();
+                ->paginate(15);
         } elseif ($user->hasRole('Estate Agent')) {
             // Estate agents see properties created by them or their sub-users
             $createdUserIds = User::where('created_by', $user->id)->pluck('id');
-            $properties = Property::whereIn('created_by', $createdUserIds->push($user->id))
+            $properties = $propertiesQuery->whereIn('created_by', $createdUserIds->push($user->id))
                 ->orderBy('id', 'desc')
-                ->get();
+                ->paginate(15);
         } else {
             // Default: no access
             $properties = collect(); // empty collection
+        }
+
+        // If AJAX request for property list only (search/pagination)
+        if ($request->ajax() && $request->has('list_only')) {
+            return response()->json([
+                'html' => view('backend.properties.partials.property-list', compact('properties'))->render()
+            ]);
         }
         
         // Redirect to 'quick' if there are no properties
@@ -121,6 +145,7 @@ class PropertyController
             // 'view property work offer'    => 'Work Offer',
             'view property notes'        => 'Notes',
             'view property appointments' => 'Appointments',
+            'view property statement'    => 'Statement',
         ];
 
         $tabs = [];
@@ -313,6 +338,17 @@ class PropertyController
                 }
 
                 return view('backend.properties.tabs.appointments', compact('propertyId', 'property', 'events'))->render();
+
+            case 'statement':
+                $filters = $this->statementFilters(request());
+                $statement = app(\App\Services\Accounting\StatementService::class)
+                    ->propertyStatement($property->id, $property->company_id ?? null, $filters['date_from'], $filters['date_to']);
+                $statement['summary']['balance_due'] = $statement['closing'];
+                return view('backend.properties.tabs.statement', [
+                    'property' => $property,
+                    'filters' => $filters,
+                    'statement' => $statement,
+                ])->render();
 
             default:
                 return 'Tab content not found';
@@ -1556,6 +1592,40 @@ class PropertyController
         });
 
         return response()->json(['results' => $results]);
+    }
+
+    private function statementFilters(Request $request): array
+    {
+        $preset = $request->query('preset', 'this_month');
+        $from = $request->query('date_from');
+        $to = $request->query('date_to');
+        $today = now();
+
+        switch ($preset) {
+            case 'last_month':
+                $start = $today->copy()->subMonthNoOverflow()->startOfMonth();
+                $end = $today->copy()->subMonthNoOverflow()->endOfMonth();
+                break;
+            case 'ytd':
+                $start = $today->copy()->startOfYear();
+                $end = $today;
+                break;
+            case 'custom':
+                $start = $from ? \Carbon\Carbon::parse($from) : $today->copy()->startOfMonth();
+                $end = $to ? \Carbon\Carbon::parse($to) : null;
+                break;
+            case 'this_month':
+            default:
+                $start = $today->copy()->startOfMonth();
+                $end = $today;
+                break;
+        }
+
+        return [
+            'preset' => $preset,
+            'date_from' => $start->toDateString(),
+            'date_to' => $end?->toDateString(),
+        ];
     }
 
 

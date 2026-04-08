@@ -342,7 +342,7 @@ class ReceiptController extends BaseCrudController
             'company_id' => ['required', 'integer', 'min:1'],
             'user_id' => ['required', 'exists:users,id'],
             'receiptable_type' => ['required', Rule::in(['user', 'sale_invoice', 'purchase_invoice'])],
-            'receiptable_id' => ['required', 'integer', 'min:1'],
+            'receiptable_id' => ['required_with:receiptable_type', 'nullable', 'integer', 'min:1'],
             'receipt_no' => ['required', 'string', 'max:50', $uniqueReceiptNo],
             'receipt_date' => ['required', 'date'],
             'amount' => ['required', 'numeric', 'min:0'],

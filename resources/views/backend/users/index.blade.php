@@ -13,9 +13,10 @@
                             <div class="col-9">
                                 <x-backend.forms.search
                                     class=''
-                                    placeholder='Search'
-                                    value=''
-                                    onClick='onClick()'
+                                    placeholder='Search contacts...'
+                                    value='{{ request("search") }}'
+                                    onClick=''
+                                    id='contactSearch'
                                 />
                             </div>
                             @can('Create Contacts')
@@ -30,30 +31,8 @@
                     </div>
                     
                     
-                    <div class="pv_card_wrapper">
-                        {{-- Dev Note: if select user from list add class 'current' to user card --}}
-                        @foreach ($users as $user)
-                            @php
-                                $nameParts = array_filter([
-                                    $user['first_name'] ?? '',
-                                    $user['middle_name'] ?? '',
-                                    $user['last_name'] ?? '',
-                                ]);
-
-                                $fullName = !empty($user['name'])
-                                    ? $user['name']
-                                    : implode(' ', $nameParts);
-                            @endphp
-
-                            <x-backend.user-card
-                                class="user-card"
-                                user-name="{{ $fullName }}"
-                                email="{{ $user['email'] }}"
-                                phone="{{ $user['phone'] }}"
-                                card-style=""
-                                user-id="{{ $user['id'] }}" />
-                        @endforeach
-
+                    <div class="pv_card_wrapper" id="userListContainer">
+                        @include('backend.users.partials.user-list')
                     </div>                 
                     
                 </div>
@@ -195,6 +174,7 @@ var_dump($userId);
         // Handle Tab Clicks
         // Event listener for user cards (left side)
         $(document).on('click', '.user-card', function() {
+            console.log('User card clicked:', $(this).data('user-id')); // Debug log
             var userId = $(this).data('user-id');
             $('.user-card').removeClass('current');
             $(this).addClass('current');
@@ -275,23 +255,26 @@ var_dump($userId);
 
         // Function to load tab content dynamically via AJAX
         function loadTabContent(userId, tabName) {
+            console.log('loadTabContent called with userId:', userId, 'tabName:', tabName); // Debug
             // Replace spaces with underscores for the URL
             // var formattedTabName = tabName.replace(/\s+/g, '_');
             // Correctly format the URL with query parameters instead of placeholders
             var url = '{{ route('admin.users.index') }}' + '?user_id=' + userId + '&tabname=' + tabName;
+            console.log('Loading URL:', url); // Debug
 
             $.ajax({
                 url: url,
                 type: 'GET',
                 dataType: 'json',
                 success: function(response) {
+                    console.log('Response received:', response); // Debug
                     $('.pv_content_detail').html(response.content);
                     updateTitle(response.tabName, userId);
                     // Update URL (optional, for browser navigation)
                     window.history.pushState(null, null, url);
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error loading tab content:', error);
+                    console.error('Error loading tab content:', error, xhr); // Enhanced debug
                 }
             });
         }
@@ -505,5 +488,55 @@ $(document).on('click', '.viewNote', function() {
             }
         });
     });
+
+    // Contact Search and Pagination
+    let searchTimeout;
+    $('#contactSearch').on('input', function() {
+        clearTimeout(searchTimeout);
+        const searchValue = $(this).val();
+        
+        searchTimeout = setTimeout(function() {
+            loadUserList(searchValue);
+        }, 500); // Debounce 500ms
+    });
+
+    // Handle pagination clicks
+    $(document).on('click', '#userListContainer .pagination a', function(e) {
+        e.preventDefault();
+        const url = $(this).attr('href');
+        const searchValue = $('#contactSearch').val();
+        
+        $.ajax({
+            url: url,
+            type: 'GET',
+            data: { 
+                list_only: 1,
+                search: searchValue
+            },
+            success: function(response) {
+                $('#userListContainer').html(response.html);
+            },
+            error: function() {
+                console.error('Failed to load page');
+            }
+        });
+    });
+
+    function loadUserList(search = '') {
+        $.ajax({
+            url: '{{ route('admin.users.index') }}',
+            type: 'GET',
+            data: { 
+                list_only: 1,
+                search: search
+            },
+            success: function(response) {
+                $('#userListContainer').html(response.html);
+            },
+            error: function() {
+                console.error('Failed to load users');
+            }
+        });
+    }
 </script>
 @endsection

@@ -2,10 +2,11 @@
     'class'=>'',
     'placeholder'=>'',
     'value'=>'',
-    'onClick'=>'onclick()',
+    'onClick'=>'',
+    'id'=>'searchInput',
 ])
 
 <div class="rs_search {{$class}}">
-    <input type="text" value="{{ $value }}" placeholder="{{ $placeholder }}"/>
-    <i class="bi bi-search pointer" onClick="{{$onClick}}"></i>
+    <input type="text" id="{{ $id }}" value="{{ $value }}" placeholder="{{ $placeholder }}"/>
+    <i class="bi bi-search pointer"></i>
 </div>

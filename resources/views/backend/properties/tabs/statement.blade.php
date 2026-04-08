@@ -7,12 +7,12 @@
 
 <div class="card mb-3">
     <div class="card-body d-flex flex-wrap gap-2 align-items-end">
-        <form method="GET" class="row g-2 flex-grow-1" id="statementFilterForm">
-            <input type="hidden" name="user_id" value="{{ $user->id }}">
+        <form method="GET" class="row g-2 flex-grow-1" id="propertyStatementFilterForm">
+            <input type="hidden" name="property_id" value="{{ $property->id }}">
             <input type="hidden" name="tabname" value="Statement">
             <div class="col-md-2 col-6">
                 <label class="form-label">Preset</label>
-                <select name="preset" class="form-select" id="presetSelect">
+                <select name="preset" class="form-select" id="presetSelectProperty">
                     <option value="this_month" @selected($preset==='this_month')>This Month</option>
                     <option value="last_month" @selected($preset==='last_month')>Last Month</option>
                     <option value="ytd" @selected($preset==='ytd')>Year to Date</option>
@@ -21,11 +21,11 @@
             </div>
             <div class="col-md-2 col-6">
                 <label class="form-label">From</label>
-                <input type="date" name="date_from" class="form-control" value="{{ $dateFrom }}" id="dateFrom">
+                <input type="date" name="date_from" class="form-control" value="{{ $dateFrom }}" id="dateFromProperty">
             </div>
             <div class="col-md-2 col-6">
                 <label class="form-label">To</label>
-                <input type="date" name="date_to" class="form-control" value="{{ $dateTo }}" id="dateTo">
+                <input type="date" name="date_to" class="form-control" value="{{ $dateTo }}" id="dateToProperty">
             </div>
             <div class="col-md-2 col-6 d-flex align-items-end">
                 <button class="btn btn-primary w-100" type="submit">Run</button>
@@ -71,12 +71,12 @@ $(document).ready(function() {
             return `${year}-${month}-${day}`;
         };
 
-        $('#dateFrom').val(formatDate(fromDate));
-        $('#dateTo').val(formatDate(toDate));
+        $('#dateFromProperty').val(formatDate(fromDate));
+        $('#dateToProperty').val(formatDate(toDate));
     }
 
     // When preset changes, update date fields
-    $('#presetSelect').on('change', function() {
+    $('#presetSelectProperty').on('change', function() {
         const preset = $(this).val();
         if (preset !== 'custom') {
             updateDatesFromPreset(preset);
@@ -84,15 +84,15 @@ $(document).ready(function() {
     });
 
     // When dates are manually changed, switch to custom
-    $('#dateFrom, #dateTo').on('change', function() {
-        $('#presetSelect').val('custom');
+    $('#dateFromProperty, #dateToProperty').on('change', function() {
+        $('#presetSelectProperty').val('custom');
     });
 
     // Handle form submission via AJAX to stay in tab context
-    $('#statementFilterForm').on('submit', function(e) {
+    $('#propertyStatementFilterForm').on('submit', function(e) {
         e.preventDefault();
         var formData = $(this).serialize();
-        var url = '{{ route('admin.users.index') }}?' + formData;
+        var url = '{{ route('admin.properties.index') }}?' + formData;
         
         $.ajax({
             url: url,
@@ -109,7 +109,7 @@ $(document).ready(function() {
     });
 
     // Initialize dates on page load based on current preset
-    const currentPreset = $('#presetSelect').val();
+    const currentPreset = $('#presetSelectProperty').val();
     if (currentPreset && currentPreset !== 'custom') {
         updateDatesFromPreset(currentPreset);
     }
@@ -162,7 +162,7 @@ $(document).ready(function() {
 <div class="card">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <h5 class="mb-0">Statement for {{ $user->name }}</h5>
+            <h5 class="mb-0">Statement for Property #{{ $property->id }}</h5>
             <div class="text-muted small">{{ $statement['from'] }} @if($statement['to']) - {{ $statement['to'] }} @endif</div>
         </div>
 

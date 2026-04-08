@@ -11,8 +11,13 @@
                                 <div class="pv_title">Properties</div>
                             </div>
                             <div class="col-9">
-                                <x-backend.forms.search class='' placeholder='Search' value=''
-                                    onClick='onClick()' />
+                                <x-backend.forms.search 
+                                    class='' 
+                                    placeholder='Search properties...' 
+                                    value='{{ request("search") }}'
+                                    onClick='' 
+                                    id='propertySearch'
+                                />
                             </div>
                             @can('create properties')
                             <div class="pv_btn">
@@ -30,36 +35,8 @@
 
                     </div>
                     {{-- pv_header end --}}
-                    <div class="pv_card_wrapper">
-                        {{-- Dev Note: if select property from list add class 'current' to property card --}}
-                        @foreach ($properties as $property)
-                            @php
-                                $addressParts = array_filter([
-                                    $property['prop_name'],
-                                    $property['line_1'],
-                                    $property['line_2'],
-                                    $property['city'],
-                                    $property['country'],
-                                    $property['postcode'],
-                                ]);
-                                $fullAddress = implode(', ', $addressParts);
-                            @endphp
-                                <x-backend.property-card 
-                                class="property-card" 
-                                propertyName="{{ $fullAddress }}" 
-                                bed="{{ $property['bedroom'] }}" 
-                                bath="{{ $property['bathroom'] }}" 
-                                floor="{{ $property['floor'] }}" 
-                                living="{{ $property['reception'] }}" 
-                                type="{{ $property['property_type'] }}" 
-                                available="{{ $property['available_from'] }}" 
-                                price="{{ $property['price'] }}" 
-                                lettingPrice="{{ $property['letting_price'] ?? '' }}" 
-                                cardStyle="" 
-                                propertyId="{{ $property['id'] }}" 
-                                />
-                        @endforeach
-
+                    <div class="pv_card_wrapper" id="propertyListContainer">
+                        @include('backend.properties.partials.property-list')
                     </div>
                     {{-- pv_card_wrapper end  --}}
                 </div>
@@ -1655,6 +1632,56 @@ var_dump($propertyId);
                 }
             });
         });
+
+    // Property Search and Pagination
+    let propertySearchTimeout;
+    $('#propertySearch').on('input', function() {
+        clearTimeout(propertySearchTimeout);
+        const searchValue = $(this).val();
+        
+        propertySearchTimeout = setTimeout(function() {
+            loadPropertyList(searchValue);
+        }, 500); // Debounce 500ms
+    });
+
+    // Handle pagination clicks
+    $(document).on('click', '#propertyListContainer .pagination a', function(e) {
+        e.preventDefault();
+        const url = $(this).attr('href');
+        const searchValue = $('#propertySearch').val();
+        
+        $.ajax({
+            url: url,
+            type: 'GET',
+            data: { 
+                list_only: 1,
+                search: searchValue
+            },
+            success: function(response) {
+                $('#propertyListContainer').html(response.html);
+            },
+            error: function() {
+                console.error('Failed to load page');
+            }
+        });
+    });
+
+    function loadPropertyList(search = '') {
+        $.ajax({
+            url: '{{ route('admin.properties.index') }}',
+            type: 'GET',
+            data: { 
+                list_only: 1,
+                search: search
+            },
+            success: function(response) {
+                $('#propertyListContainer').html(response.html);
+            },
+            error: function() {
+                console.error('Failed to load properties');
+            }
+        });
+    }
 
     </script>
 @endsection
