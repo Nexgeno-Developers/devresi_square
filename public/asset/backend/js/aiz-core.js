@@ -409,12 +409,14 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                 if (data.length > 0) {
                     for (var i = 0; i < data.length; i++) {
                         var thumb = "";
+                        var fileUrl = data[i].file_url
+                            ? data[i].file_url
+                            : AIZ.data.fileBaseUrl + data[i].file_name;
                         var hidden = "";
                         if (data[i].type === "image") {
                             thumb =
                                 '<img src="' +
-                                AIZ.data.fileBaseUrl +
-                                data[i].file_name +
+                                fileUrl +
                                 '" class="img-fit">';
                         } else {
                             thumb = '<i class="fa-solid fa-file"></i>';
@@ -432,8 +434,7 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                             "</a>" +
                             '<div class="dropdown-menu dropdown-menu-right">' +
                             '<a href="' +
-                            AIZ.data.fileBaseUrl +
-                            data[i].file_name +
+                            fileUrl +
                             '" target="_blank" download="' +
                             data[i].file_original_name +
                             "." +
@@ -662,12 +663,15 @@ $.fn.toggleAttr = function (attr, attr1, attr2) {
                     var index = AIZ.uploader.data.allFiles.findIndex(
                         (x) => x.id === AIZ.uploader.data.selectedFiles[i]
                     );
+                    var fileUrl = AIZ.uploader.data.allFiles[index].file_url
+                        ? AIZ.uploader.data.allFiles[index].file_url
+                        : AIZ.data.fileBaseUrl +
+                          AIZ.uploader.data.allFiles[index].file_name;
                     var thumb = "";
                     if (AIZ.uploader.data.allFiles[index].type === "image") {
                         thumb =
                             '<img src="' +
-                            AIZ.data.fileBaseUrl +
-                            AIZ.uploader.data.allFiles[index].file_name +
+                            fileUrl +
                             '">';
                         elem[0].insertHTML(thumb);
                         // console.log(elem);

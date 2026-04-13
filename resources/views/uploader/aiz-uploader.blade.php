@@ -5,14 +5,14 @@
 				<div class="uppy-modal-nav">
 					<ul class="nav nav-tabs border-0">
 						<li class="nav-item">
-							<a class="nav-link active font-weight-medium text-dark" data-toggle="tab" href="#aiz-select-file">Select File</a>
+							<a class="nav-link active font-weight-medium text-dark" data-toggle="tab" data-bs-toggle="tab" href="#aiz-select-file">Select File</a>
 						</li>
 						<li class="nav-item">
-							<a class="nav-link font-weight-medium text-dark" data-toggle="tab" href="#aiz-upload-new">Upload New</a>
+							<a class="nav-link font-weight-medium text-dark" data-toggle="tab" data-bs-toggle="tab" href="#aiz-upload-new">Upload New</a>
 						</li>
 					</ul>
 				</div>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				<button type="button" class="close btn-close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
 			<div class="modal-body">
 				<div class="tab-content h-100">
