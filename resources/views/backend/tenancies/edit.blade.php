@@ -34,7 +34,7 @@
     <form id="editTenancyForm" action="{{ route('admin.tenancies.update', $tenancy->id) }}" method="POST"
         enctype="multipart/form-data">
         @csrf
-        <input type="hidden" name="property_id" class="form-control" value="">
+        <input type="hidden" name="property_id" class="form-control" value="{{ $tenancy->property_id }}">
 
         <div class="form-group">
             <button type="button" class="btn btn-outline-primary btn-sm" id="addUserBtn">
@@ -208,14 +208,14 @@
                     <select class="form-select" id="depositType" name="deposit_type">
                         <option value="weeks_deposit" @if ($deposit_type == 'weeks_deposit') selected @endif>No of Weeks
                             Deposit</option>
-                        <option value="months_deposit" @if ($deposit_type == 'months_deposit') selected @endif>No of Months
-                            Deposit</option>
+                        {{-- <option value="months_deposit" @if ($deposit_type == 'months_deposit') selected @endif>No of Months
+                            Deposit</option> --}}
                     </select>
                 </div>
             </div>
             <div class="col">
                 <div class="mb-3">
-                    <label for="depositNumber" class="form-label">Number of deposit type (Weeks/Months)</label>
+                    <label for="depositNumber" class="form-label">Number of deposit type (Weeks)</label>
                     <input value="{{ $deposit_number }}" type="number" class="form-control" id="depositNumber"
                         name="deposit_number" min="1" placeholder="Enter number of weeks or months" required>
                 </div>
@@ -322,11 +322,50 @@
 <script>
     initSelect3('.select2');
 
+    // Render main person radio buttons when tenants are selected/changed
+    function renderMainPersonOptions() {
+        const userSelect = $('#tenant_id');
+        const container = $('#tenant-options');
+        const selectedUsers = userSelect.val() || [];
+
+        // Remember currently checked main person before re-rendering
+        const currentMain = $('input[name="is_main_person"]:checked').val() || null;
+
+        container.empty();
+        $('#main-person-error').remove();
+
+        if (selectedUsers.length > 0) {
+            let html = '<div class="mb-3"><label class="form-label fw-semibold">Select Main Tenant <span class="text-danger">*</span></label>';
+            selectedUsers.forEach(function(userId) {
+                const userName = userSelect.find('option[value="' + userId + '"]').text();
+                const isChecked = (currentMain == userId) ? 'checked' : '';
+                html += '<div class="form-check">' +
+                    '<input type="radio" name="is_main_person" value="' + userId + '" id="is_main_' + userId + '" class="form-check-input" ' + isChecked + '>' +
+                    '<label for="is_main_' + userId + '" class="form-check-label">' + userName + '</label>' +
+                    '</div>';
+            });
+            html += '</div>';
+            container.html(html);
+
+            // Auto-select if only one tenant
+            if (selectedUsers.length === 1) {
+                container.find('input[type="radio"]').prop('checked', true);
+            }
+        }
+    }
+
+    // Re-render radio buttons whenever tenant selection changes
+    $('#tenant_id').on('change', function() {
+        renderMainPersonOptions();
+    });
+
     // Form submission validation
-    $('form').on('submit', function(e) {
+    $('#editTenancyForm').on('submit', function(e) {
         if ($('input[name="is_main_person"]:checked').length === 0) {
-            e.preventDefault(); // Prevent form submission
-            alert('Please select a main user.'); // Show alert message
+            e.preventDefault();
+            $('#main-person-error').remove();
+            $('#tenant-options').append('<div id="main-person-error" class="text-danger small mt-1">Please select a main tenant.</div>');
+            $('#smallModal .modal-body').scrollTop(0);
         }
     });
 

@@ -15,7 +15,7 @@ class TenancyTypeSeeder extends Seeder
     public function run(): void
     {
         DB::table('tenancy_types')->insert([
-            ['name' => 'AST'],
+            ['name' => 'APT'],
             ['name' => 'Common Law'],
             ['name' => 'Company'],
             ['name' => 'Short Let - AST'],

@@ -130,6 +130,11 @@ class TenancyController
         }
 
         flash("Tenancy Added successfully!")->success();
+        
+        if (request()->ajax()) {
+            return response()->json(['success' => true, 'message' => 'Tenancy Added successfully!']);
+        }
+        
         return back();
 
         // Redirect back with success message

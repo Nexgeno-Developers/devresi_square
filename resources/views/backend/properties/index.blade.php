@@ -1040,36 +1040,6 @@ var_dump($propertyId);
                 // Set the property_id in the hidden input field inside the modal form
                 $("input[name='property_id']").val(propertyId);
                 initSelect3('.select2');
-
-                const userSelect3 = $('#tenant_id');
-                const userOptionsContainer3 = $('#tenant-options');
-
-                // Listen for changes in the user dropdown
-                userSelect3.on('change', function() {
-                    const selectedUsers = userSelect3.val() || [];
-                    userOptionsContainer3.empty();
-
-                    if (selectedUsers.length > 0) {
-                        // Add default label
-                        userOptionsContainer3.append(`
-                            <label class="mb-2">Select Main User</label>
-                        `);
-
-                        // Add radio buttons for each selected user
-                        selectedUsers.forEach(userId => {
-                            const userName = userSelect3.find(
-                                    `option[value="${userId}"]`)
-                                .text(); // Get the name from the option
-                            userOptionsContainer3.append(`
-                                <div class="form-check">
-                                    <input type="radio" name="is_main_person" value="${userId}" id="is_main_${userId}" class="form-check-input">
-                                    <label for="is_main_${userId}" class="form-check-label">${userName}</label>
-                                </div>
-                            `);
-                        });
-                    }
-                });
-
             });
         });
         $(document).on('click', '.popup-tab-tenancy-view', function(e) {
@@ -1105,53 +1075,6 @@ var_dump($propertyId);
                 // Set the property_id in the hidden input field inside the modal form
                 $("input[name='property_id']").val(propertyId);
                 initSelect3('.select2');
-
-                const userSelect4 = $('#tenant_id');
-                const userOptionsContainer4 = $('#tenant-options');
-
-                // Store the previously selected main user
-                let previouslySelectedMainTenant = $('input[name="is_main_person"]:checked').val() || null;
-
-                // Listen for changes in the user dropdown
-                userSelect4.on('change', function() {
-                    const selectedUsers = userSelect4.val() || [];
-                    userOptionsContainer4.empty();
-
-                    if (selectedUsers.length > 0) {
-                        // Add default label
-                        userOptionsContainer4.append(`
-                            <label class="mb-2">Select Main User</label>
-                        `);
-
-                        // Add radio buttons for each selected user
-                        selectedUsers.forEach(userId => {
-                            const userName = userSelect4.find(
-                                    `option[value="${userId}"]`)
-                                .text(); // Get the name from the option
-                            const isChecked = previouslySelectedMainTenant === userId ?
-                                'checked' : ''; // Preserve previously selected main user
-                            userOptionsContainer4.append(`
-                                <div class="form-check">
-                                    <input type="radio" name="is_main_person" value="${userId}" id="is_main_${userId}" class="form-check-input" ${isChecked}>
-                                    <label for="is_main_${userId}" class="form-check-label">${userName}</label>
-                                </div>
-                            `);
-                        });
-
-                        // Check if the previously selected main user is no longer in the selected users
-                        if (!selectedUsers.includes(previouslySelectedMainTenant)) {
-                            // Reset previously selected main user
-                            previouslySelectedMainTenant = null;
-                        }
-                    }
-                });
-
-                // Update the stored value when a main user is selected
-                $(document).on('change', 'input[name="is_main_person"]', function() {
-                    previouslySelectedMainTenant = $(this).val();
-                });
-
-
             });
         });
 

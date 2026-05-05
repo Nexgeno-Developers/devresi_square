@@ -1,19 +1,22 @@
 <div id="mainForm">
 
-    <form id="addTenancyForm" action="{{ route('admin.tenancies.store') }}" method="POST" enctype="multipart/form-data">
+    <form id="addTenancyForm" action="{{ route('admin.tenancies.store') }}" method="POST" enctype="multipart/form-data" novalidate>
         @csrf
-        <input type="hidden" name="property_id" class="form-control" value="">
+        <input type="hidden" name="property_id" class="form-control" value="{{ old('property_id') }}">
 
         <div class="form-group">
             <button type="button" class="btn btn-outline-primary btn-sm" id="addUserBtn">
                 Quick Add New Tenant
             </button>
-            <label for="tenant_id">Select Tenants</label>
+            <label for="tenant_id">Select Tenants <span class="text-danger">*</span></label>
             <select name="user_id[]" id="tenant_id" multiple class="form-control select2" required>
                 @foreach ($tenants as $user)
-                    <option value="{{ $user->id }}">{{ $user->name }}</option>
+                    <option value="{{ $user->id }}" {{ in_array($user->id, old('user_id', [])) ? 'selected' : '' }}>{{ $user->name }}</option>
                 @endforeach
             </select>
+            @error('user_id')
+                <div class="text-danger small mt-1">{{ $message }}</div>
+            @enderror
         </div>
 
         <div id="tenant-options" class="mt-3"></div>
@@ -24,9 +27,12 @@
                     <div class="form-group field-tenancies-status required">
                         <label class="control-label" for="tenancies-status">Status</label>
                         <select required id="tenancies-status" class="form-control" name="status" aria-required="true">
-                            <option value="Active">Active</option>
-                            <option value="Archive">Archive</option>
+                            <option value="Active" {{ old('status') == 'Active' ? 'selected' : '' }}>Active</option>
+                            <option value="Archive" {{ old('status') == 'Archive' ? 'selected' : '' }}>Archive</option>
                         </select>
+                        @error('status')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -35,11 +41,14 @@
                     <div class="form-group field-tenancy-type required">
                         <label class="control-label" for="tenancy-type">Tenancy Type</label>
                         <select id="tenancy-type" class="form-control" aria-required="true" name="tenancy_type_id" required>
-                            <option value="" disabled selected>Select Tenancy Type</option>
+                            <option value="" disabled {{ old('tenancy_type_id') ? '' : 'selected' }}>Select Tenancy Type</option>
                             @foreach ($tenancyTypes as $tenancyType)
-                                <option value="{{ $tenancyType->id }}">{{ $tenancyType->name }}</option>
+                                <option value="{{ $tenancyType->id }}" {{ old('tenancy_type_id') == $tenancyType->id ? 'selected' : '' }}>{{ $tenancyType->name }}</option>
                             @endforeach
                         </select>
+                        @error('tenancy_type_id')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -49,27 +58,30 @@
                     <div class="form-group field-tenancies-sub_status required has-error">
                         <label class="control-label" for="tenancies-sub_status">Sub Status</label>
                         <select id="tenancies-sub_status" class="form-control" name="tenancy_sub_status_id" aria-required="true" required>
-                            <option value="" disabled selected>Select Sub Status</option>
+                            <option value="" disabled {{ old('tenancy_sub_status_id') ? '' : 'selected' }}>Select Sub Status</option>
                             @foreach ($tenancySubStatuses as $subStatus)
-                                <option value="{{ $subStatus->id }}">{{ $subStatus->name }}</option>
+                                <option value="{{ $subStatus->id }}" {{ old('tenancy_sub_status_id') == $subStatus->id ? 'selected' : '' }}>{{ $subStatus->name }}</option>
                             @endforeach
                         </select>
+                        @error('tenancy_sub_status_id')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
             </div>
 
             <label>
-                <input type="checkbox" name="periodic">
+                <input type="checkbox" name="periodic" {{ old('periodic') ? 'checked' : '' }}>
                 Periodic
             </label><br>
 
             <label>
-                <input type="checkbox" name="rolling_contract">
+                <input type="checkbox" name="rolling_contract" {{ old('rolling_contract') ? 'checked' : '' }}>
                 Rolling Contract
             </label><br>
 
             <label>
-                <input type="checkbox" name="renewal_exempt">
+                <input type="checkbox" name="renewal_exempt" {{ old('renewal_exempt') ? 'checked' : '' }}>
                 Renewal Exempt
             </label><br>
         </div>
@@ -77,26 +89,29 @@
         <div class="row mt-3">
             <div class="col">
                 <div class="mb-3">
-                    <label class="control-label" for="tenancies-move_in">Move In</label>
-                    <input type="date" id="tenancies-move_in" class="form-control" name="move_in" required>
+                    <label class="control-label" for="tenancies-move_in">Move In <span class="text-danger">*</span></label>
+                    <input type="date" id="tenancies-move_in" class="form-control" name="move_in" required value="{{ old('move_in') }}">
+                    @error('move_in')
+                        <div class="text-danger small mt-1">{{ $message }}</div>
+                    @enderror
                 </div>
             </div>
             <div class="col">
                 <div class="mb-3">
                     <label class="control-label" for="tenancies-term_months">Term (Months)</label>
-                    <input type="number" id="tenancies-term_months" class="form-control" name="term_months" min="0" pattern="^[0-9]+$">
+                    <input type="number" id="tenancies-term_months" class="form-control" name="term_months" min="0" pattern="^[0-9]+$" value="{{ old('term_months') }}">
                 </div>
             </div>
             <div class="col">
                 <div class="mb-3">
                     <label class="control-label" for="tenancies-term_days">Term (Days)</label>
-                    <input type="number" id="tenancies-term_days" class="form-control" name="term_days" min="0" pattern="^[0-9]+$">
+                    <input type="number" id="tenancies-term_days" class="form-control" name="term_days" min="0" pattern="^[0-9]+$" value="{{ old('term_days') }}">
                 </div>
             </div>
             <div class="col">
                 <div class="mb-3">
                     <label class="control-label" for="tenancies-move_out">Move Out</label>
-                    <input type="date" id="tenancies-move_out" class="form-control" name="move_out">
+                    <input type="date" id="tenancies-move_out" class="form-control" name="move_out" value="{{ old('move_out') }}">
                 </div>
             </div>
         </div>
@@ -107,7 +122,7 @@
                     <div class="form-group field-tenancies-tenancy_renewal_confirm_date">
                         <label class="control-label" for="tenancies-tenancy_renewal_confirm_date">Renewal Confirm Date</label>
                         <input type="date" id="tenancies-tenancy_renewal_confirm_date" class="form-control"
-                            name="tenancy_renewal_confirm_date" min="{{ todayDate() }}">
+                            name="tenancy_renewal_confirm_date" min="{{ todayDate() }}" value="{{ old('tenancy_renewal_confirm_date') }}">
                     </div>
                 </div>
             </div>
@@ -116,7 +131,7 @@
                     <div class="form-group field-tenancies-extension_date">
                         <label class="control-label" for="tenancies-extension_date">Extension Date</label>
                         <input type="date" id="tenancies-extension_date" class="form-control"
-                            name="extension_date" min="{{ tomorrowDate() }}">
+                            name="extension_date" min="{{ tomorrowDate() }}" value="{{ old('extension_date') }}">
                     </div>
                 </div>
             </div>
@@ -126,18 +141,24 @@
             <div class="col">
                 <div class="mb-3">
                     <div class="form-group field-tenancies-rent">
-                        <label class="control-label" for="tenancies-rent">Rent</label>
+                        <label class="control-label" for="tenancies-rent">Rent <span class="text-danger">*</span></label>
                         <input type="number" inputmode="numeric" pattern="[0-9]" id="tenancies-rent"
-                            class="form-control" name="rent">
+                            class="form-control" name="rent" required value="{{ old('rent') }}">
+                        @error('rent')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
             </div>
             <div class="col">
                 <div class="mb-3">
                     <div class="form-group field-tenancies-deposit">
-                        <label class="control-label" for="tenancies-deposit">Deposit</label>
+                        <label class="control-label" for="tenancies-deposit">Deposit <span class="text-danger">*</span></label>
                         <input type="number" inputmode="numeric" pattern="[0-9]" id="tenancies-deposit"
-                            class="form-control" name="deposit">
+                            class="form-control" name="deposit" required value="{{ old('deposit') }}">
+                        @error('deposit')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -149,14 +170,14 @@
                     <label for="depositType" class="form-label">Deposit Type</label>
                     <select class="form-select" id="depositType" name="deposit_type">
                         <option value="weeks_deposit">No of Weeks Deposit</option>
-                        <option value="months_deposit">No of Months Deposit</option>
+                        {{-- <option value="months_deposit">No of Months Deposit</option> --}}
                     </select>
                 </div>
             </div>
             <div class="col">
                 <div class="mb-3">
-                    <label for="depositNumber" class="form-label">Number of deposit type (Weeks/Months)</label>
-                    <input type="number" class="form-control" id="depositNumber" name="deposit_number" min="1" placeholder="Enter number of weeks or months" required>
+                    <label for="depositNumber" class="form-label">Number of deposit type (Weeks)</label>
+                    <input type="number" class="form-control" id="depositNumber" name="deposit_number" min="1" placeholder="Enter number of weeks or months" required value="{{ old('deposit_number') }}">
                 </div>
             </div>
         </div>
@@ -211,9 +232,12 @@
                         <select name="property_manager[]" id="property_manager" multiple class="form-control select2"
                             required>
                             @foreach ($property_managers as $property_manager)
-                                <option value="{{ $property_manager->id }}">{{ $property_manager->name }}</option>
+                                <option value="{{ $property_manager->id }}" {{ in_array($property_manager->id, old('property_manager', [])) ? 'selected' : '' }}>{{ $property_manager->name }}</option>
                             @endforeach
                         </select>
+                        @error('property_manager')
+                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -248,12 +272,132 @@
 
     initSelect3('.select2');
 
-    // Form submission validation
-    $('form').on('submit', function(e) {
-        if ($('input[name="is_main_person"]:checked').length === 0) {
-            e.preventDefault(); // Prevent form submission
-            alert('Please select a main user.'); // Show alert message
+    // Render main person radio buttons when tenants are selected
+    function renderMainPersonOptions() {
+        const userSelect = $('#tenant_id');
+        const container = $('#tenant-options');
+        const selectedUsers = userSelect.val() || [];
+
+        container.empty();
+        $('#main-person-error').remove();
+
+        if (selectedUsers.length > 0) {
+            let html = '<div class="mb-3"><label class="form-label fw-semibold">Select Main Tenant <span class="text-danger">*</span></label>';
+            selectedUsers.forEach(function(userId) {
+                const userName = userSelect.find('option[value="' + userId + '"]').text();
+                html += '<div class="form-check">' +
+                    '<input type="radio" name="is_main_person" value="' + userId + '" id="is_main_' + userId + '" class="form-check-input">' +
+                    '<label for="is_main_' + userId + '" class="form-check-label">' + userName + '</label>' +
+                    '</div>';
+            });
+            html += '</div>';
+            container.html(html);
+
+            // Auto-select if only one tenant
+            if (selectedUsers.length === 1) {
+                container.find('input[type="radio"]').prop('checked', true);
+            }
         }
+    }
+
+    $('#tenant_id').on('change', function() {
+        renderMainPersonOptions();
+    });
+
+    // Form submission validation
+    $('#addTenancyForm').on('submit', function(e) {
+        e.preventDefault();
+        let errors = [];
+
+        // Validate tenants selected
+        if ($('#tenant_id').val() === null || $('#tenant_id').val().length === 0) {
+            errors.push('Please select at least one tenant.');
+            $('#tenant_id').addClass('is-invalid');
+        } else {
+            $('#tenant_id').removeClass('is-invalid');
+        }
+
+        // Validate main person selected (set by tenant-options radio buttons)
+        if ($('input[name="is_main_person"]:checked').length === 0) {
+            errors.push('Please select a main tenant.');
+            // Highlight the radio section too
+            $('#tenant-options').append('<div id="main-person-error" class="text-danger small mt-1">Please select a main tenant.</div>');
+        } else {
+            $('#main-person-error').remove();
+        }
+
+        // Validate rent
+        if (!$('#tenancies-rent').val()) {
+            errors.push('Rent is required.');
+        }
+
+        // Validate deposit
+        if (!$('#tenancies-deposit').val()) {
+            errors.push('Deposit is required.');
+        }
+
+        // Validate move in date
+        if (!$('#tenancies-move_in').val()) {
+            errors.push('Move In date is required.');
+        }
+
+        // Validate tenancy type
+        if (!$('#tenancy-type').val()) {
+            errors.push('Please select a Tenancy Type.');
+        }
+
+        // Validate sub status
+        if (!$('#tenancies-sub_status').val()) {
+            errors.push('Please select a Sub Status.');
+        }
+
+        // Show frontend errors and stop
+        if (errors.length > 0) {
+            $('#form-error-summary').remove();
+            let html = '<div id="form-error-summary" class="alert alert-danger mt-2"><ul class="mb-0">';
+            errors.forEach(function(err) { html += '<li>' + err + '</li>'; });
+            html += '</ul></div>';
+            $('#addTenancyForm').prepend(html);
+            $('#smallModal .modal-body').scrollTop(0);
+            return;
+        }
+
+        // Submit via AJAX to preserve modal state on backend errors
+        let form = $(this);
+        let formData = new FormData(this);
+        let submitBtn = form.find('button[type="submit"]');
+        submitBtn.prop('disabled', true).text('Saving...');
+
+        $.ajax({
+            url: form.attr('action'),
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                // Success — close modal and reload page
+                $('#smallModal').modal('hide');
+                location.reload();
+            },
+            error: function(xhr) {
+                submitBtn.prop('disabled', false).text('Save');
+                $('#form-error-summary').remove();
+                let html = '<div id="form-error-summary" class="alert alert-danger mt-2"><ul class="mb-0">';
+
+                if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                    // Laravel validation errors
+                    $.each(xhr.responseJSON.errors, function(field, messages) {
+                        messages.forEach(function(msg) { html += '<li>' + msg + '</li>'; });
+                    });
+                } else {
+                    html += '<li>Something went wrong. Please try again.</li>';
+                }
+
+                html += '</ul></div>';
+                $('#addTenancyForm').prepend(html);
+                $('#smallModal .modal-body').scrollTop(0);
+            }
+        });
     });
     $(document).on('change', '#depositService', function () {
         const selected = $(this).val();
