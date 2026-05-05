@@ -28,9 +28,21 @@ class MailManager  extends Mailable
      */
     public function build()
     {
-        return $this->view('emails.index')
+        $mail = $this->view('emails.index')
                     ->from(env('MAIL_FROM_ADDRESS'), env('MAIL_FROM_NAME'))
                     ->subject($this->array['subject'])
                     ->with(['content' => $this->array['content']]);
+
+        foreach (($this->array['attachments'] ?? []) as $attachment) {
+            if (($attachment['type'] ?? null) === 'data') {
+                $mail->attachData(
+                    $attachment['data'],
+                    $attachment['name'],
+                    $attachment['options'] ?? []
+                );
+            }
+        }
+
+        return $mail;
     }
 }

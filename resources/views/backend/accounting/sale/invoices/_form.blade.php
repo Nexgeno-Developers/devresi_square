@@ -76,6 +76,18 @@
         @endif
 
         <div class="row g-3">
+            <div class="col-md-12">
+                <label class="form-label">Invoice Header</label>
+                <select name="invoice_header_id" id="invoice-header-id" class="form-select">
+                    <option value="">Select invoice header</option>
+                    @if($selectedInvoiceHeader)
+                        <option value="{{ $selectedInvoiceHeader->id }}" selected>
+                            {{ $selectedInvoiceHeader->header_name }} ({{ $selectedInvoiceHeader->unique_reference_number }})
+                        </option>
+                    @endif
+                </select>
+                <small class="text-muted">Search active invoice headers by name or reference number.</small>
+            </div>
             <div class="col-md-3">
                 <label class="form-label">Link To Type</label>
                 <select name="link_to_type" id="link-to-type" class="form-select">
@@ -159,18 +171,6 @@
         </div>
 
         <div class="row g-3 mt-2">
-            <div class="col-md-6">
-                <label class="form-label">Invoice Header</label>
-                <select name="invoice_header_id" id="invoice-header-id" class="form-select">
-                    <option value="">Select invoice header</option>
-                    @if($selectedInvoiceHeader)
-                        <option value="{{ $selectedInvoiceHeader->id }}" selected>
-                            {{ $selectedInvoiceHeader->header_name }} ({{ $selectedInvoiceHeader->unique_reference_number }})
-                        </option>
-                    @endif
-                </select>
-                <small class="text-muted">Search active invoice headers by name or reference number.</small>
-            </div>
             <div class="col-md-6">
                 <label class="form-label">Status</label>
                 <select name="status" class="form-select">
@@ -280,6 +280,22 @@
                     <option value="before_tax" {{ $oldVal('discount_type') === 'before_tax' ? 'selected' : '' }}>Before Tax</option>
                     <option value="after_tax" {{ $oldVal('discount_type') === 'after_tax' ? 'selected' : '' }}>After Tax</option>
                 </select>
+            </div>
+        </div>
+
+        <div class="row g-3 mt-2">
+            <div class="col-md-4">
+                <label class="form-label">Reminder Days Before Due</label>
+                <input
+                    type="number"
+                    min="0"
+                    max="365"
+                    name="reminder_days_before_due"
+                    id="reminder-days-before-due"
+                    class="form-control"
+                    value="{{ $oldVal('reminder_days_before_due') }}"
+                >
+                <small class="text-muted">Override reminder timing for this invoice/series.</small>
             </div>
         </div>
 
@@ -409,12 +425,53 @@
 
         <div class="row mt-3">
             <div class="col-12">
-                <div id="property-context-box" class="alert alert-info border mb-0 d-none">
+                <div id="property-context-box" class="alert alert-info border mb-0 d-none stop-propagation">
                     <div class="fw-semibold mb-2">Property Context</div>
                     <div><strong>Property:</strong> <span data-property-name>-</span></div>
                     <div><strong>Address:</strong> <span data-property-address>-</span></div>
                     <div><strong>Owner:</strong> <span data-property-owners>-</span></div>
                     <div><strong>Tenant:</strong> <span data-property-tenants>-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-12">
+                <div id="tenancy-context-box" class="alert alert-warning border mb-0 d-none stop-propagation">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                        <div class="fw-semibold">Tenancy Context</div>
+                        <button type="button" class="btn btn-sm btn-outline-dark d-none" id="tenancy-view-btn">View Tenancy</button>
+                    </div>
+
+                    <div class="mt-2">
+                        <label class="form-label mb-1">Suggested Tenancy</label>
+                        <select id="tenancy-suggest-select" class="form-select form-select-sm"></select>
+                    </div>
+
+                    <div class="mt-2 d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="tenancy-apply-rent-btn">Apply Rent Amount</button>
+                        <button type="button" class="btn btn-sm btn-outline-success" id="tenancy-enable-recurring-btn">Enable Recurring from Tenancy</button>
+                        <span class="text-muted align-self-center" style="font-size: 12px;" data-tenancy-recurrence-hint></span>
+                    </div>
+
+                    <div id="tenancy-suggest-banner" class="mt-2 d-none">
+                        <div class="alert alert-light border mb-0 p-2">
+                            Suggested: Link To = <strong>Tenancy #<span data-suggest-tenancy-id>-</span></strong>
+                            <div class="mt-2 d-flex gap-2 flex-wrap">
+                                <button type="button" class="btn btn-sm btn-primary" id="tenancy-apply-btn">Apply</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="tenancy-keep-property-btn">Keep Property</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-2" style="font-size: 13px;">
+                        <div><strong>Move In:</strong> <span data-tenancy-move-in>-</span></div>
+                        <div><strong>Move Out:</strong> <span data-tenancy-move-out>-</span></div>
+                        <div><strong>Rent:</strong> <span data-tenancy-rent>-</span></div>
+                        <div><strong>Frequency:</strong> <span data-tenancy-frequency>-</span></div>
+                        <div><strong>Main Tenant:</strong> <span data-tenancy-main-tenant>-</span></div>
+                        <div class="text-muted mt-1" style="font-size: 12px;" data-tenancy-note></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -545,11 +602,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const headerSearchUrl = "{{ route('backend.accounting.masters.invoice_headers.search') }}";
     const headerJsonUrl = (id) => "{{ route('backend.accounting.masters.invoice_headers.json', ['invoiceHeader' => '___ID___']) }}".replace('___ID___', id);
     const propertyContextUrl = (id) => "{{ route('backend.accounting.sale.invoices.propertyContext', ['property' => '___ID___']) }}".replace('___ID___', id);
+    const tenancyContextUrl = (propertyId, tenantId) => "{{ route('backend.accounting.sale.invoices.tenancyContext', ['property' => '___PID___', 'tenant' => '___TID___']) }}"
+        .replace('___PID___', propertyId)
+        .replace('___TID___', tenantId);
+    const tenancyShowUrl = (id) => "{{ route('admin.tenancies.show', ['id' => '___ID___']) }}".replace('___ID___', id);
     const linkToTypeInput = document.getElementById('link-to-type');
     const linkToIdInput = document.getElementById('link-to-id');
     const chargeToTypeInput = document.getElementById('charge-to-type');
     const chargeToIdInput = document.getElementById('charge-to-id');
     const linkToPropertySelect = document.getElementById('link-to-property-select');
+    const linkToTenancySelect = document.getElementById('link-to-tenancy-select');
     const chargeToOwnerSelect = document.getElementById('charge-to-owner-select');
     const chargeToTenantSelect = document.getElementById('charge-to-tenant-select');
     const propertyContextBox = document.getElementById('property-context-box');
@@ -557,6 +619,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const propertyAddressNode = propertyContextBox?.querySelector('[data-property-address]');
     const propertyOwnersNode = propertyContextBox?.querySelector('[data-property-owners]');
     const propertyTenantsNode = propertyContextBox?.querySelector('[data-property-tenants]');
+
+    const tenancyContextBox = document.getElementById('tenancy-context-box');
+    const tenancySuggestSelect = document.getElementById('tenancy-suggest-select');
+    const tenancyViewBtn = document.getElementById('tenancy-view-btn');
+    const tenancySuggestBanner = document.getElementById('tenancy-suggest-banner');
+    const tenancySuggestTenancyIdNode = tenancyContextBox?.querySelector('[data-suggest-tenancy-id]');
+    const tenancyMoveInNode = tenancyContextBox?.querySelector('[data-tenancy-move-in]');
+    const tenancyMoveOutNode = tenancyContextBox?.querySelector('[data-tenancy-move-out]');
+    const tenancyRentNode = tenancyContextBox?.querySelector('[data-tenancy-rent]');
+    const tenancyFrequencyNode = tenancyContextBox?.querySelector('[data-tenancy-frequency]');
+    const tenancyMainTenantNode = tenancyContextBox?.querySelector('[data-tenancy-main-tenant]');
+    const tenancyNoteNode = tenancyContextBox?.querySelector('[data-tenancy-note]');
+    const tenancyRecurrenceHintNode = tenancyContextBox?.querySelector('[data-tenancy-recurrence-hint]');
+    const tenancyApplyBtn = document.getElementById('tenancy-apply-btn');
+    const tenancyKeepPropertyBtn = document.getElementById('tenancy-keep-property-btn');
+    const tenancyApplyRentBtn = document.getElementById('tenancy-apply-rent-btn');
+    const tenancyEnableRecurringBtn = document.getElementById('tenancy-enable-recurring-btn');
+
+    function keepContextClickInside(event) {
+        event.stopPropagation();
+    }
+
+    // Prevent global document-click handlers (theme helpers) from hiding these boxes.
+    [propertyContextBox, tenancyContextBox].forEach(box => {
+        if (!box) return;
+
+        ['pointerdown', 'mousedown', 'mouseup', 'touchstart', 'touchend', 'click'].forEach(eventName => {
+            box.addEventListener(eventName, keepContextClickInside);
+        });
+
+        box.querySelectorAll('button, select, input, textarea, a').forEach(control => {
+            ['pointerdown', 'mousedown', 'mouseup', 'touchstart', 'touchend', 'click'].forEach(eventName => {
+                control.addEventListener(eventName, keepContextClickInside);
+            });
+        });
+    });
+
+    const rentIssueDaysBeforeDue = @json((int) get_setting('rent_invoice_issue_days_before_due', 7));
+    const moneySymbol = @json(getPoundSymbol());
     const originalOwnerOptions = chargeToOwnerSelect?.innerHTML || '';
     const originalTenantOptions = chargeToTenantSelect?.innerHTML || '';
     const ownerTypeOption = chargeToTypeInput?.querySelector('option[value="Owner"]');
@@ -568,6 +669,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const recurringUnlimitedWrapper = document.getElementById('recurring-unlimited-wrapper');
     const recurringCyclesInput = document.getElementById('recurring-cycles');
     const unlimitedCyclesCheckbox = document.getElementById('unlimited-cycles');
+    const repeatEveryCustomInput = document.getElementById('repeat-every-custom');
+    const repeatTypeCustomSelect = document.getElementById('repeat-type-custom');
 
     function syncRecurringFields() {
         if (!recurringSelect) return;
@@ -596,8 +699,74 @@ document.addEventListener('DOMContentLoaded', () => {
     unlimitedCyclesCheckbox?.addEventListener('change', syncRecurringFields);
     syncRecurringFields();
 
+    let invoiceDateDirty = false;
+    let dueDateDirty = false;
+    let recurringDirty = false;
+    let suppressDirty = false;
+    let tenancySuggestionDismissed = false;
+    let rentAutoApplied = false;
+    let lastTenancyDriverKey = null;
+    let currentTenancyRow = null;
+
+    function markDirty(kind) {
+        if (suppressDirty) return;
+        if (kind === 'invoice_date') invoiceDateDirty = true;
+        if (kind === 'due_date') dueDateDirty = true;
+        if (kind === 'recurring') recurringDirty = true;
+    }
+
+    invoiceDateInput?.addEventListener('input', () => markDirty('invoice_date'));
+    invoiceDateInput?.addEventListener('change', () => markDirty('invoice_date'));
+    dueDateInput?.addEventListener('input', () => markDirty('due_date'));
+    dueDateInput?.addEventListener('change', () => markDirty('due_date'));
+
+    [recurringSelect, repeatEveryCustomInput, repeatTypeCustomSelect, recurringCyclesInput, unlimitedCyclesCheckbox]
+        .forEach(el => el?.addEventListener('change', () => markDirty('recurring')));
+
+    function isRentMode() {
+        const name = (headerName?.textContent || '').trim().toLowerCase();
+        if (!name) return false;
+        return /\brent\b/.test(name);
+    }
+
+    function parseYmd(ymd) {
+        if (!ymd) return null;
+        const parts = String(ymd).split('-').map(n => parseInt(n, 10));
+        if (parts.length !== 3 || parts.some(n => !Number.isFinite(n))) return null;
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+
+    function toYmd(date) {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+    }
+
+    function startOfDay(date) {
+        const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        d.setHours(0, 0, 0, 0);
+        return d;
+    }
+
+    function safeMonthlyDate(baseDate, monthsToAdd, targetDay) {
+        const b = startOfDay(baseDate);
+        const baseYear = b.getFullYear();
+        const baseMonthIndex = b.getMonth(); // 0..11
+        const totalMonths = (baseYear * 12) + baseMonthIndex + Math.max(1, monthsToAdd);
+
+        const year = Math.floor(totalMonths / 12);
+        const monthIndex = totalMonths % 12;
+        const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+        const day = Math.min(Math.max(1, targetDay), lastDay);
+
+        return new Date(year, monthIndex, day);
+    }
+
     function setDueDate() {
         if (!invoiceDateInput.value) return;
+        if (rentAutoApplied) return;
+        if (invoiceDateDirty || dueDateDirty) return;
         const d = new Date(invoiceDateInput.value);
         d.setDate(d.getDate() + 30);
         dueDateInput.value = d.toISOString().split('T')[0];
@@ -634,12 +803,14 @@ document.addEventListener('DOMContentLoaded', () => {
         invoiceHeaderSelect.on('select2:select', async (e) => {
             const selected = e.params.data;
             hydrateHeaderPreview(selected);
+            maybeLoadTenancyContext();
 
             try {
                 const res = await fetch(headerJsonUrl(selected.id));
                 if (res.ok) {
                     const full = await res.json();
                     hydrateHeaderPreview(full);
+                    maybeLoadTenancyContext();
                 }
             } catch (err) {
                 console.warn('Invoice header fetch failed', err);
@@ -648,14 +819,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         invoiceHeaderSelect.on('select2:clear', () => {
             clearHeaderPreview();
+            maybeLoadTenancyContext();
         });
     }
 
     function setupEntitySelector(groupName, typeInput, hiddenIdInput) {
         const wrappers = Array.from(document.querySelectorAll(`[data-entity-group="${groupName}"]`));
+        let previousType = null;
 
-        function syncVisibleSelect() {
+        function syncVisibleSelect(force = false) {
             const currentType = typeInput?.value || '';
+            if (!force && previousType === currentType) {
+                return;
+            }
+            previousType = currentType;
 
             wrappers.forEach(wrapper => {
                 const isActive = wrapper.dataset.entityType === currentType;
@@ -669,7 +846,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const activeWrapper = wrappers.find(wrapper => wrapper.dataset.entityType === currentType);
             const activeSelect = activeWrapper?.querySelector('select');
-            hiddenIdInput.value = activeSelect?.value || '';
+            const activeValue = activeSelect?.value || '';
+            if (activeValue) {
+                hiddenIdInput.value = activeValue;
+            } else if (!force) {
+                hiddenIdInput.value = '';
+            }
         }
 
         wrappers.forEach(wrapper => {
@@ -685,12 +867,425 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        typeInput?.addEventListener('change', syncVisibleSelect);
-        syncVisibleSelect();
+        typeInput?.addEventListener('change', () => syncVisibleSelect());
+        syncVisibleSelect(true);
     }
 
     setupEntitySelector('link_to', linkToTypeInput, linkToIdInput);
     setupEntitySelector('charge_to', chargeToTypeInput, chargeToIdInput);
+
+    let previousContextValues = {
+        linkToType: linkToTypeInput?.value || '',
+        linkToProperty: linkToPropertySelect?.value || '',
+        linkToTenancy: linkToTenancySelect?.value || '',
+        chargeToType: chargeToTypeInput?.value || '',
+        chargeToTenant: chargeToTenantSelect?.value || '',
+    };
+
+    function hasContextDropdownChanged(key, value) {
+        const normalizedValue = value || '';
+        if (previousContextValues[key] === normalizedValue) {
+            return false;
+        }
+
+        previousContextValues[key] = normalizedValue;
+        return true;
+    }
+
+    function clearTenancyContext() {
+        if (tenancyContextBox) tenancyContextBox.classList.add('d-none');
+        if (tenancySuggestSelect) tenancySuggestSelect.innerHTML = '';
+        if (tenancyViewBtn) tenancyViewBtn.classList.add('d-none');
+        if (tenancySuggestBanner) tenancySuggestBanner.classList.add('d-none');
+        if (tenancySuggestTenancyIdNode) tenancySuggestTenancyIdNode.textContent = '-';
+        if (tenancyMoveInNode) tenancyMoveInNode.textContent = '-';
+        if (tenancyMoveOutNode) tenancyMoveOutNode.textContent = '-';
+        if (tenancyRentNode) tenancyRentNode.textContent = '-';
+        if (tenancyFrequencyNode) tenancyFrequencyNode.textContent = '-';
+        if (tenancyMainTenantNode) tenancyMainTenantNode.textContent = '-';
+        if (tenancyRecurrenceHintNode) tenancyRecurrenceHintNode.textContent = '';
+        if (tenancyNoteNode) tenancyNoteNode.textContent = '';
+    }
+
+    function setTenancySuggestOptions(tenancies, selectedId) {
+        if (!tenancySuggestSelect) return;
+
+        const options = [];
+        (tenancies || []).forEach(t => {
+            const mi = t.move_in ? String(t.move_in) : '';
+            const mo = t.move_out ? String(t.move_out) : '';
+            const dateLabel = mi ? (mo ? `${mi} → ${mo}` : `${mi} →`) : '';
+            const label = `Tenancy #${t.id}${dateLabel ? ' (' + dateLabel + ')' : ''}`;
+            const selected = String(selectedId) === String(t.id) ? ' selected' : '';
+            options.push(`<option value="${t.id}"${selected}>${label}</option>`);
+        });
+
+        tenancySuggestSelect.innerHTML = options.join('');
+    }
+
+    function renderTenancyRow(row) {
+        if (!row || !tenancyContextBox) {
+            clearTenancyContext();
+            return;
+        }
+
+        const freq = getTenancyFrequency(row);
+        currentTenancyRow = row;
+        tenancyContextBox.classList.remove('d-none');
+        if (tenancySuggestTenancyIdNode) tenancySuggestTenancyIdNode.textContent = row.id ?? '-';
+        if (tenancyMoveInNode) tenancyMoveInNode.textContent = row.move_in || '-';
+        if (tenancyMoveOutNode) tenancyMoveOutNode.textContent = row.move_out || '-';
+        if (tenancyRentNode) {
+            if (row.rent !== null && row.rent !== '' && !isNaN(Number(row.rent))) {
+                tenancyRentNode.textContent = `${moneySymbol}${Number(row.rent).toFixed(2)}`;
+            } else {
+                tenancyRentNode.textContent = '-';
+            }
+        }
+        if (tenancyFrequencyNode) tenancyFrequencyNode.textContent = row.frequency || 'Monthly';
+        if (tenancyMainTenantNode) {
+            const mt = row.main_tenant;
+            tenancyMainTenantNode.textContent = mt ? `${mt.name || ''}${mt.email ? ' (' + mt.email + ')' : ''}`.trim() : '-';
+        }
+
+        if (tenancyRecurrenceHintNode) {
+            const hint = freq === 'monthly'
+                ? 'Suggested recurrence: Monthly'
+                : (freq === 'weekly' ? 'Suggested recurrence: Weekly' : '');
+            tenancyRecurrenceHintNode.textContent = hint;
+        }
+
+        if (tenancyApplyRentBtn) {
+            tenancyApplyRentBtn.onclick = () => applyRentAmountFromTenancy(row);
+        }
+        if (tenancyEnableRecurringBtn) {
+            tenancyEnableRecurringBtn.onclick = () => enableRecurringFromTenancy(row);
+        }
+
+        if (tenancyViewBtn) {
+            tenancyViewBtn.classList.toggle('d-none', !row.id);
+            tenancyViewBtn.onclick = () => {
+                if (!row.id) return;
+                extralargeModal(tenancyShowUrl(row.id), 'Tenancy Details');
+            };
+        }
+
+        const shouldSuggestLink = !tenancySuggestionDismissed
+            && (linkToTypeInput?.value === '' || linkToTypeInput?.value === 'Property')
+            && !!row.id;
+
+        if (tenancySuggestBanner) {
+            tenancySuggestBanner.classList.toggle('d-none', !shouldSuggestLink);
+        }
+
+        if (tenancyApplyBtn) {
+            tenancyApplyBtn.onclick = () => {
+                if (!row.id || !linkToTypeInput || !linkToTenancySelect) return;
+                suppressDirty = true;
+                linkToTypeInput.value = 'Tenancy';
+                linkToTypeInput.dispatchEvent(new Event('change'));
+                linkToTenancySelect.value = String(row.id);
+                linkToTenancySelect.dispatchEvent(new Event('change'));
+                suppressDirty = false;
+                tenancySuggestionDismissed = true;
+                tenancySuggestBanner?.classList.add('d-none');
+            };
+        }
+
+        if (tenancyKeepPropertyBtn) {
+            tenancyKeepPropertyBtn.onclick = () => {
+                tenancySuggestionDismissed = true;
+                tenancySuggestBanner?.classList.add('d-none');
+            };
+        }
+    }
+
+    function getTenancyFrequency(row) {
+        const freq = String(row?.frequency || '').toLowerCase();
+        return freq === 'weekly' ? 'weekly' : 'monthly';
+    }
+
+    function computeNextDueDateFromTenancy(row) {
+        const moveIn = parseYmd(row?.move_in);
+        if (!moveIn) return null;
+        const freq = getTenancyFrequency(row);
+
+        const targetDay = moveIn.getDate();
+
+        if (freq !== 'monthly' && freq !== 'weekly') {
+            return null;
+        }
+
+        if (freq === 'monthly') {
+            return safeMonthlyDate(moveIn, 1, targetDay);
+        }
+
+        return startOfDay(new Date(moveIn.getFullYear(), moveIn.getMonth(), moveIn.getDate() + 7));
+    }
+
+    function computeCyclesUntilMoveOut(row, startDueDate) {
+        const moveOut = parseYmd(row?.move_out);
+        if (!moveOut) return null;
+
+        const freq = getTenancyFrequency(row);
+        const targetDay = parseYmd(row?.move_in)?.getDate() || startDueDate.getDate();
+        const end = startOfDay(moveOut);
+
+        let count = 0;
+        let due = startOfDay(startDueDate);
+        while (due <= end && count < 500) {
+            count++;
+            if (freq === 'monthly') {
+                due = safeMonthlyDate(due, 1, targetDay);
+            } else if (freq === 'weekly') {
+                due = startOfDay(new Date(due.getFullYear(), due.getMonth(), due.getDate() + 7));
+            } else {
+                break;
+            }
+        }
+
+        return count;
+    }
+
+    function computeChildCyclesFromTenancy(row) {
+        const moveIn = parseYmd(row?.move_in);
+        if (!moveIn) return null;
+
+        const moveOut = parseYmd(row?.move_out);
+        if (!moveOut) return null;
+
+        const freq = getTenancyFrequency(row);
+        const targetDay = moveIn.getDate();
+        const end = startOfDay(moveOut);
+        let due = startOfDay(moveIn);
+        let totalPeriods = 0;
+
+        while (due <= end && totalPeriods < 500) {
+            totalPeriods++;
+            if (freq === 'monthly') {
+                due = safeMonthlyDate(due, 1, targetDay);
+            } else if (freq === 'weekly') {
+                due = startOfDay(new Date(due.getFullYear(), due.getMonth(), due.getDate() + 7));
+            } else {
+                break;
+            }
+        }
+
+        return Math.max(0, totalPeriods - 1);
+    }
+
+    function applyRecurringFromTenancy(row, confirmOverwrite = false) {
+        if (!row || !recurringSelect || recurringSelect.disabled) return false;
+
+        const freq = getTenancyFrequency(row);
+        const cycles = computeChildCyclesFromTenancy(row);
+        if (cycles !== null && cycles < 1) {
+            if (tenancyNoteNode) tenancyNoteNode.textContent = 'Cannot enable recurring: tenancy move-out allows no child invoices.';
+            return false;
+        }
+
+        const alreadySet = recurringSelect.value && recurringSelect.value !== '0';
+        if (alreadySet && confirmOverwrite) {
+            const ok = confirm('Recurring is already set. Overwrite it using tenancy schedule?');
+            if (!ok) return false;
+        }
+
+        suppressDirty = true;
+
+        if (freq === 'monthly') {
+            recurringSelect.value = '1';
+        } else {
+            recurringSelect.value = 'custom';
+            if (repeatEveryCustomInput) repeatEveryCustomInput.value = '1';
+            if (repeatTypeCustomSelect) repeatTypeCustomSelect.value = 'week';
+        }
+
+        if (cycles !== null) {
+            if (unlimitedCyclesCheckbox) unlimitedCyclesCheckbox.checked = false;
+            if (recurringCyclesInput) recurringCyclesInput.value = String(cycles);
+        } else {
+            if (unlimitedCyclesCheckbox) unlimitedCyclesCheckbox.checked = true;
+            if (recurringCyclesInput) recurringCyclesInput.value = '';
+        }
+
+        suppressDirty = false;
+        syncRecurringFields();
+
+        return true;
+    }
+
+    function applyRentScheduleFromTenancy(row, respectDirty = true) {
+        if (!row) return;
+        if (!isRentMode()) return;
+        if (respectDirty && (invoiceDateDirty || dueDateDirty)) return;
+
+        const due = computeNextDueDateFromTenancy(row);
+        if (!due) {
+            if (tenancyNoteNode) tenancyNoteNode.textContent = 'No auto schedule: tenancy move-in missing.';
+            return;
+        }
+
+        const moveOut = parseYmd(row.move_out);
+        if (moveOut && startOfDay(due) > startOfDay(moveOut)) {
+            if (tenancyNoteNode) tenancyNoteNode.textContent = 'No auto schedule: next due date is beyond tenancy move-out.';
+            return;
+        }
+
+        const dueYmd = toYmd(due);
+        const moveIn = parseYmd(row.move_in);
+        const invoiceYmd = toYmd(moveIn || due);
+
+        suppressDirty = true;
+        if (dueDateInput) dueDateInput.value = dueYmd;
+        if (invoiceDateInput) invoiceDateInput.value = invoiceYmd;
+        suppressDirty = false;
+        rentAutoApplied = true;
+
+        if (!recurringDirty) {
+            applyRecurringFromTenancy(row, false);
+        }
+
+        if (tenancyNoteNode) tenancyNoteNode.textContent = 'Auto schedule applied from tenancy. Edit dates to override. Use "Enable Recurring from Tenancy" if needed.';
+    }
+
+    function applyRentAutoSchedule(row) {
+        applyRentScheduleFromTenancy(row, true);
+    }
+
+    function applyRentAmountFromTenancy(row) {
+        if (!row) return;
+
+        const rent = Number(row.rent);
+        if (!Number.isFinite(rent) || rent <= 0) {
+            if (tenancyNoteNode) tenancyNoteNode.textContent = 'Cannot apply rent amount: tenancy rent is missing/invalid.';
+            return;
+        }
+
+        const body = document.querySelector('#items-table tbody');
+        const firstTr = body?.querySelector('tr');
+        if (!firstTr) {
+            if (tenancyNoteNode) tenancyNoteNode.textContent = 'Cannot apply rent amount: invoice items table not found.';
+            return;
+        }
+
+        const nameInput = firstTr.querySelector('.item-name');
+        const qtyInput = firstTr.querySelector('.qty');
+        const rateInput = firstTr.querySelector('.rate');
+        if (!nameInput || !qtyInput || !rateInput) {
+            if (tenancyNoteNode) tenancyNoteNode.textContent = 'Cannot apply rent amount: invoice item inputs not found.';
+            return;
+        }
+
+        const existingName = String(nameInput.value || '').trim();
+        const existingRate = parseFloat(rateInput.value) || 0;
+        const existingQty = parseFloat(qtyInput.value) || 0;
+
+        const looksUsed = existingName !== '' || existingRate > 0 || existingQty > 1;
+        if (looksUsed) {
+            const ok = confirm('Overwrite the first invoice line with tenancy rent amount?');
+            if (!ok) return;
+        }
+
+        nameInput.value = 'Rent';
+        qtyInput.value = '1';
+        rateInput.value = rent.toFixed(2);
+
+        try {
+            recalcRow(firstTr);
+        } catch (e) {
+            // ignore
+        }
+
+        if (tenancyNoteNode) tenancyNoteNode.textContent = 'Rent amount applied to the first invoice line.';
+    }
+
+    function enableRecurringFromTenancy(row) {
+        if (!row) return;
+
+        if (!recurringSelect || recurringSelect.disabled) {
+            if (tenancyNoteNode) tenancyNoteNode.textContent = 'Cannot enable recurring: recurring UI not found.';
+            return;
+        }
+
+        applyRentScheduleFromTenancy(row, false);
+
+        const applied = applyRecurringFromTenancy(row, true);
+        if (!applied) return;
+
+        recurringDirty = true;
+        if (tenancyNoteNode) tenancyNoteNode.textContent = 'Recurring enabled from tenancy. Review cycles/unlimited before saving.';
+    }
+
+    async function loadTenancyContext(propertyId, tenantId) {
+        if (!propertyId || !tenantId || !isRentMode()) {
+            clearTenancyContext();
+            return;
+        }
+
+        try {
+            const response = await fetch(tenancyContextUrl(propertyId, tenantId), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            if (!response.ok) {
+                throw new Error(`Tenancy context request failed with ${response.status}`);
+            }
+
+            const payload = await response.json();
+            const tenancies = payload?.tenancies || [];
+            if (!tenancies.length) {
+                clearTenancyContext();
+                return;
+            }
+
+            const forcedSelectedId = (linkToTypeInput?.value === 'Tenancy' && linkToTenancySelect?.value)
+                ? linkToTenancySelect.value
+                : null;
+            const selectedId = forcedSelectedId || tenancySuggestSelect?.value || payload?.selected_tenancy_id || tenancies[0]?.id;
+            setTenancySuggestOptions(tenancies, selectedId);
+
+            const selected = tenancies.find(t => String(t.id) === String(selectedId)) || tenancies[0];
+            renderTenancyRow(selected);
+            applyRentAutoSchedule(selected);
+
+            if (tenancySuggestSelect) {
+                tenancySuggestSelect.onchange = () => {
+                    const id = tenancySuggestSelect.value;
+                    const row = tenancies.find(t => String(t.id) === String(id)) || tenancies[0];
+                    renderTenancyRow(row);
+                    applyRentAutoSchedule(row);
+                };
+            }
+        } catch (error) {
+            console.warn('Tenancy context fetch failed', error);
+            clearTenancyContext();
+        }
+    }
+
+    function maybeLoadTenancyContext() {
+        if (!isRentMode()) {
+            lastTenancyDriverKey = null;
+            rentAutoApplied = false;
+            clearTenancyContext();
+            return;
+        }
+
+        const propertyId = linkToPropertySelect?.value || '';
+        const tenantId = (chargeToTypeInput?.value === 'Tenant') ? (chargeToTenantSelect?.value || '') : '';
+        if (!propertyId || !tenantId || (linkToTypeInput?.value !== 'Property' && linkToTypeInput?.value !== 'Tenancy')) {
+            lastTenancyDriverKey = null;
+            clearTenancyContext();
+            return;
+        }
+
+        const driverKey = `rent|${propertyId}|${tenantId}`;
+        if (driverKey !== lastTenancyDriverKey) {
+            tenancySuggestionDismissed = false;
+            rentAutoApplied = false;
+            lastTenancyDriverKey = driverKey;
+        }
+
+        loadTenancyContext(propertyId, tenantId);
+    }
 
     function clearPropertyContext() {
         if (propertyContextBox) {
@@ -789,7 +1384,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadPropertyContext(propertyId) {
-        if (!propertyId || linkToTypeInput?.value !== 'Property') {
+        // Property context is useful for rent flow even when Link To is switched to Tenancy.
+        if (!propertyId || (linkToTypeInput?.value !== 'Property' && linkToTypeInput?.value !== 'Tenancy')) {
             clearPropertyContext();
             return;
         }
@@ -814,24 +1410,69 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     linkToTypeInput?.addEventListener('change', () => {
-        if (linkToTypeInput.value === 'Property' && linkToPropertySelect?.value) {
-            loadPropertyContext(linkToPropertySelect.value);
+        if (!hasContextDropdownChanged('linkToType', linkToTypeInput.value)) {
             return;
         }
 
-        clearPropertyContext();
+        if (linkToTypeInput.value === 'Property' && linkToPropertySelect?.value) {
+            loadPropertyContext(linkToPropertySelect.value);
+            maybeLoadTenancyContext();
+            return;
+        }
+
+        if ((linkToTypeInput.value === 'Property' || linkToTypeInput.value === 'Tenancy') && linkToPropertySelect?.value) {
+            loadPropertyContext(linkToPropertySelect.value);
+        } else {
+            clearPropertyContext();
+        }
+        maybeLoadTenancyContext();
     });
 
     linkToPropertySelect?.addEventListener('change', () => {
-        if (linkToTypeInput?.value === 'Property') {
-            loadPropertyContext(linkToPropertySelect.value);
+        if (!hasContextDropdownChanged('linkToProperty', linkToPropertySelect.value)) {
+            return;
         }
+
+        if (linkToTypeInput?.value === 'Property' || linkToTypeInput?.value === 'Tenancy') {
+            loadPropertyContext(linkToPropertySelect.value);
+            maybeLoadTenancyContext();
+        }
+    });
+
+    linkToTenancySelect?.addEventListener('change', () => {
+        if (!hasContextDropdownChanged('linkToTenancy', linkToTenancySelect.value)) {
+            return;
+        }
+
+        maybeLoadTenancyContext();
+    });
+
+    chargeToTypeInput?.addEventListener('change', () => {
+        if (!hasContextDropdownChanged('chargeToType', chargeToTypeInput.value)) {
+            return;
+        }
+
+        maybeLoadTenancyContext();
+    });
+
+    chargeToTenantSelect?.addEventListener('change', () => {
+        if (!hasContextDropdownChanged('chargeToTenant', chargeToTenantSelect.value)) {
+            return;
+        }
+
+        maybeLoadTenancyContext();
     });
 
     if (linkToTypeInput?.value === 'Property' && linkToPropertySelect?.value) {
         loadPropertyContext(linkToPropertySelect.value);
+        maybeLoadTenancyContext();
     } else {
-        clearPropertyContext();
+        if ((linkToTypeInput?.value === 'Property' || linkToTypeInput?.value === 'Tenancy') && linkToPropertySelect?.value) {
+            loadPropertyContext(linkToPropertySelect.value);
+        } else {
+            clearPropertyContext();
+        }
+        maybeLoadTenancyContext();
     }
 
     const tableBody = document.querySelector('#items-table tbody');
@@ -1019,6 +1660,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     penaltyEnabledCheckbox?.addEventListener('change', syncPenaltyUI);
     syncPenaltyUI();
+
 });
 </script>
 @endpush
+

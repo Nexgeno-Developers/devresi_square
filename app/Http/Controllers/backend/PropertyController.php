@@ -245,6 +245,7 @@ class PropertyController
             case 'tenancy':
                 // Fetch tenancies for all statuses
                 $tenancies = Tenancy::where('property_id', $propertyId)
+                    ->with(['tenantMembers.user', 'tenancySubStatus'])
                     ->get(); // Fetch all tenancies for the property
 
                 // Get distinct status types for filtering

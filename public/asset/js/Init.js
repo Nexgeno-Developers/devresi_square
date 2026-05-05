@@ -17,6 +17,19 @@ toastr.options = {
 };
 
 //bootstarp modals
+function extralargeModal(url, header) {
+    $("#extraLargeModal .modal-body").html("Loading...");
+    $("#extraLargeModal .modal-title").html("Loading...");
+
+    $("#extraLargeModal").modal("show");
+    $.ajax({
+        url: url,
+        success: function (response) {
+            $("#extraLargeModal .modal-body").html(response);
+            $("#extraLargeModal .modal-title").html(header);
+        },
+    });
+}
 function largeModal(url, header) {
     $("#largeModal .modal-body").html("Loading...");
     $("#largeModal .modal-title").html("Loading...");

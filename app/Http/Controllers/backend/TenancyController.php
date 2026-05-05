@@ -10,6 +10,7 @@ use App\Models\TenantMember;
 use App\Models\TenancyType;
 use App\Models\TenancySubStatus;
 use App\Models\PropertyManagerTenancy;
+use App\Models\SysSaleInvoice;
 use Illuminate\Http\Request;
 
 class TenancyController
@@ -155,6 +156,108 @@ class TenancyController
             'propertyManagers'
         ])->findOrFail($id);
         return view('backend.tenancies.show', compact('tenancy'));
+    }
+
+    public function rentLedger($id)
+    {
+        $tenancy = Tenancy::with([
+            'property',
+            'tenantMembers.user',
+            'tenancyType',
+            'tenancySubStatus',
+            'propertyManagers',
+        ])->findOrFail($id);
+
+        $tenantUserIds = $tenancy->tenantMembers
+            ->pluck('user_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $invoices = SysSaleInvoice::query()
+            ->with([
+                'payments' => function ($query) {
+                    $query->where(function ($paymentQuery) {
+                        $paymentQuery->whereNull('is_voided')->orWhere('is_voided', false);
+                    })->with(['paymentMethod', 'bankAccount'])->orderBy('payment_date')->orderBy('id');
+                },
+                'chargeTo',
+                'user',
+            ])
+            ->where(function ($query) use ($tenancy, $tenantUserIds) {
+                $query->where(function ($direct) use ($tenancy) {
+                    $direct->where('link_to_type', 'Tenancy')
+                        ->where('link_to_id', $tenancy->id);
+                });
+
+                if (!empty($tenantUserIds) && $tenancy->property_id) {
+                    $query->orWhere(function ($propertyLinked) use ($tenancy, $tenantUserIds) {
+                        $propertyLinked->where('link_to_type', 'Property')
+                            ->where('link_to_id', $tenancy->property_id)
+                            ->whereIn('charge_to_id', $tenantUserIds);
+                    });
+                }
+            })
+            ->orderByDesc('invoice_date')
+            ->orderByDesc('id')
+            ->get();
+
+        $invoiceRows = $invoices->map(function (SysSaleInvoice $invoice) use ($tenancy) {
+            $paid = (float) $invoice->payments->sum('amount');
+            $total = (float) ($invoice->total_amount ?? 0);
+            $balance = $invoice->balance_amount === null
+                ? max(0, $total - $paid)
+                : max(0, (float) $invoice->balance_amount);
+
+            return [
+                'invoice' => $invoice,
+                'paid' => $paid,
+                'balance' => $balance,
+                'source' => $invoice->link_to_type === 'Tenancy' && (int) $invoice->link_to_id === (int) $tenancy->id
+                    ? 'Tenancy'
+                    : 'Property',
+                'latest_payment_date' => $invoice->payments->max('payment_date'),
+            ];
+        });
+
+        $payments = $invoiceRows
+            ->flatMap(function (array $row) {
+                return $row['invoice']->payments->map(function ($payment) use ($row) {
+                    return [
+                        'invoice' => $row['invoice'],
+                        'payment' => $payment,
+                    ];
+                });
+            })
+            ->sortByDesc(fn (array $row) => $row['payment']->payment_date . '-' . str_pad((string) $row['payment']->id, 10, '0', STR_PAD_LEFT))
+            ->values();
+
+        $latestPayment = $payments->first();
+
+        $summary = [
+            'invoice_count' => $invoices->count(),
+            'total_invoiced' => (float) $invoices->sum(fn (SysSaleInvoice $invoice) => (float) ($invoice->total_amount ?? 0)),
+            'total_paid' => (float) $invoiceRows->sum('paid'),
+            'balance' => (float) $invoiceRows->sum('balance'),
+            'latest_payment_date' => $latestPayment ? $latestPayment['payment']->payment_date : null,
+        ];
+
+        if ($summary['invoice_count'] === 0) {
+            $summary['status'] = 'Not Invoiced';
+            $summary['status_class'] = 'secondary';
+        } elseif ($summary['total_invoiced'] > 0 && $summary['balance'] <= 0.0001) {
+            $summary['status'] = 'Paid';
+            $summary['status_class'] = 'success';
+        } elseif ($summary['total_paid'] > 0 && $summary['balance'] > 0) {
+            $summary['status'] = 'Partial';
+            $summary['status_class'] = 'warning';
+        } else {
+            $summary['status'] = 'Due';
+            $summary['status_class'] = 'danger';
+        }
+
+        return view('backend.tenancies.rent-ledger', compact('tenancy', 'invoiceRows', 'payments', 'summary'));
     }
 
     // Show the form for editing the specified tenancy

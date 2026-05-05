@@ -50,8 +50,8 @@
                                 <tr>
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $tenancy->status }}</td>
-                                    <td>{{ $tenancy->sub_status }}</td>
-                                    <td>{{ $tenancy->rent }}</td>
+                                    <td>{{ $tenancy->tenancySubStatus->name ?? $tenancy->sub_status ?? '-' }}</td>
+                                    <td class="text-end">{{ number_format((float) $tenancy->rent, 2) }}</td>
                                     <td>{{ $tenancy->deposit }}</td>
                                     <td>{{ $tenancy->move_in }}</td>
                                     <td>{{ $tenancy->move_out }}</td>
@@ -59,6 +59,9 @@
                                     <td>{{ $tenancy->extension_date }}</td>
                                     <td>
                                         <div class="d-flex justify-content-end">
+                                            <a href="{{ route('admin.tenancies.rent-ledger', $tenancy->id) }}" class="btn btn-sm btn-outline-primary me-1" title="Rent Ledger">
+                                                Rent Ledger
+                                            </a>
                                             <button data-url="{{ route('admin.tenancies.show', $tenancy->id) }}" class="popup-tab-tenancy-view btn btn-sm btn-outline-info me-1" title="View Tenancy">
                                                 <i class="bi bi-eye"></i>
                                             </button>

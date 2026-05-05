@@ -35,13 +35,14 @@
         enctype="multipart/form-data">
         @csrf
         <input type="hidden" name="property_id" class="form-control" value="{{ $tenancy->property_id }}">
+        <input type="hidden" name="property_id" class="form-control" value="{{ $tenancy->property_id }}">
 
         <div class="form-group">
             <button type="button" class="btn btn-outline-primary btn-sm" id="addUserBtn">
                 Quick Add New Tenant
             </button>
             <label for="tenant_id">Select Tenants</label>
-            <select name="user_id[]" id="tenant_id" multiple class="form-control select2" required>
+            <select name="user_id[]" id="tenant_id" multiple class="form-control select2">
                 @foreach ($tenants as $user)
                     <option value="{{ $user->id }}"
                         {{ in_array($user->id, $tenancy->tenantMembers->pluck('user_id')->toArray()) ? 'selected' : '' }}>

@@ -10,12 +10,16 @@ use Illuminate\Console\Command;
 
 class ApplySaleInvoicePenalties extends Command
 {
-    protected $signature = 'sale-invoices:apply-penalties {--chunk=100}';
+    protected $signature = 'sale-invoices:apply-penalties
+        {--chunk=100}
+        {--date= : YYYY-MM-DD override for testing}
+        {--as-of= : YYYY-MM-DD override for testing}';
     protected $description = 'Apply late-payment penalties to overdue sale invoices (idempotent)';
 
     public function handle(): int
     {
-        $now = Carbon::now();
+        $override = $this->option('as-of') ?: $this->option('date');
+        $now = $override ? Carbon::parse((string) $override) : Carbon::now();
         $today = $now->copy()->startOfDay();
         $chunk = (int) ($this->option('chunk') ?? 100);
         $chunk = max(1, $chunk);
@@ -48,4 +52,3 @@ class ApplySaleInvoicePenalties extends Command
         return self::SUCCESS;
     }
 }
-

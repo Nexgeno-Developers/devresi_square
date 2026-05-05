@@ -56,6 +56,134 @@
         </div>
     @endif
 
+    @if(($recurringInfo['enabled'] ?? false))
+        @php
+            $isChild = (bool) ($recurringInfo['is_child'] ?? false);
+            $targetSeq = $recurringInfo['target_seq'] ?? null;
+            $maxGeneratedSeq = (int) ($recurringInfo['max_generated_seq'] ?? 0);
+            $remainingToGenerate = $recurringInfo['remaining_to_generate'] ?? null;
+            $nextSeq = $recurringInfo['next_seq'] ?? null;
+        @endphp
+        <div class="alert alert-secondary" style="max-width:900px;margin:0 auto 12px auto;">
+            <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                <div>
+                    <strong>Recurring Invoice:</strong>
+                    {{ $recurringInfo['interval_label'] ?? '-' }}
+                    <span class="text-muted">• Master #{{ (int) ($recurringInfo['master_id'] ?? 0) }}</span>
+                </div>
+                <div>
+                    @if(($recurringInfo['unlimited'] ?? false))
+                        <span class="badge bg-dark">Unlimited</span>
+                    @elseif($targetSeq)
+                        <span class="badge bg-dark">Child invoices: {{ (int) ($recurringInfo['cycles_total'] ?? 0) }}</span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="mt-1" style="font-size: 13px;">
+                @if($isChild && $targetSeq)
+                    Cycle: {{ (int) ($recurringInfo['current_seq'] ?? 0) }} of {{ (int) $targetSeq }}
+                    <span class="text-muted">• Left: {{ (int) ($recurringInfo['cycles_left'] ?? 0) }}</span>
+                @elseif($isChild)
+                    Cycle: {{ (int) ($recurringInfo['current_seq'] ?? 0) }}
+                @elseif($targetSeq)
+                    Generated: {{ $maxGeneratedSeq }} of {{ (int) $targetSeq }}
+                    <span class="text-muted">• Remaining: {{ (int) ($remainingToGenerate ?? 0) }}</span>
+                @else
+                    Generated up to cycle: {{ $maxGeneratedSeq }}
+                @endif
+                @if($nextSeq)
+                    <div>
+                        Next child invoice: cycle {{ (int) $nextSeq }}
+                        <span class="text-muted">
+                            &bull; Invoice date: {{ $recurringInfo['next_invoice_date'] ?? '-' }}
+                            &bull; Due date: {{ $recurringInfo['next_due_date'] ?? '-' }}
+                        </span>
+                    </div>
+                @endif
+            </div>
+        </div>
+    @endif
+
+    @if(isset($notificationInfo))
+        @php
+            $send = $notificationInfo['send'] ?? null;
+            $rem = $notificationInfo['reminder'] ?? null;
+            $ov = $notificationInfo['overdue'] ?? null;
+            $badge = function (?string $status) {
+                return match ($status) {
+                    'sent' => 'success',
+                    'failed' => 'danger',
+                    'pending' => 'primary',
+                    default => 'secondary',
+                };
+            };
+        @endphp
+        <div class="alert alert-light" style="max-width:900px;margin:0 auto 12px auto;">
+            <div style="font-size: 13px;">
+                <div>
+                    <strong>Invoice Email:</strong>
+                    @if($send)
+                        <span class="badge bg-{{ $badge($send['status'] ?? null) }}">{{ strtoupper($send['status'] ?? '-') }}</span>
+                        <span class="text-muted">Attempts: {{ (int) ($send['attempt'] ?? 0) }}/{{ (int) ($send['max_attempts'] ?? 0) }}</span>
+                        @if(!empty($send['sent_at']))
+                            <span class="text-muted">• Sent: {{ $send['sent_at'] }}</span>
+                        @elseif(!empty($send['last_attempt_at']))
+                            <span class="text-muted">• Last try: {{ $send['last_attempt_at'] }}</span>
+                        @endif
+                        @if(!empty($send['error']))
+                            <div class="text-danger">Error: {{ $send['error'] }}</div>
+                        @endif
+                    @else
+                        <span class="badge bg-secondary">NOT SENT</span>
+                    @endif
+                </div>
+
+                <div class="mt-1">
+                    <strong>Reminder Email:</strong>
+                    <span class="text-muted">
+                        scheduled on {{ $notificationInfo['reminder_on'] ?? '-' }}
+                        ({{ (int) ($notificationInfo['reminder_days_before_due'] ?? 0) }} day(s) before due)
+                    </span>
+                    @if($rem)
+                        <span class="badge bg-{{ $badge($rem['status'] ?? null) }} ms-1">{{ strtoupper($rem['status'] ?? '-') }}</span>
+                        @if(!empty($rem['sent_at']))
+                            <span class="text-muted">• Sent: {{ $rem['sent_at'] }}</span>
+                        @elseif(!empty($rem['last_attempt_at']))
+                            <span class="text-muted">• Last try: {{ $rem['last_attempt_at'] }}</span>
+                        @endif
+                        @if(!empty($rem['error']))
+                            <div class="text-danger">Error: {{ $rem['error'] }}</div>
+                        @endif
+                    @else
+                        <span class="badge bg-secondary ms-1">NOT SENT</span>
+                    @endif
+                </div>
+
+                <div class="mt-1">
+                    <strong>Overdue Email:</strong>
+                    <span class="text-muted">
+                        scheduled on {{ $notificationInfo['overdue_on'] ?? '-' }}
+                        ({{ (int) ($notificationInfo['overdue_days_after_due'] ?? 0) }} day(s) after due)
+                    </span>
+                    @if($ov)
+                        <span class="badge bg-{{ $badge($ov['status'] ?? null) }} ms-1">{{ strtoupper($ov['status'] ?? '-') }}</span>
+                        @if(!empty($ov['sent_at']))
+                            <span class="text-muted">â€¢ Sent: {{ $ov['sent_at'] }}</span>
+                        @elseif(!empty($ov['last_attempt_at']))
+                            <span class="text-muted">â€¢ Last try: {{ $ov['last_attempt_at'] }}</span>
+                        @endif
+                        @if(!empty($ov['error']))
+                            <div class="text-danger">Error: {{ $ov['error'] }}</div>
+                        @endif
+                    @else
+                        <span class="badge bg-secondary ms-1">NOT SENT</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
     <div class="invoice-shell">
         <div class="invoice-hero">
             <div class="invoice-grid">
