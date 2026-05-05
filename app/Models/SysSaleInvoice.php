@@ -25,6 +25,7 @@ class SysSaleInvoice extends Model
         'link_to_id' => 'integer',
         'charge_to_id' => 'integer',
         'bank_account_id' => 'integer',
+        'reminder_days_before_due' => 'integer',
         'recurring_master_invoice_id' => 'integer',
         'recurring_sequence' => 'integer',
         'recurring_month_interval' => 'integer',

@@ -249,6 +249,7 @@ Route::middleware('auth')->group(function () {
         Route::prefix('tenancies')->name('tenancies.')->controller(TenancyController::class)->group(function () {
             Route::get('/create', 'create')->name('create');  // Show create form
             Route::post('/store', 'store')->name('store');  // Store new tenancy
+            Route::get('/{id}/rent-ledger', 'rentLedger')->name('rent-ledger');
             Route::get('/{id}', 'show')->name('show');  // Show individual tenancy
             Route::get('/{id}/edit', 'edit')->name('edit');  // Show edit form
             Route::post('/{id}/update', 'update')->name('update');  // Update tenancy
@@ -524,6 +525,8 @@ Route::middleware('auth')->group(function () {
                 ->name('sale.invoices.search');
             Route::get('sale/invoices/property-context/{property}', [SaleInvoiceController::class, 'propertyContext'])
                 ->name('sale.invoices.propertyContext');
+            Route::get('sale/invoices/tenancy-context/{property}/{tenant}', [SaleInvoiceController::class, 'tenancyContext'])
+                ->name('sale.invoices.tenancyContext');
             Route::get('sale/invoices/{invoice}/json', [SaleInvoiceController::class, 'ajaxGetForReceipts'])
                 ->name('sale.invoices.json');
             Route::resource('sale/invoices', SaleInvoiceController::class)

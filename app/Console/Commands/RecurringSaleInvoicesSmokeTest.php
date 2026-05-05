@@ -64,16 +64,26 @@ class RecurringSaleInvoicesSmokeTest extends Command
             ->where('recurring_sequence', 3)
             ->first();
 
-        $expectedSeq2 = $masterDate->copy()->addMonths(1)->toDateString();
-        $expectedSeq3 = $masterDate->copy()->addMonths(2)->toDateString();
+        $targetDay = (int) $dueDate->copy()->startOfDay()->day;
+        $offsetDaysDerived = max(0, (int) $masterDate->copy()->startOfDay()->diffInDays($dueDate->copy()->startOfDay(), false));
+
+        $expectedSeq2Due = $this->safeMonthlyDate($dueDate->copy()->startOfDay(), 1, $targetDay)->toDateString();
+        $expectedSeq3Due = $this->safeMonthlyDate(Carbon::parse($expectedSeq2Due)->startOfDay(), 1, $targetDay)->toDateString();
+
+        $expectedSeq2Invoice = Carbon::parse($expectedSeq2Due)->startOfDay()->subDays($offsetDaysDerived)->toDateString();
+        $expectedSeq3Invoice = Carbon::parse($expectedSeq3Due)->startOfDay()->subDays($offsetDaysDerived)->toDateString();
 
         $this->assertOrCollect(
-            $childSeq2 && $childSeq2->invoice_date === $expectedSeq2,
-            'Finite recurring: child seq2 should exist with correct invoice_date'
+            $childSeq2
+                && $childSeq2->due_date === $expectedSeq2Due
+                && $childSeq2->invoice_date === $expectedSeq2Invoice,
+            'Finite recurring: child seq2 should exist with correct due_date and invoice_date'
         , $fails, $this->option('fail-fast'));
         $this->assertOrCollect(
-            $childSeq3 && $childSeq3->invoice_date === $expectedSeq3,
-            'Finite recurring: child seq3 should exist with correct invoice_date'
+            $childSeq3
+                && $childSeq3->due_date === $expectedSeq3Due
+                && $childSeq3->invoice_date === $expectedSeq3Invoice,
+            'Finite recurring: child seq3 should exist with correct due_date and invoice_date'
         , $fails, $this->option('fail-fast'));
 
         // Scenario 2: Editing master affects future generations
@@ -98,16 +108,24 @@ class RecurringSaleInvoicesSmokeTest extends Command
                 ->where('recurring_sequence', 6)
                 ->first();
 
-            $expectedSeq6 = $masterDate->copy()->addMonths(10)->toDateString(); // (seq6 - seq1) * 2 months = 5*2 = 10
+            $expectedDueSeq6 = $dueDate->copy()->startOfDay();
+            for ($i = 0; $i < 5; $i++) {
+                $expectedDueSeq6 = $this->safeMonthlyDate($expectedDueSeq6, 2, $targetDay);
+            }
+            $expectedInvoiceSeq6 = $expectedDueSeq6->copy()->subDays($offsetDaysDerived)->toDateString();
+            $expectedDueSeq6 = $expectedDueSeq6->toDateString();
+
             $this->assertOrCollect(
-                $recreatedSeq6 && $recreatedSeq6->invoice_date === $expectedSeq6,
-                'Master edit: seq6 invoice_date should follow updated interval for missing sequence'
+                $recreatedSeq6
+                    && $recreatedSeq6->due_date === $expectedDueSeq6
+                    && $recreatedSeq6->invoice_date === $expectedInvoiceSeq6,
+                'Master edit: seq6 due_date and invoice_date should follow updated interval for missing sequence'
             , $fails, $this->option('fail-fast'));
         } else {
             $this->assertOrCollect(false, 'Master edit: expected child seq6 exists for deletion test', $fails, $this->option('fail-fast'));
         }
 
-        // Scenario 3: Custom + unlimited (custom unit = month)
+        // Scenario 3: Custom + unlimited (custom unit = year)
         $masterUnlimited = $this->createMasterInvoice($service, $user, $masterDate, $dueDate, [
             'recurring_month_interval' => null,
             'unlimited_cycles' => true,
@@ -256,5 +274,22 @@ class RecurringSaleInvoicesSmokeTest extends Command
             throw new \RuntimeException($message);
         }
     }
-}
 
+    private function safeMonthlyDate(Carbon $baseDate, int $monthsToAdd, int $targetDay): Carbon
+    {
+        $monthsToAdd = max(1, (int) $monthsToAdd);
+        $targetDay = max(1, min(31, (int) $targetDay));
+
+        $baseYear = (int) $baseDate->year;
+        $baseMonthIndex = (int) $baseDate->month - 1; // 0..11
+        $totalMonths = ($baseYear * 12) + $baseMonthIndex + $monthsToAdd;
+
+        $year = intdiv($totalMonths, 12);
+        $month = ($totalMonths % 12) + 1;
+
+        $lastDay = Carbon::create($year, $month, 1)->endOfMonth()->day;
+        $day = min($targetDay, $lastDay);
+
+        return Carbon::create($year, $month, $day)->startOfDay();
+    }
+}

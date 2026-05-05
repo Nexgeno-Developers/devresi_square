@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Backend\Accounting\Sale;
 
 use App\Http\Controllers\Backend\Accounting\BaseCrudController;
+use App\Jobs\SendNotificationJob;
+use App\Models\EmailTemplate;
 use App\Models\SysInvoiceHeader;
 use App\Models\SysSaleInvoice;
 use App\Models\SysSaleInvoiceItem;
@@ -19,12 +21,14 @@ use App\Models\PaymentMethod;
 use App\Models\SysPayment;
 use App\Models\GlJournal;
 use App\Models\GlAccount;
+use App\Models\NotificationLog;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\SaleInvoiceLifecycleService;
 use App\Services\Accounting\SaleInvoicePenaltyService;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -46,6 +50,7 @@ class SaleInvoiceController extends BaseCrudController
         ['key' => 'customer_available_credit', 'label' => 'Customer Credit', 'type' => 'money'],
         ['key' => 'invoice_date', 'label' => 'Invoice Date', 'type' => 'date'],
         ['key' => 'due_date', 'label' => 'Due Date', 'type' => 'date'],
+        ['key' => 'reminder_days_before_due', 'label' => 'Reminder Days'],
         ['key' => 'total_amount', 'label' => 'Total', 'type' => 'money'],
         ['key' => 'balance_amount', 'label' => 'Balance', 'type' => 'money'],
         ['key' => 'status', 'label' => 'Status'],
@@ -93,6 +98,7 @@ class SaleInvoiceController extends BaseCrudController
             ['name' => 'bank_account_id', 'label' => 'Bank Account', 'type' => 'select'],
             ['name' => 'invoice_date', 'label' => 'Invoice Date', 'type' => 'date', 'required' => true],
             ['name' => 'due_date', 'label' => 'Due Date', 'type' => 'date'],
+            ['name' => 'reminder_days_before_due', 'label' => 'Reminder Days Before Due', 'type' => 'number', 'min' => '0', 'max' => '365'],
             ['name' => 'total_amount', 'label' => 'Total Amount', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'required' => true],
             ['name' => 'balance_amount', 'label' => 'Balance Amount', 'type' => 'number', 'step' => '0.01', 'min' => '0', 'required' => true],
             ['name' => 'status', 'label' => 'Status', 'type' => 'select', 'options' => ['draft' => 'Draft', 'issued' => 'Issued', 'paid' => 'Paid', 'partial' => 'Partial', 'cancelled' => 'Cancelled']],
@@ -118,6 +124,7 @@ class SaleInvoiceController extends BaseCrudController
             'invoice_no' => ['required', 'string', 'max:50', $uniqueInvoiceNo],
             'invoice_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date'],
+            'reminder_days_before_due' => ['nullable', 'integer', 'min:0', 'max:365'],
             'total_amount' => ['nullable', 'numeric', 'min:0'],
             'balance_amount' => ['nullable', 'numeric', 'min:0'],
             'status' => ['nullable', Rule::in(['draft', 'issued', 'paid', 'partial', 'cancelled'])],
@@ -147,7 +154,7 @@ class SaleInvoiceController extends BaseCrudController
             // Recurring schedule inputs (normalized into sys_sale_invoices columns before persisting)
             'recurring' => ['required', 'string', Rule::in(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', 'custom'])],
             'unlimited_cycles' => ['nullable', 'boolean'],
-            'recurring_cycles' => ['nullable', 'integer', 'min:2'],
+            'recurring_cycles' => ['nullable', 'integer', 'min:1'],
             'repeat_every_custom' => ['nullable', 'integer', 'min:1', 'required_if:recurring,custom'],
             'repeat_type_custom' => ['nullable', 'string', Rule::in(['day', 'week', 'month', 'year']), 'required_if:recurring,custom'],
 
@@ -299,6 +306,7 @@ class SaleInvoiceController extends BaseCrudController
         $invoice->refresh();
 
         $this->postInvoiceIfNeeded($invoice);
+        $this->sendInvoiceEmailOnCreation($invoice);
 
         return redirect()->route($this->routeName . '.index')
             ->with('success', $this->title . ' created successfully.');
@@ -333,6 +341,14 @@ class SaleInvoiceController extends BaseCrudController
 
         if (! $request->filled('invoice_no')) {
             $request->merge(['invoice_no' => $invoice->invoice_no ?? $this->nextInvoiceNo()]);
+        }
+
+        if (
+            ! $request->filled('charge_to_id')
+            && $request->input('charge_to_type') === $invoice->charge_to_type
+            && ! empty($invoice->charge_to_id)
+        ) {
+            $request->merge(['charge_to_id' => $invoice->charge_to_id]);
         }
 
         if (! $request->filled('user_id')) {
@@ -388,14 +404,14 @@ class SaleInvoiceController extends BaseCrudController
 
                 if ($newCyclesTotal > 0) {
                     $masterSeq = (int) ($invoice->recurring_sequence ?? 1);
-                    $targetMaxSeq = $masterSeq + $newCyclesTotal - 1;
+                    $targetMaxSeq = $masterSeq + $newCyclesTotal;
 
                     $existingMaxSeq = (int) (SysSaleInvoice::query()
                         ->where('recurring_master_invoice_id', $invoice->id)
                         ->max('recurring_sequence') ?? 0);
 
                     if ($existingMaxSeq > 0 && $existingMaxSeq > $targetMaxSeq) {
-                        $minCyclesTotal = $existingMaxSeq - $masterSeq + 1;
+                        $minCyclesTotal = $existingMaxSeq - $masterSeq;
                         $minCyclesTotal = max(1, $minCyclesTotal);
 
                         $validator->errors()->add(
@@ -483,6 +499,7 @@ class SaleInvoiceController extends BaseCrudController
         app(SaleInvoiceLifecycleService::class)->postInvoiceIfNeeded($invoice);
     }
 
+
     public function show(int $id)
     {
         $invoice = SysSaleInvoice::with([
@@ -512,6 +529,9 @@ class SaleInvoiceController extends BaseCrudController
         $paid = $invoice->payments->sum('amount');
         $balance = $invoice->balance_amount ?? max(0, $total - $paid);
 
+        $recurringInfo = $this->buildRecurringInfo($invoice);
+        $notificationInfo = $this->buildNotificationInfo($invoice);
+
         return view($this->viewPath . '.show', [
             'title' => 'Invoice ' . $invoice->invoice_no,
             'invoice' => $invoice,
@@ -525,7 +545,304 @@ class SaleInvoiceController extends BaseCrudController
             'credits' => $customer?->creditReceipts ?? collect(),
             'bankOptions' => $this->options()['bank_id'] ?? [],
             'paymentOptions' => $this->options()['payment_method_id'] ?? [],
+            'recurringInfo' => $recurringInfo,
+            'notificationInfo' => $notificationInfo,
         ]);
+    }
+
+    private function buildRecurringInfo(SysSaleInvoice $invoice): array
+    {
+        $isChild = !empty($invoice->recurring_master_invoice_id);
+        $master = $isChild ? SysSaleInvoice::query()->find($invoice->recurring_master_invoice_id) : $invoice;
+
+        if (! $master) {
+            return ['enabled' => false];
+        }
+
+        $enabled = !empty($master->recurring_month_interval) || !empty($master->recurring_custom_unit);
+        if (! $enabled) {
+            return ['enabled' => false];
+        }
+
+        $intervalLabel = null;
+        if (!empty($master->recurring_month_interval)) {
+            $intervalLabel = 'Every ' . (int) $master->recurring_month_interval . ' month(s)';
+        } elseif (!empty($master->recurring_custom_unit)) {
+            $intervalLabel = 'Every ' . (int) ($master->recurring_custom_interval ?? 1) . ' ' . $master->recurring_custom_unit . '(s)';
+        }
+
+        $unlimited = (bool) ($master->unlimited_cycles ?? false);
+        $cyclesTotal = $unlimited ? null : (int) ($master->recurring_cycles ?? 0);
+        if (! $unlimited && $cyclesTotal <= 0) {
+            $cyclesTotal = null;
+        }
+
+        $masterSeq = (int) ($master->recurring_sequence ?? 1);
+        $targetSeq = $cyclesTotal ? ($masterSeq + $cyclesTotal) : null;
+
+        $currentSeq = (int) ($invoice->recurring_sequence ?? ($isChild ? 0 : 1));
+        if (! $isChild) {
+            $currentSeq = $masterSeq;
+        }
+
+        $maxChildSeq = (int) (SysSaleInvoice::query()
+            ->where('recurring_master_invoice_id', $master->id)
+            ->max('recurring_sequence') ?? 0);
+        $maxGeneratedSeq = max($masterSeq, $maxChildSeq);
+
+        $cyclesLeft = null;
+        if ($targetSeq !== null) {
+            $cyclesLeft = max(0, $targetSeq - $currentSeq);
+        }
+
+        $remainingToGenerate = null;
+        if ($targetSeq !== null) {
+            $remainingToGenerate = max(0, $targetSeq - $maxGeneratedSeq);
+        }
+
+        $nextSchedule = $this->nextRecurringScheduleInfo($master, $maxGeneratedSeq, $targetSeq, $unlimited);
+
+        return [
+            'enabled' => true,
+            'is_child' => $isChild,
+            'master_id' => (int) $master->id,
+            'current_seq' => $currentSeq,
+            'max_generated_seq' => $maxGeneratedSeq,
+            'interval_label' => $intervalLabel,
+            'unlimited' => $unlimited,
+            'cycles_total' => $cyclesTotal,
+            'target_seq' => $targetSeq,
+            'cycles_left' => $cyclesLeft,
+            'remaining_to_generate' => $remainingToGenerate,
+            'next_seq' => $nextSchedule['seq'] ?? null,
+            'next_invoice_date' => $nextSchedule['invoice_date'] ?? null,
+            'next_due_date' => $nextSchedule['due_date'] ?? null,
+        ];
+    }
+
+    private function nextRecurringScheduleInfo(SysSaleInvoice $master, int $maxGeneratedSeq, ?int $targetSeq, bool $unlimited): ?array
+    {
+        $masterSeq = (int) ($master->recurring_sequence ?? 1);
+        $nextSeq = max($masterSeq + 1, $maxGeneratedSeq + 1);
+
+        if (! $unlimited && $targetSeq !== null && $nextSeq > $targetSeq) {
+            return null;
+        }
+
+        if (empty($master->invoice_date)) {
+            return null;
+        }
+
+        $rawOffsetDays = null;
+        if (!empty($master->due_date)) {
+            $rawOffsetDays = \Carbon\Carbon::parse($master->invoice_date)
+                ->startOfDay()
+                ->diffInDays(\Carbon\Carbon::parse($master->due_date)->startOfDay(), false);
+        }
+
+        $isMonthlyRecurrence = !empty($master->recurring_month_interval)
+            || (($master->recurring_custom_unit ?? null) === 'month');
+
+        if ($isMonthlyRecurrence && !empty($master->due_date) && $rawOffsetDays !== null && (int) $rawOffsetDays > 0) {
+            $monthsStep = max(1, (int) ($master->recurring_month_interval ?: ($master->recurring_custom_interval ?? 1)));
+            $steps = max(1, $nextSeq - $masterSeq);
+            $baseDue = \Carbon\Carbon::parse($master->due_date)->startOfDay();
+            $targetDay = (int) $baseDue->day;
+            $due = $this->safeMonthlyDateForRecurringInfo($baseDue, $monthsStep * $steps, $targetDay);
+            $invoiceDate = $due->copy()->subDays((int) $rawOffsetDays)->startOfDay();
+
+            return [
+                'seq' => $nextSeq,
+                'invoice_date' => $invoiceDate->toDateString(),
+                'due_date' => $due->toDateString(),
+            ];
+        }
+
+        $unit = !empty($master->recurring_month_interval) ? 'month' : ($master->recurring_custom_unit ?: 'month');
+        $value = !empty($master->recurring_month_interval)
+            ? (int) $master->recurring_month_interval
+            : (int) ($master->recurring_custom_interval ?? 1);
+        $offsetDays = ($rawOffsetDays !== null && (int) $rawOffsetDays > 0) ? (int) $rawOffsetDays : 30;
+        $steps = max(1, $nextSeq - $masterSeq);
+        $invoiceDate = \Carbon\Carbon::parse($master->invoice_date)->startOfDay();
+        for ($i = 0; $i < $steps; $i++) {
+            $invoiceDate = match ($unit) {
+                'day' => $invoiceDate->copy()->addDays(max(1, $value)),
+                'week' => $invoiceDate->copy()->addWeeks(max(1, $value)),
+                'year' => $invoiceDate->copy()->addYears(max(1, $value)),
+                default => $invoiceDate->copy()->addMonths(max(1, $value)),
+            };
+        }
+
+        return [
+            'seq' => $nextSeq,
+            'invoice_date' => $invoiceDate->toDateString(),
+            'due_date' => $invoiceDate->copy()->addDays($offsetDays)->toDateString(),
+        ];
+    }
+
+    private function safeMonthlyDateForRecurringInfo(\Carbon\Carbon $baseDate, int $monthsToAdd, int $targetDay): \Carbon\Carbon
+    {
+        $monthsToAdd = max(1, $monthsToAdd);
+        $targetDay = max(1, min(31, $targetDay));
+        $baseYear = (int) $baseDate->year;
+        $baseMonthIndex = (int) $baseDate->month - 1;
+        $totalMonths = ($baseYear * 12) + $baseMonthIndex + $monthsToAdd;
+        $year = intdiv($totalMonths, 12);
+        $month = ($totalMonths % 12) + 1;
+        $lastDay = \Carbon\Carbon::create($year, $month, 1)->endOfMonth()->day;
+
+        return \Carbon\Carbon::create($year, $month, min($targetDay, $lastDay))->startOfDay();
+    }
+
+    private function sendInvoiceEmailOnCreation(SysSaleInvoice $invoice): void
+    {
+        $invoice->loadMissing('user');
+
+        $recipient = optional($invoice->user)->email;
+        if (empty($recipient)) {
+            return;
+        }
+
+        $templates = EmailTemplate::query()
+            ->where('identifier', 'sale_invoice_send')
+            ->where('status', 1)
+            ->get();
+        if ($templates->isEmpty()) {
+            return;
+        }
+
+        $existing = NotificationLog::query()
+            ->where('identifier', 'sale_invoice_send')
+            ->where('channel', 'email')
+            ->where('notifiable_type', $invoice->getMorphClass())
+            ->where('notifiable_id', $invoice->getKey())
+            ->first();
+        if ($existing) {
+            return;
+        }
+
+        $data = [
+            'invoice_id' => (string) $invoice->id,
+            'invoice_no' => (string) ($invoice->invoice_no ?? $invoice->id),
+            'invoice_date' => (string) ($invoice->invoice_date ?? ''),
+            'due_date' => (string) ($invoice->due_date ?? ''),
+            'total_amount' => (string) ($invoice->total_amount ?? ''),
+            'balance_amount' => (string) ($invoice->balance_amount ?? ''),
+            'customer_name' => (string) (optional($invoice->user)->name ?? ''),
+            'customer_email' => (string) (optional($invoice->user)->email ?? ''),
+            'invoice_view_url' => route('backend.accounting.sale.invoices.show', $invoice->id),
+            'invoice_pdf_url' => route('backend.accounting.sale.invoices.pdf', $invoice->id),
+            'attach_invoice_pdf' => true,
+        ];
+
+        foreach ($templates as $template) {
+            $subject = $template->subject !== null ? render_template((string) $template->subject, $data) : '';
+            $message = render_template((string) ($template->default_text ?? ''), $data);
+
+            $log = NotificationLog::create([
+                'identifier' => 'sale_invoice_send',
+                'notifiable_type' => $invoice->getMorphClass(),
+                'notifiable_id' => $invoice->getKey(),
+                'channel' => 'email',
+                'recipient' => $recipient,
+                'subject' => $subject,
+                'message' => $message,
+                'payload' => $data,
+                'status' => 'pending',
+                'attempt' => 0,
+                'max_attempts' => (int) config('notification_system.max_attempts', 3),
+            ]);
+
+            try {
+                SendNotificationJob::dispatchSync($log);
+            } catch (\Throwable $e) {
+                Log::warning('Sale invoice email failed during invoice creation.', [
+                    'invoice_id' => $invoice->id,
+                    'notification_log_id' => $log->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    private function buildNotificationInfo(SysSaleInvoice $invoice): array
+    {
+        $morphType = $invoice->getMorphClass();
+
+        $sendLog = NotificationLog::query()
+            ->where('identifier', 'sale_invoice_send')
+            ->where('channel', 'email')
+            ->where('notifiable_type', $morphType)
+            ->where('notifiable_id', $invoice->getKey())
+            ->orderByDesc('id')
+            ->first();
+
+        $reminderLog = NotificationLog::query()
+            ->where('identifier', 'sale_invoice_due_reminder')
+            ->where('channel', 'email')
+            ->where('notifiable_type', $morphType)
+            ->where('notifiable_id', $invoice->getKey())
+            ->orderByDesc('id')
+            ->first();
+
+        $overdueLog = NotificationLog::query()
+            ->where('identifier', 'sale_invoice_overdue_reminder')
+            ->where('channel', 'email')
+            ->where('notifiable_type', $morphType)
+            ->where('notifiable_id', $invoice->getKey())
+            ->orderByDesc('id')
+            ->first();
+
+        $reminderDays = $invoice->reminder_days_before_due;
+        if ($reminderDays === null || $reminderDays === '') {
+            $reminderDays = (int) get_setting('sale_invoice_reminder_days_before_due', 3);
+        }
+        $reminderDays = max(0, min(365, (int) $reminderDays));
+
+        $reminderOn = null;
+        if (!empty($invoice->due_date)) {
+            $reminderOn = \Carbon\Carbon::parse($invoice->due_date)->startOfDay()->subDays($reminderDays)->toDateString();
+        }
+
+        $overdueDays = (int) get_setting('sale_invoice_overdue_days_after_due', 1);
+        $overdueDays = max(0, min(365, $overdueDays));
+
+        $overdueOn = null;
+        if (!empty($invoice->due_date)) {
+            $overdueOn = \Carbon\Carbon::parse($invoice->due_date)->startOfDay()->addDays($overdueDays)->toDateString();
+        }
+
+        return [
+            'send' => $sendLog ? [
+                'status' => $sendLog->status,
+                'sent_at' => $sendLog->sent_at?->toDateTimeString(),
+                'last_attempt_at' => $sendLog->last_attempt_at?->toDateTimeString(),
+                'attempt' => (int) ($sendLog->attempt ?? 0),
+                'max_attempts' => (int) ($sendLog->max_attempts ?? 0),
+                'error' => $sendLog->error,
+            ] : null,
+            'reminder' => $reminderLog ? [
+                'status' => $reminderLog->status,
+                'sent_at' => $reminderLog->sent_at?->toDateTimeString(),
+                'last_attempt_at' => $reminderLog->last_attempt_at?->toDateTimeString(),
+                'attempt' => (int) ($reminderLog->attempt ?? 0),
+                'max_attempts' => (int) ($reminderLog->max_attempts ?? 0),
+                'error' => $reminderLog->error,
+            ] : null,
+            'overdue' => $overdueLog ? [
+                'status' => $overdueLog->status,
+                'sent_at' => $overdueLog->sent_at?->toDateTimeString(),
+                'last_attempt_at' => $overdueLog->last_attempt_at?->toDateTimeString(),
+                'attempt' => (int) ($overdueLog->attempt ?? 0),
+                'max_attempts' => (int) ($overdueLog->max_attempts ?? 0),
+                'error' => $overdueLog->error,
+            ] : null,
+            'reminder_days_before_due' => $reminderDays,
+            'reminder_on' => $reminderOn,
+            'overdue_days_after_due' => $overdueDays,
+            'overdue_on' => $overdueOn,
+        ];
     }
 
     public function pdf(int $id)
@@ -996,6 +1313,76 @@ class SaleInvoiceController extends BaseCrudController
             ],
             'owners' => $owners,
             'tenants' => $tenants,
+        ]);
+    }
+
+    public function tenancyContext(Property $property, User $tenant)
+    {
+        $today = \Carbon\Carbon::now()->startOfDay();
+        $todayString = $today->toDateString();
+
+        $baseQuery = Tenancy::query()
+            ->with(['tenantMembers.user:id,name,email,phone'])
+            ->where('property_id', $property->id)
+            ->where('status', 'Active')
+            ->whereHas('tenantMembers', function ($q) use ($tenant) {
+                $q->where('user_id', $tenant->id);
+            });
+
+        $inRange = (clone $baseQuery)
+            ->whereNotNull('move_in')
+            ->whereDate('move_in', '<=', $todayString)
+            ->where(function ($q) use ($todayString) {
+                $q->whereNull('move_out')->orWhereDate('move_out', '>=', $todayString);
+            })
+            ->orderByDesc('move_in')
+            ->orderByDesc('id')
+            ->get();
+
+        $tenancies = $inRange;
+        if ($tenancies->isEmpty()) {
+            $tenancies = $baseQuery
+                ->orderByDesc('move_in')
+                ->orderByDesc('id')
+                ->get();
+        }
+
+        $rows = $tenancies->map(function (Tenancy $tenancy) {
+            $mainMember = $tenancy->tenantMembers->firstWhere('is_main_person', true)
+                ?: $tenancy->tenantMembers->first();
+            $mainUser = $mainMember?->user;
+
+            return [
+                'id' => $tenancy->id,
+                'move_in' => $tenancy->move_in,
+                'move_out' => $tenancy->move_out,
+                'rent' => $tenancy->rent,
+                'frequency' => $tenancy->frequency,
+                'status' => $tenancy->status,
+                'main_tenant' => $mainUser ? [
+                    'id' => $mainUser->id,
+                    'name' => $mainUser->name,
+                    'email' => $mainUser->email,
+                    'phone' => $mainUser->phone,
+                ] : null,
+            ];
+        })->values();
+
+        return response()->json([
+            'property' => [
+                'id' => $property->id,
+                'name' => $property->prop_name ?: $property->line_1 ?: "Property #{$property->id}",
+                'reference' => $property->prop_ref_no,
+                'address' => $property->full_address ?: 'Address not available',
+            ],
+            'tenant' => [
+                'id' => $tenant->id,
+                'name' => $tenant->name,
+                'email' => $tenant->email,
+                'phone' => $tenant->phone,
+            ],
+            'selected_tenancy_id' => $rows->first()['id'] ?? null,
+            'tenancies' => $rows,
         ]);
     }
 

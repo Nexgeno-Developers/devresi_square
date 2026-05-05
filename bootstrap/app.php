@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Console\Scheduling\Schedule;
 use App\Http\Middleware\EnsureTokenIsValid;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\PermissionMiddleware;
@@ -13,6 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSchedule(function (Schedule $schedule) {
+        $schedule->command('sale-invoices:generate-recurring')->dailyAt('00:05');
+        $schedule->command('sale-invoices:send-reminders')->dailyAt('09:00');
+        $schedule->command('sale-invoices:send-overdue-reminders')->dailyAt('09:05');
+        $schedule->command('notifications:retry')->everyFiveMinutes();
+        $schedule->command('sale-invoices:apply-penalties')->dailyAt('00:10');
+    })
     ->withMiddleware(function (Middleware $middleware) {
         // Append global middleware
         $middleware->append(EnsureTokenIsValid::class);

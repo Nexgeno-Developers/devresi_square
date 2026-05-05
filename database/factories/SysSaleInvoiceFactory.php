@@ -21,6 +21,7 @@ class SysSaleInvoiceFactory extends Factory
             'invoice_no' => 'SI-' . fake()->unique()->numerify('######'),
             'invoice_date' => $invoiceDate->format('Y-m-d'),
             'due_date' => fake()->optional(0.85)->dateTimeBetween($invoiceDate, '+30 days')?->format('Y-m-d'),
+            'reminder_days_before_due' => fake()->optional(0.2)->numberBetween(0, 30),
             'total_amount' => fake()->randomFloat(2, 50, 5000),
             'balance_amount' => fake()->randomFloat(2, 0, 2000),
             'status' => fake()->randomElement(['draft', 'issued', 'paid', 'partial', 'cancelled']),

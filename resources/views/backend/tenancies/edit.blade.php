@@ -34,14 +34,14 @@
     <form id="editTenancyForm" action="{{ route('admin.tenancies.update', $tenancy->id) }}" method="POST"
         enctype="multipart/form-data">
         @csrf
-        <input type="hidden" name="property_id" class="form-control" value="">
+        <input type="hidden" name="property_id" class="form-control" value="{{ $tenancy->property_id }}">
 
         <div class="form-group">
             <button type="button" class="btn btn-outline-primary btn-sm" id="addUserBtn">
                 Quick Add New Tenant
             </button>
             <label for="tenant_id">Select Tenants</label>
-            <select name="user_id[]" id="tenant_id" multiple class="form-control select2" required>
+            <select name="user_id[]" id="tenant_id" multiple class="form-control select2">
                 @foreach ($tenants as $user)
                     <option value="{{ $user->id }}"
                         {{ in_array($user->id, $tenancy->tenantMembers->pluck('user_id')->toArray()) ? 'selected' : '' }}>
@@ -322,12 +322,109 @@
 <script>
     initSelect3('.select2');
 
-    // Form submission validation
-    $('form').on('submit', function(e) {
-        if ($('input[name="is_main_person"]:checked').length === 0) {
-            e.preventDefault(); // Prevent form submission
-            alert('Please select a main user.'); // Show alert message
+    var editTenancyForm = $('#editTenancyForm');
+    var tenantSelect = editTenancyForm.find('#tenant_id');
+    var tenantOptionsContainer = editTenancyForm.find('#tenant-options');
+    var selectedMainTenant = editTenancyForm.find('input[name="is_main_person"]:checked').val() || null;
+
+    function getSelectedTenantIds() {
+        var selectedUsers = tenantSelect.val() || [];
+
+        if (selectedUsers.length === 0) {
+            selectedUsers = editTenancyForm.find('input[name="is_main_person"]').map(function() {
+                return this.value;
+            }).get();
         }
+
+        return selectedUsers;
+    }
+
+    function syncTenantHiddenInputs(selectedUsers) {
+        editTenancyForm.find('input[data-synced-tenant-id="1"]').remove();
+
+        if ((tenantSelect.val() || []).length > 0) {
+            return;
+        }
+
+        selectedUsers.forEach(function(userId) {
+            editTenancyForm.append($('<input>', {
+                type: 'hidden',
+                name: 'user_id[]',
+                value: userId,
+                'data-synced-tenant-id': '1'
+            }));
+        });
+    }
+
+    function renderMainTenantOptions() {
+        const selectedUsers = getSelectedTenantIds();
+        tenantOptionsContainer.empty();
+
+        if (selectedUsers.length === 0) {
+            selectedMainTenant = null;
+            return;
+        }
+
+        tenantOptionsContainer.append($('<label class="mb-2">').text('Select Main User'));
+
+        selectedUsers.forEach(function(userId) {
+            const userName = tenantSelect.find('option[value="' + userId + '"]').text();
+            const radioId = 'is_main_person' + userId;
+            const radio = $('<input>', {
+                type: 'radio',
+                name: 'is_main_person',
+                value: userId,
+                id: radioId,
+                class: 'form-check-input'
+            });
+
+            if (selectedMainTenant === userId) {
+                radio.prop('checked', true);
+            }
+
+            tenantOptionsContainer.append(
+                $('<div class="form-check">').append(
+                    radio,
+                    $('<label>', {
+                        for: radioId,
+                        class: 'form-check-label'
+                    }).text(userName)
+                )
+            );
+        });
+
+        if (!selectedUsers.includes(selectedMainTenant)) {
+            selectedMainTenant = null;
+        }
+    }
+
+    tenantSelect.on('change', renderMainTenantOptions);
+
+    $(document).on('change', '#editTenancyForm input[name="is_main_person"]', function() {
+        selectedMainTenant = $(this).val();
+    });
+
+    // Form submission validation
+    editTenancyForm.on('submit', function(e) {
+        e.stopImmediatePropagation();
+
+        const selectedUsers = getSelectedTenantIds();
+        const mainTenant = editTenancyForm.find('input[name="is_main_person"]:checked').val();
+
+        if (selectedUsers.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one tenant.');
+            return;
+        }
+
+        if (!mainTenant || !selectedUsers.includes(mainTenant)) {
+            e.preventDefault();
+            alert('Please select a main user.');
+            return;
+        }
+
+        syncTenantHiddenInputs(selectedUsers);
+        tenantSelect.prop('required', false);
     });
 
     $(document).on('change', '#depositService', function () {

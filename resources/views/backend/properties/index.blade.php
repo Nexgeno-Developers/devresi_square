@@ -551,6 +551,10 @@ var_dump($propertyId);
             });
         });
         $(document).on("submit", "#extraLargeModal form", function(e) {
+            if ($(this).is('#editTenancyForm, #addTenancyForm, #owner-group-form')) {
+                return;
+            }
+
             e.preventDefault();
 
             let form = $(this);
@@ -1032,11 +1036,11 @@ var_dump($propertyId);
             var propertyId = document.getElementById('hidden-property-id').getAttribute('data-property-id') ??
                 ''; // Fetch the property_id
 
-            // Open the modal (assuming smallModal is a function that handles modal rendering)
-            smallModal(url, header);
+            // Open the modal (assuming extralargeModal is a function that handles modal rendering)
+            extralargeModal(url, header);
 
             // Ensure modal content is loaded and set the property_id in the hidden field inside the modal form
-            $('#smallModal').on('shown.bs.modal', function() {
+            $('#extraLargeModal').on('shown.bs.modal', function() {
                 // Set the property_id in the hidden input field inside the modal form
                 $("input[name='property_id']").val(propertyId);
                 initSelect3('.select2');
@@ -1074,16 +1078,15 @@ var_dump($propertyId);
         });
         $(document).on('click', '.popup-tab-tenancy-view', function(e) {
             e.preventDefault();
-
             // Get the URL from data-url attribute
             var url = $(this).attr('data-url');
             var header = 'Tenancy Details'; // Modal header
 
             // Open modal (assuming largeModal is your helper for loading content)
-            largeModal(url, header);
+            extralargeModal(url, header);
 
             // When modal is fully shown
-            $('#largeModal').on('shown.bs.modal', function() {
+            $('#extraLargeModal').on('shown.bs.modal', function() {
                 // If you want to enhance any fields inside view (e.g., select2 if used in view)
                 initSelect3('.select2');
             });
@@ -1098,10 +1101,10 @@ var_dump($propertyId);
                 ''; // Fetch the property_id
 
             // Open the modal (assuming smallModal is a function that handles modal rendering)
-            smallModal(url, header);
+            extralargeModal(url, header);
 
             // Ensure modal content is loaded and set the property_id in the hidden field inside the modal form
-            $('#smallModal').on('shown.bs.modal', function() {
+            $('#extraLargeModal').on('shown.bs.modal', function() {
                 // Set the property_id in the hidden input field inside the modal form
                 $("input[name='property_id']").val(propertyId);
                 initSelect3('.select2');

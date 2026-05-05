@@ -345,7 +345,7 @@
                     location.reload(); // Reload the page to reflect changes
                 },
                 error: function (xhr, status, error) {
-                    let errorMessage = error.responseJSON?.message || 'Error Generating Invoice';
+                    let errorMessage = xhr.responseJSON?.message || 'Error creating offer';
                     AIZ.plugins.notify('danger', errorMessage);
                     // Handle error (e.g., display an error message)
                     // alert('An error occurred. Please try again later.');

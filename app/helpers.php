@@ -929,6 +929,20 @@ if (!function_exists('safeAssignRoles')) {
         }
     }
 
+    if (! function_exists('replaceVariables')) {
+        /**
+         * Replace [[key]] placeholders with values (raw / unescaped).
+         *
+         * @param string $template
+         * @param array $data
+         * @return string
+         */
+        function replaceVariables(string $template, array $data = []): string
+        {
+            return render_template($template, $data, array_keys($data));
+        }
+    }
+
     if (!function_exists('booleanBadge')) {
         /**
          * Returns a badge HTML for boolean values.
