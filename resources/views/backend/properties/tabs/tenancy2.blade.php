@@ -1,12 +1,5 @@
 {{-- Hidden div for property ID --}}
-<div id="hidden-property-id" class="d-none" data-property-id="{{ $propertyId }}">
-    @php
-        // Debugging the propertyId
-        echo '<pre>';
-        var_dump($propertyId);
-        echo '</pre>';
-    @endphp
-</div>
+<div id="hidden-property-id" class="d-none" data-property-id="{{ $propertyId }}"></div>
 
 <div class="tab-content">
 
@@ -68,9 +61,10 @@
                                             <button data-url="{{ route('admin.tenancies.edit', $tenancy->id) }}" class="popup-tab-tenancy-edit btn btn-sm btn-outline-warning me-1" title="Edit Tenancy">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger me-1 action-icon" title="Delete Tenancy" onclick="confirmModal('{{ route('admin.tenancies.delete', $tenancy->id) }}', responseHandler)">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                                            <button class="btn btn-sm btn-outline-danger me-1 action-icon" title="Delete Tenancy"
+                                                onclick="deleteTenancy('{{ route('admin.tenancies.delete', $tenancy->id) }}', this)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
                                         </div>
 
                                         {{-- <button  class="popup-tab-tenancy-edit btn btn-sm btn-warning">Edit</button>

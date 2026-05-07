@@ -102,29 +102,38 @@
                 <input type="hidden" name="link_to_id" id="link-to-id" value="{{ $oldVal('link_to_id') }}">
 
                 <div class="entity-select-wrap" data-entity-group="link_to" data-entity-type="Property">
-                    <select id="link-to-property-select" class="form-select entity-select">
-                        <option value="">Select property</option>
-                        @foreach($linkToPropertyOptions as $id => $label)
-                            <option value="{{ $id }}" {{ $oldVal('link_to_type') === 'Property' && (string)$oldVal('link_to_id') === (string)$id ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
+                    <select id="link-to-property-select" class="entity-select w-100">
+                        @if($oldVal('link_to_type') === 'Property' && $oldVal('link_to_id'))
+                            @foreach($linkToPropertyOptions as $id => $label)
+                                @if((string)$id === (string)$oldVal('link_to_id'))
+                                    <option value="{{ $id }}" selected>{{ $label }}</option>
+                                @endif
+                            @endforeach
+                        @endif
                     </select>
                 </div>
 
                 <div class="entity-select-wrap d-none" data-entity-group="link_to" data-entity-type="Tenancy">
-                    <select id="link-to-tenancy-select" class="form-select entity-select">
-                        <option value="">Select tenancy</option>
-                        @foreach($linkToTenancyOptions as $id => $label)
-                            <option value="{{ $id }}" {{ $oldVal('link_to_type') === 'Tenancy' && (string)$oldVal('link_to_id') === (string)$id ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
+                    <select id="link-to-tenancy-select" class="entity-select w-100">
+                        @if($oldVal('link_to_type') === 'Tenancy' && $oldVal('link_to_id'))
+                            @foreach($linkToTenancyOptions as $id => $label)
+                                @if((string)$id === (string)$oldVal('link_to_id'))
+                                    <option value="{{ $id }}" selected>{{ $label }}</option>
+                                @endif
+                            @endforeach
+                        @endif
                     </select>
                 </div>
 
                 <div class="entity-select-wrap d-none" data-entity-group="link_to" data-entity-type="Contractor">
-                    <select id="link-to-contractor-select" class="form-select entity-select">
-                        <option value="">Select contractor</option>
-                        @foreach($linkToContractorOptions as $id => $label)
-                            <option value="{{ $id }}" {{ $oldVal('link_to_type') === 'Contractor' && (string)$oldVal('link_to_id') === (string)$id ? 'selected' : '' }}>{{ $label }}</option>
-                        @endforeach
+                    <select id="link-to-contractor-select" class="entity-select w-100">
+                        @if($oldVal('link_to_type') === 'Contractor' && $oldVal('link_to_id'))
+                            @foreach($linkToContractorOptions as $id => $label)
+                                @if((string)$id === (string)$oldVal('link_to_id'))
+                                    <option value="{{ $id }}" selected>{{ $label }}</option>
+                                @endif
+                            @endforeach
+                        @endif
                     </select>
                 </div>
             </div>
@@ -873,6 +882,87 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupEntitySelector('link_to', linkToTypeInput, linkToIdInput);
     setupEntitySelector('charge_to', chargeToTypeInput, chargeToIdInput);
+
+    // ── Select2 AJAX for Link To (Property / Tenancy / Contractor) ──────────
+    const linkToSearchUrl = "{{ route('backend.accounting.sale.invoices.linkToSearch') }}";
+
+    // Shared style applied to every Select2 container to match Bootstrap form-select
+    function applySelect2Style($sel) {
+        const c = $sel.next('.select2-container');
+        c.css({ width: '100%' });
+        c.find('.select2-selection--single').css({
+            height: '38px',
+            border: '1px solid #ced4da',
+            'border-radius': '0.375rem',
+            padding: '0.375rem 2.25rem 0.375rem 0.75rem',
+            'font-size': '1rem',
+            'line-height': '1.5',
+        });
+        c.find('.select2-selection__rendered').css({ 'line-height': '24px', 'padding-left': '0', color: '#212529' });
+        c.find('.select2-selection__arrow').css({ height: '36px' });
+    }
+
+    function initLinkToAjax(selectId, entityType, preId, preText) {
+        const $sel = $('#' + selectId);
+        const nativeSel = document.getElementById(selectId);
+
+        $sel.select2({
+            placeholder: 'Select ' + entityType.toLowerCase(),
+            allowClear: true,
+            width: '100%',
+            minimumInputLength: 0,
+            ajax: {
+                url: linkToSearchUrl,
+                dataType: 'json',
+                delay: 300,
+                data: function (params) {
+                    return { q: params.term || '', type: entityType };
+                },
+                transport: function (params, success, failure) {
+                    const q = params.data.q || '';
+                    // Block 1 or 2 chars — only allow empty (defaults) or 3+
+                    if (q.length > 0 && q.length < 3) {
+                        success({ results: [] });
+                        return;
+                    }
+                    $.ajax(params).then(success).fail(failure);
+                },
+                processResults: function (data) {
+                    return { results: data.results || [] };
+                },
+                cache: true,
+            },
+        });
+
+        // Pre-populate saved/old value
+        if (preId && preText) {
+            $sel.append(new Option(preText, preId, true, true)).trigger('change');
+        }
+
+        // Fire native change so existing loadPropertyContext / entity flow works
+        $sel.on('select2:select select2:clear', function () {
+            nativeSel.dispatchEvent(new Event('change'));
+        });
+
+        // Apply Bootstrap-matching styles once rendered
+        $sel.on('select2:open select2:close select2:select select2:clear', function () {
+            applySelect2Style($sel);
+        });
+        applySelect2Style($sel);
+    }
+
+    @php
+        $ltType = $oldVal('link_to_type');
+        $ltId   = $oldVal('link_to_id');
+        $propText = ($ltType === 'Property'    && $ltId) ? ($linkToPropertyOptions[$ltId]    ?? '') : '';
+        $tenText  = ($ltType === 'Tenancy'     && $ltId) ? ($linkToTenancyOptions[$ltId]     ?? '') : '';
+        $conText  = ($ltType === 'Contractor'  && $ltId) ? ($linkToContractorOptions[$ltId]  ?? '') : '';
+    @endphp
+
+    initLinkToAjax('link-to-property-select',   'Property',   @json($ltType === 'Property'   ? $ltId : null), @json($propText));
+    initLinkToAjax('link-to-tenancy-select',     'Tenancy',    @json($ltType === 'Tenancy'    ? $ltId : null), @json($tenText));
+    initLinkToAjax('link-to-contractor-select',  'Contractor', @json($ltType === 'Contractor' ? $ltId : null), @json($conText));
+    // ────────────────────────────────────────────────────────────────────────
 
     let previousContextValues = {
         linkToType: linkToTypeInput?.value || '',

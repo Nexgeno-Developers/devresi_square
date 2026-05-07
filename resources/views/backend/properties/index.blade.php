@@ -272,6 +272,44 @@ var_dump($propertyId);
 @endif
 
 <script>
+    // Global delete functions for tab content (tabs load via jQuery .html() which strips scripts)
+    var _deleteTenancyUrl = null;
+    var _deleteTenancyBtn = null;
+
+    function deleteTenancy(url, btn) {
+        _deleteTenancyUrl = url;
+        _deleteTenancyBtn = btn;
+        $('#confirmModal').modal('show');
+    }
+
+    // Wire the confirmModal Continue button for tenancy deletes
+    $(document).on('click', '#delete_form button[type="submit"]', function(e) {
+        if (!_deleteTenancyUrl) return; // not a tenancy delete
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        $('#confirmModal').modal('hide');
+        if (_deleteTenancyBtn) _deleteTenancyBtn.disabled = true;
+        $.ajax({
+            type: 'POST',
+            url: _deleteTenancyUrl,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            data: { _token: $('meta[name="csrf-token"]').attr('content') },
+            success: function () {
+                _deleteTenancyUrl = null;
+                _deleteTenancyBtn = null;
+                location.reload();
+            },
+            error: function () {
+                if (_deleteTenancyBtn) _deleteTenancyBtn.disabled = false;
+                _deleteTenancyUrl = null;
+                _deleteTenancyBtn = null;
+                alert('Failed to delete. Please try again.');
+            }
+        });
+    });
+</script>
+
+<script>
     function uploadImageToServer(file, editor) {
         let formData = new FormData();
         formData.append("file", file);
@@ -1028,22 +1066,39 @@ var_dump($propertyId);
 
 
         $(document).on('click', '.popup-tab-tenancy-create', function(e) {
-            e.preventDefault(); // Prevent the default action (e.g., following the link)
+            e.preventDefault();
 
-            // Get the URL for the modal (you can dynamically fetch it as needed)
-            var url = $(this).attr('data-url'); // URL passed in the 'data-url' attribute
-            var header = 'Add Tenancy'; // Custom header or dynamic header
-            var propertyId = document.getElementById('hidden-property-id').getAttribute('data-property-id') ??
-                ''; // Fetch the property_id
+            var baseUrl    = $(this).attr('data-url');
+            var header     = 'Add Tenancy';
 
-            // Open the modal (assuming extralargeModal is a function that handles modal rendering)
-            extralargeModal(url, header);
+            // Try multiple sources for property ID in order of reliability
+            var propertyId = $('.property-card.current').data('property-id')      // active card
+                          || $('.pv_content_wrapper.current').data('property-id') // alternate selector
+                          || $(this).attr('data-property-id')                     // stamped by loadTabContent
+                          || new URLSearchParams(window.location.search).get('property_id') // URL param
+                          || '';
 
-            // Ensure modal content is loaded and set the property_id in the hidden field inside the modal form
-            $('#extraLargeModal').on('shown.bs.modal', function() {
-                // Set the property_id in the hidden input field inside the modal form
-                $("input[name='property_id']").val(propertyId);
-                initSelect3('.select2');
+            console.log('[AddTenancy] propertyId resolved:', propertyId);
+
+            if (!propertyId) {
+                alert('Could not determine the property. Please click on a property first.');
+                return;
+            }
+
+            // Pass property_id as query param — controller pre-populates the hidden field server-side
+            var url = baseUrl + '?property_id=' + propertyId;
+
+            $("#extraLargeModal .modal-body").html("Loading...");
+            $("#extraLargeModal .modal-title").html("Loading...");
+            $("#extraLargeModal").modal("show");
+
+            $.ajax({
+                url: url,
+                success: function(response) {
+                    $("#extraLargeModal .modal-body").html(response);
+                    $("#extraLargeModal .modal-title").html(header);
+                    initSelect3('.select2');
+                }
             });
         });
         $(document).on('click', '.popup-tab-tenancy-view', function(e) {
@@ -1224,6 +1279,19 @@ var_dump($propertyId);
             }
 
 
+            // Scroll the property list so the given card is visible
+            function scrollToCard(card) {
+                if (!card || !card.length) return;
+                var container = $('.pv_card_wrapper');
+                if (!container.length) return;
+                var cardTop    = card.position().top;
+                var cardHeight = card.outerHeight();
+                var containerHeight = container.height();
+                container.animate({
+                    scrollTop: container.scrollTop() + cardTop - (containerHeight / 2) + (cardHeight / 2)
+                }, 300);
+            }
+
             // Function to activate tab based on URL parameter
             function activateTabFromUrl() {
                 var tabName = getUrlParameter('tabname'); // Get tabname from URL
@@ -1234,14 +1302,40 @@ var_dump($propertyId);
                     var selectedTab = $('.tab-link[data-tab-name="' + tabName + '"]');
                     var selectedPropertyCard = $('.property-card[data-property-id="' + propertyId + '"]');
 
-                    // Mark the selected tab and property card as active/current
+                    // Mark the selected tab as active
                     $('.tab-link').removeClass('active');
-                    $('.property-card').removeClass('current');
                     selectedTab.addClass('active');
-                    selectedPropertyCard.addClass('current');
 
-                    // Load the content dynamically
-                    loadTabContent(propertyId, tabName);
+                    // If the card is already in the DOM, highlight it and load content
+                    if (selectedPropertyCard.length) {
+                        $('.property-card').removeClass('current');
+                        selectedPropertyCard.addClass('current');
+                        scrollToCard(selectedPropertyCard);
+                        loadTabContent(propertyId, tabName);
+                    } else {
+                        // Card is on a different page — reload the list to the correct page first
+                        $.ajax({
+                            url: '{{ route('admin.properties.index') }}',
+                            type: 'GET',
+                            data: { list_only: 1, highlight_id: propertyId },
+                            success: function(response) {
+                                $('#propertyListContainer').html(response.html);
+                                // Now highlight and scroll to the card
+                                $('.property-card').removeClass('current');
+                                var card = $('.property-card[data-property-id="' + propertyId + '"]');
+                                card.addClass('current');
+                                scrollToCard(card);
+                                loadTabContent(propertyId, tabName);
+                            },
+                            error: function() {
+                                // Property doesn't exist — fall back to first card
+                                var firstCard = $('.property-card').first();
+                                var firstId   = firstCard.data('property-id');
+                                firstCard.addClass('current');
+                                loadTabContent(firstId, tabName);
+                            }
+                        });
+                    }
                 }
             }
 
@@ -1280,12 +1374,10 @@ var_dump($propertyId);
                     type: 'GET',
                     dataType: 'json',
                     success: function(response) {
-                        // Update the content of the tab with the response
-                        // You might want to populate the content into a specific div
-                        // Example: $('.pv_content_detail').html(response.content);
                         $('.pv_content_detail').html(response.content);
                         updateTitle(tabName, propertyId);
-                        // Update URL (optional, for browser navigation)
+                        // Stamp the current property ID onto action buttons so click handlers can read it reliably
+                        $('.tab-tenancy-group-btn, .tab-owners-group-btn, .tab-offers-btn').attr('data-property-id', propertyId);
                         window.history.pushState(null, null, url);
                     },
                     error: function(xhr, status, error) {

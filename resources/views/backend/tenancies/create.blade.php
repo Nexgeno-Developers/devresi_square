@@ -2,7 +2,7 @@
 
     <form id="addTenancyForm" action="{{ route('admin.tenancies.store') }}" method="POST" enctype="multipart/form-data" novalidate>
         @csrf
-        <input type="hidden" name="property_id" class="form-control" value="{{ old('property_id') }}">
+        <input type="hidden" name="property_id" class="form-control" value="{{ old('property_id', $propertyId ?? '') }}">
 
         <div class="form-group">
             <button type="button" class="btn btn-outline-primary btn-sm" id="addUserBtn">
@@ -155,7 +155,7 @@
                     <div class="form-group field-tenancies-deposit">
                         <label class="control-label" for="tenancies-deposit">Deposit <span class="text-danger">*</span></label>
                         <input type="number" inputmode="numeric" pattern="[0-9]" id="tenancies-deposit"
-                            class="form-control" name="deposit" required value="{{ old('deposit') }}">
+                            class="form-control" name="deposit" required value="{{ old('deposit') }}" readonly>
                         @error('deposit')
                             <div class="text-danger small mt-1">{{ $message }}</div>
                         @enderror
@@ -272,6 +272,21 @@
 
     initSelect3('.select2');
 
+    // ── Deposit auto-calculation: Rent × 12 ÷ 52 × Weeks ──────────────────
+    function calcDeposit() {
+        const rent    = parseFloat($('#tenancies-rent').val()) || 0;
+        const weeks   = parseFloat($('#depositNumber').val()) || 0;
+        if (rent > 0 && weeks > 0) {
+            const deposit = (rent * 12 / 52 * weeks).toFixed(2);
+            $('#tenancies-deposit').val(deposit);
+        } else {
+            $('#tenancies-deposit').val('');
+        }
+    }
+    $('#tenancies-rent, #depositNumber').on('input change', calcDeposit);
+    calcDeposit();
+    // ────────────────────────────────────────────────────────────────────────
+
     // Render main person radio buttons when tenants are selected
     function renderMainPersonOptions() {
         const userSelect = $('#tenant_id');
@@ -309,56 +324,68 @@
         e.preventDefault();
         let errors = [];
 
-        // Validate tenants selected
+        // Clear previous errors
+        $('#form-error-summary').remove();
+        $('#main-person-error').remove();
+        $('.is-invalid').removeClass('is-invalid');
+
+        // Validate property_id is set (injected server-side via query param)        // Validate tenants selected
         if ($('#tenant_id').val() === null || $('#tenant_id').val().length === 0) {
             errors.push('Please select at least one tenant.');
-            $('#tenant_id').addClass('is-invalid');
+            // Highlight Select2 container border since Select2 replaces the native select
+            $('#tenant_id').next('.select2-container').find('.select2-selection').addClass('is-invalid').css('border-color', '#dc3545');
         } else {
-            $('#tenant_id').removeClass('is-invalid');
+            $('#tenant_id').next('.select2-container').find('.select2-selection').removeClass('is-invalid').css('border-color', '');
         }
 
-        // Validate main person selected (set by tenant-options radio buttons)
+        // Validate main person selected
         if ($('input[name="is_main_person"]:checked').length === 0) {
             errors.push('Please select a main tenant.');
-            // Highlight the radio section too
             $('#tenant-options').append('<div id="main-person-error" class="text-danger small mt-1">Please select a main tenant.</div>');
-        } else {
-            $('#main-person-error').remove();
         }
 
         // Validate rent
         if (!$('#tenancies-rent').val()) {
             errors.push('Rent is required.');
+            $('#tenancies-rent').addClass('is-invalid');
         }
 
-        // Validate deposit
-        if (!$('#tenancies-deposit').val()) {
-            errors.push('Deposit is required.');
+        // Validate deposit weeks
+        if (!$('#depositNumber').val()) {
+            errors.push('Number of deposit weeks is required.');
+            $('#depositNumber').addClass('is-invalid');
         }
 
         // Validate move in date
         if (!$('#tenancies-move_in').val()) {
             errors.push('Move In date is required.');
+            $('#tenancies-move_in').addClass('is-invalid');
         }
 
         // Validate tenancy type
         if (!$('#tenancy-type').val()) {
             errors.push('Please select a Tenancy Type.');
+            $('#tenancy-type').addClass('is-invalid');
         }
 
         // Validate sub status
         if (!$('#tenancies-sub_status').val()) {
             errors.push('Please select a Sub Status.');
+            $('#tenancies-sub_status').addClass('is-invalid');
         }
 
-        // Show frontend errors and stop
+        // Show frontend error banner and stop
         if (errors.length > 0) {
-            $('#form-error-summary').remove();
-            let html = '<div id="form-error-summary" class="alert alert-danger mt-2"><ul class="mb-0">';
+            let html = '<div id="form-error-summary" class="alert alert-danger mt-2 mb-3"><ul class="mb-0">';
             errors.forEach(function(err) { html += '<li>' + err + '</li>'; });
             html += '</ul></div>';
-            $('#addTenancyForm').prepend(html);
-            $('#smallModal .modal-body').scrollTop(0);
+            // Insert banner at top of form, before first child
+            $('#addTenancyForm').children().first().before(html);
+            // Scroll modal body to top
+            const $modalBody = $('#smallModal .modal-body');
+            if ($modalBody.length) {
+                $modalBody.animate({ scrollTop: 0 }, 200);
+            }
             return;
         }
 
@@ -375,27 +402,41 @@
             processData: false,
             contentType: false,
             success: function(response) {
-                // Success — close modal and reload page
                 $('#smallModal').modal('hide');
                 location.reload();
             },
             error: function(xhr) {
                 submitBtn.prop('disabled', false).text('Save');
                 $('#form-error-summary').remove();
-                let html = '<div id="form-error-summary" class="alert alert-danger mt-2"><ul class="mb-0">';
+                let html = '<div id="form-error-summary" class="alert alert-danger mt-2 mb-3"><ul class="mb-0">';
 
                 if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-                    // Laravel validation errors
                     $.each(xhr.responseJSON.errors, function(field, messages) {
                         messages.forEach(function(msg) { html += '<li>' + msg + '</li>'; });
+                        // Highlight the corresponding field
+                        const fieldMap = {
+                            'user_id': '#tenant_id',
+                            'rent': '#tenancies-rent',
+                            'deposit': '#tenancies-deposit',
+                            'move_in': '#tenancies-move_in',
+                            'tenancy_type_id': '#tenancy-type',
+                            'tenancy_sub_status_id': '#tenancies-sub_status',
+                            'deposit_number': '#depositNumber',
+                        };
+                        if (fieldMap[field]) {
+                            $(fieldMap[field]).addClass('is-invalid');
+                        }
                     });
                 } else {
                     html += '<li>Something went wrong. Please try again.</li>';
                 }
 
                 html += '</ul></div>';
-                $('#addTenancyForm').prepend(html);
-                $('#smallModal .modal-body').scrollTop(0);
+                $('#addTenancyForm').children().first().before(html);
+                const $modalBody = $('#smallModal .modal-body');
+                if ($modalBody.length) {
+                    $modalBody.animate({ scrollTop: 0 }, 200);
+                }
             }
         });
     });

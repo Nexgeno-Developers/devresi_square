@@ -90,7 +90,7 @@
                                 
                                 <td>
                                     <div class="d-flex justify-content-end">
-                                        <button class="btn btn-sm btn-outline-warning editNote editForm me-1" title="Edit Compliance" onclick="openComplianceModal({{ $type->id }}, {{ $record->id }})">
+                                        <button class="btn btn-sm btn-outline-warning me-1" title="Edit Compliance" onclick="openComplianceModal({{ $type->id }}, {{ $record->id }})">
                                             <i class="bi bi-pencil">Edit</i>
                                         </button>
                                         <button class="btn btn-sm btn-outline-danger me-1" title="Delete Compliance" onclick="confirmDelete({{ $record->id }})">

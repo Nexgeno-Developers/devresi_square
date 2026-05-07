@@ -17,15 +17,7 @@
             </select>
         </div>
 
-        <div id="user-options" class="mt-3">
-            @foreach($ownerGroup->ownerGroupUsers as $ownerGroupUser)
-                <div class="form-check">
-                    <input type="radio" name="is_main" value="{{ $ownerGroupUser->user->id }}" id="is_main_{{ $ownerGroupUser->user->id }}" class="form-check-input"
-                    @if($ownerGroupUser->is_main) checked @endif>
-                    <label for="is_main_{{ $ownerGroupUser->user->id }}" class="form-check-label">{{ $ownerGroupUser->user->name }}</label>
-                </div>
-            @endforeach
-        </div>
+        <div id="user-options" class="mt-3" data-current-main="{{ $ownerGroup->ownerGroupUsers->where('is_main', 1)->first()?->user_id ?? '' }}"></div>
 
         <div class="row">
             <div class="col-md-6 col-12">
@@ -90,33 +82,117 @@
 <script>
     initSelect2('.select2');
 
+    // Re-render main owner radio buttons when user selection changes
+    function renderMainOwnerOptions() {
+        const $userSelect  = $('#user_id');
+        const $container   = $('#user-options');
+        const selectedIds  = $userSelect.val() || [];
+        const defaultMain  = $container.data('current-main') || null;
 
-    // Form submission validation
-    $('form').on('submit', function(e) {
-        // confirmEdit();
-        if ($('input[name="is_main"]:checked').length === 0) {
-            e.preventDefault(); // Prevent form submission
-            alert('Please select a main user.'); // Show alert message
+        // Remember currently checked value before re-render (falls back to server-side default)
+        const currentMain  = $('input[name="is_main"]:checked').val() || defaultMain;
+
+        $container.empty();
+
+        if (selectedIds.length === 0) return;
+
+        $container.append('<label class="form-label fw-semibold mb-1">Select Main Owner <span class="text-danger">*</span></label>');
+
+        selectedIds.forEach(function (userId) {
+            const userName = $userSelect.find('option[value="' + userId + '"]').text();
+            const checked  = (currentMain == userId) ? 'checked' : '';
+            $container.append(
+                '<div class="form-check">' +
+                '<input type="radio" name="is_main" value="' + userId + '" id="is_main_' + userId + '" class="form-check-input" ' + checked + '>' +
+                '<label for="is_main_' + userId + '" class="form-check-label">' + userName + '</label>' +
+                '</div>'
+            );
+        });
+
+        // Auto-select if only one owner
+        if (selectedIds.length === 1) {
+            $container.find('input[type="radio"]').prop('checked', true);
         }
+    }
+
+    // Bind to user select changes
+    $('#user_id').on('change', function () {
+        renderMainOwnerOptions();
+    });
+
+    // Run once on load to sync with pre-selected users
+    renderMainOwnerOptions();
+
+    // Form submission — validate then submit via AJAX
+    $('#owner-group-form').on('submit', function (e) {
+        e.preventDefault();
+
+        // Validate main owner selected
+        if ($('input[name="is_main"]:checked').length === 0) {
+            $('#form-error-summary').remove();
+            $('#owner-group-form').prepend(
+                '<div id="form-error-summary" class="alert alert-danger mt-2">Please select a main owner.</div>'
+            );
+            return;
+        }
+
+        const $form    = $(this);
+        const $btn     = $form.find('button[type="submit"]');
+        const formData = new FormData(this);
+
+        $btn.prop('disabled', true).text('Saving...');
+        $('#form-error-summary').remove();
+
+        $.ajax({
+            url: $form.attr('action'),
+            method: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+                if (response.status) {
+                    $('#smallModal').modal('hide');
+                    location.reload();
+                } else {
+                    $btn.prop('disabled', false).text('Save');
+                    let html = '<div id="form-error-summary" class="alert alert-danger mt-2"><ul class="mb-0">';
+                    if (response.errors) {
+                        $.each(response.errors, function (field, messages) {
+                            messages.forEach(function (msg) { html += '<li>' + msg + '</li>'; });
+                        });
+                    } else {
+                        html += '<li>' + (response.notification || 'Something went wrong.') + '</li>';
+                    }
+                    html += '</ul></div>';
+                    $('#owner-group-form').prepend(html);
+                    $('#smallModal .modal-body').scrollTop(0);
+                }
+            },
+            error: function (xhr) {
+                $btn.prop('disabled', false).text('Save');
+                let html = '<div id="form-error-summary" class="alert alert-danger mt-2"><ul class="mb-0">';
+                if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                    $.each(xhr.responseJSON.errors, function (field, messages) {
+                        messages.forEach(function (msg) { html += '<li>' + msg + '</li>'; });
+                    });
+                } else {
+                    html += '<li>Something went wrong. Please try again.</li>';
+                }
+                html += '</ul></div>';
+                $('#owner-group-form').prepend(html);
+                $('#smallModal .modal-body').scrollTop(0);
+            }
+        });
     });
 
     function confirmEdit() {
-        // Customize your confirmation message
-        const currentStatus = "{{ $ownerGroup->status }}"; // Get current status from server
-        const newStatus = document.querySelector('[name="status"]').value; // Get the selected status
-        // let message = "Are you sure you want to save the changes?";
-
-        // Special handling for status changes
+        const currentStatus = "{{ $ownerGroup->status }}";
+        const newStatus = document.querySelector('[name="status"]').value;
         if (currentStatus === 'archived' && newStatus === 'active') {
-            message = "You are activating an archived owner group. Proceed?";
-            // Show confirmation dialog
-            return confirm(message);
-        }else if (currentStatus === 'active' && newStatus === 'archived') {
-            message = "You are archiving an active owner group. Proceed?";
-            // Show confirmation dialog
-            return confirm(message);
+            return confirm("You are activating an archived owner group. Proceed?");
+        } else if (currentStatus === 'active' && newStatus === 'archived') {
+            return confirm("You are archiving an active owner group. Proceed?");
         }
-
-
+        return true;
     }
 </script>

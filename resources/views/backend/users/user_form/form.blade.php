@@ -59,18 +59,19 @@ $(document).ready(function() {
 
         // If validation passed, proceed to send data and update to the next step
         if (isValid) {
-            // Send form data for current step before navigating to the target step
-            sendFormData(currentStep);
-            // Update the radio button selection to the target step
-            $('input[name="step"][value="' + targetStep + '"]').prop('checked', true);
-            // Enable the next step in the navigation
-            $('input[name="step"][value="' + targetStep + '"]').prop('disabled', false);
+            // Send form data — only advance to next step on success
+            sendFormData(currentStep, function() {
+                // Update the radio button selection to the target step
+                $('input[name="step"][value="' + targetStep + '"]').prop('checked', true);
+                // Enable the next step in the navigation
+                $('input[name="step"][value="' + targetStep + '"]').prop('disabled', false);
+            });
         }
     }
 
 
     // Function to send form data for a specific step
-    function sendFormData(step) {
+    function sendFormData(step, onSuccess) {
         const formData = new FormData($('#user-form-step-' + step)[0]);
         formData.append('step', step);
         // Add user_id to the form data if it doesn't already exist
@@ -104,13 +105,33 @@ $(document).ready(function() {
                 if(step == 2){
                     initSelectedProperties();
                 }
+                if (typeof onSuccess === 'function') onSuccess();
             },
             error: function(jqXHR) {
                 if (jqXHR.status === 422) {
                     const errors = jqXHR.responseJSON.errors;
+                    // Show toastr for each error
                     Object.keys(errors).forEach(key => {
                         toastr.error(errors[key][0], 'Validation Error');
                     });
+                    // Highlight the specific fields with errors
+                    Object.keys(errors).forEach(key => {
+                        const field = $('#user-form-step-' + step).find('[name="' + key + '"]');
+                        field.addClass('is-invalid');
+                        // Insert or update inline error message
+                        let feedback = field.next('.invalid-feedback');
+                        if (!feedback.length) {
+                            feedback = $('<div class="invalid-feedback"></div>').insertAfter(field);
+                        }
+                        feedback.text(errors[key][0]).show();
+                        // Remove highlight on user input
+                        field.one('input change', function() {
+                            $(this).removeClass('is-invalid');
+                            $(this).next('.invalid-feedback').hide();
+                        });
+                    });
+                } else {
+                    toastr.error('Something went wrong. Please try again.', 'Error');
                 }
             }
         });

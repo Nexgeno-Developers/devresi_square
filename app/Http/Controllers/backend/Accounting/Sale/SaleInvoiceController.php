@@ -1247,6 +1247,81 @@ class SaleInvoiceController extends BaseCrudController
         return response()->json($item);
     }
 
+    public function linkToSearch(Request $request)
+    {
+        $q     = trim($request->query('q', ''));
+        $type  = $request->query('type', 'Property');
+        // 2 results when no query (defaults), 6 when searching
+        $limit = $q === '' ? 2 : 6;
+
+        if ($type === 'Property') {
+            $builder = Property::query()->orderByDesc('id')->limit($limit);
+            if ($q !== '') {
+                $builder->where(function ($w) use ($q) {
+                    $w->where('prop_ref_no', 'like', "%{$q}%")
+                      ->orWhere('prop_name',  'like', "%{$q}%")
+                      ->orWhere('line_1',     'like', "%{$q}%")
+                      ->orWhere('city',       'like', "%{$q}%")
+                      ->orWhere('postcode',   'like', "%{$q}%");
+                });
+            }
+            $results = $builder->get(['id', 'prop_ref_no', 'prop_name', 'line_1', 'city', 'postcode'])
+                ->map(fn ($p) => [
+                    'id'   => $p->id,
+                    'text' => trim(implode(' – ', array_filter([
+                        $p->prop_ref_no,
+                        $p->prop_name ?: $p->line_1,
+                        $p->city,
+                        $p->postcode,
+                    ]))),
+                ]);
+
+        } elseif ($type === 'Tenancy') {
+            $builder = Tenancy::query()
+                ->with('property:id,prop_ref_no,prop_name,line_1,city')
+                ->orderByDesc('id')
+                ->limit($limit);
+            if ($q !== '') {
+                $builder->where(function ($w) use ($q) {
+                    $w->where('id', 'like', "%{$q}%")
+                      ->orWhereHas('property', function ($pw) use ($q) {
+                          $pw->where('prop_ref_no', 'like', "%{$q}%")
+                             ->orWhere('prop_name',  'like', "%{$q}%")
+                             ->orWhere('line_1',     'like', "%{$q}%")
+                             ->orWhere('city',       'like', "%{$q}%");
+                      });
+                });
+            }
+            $results = $builder->get()->map(function ($t) {
+                $prop = $t->property;
+                $propLabel = $prop
+                    ? trim(implode(' – ', array_filter([$prop->prop_ref_no, $prop->prop_name ?: $prop->line_1, $prop->city])))
+                    : 'Property #' . $t->property_id;
+                return ['id' => $t->id, 'text' => "Tenancy #{$t->id} – {$propLabel}"];
+            });
+
+        } elseif ($type === 'Contractor') {
+            $builder = User::role('Contractor')->orderByDesc('id')->limit($limit);
+            if ($q !== '') {
+                $builder->where(function ($w) use ($q) {
+                    $w->where('name',  'like', "%{$q}%")
+                      ->orWhere('email', 'like', "%{$q}%")
+                      ->orWhere('phone', 'like', "%{$q}%");
+                });
+            }
+            $results = $builder->get(['id', 'name', 'email'])
+                ->map(fn ($u) => [
+                    'id'   => $u->id,
+                    'text' => $u->name . ($u->email ? " ({$u->email})" : ''),
+                ]);
+
+        } else {
+            $results = collect();
+        }
+
+        return response()->json(['results' => $results->values()]);
+    }
+
     public function propertyContext(Property $property)
     {
         $property->loadMissing('countryRelation');

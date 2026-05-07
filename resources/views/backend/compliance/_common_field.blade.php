@@ -16,7 +16,7 @@
         <h6 class="sub_title mt-4">Upload Image</h6>
         <div class="media_wrapper2">
             <div class="input-group" data-toggle="aizuploader" data-type="all" data-multiple="true">
-                <label class="col-form-label" for="photos">Photos</label>
+                <label class="col-form-label">Photos</label>
                 <div class="d-none input-group-prepend">
                     <div class="input-group-text bg-soft-secondary font-weight-medium">Browse</div>
                 </div>

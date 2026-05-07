@@ -355,15 +355,9 @@ class UserController
             case 'notes':
                 // Fetch the notes related to the specific user by user ID
                 $notes = $user->notes()->with('noteType')->orderByDesc('updated_at')->paginate(5);
-
-                // Ensure it's an empty collection if no notes are found
-                if ($notes->isEmpty()) {
-                    $notes = collect();  // Make sure it's an empty collection, not null
-                }
                 $noteTypes = NoteType::all();
-
+dd($notes);
                 return view('backend.users.tabs.notes', compact('userId', 'user', 'notes', 'noteTypes'))->render();
-                // return view('backend.users.tabs.notes', compact('userId', 'user'))->render();
 
             case 'statement':
                 $filters = $this->statementFilters($request);
@@ -404,7 +398,7 @@ class UserController
             $isNewUser = false;
 
             // Validate the request data
-            $validatedData = $request->validate($this->getValidationRulesQuick($request->step));
+            $validatedData = $request->validate($this->getValidationRulesQuick($request->step, $request->user_id ?? null));
 
             // Get user_id from the request
             $user_id = $request->user_id;
@@ -491,7 +485,7 @@ class UserController
         }
     }
 
-    private function getValidationRulesQuick($step)
+    private function getValidationRulesQuick($step, $userId = null)
     {
         switch ($step) {
             case 1:
@@ -502,12 +496,16 @@ class UserController
                     'role_ids.*' => 'integer|exists:roles,id',
                 ];
             case 2:
+                $emailRule = 'required|email|max:55|unique:users,email';
+                if ($userId) {
+                    $emailRule .= ',' . $userId; // ignore current user when editing
+                }
                 return [
                     'first_name' => 'required|string|max:55',
                     'middle_name' => 'nullable|string|max:55',
                     'last_name' => 'required|string|max:55',
                     'phone' => 'required|string|max:20',
-                    'email' => 'required|email|max:55',
+                    'email' => $emailRule,
                     'address_line_1' => 'required|string|max:255',
                     'address_line_2' => 'nullable|string|max:255',
                     'postcode' => 'required|string|max:15',
@@ -814,7 +812,7 @@ class UserController
         }
 
         $extraData = []; // <-- This prevents undefined variable errors
-        $extraData = $this->getFormTypeExtras($formType, $user, $request, $request->note_id ?? null, $request->bank_detail_id ?? null);
+        $extraData = $this->getFormTypeExtras($formType, $user, $request->note_id ?? null, $request->bank_detail_id ?? null, $request);
         // ** NEW: if we have a note_id, fetch that note and pass it in **
         // if ($formType === 'notes_tab' && $request->filled('note_id')) {
         //     $note = $user->notes()->findOrFail($request->note_id);

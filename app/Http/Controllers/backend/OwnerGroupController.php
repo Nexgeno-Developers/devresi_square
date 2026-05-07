@@ -80,15 +80,6 @@ class OwnerGroupController
             'archived_date' => 'nullable|date|after_or_equal:purchased_date', // Optional, must be after purchased date
             'status' => 'required|in:active,inactive,archived',
         ]);
-        
-        // Check if validation fails
-        if ($request->fails()) {
-            return response()->json([
-                'status' => false,
-                'errors' => $request->errors(),
-                'message' => 'Validation failed. Please check the inputs and try again.',
-            ]);
-        }
 
         if ($validated['status'] === 'active' && $request->filled('archived_date')) {
             return response()->json([

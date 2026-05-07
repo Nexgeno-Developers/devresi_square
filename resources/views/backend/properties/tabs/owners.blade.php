@@ -1,12 +1,5 @@
 {{-- Hidden div for property ID --}}
-<div id="hidden-property-id" class="d-none" data-property-id="{{ $propertyId }}">
-    @php
-        // Debugging the propertyId (for development purposes)
-        echo '<pre>';
-        var_dump($propertyId);
-        echo '</pre>';
-    @endphp
-</div>
+<div id="hidden-property-id" class="d-none" data-property-id="{{ $propertyId }}"></div>
 
 {{-- Show table only if there is data --}}
 @if($ownerGroups->isNotEmpty())
@@ -53,7 +46,8 @@
                         <button class="btn btn-sm btn-outline-warning popup-tab-owner-group-edit me-1" title="Edit Owner Group" data-url="{{ route('admin.owner-groups.edit', $ownerGroup->id) }}">
                             <i class="bi bi-pencil">Edit</i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger me-1" title="Delete Owner Group" onclick="confirmModal('{{ route('admin.owner-groups.delete_group', $ownerGroup->id) }}', responseHandler)">
+                        <button class="btn btn-sm btn-outline-danger me-1" title="Delete Owner Group"
+                            onclick="deleteOwnerGroup('{{ route('admin.owner-groups.delete_group', $ownerGroup->id) }}', this)">
                             <i class="bi bi-trash"></i> Delete
                         </button>
                     </div>
@@ -131,56 +125,54 @@
 <!-- JavaScript functions -->
 <script>
 
-    function setAsMain(userId, groupId) {
-        if (confirm('Are you sure you want to set this user as the main user?')) {
-            // The URL for the update
-            var actionUrlTemplate = "{{ route('admin.owner-groups.updateMain', ['id' => ':groupId']) }}";
+    function deleteOwnerGroup(url, btn) {
+        if (!confirm('Are you sure you want to delete this owner group?')) return;
 
-            var actionUrl = actionUrlTemplate.replace(':groupId', groupId);
+        btn.disabled = true;
 
-            // Get the CSRF token dynamically
-            var csrfToken = $('meta[name="csrf-token"]').attr('content');
-
-            // Prepare the form data
-            var formData = new FormData();
-            formData.append('owner_group_id', groupId);
-            formData.append('user_id', userId);
-            formData.append('_token', csrfToken); // CSRF token for security
-
-            // Perform the AJAX request directly with the URL and form data
-            $.ajax({
-                type: "POST",
-                url: actionUrl,
-                data: formData,
-                processData: false, // Important: don't process the data
-                contentType: false, // Important: let jQuery handle the content type
-                success: function(response) {
-                    // Handle the response upon success or failure
-                    if (response.status) {
-                        toastr.success(response.notification, 'Success');
-                        // Optionally reload the page or update the UI here
-                        setTimeout(function() {
-                            location.reload(); // Reload the page after 1 second
-                        }, 1000);
-                    } else {
-                        toastr.error(response.notification, 'Error');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error(error); // Handle any errors that may occur
-                }
-            });
-        }
+        $.ajax({
+            type: 'POST',
+            url: url,
+            data: { _token: $('meta[name="csrf-token"]').attr('content') },
+            success: function () {
+                location.reload();
+            },
+            error: function (xhr) {
+                btn.disabled = false;
+                alert('Failed to delete. Please try again.');
+            }
+        });
     }
 
+    function setAsMain(userId, groupId) {
+        if (!confirm('Are you sure you want to set this user as the main user?')) return;
 
+        var actionUrl = "{{ route('admin.owner-groups.updateMain', ['id' => ':groupId']) }}".replace(':groupId', groupId);
+        var csrfToken = $('meta[name="csrf-token"]').attr('content');
+        var formData = new FormData();
+        formData.append('owner_group_id', groupId);
+        formData.append('user_id', userId);
+        formData.append('_token', csrfToken);
 
-    // function setAsMain(userId, groupId) {
-    //     if (confirm('Are you sure you want to set this user as the main user?')) {
-    //         // Perform the action via AJAX or redirect
-    //         alert('User ID: ' + userId + ' set as Main for Group ID: ' + groupId);
-    //     }
-    // }
+        $.ajax({
+            type: 'POST',
+            url: actionUrl,
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+                if (response.status) {
+                    location.reload();
+                } else {
+                    alert(response.notification || 'Failed to update.');
+                }
+            },
+            error: function () {
+                alert('Something went wrong. Please try again.');
+            }
+        });
+    }
+
 </script>
 
 

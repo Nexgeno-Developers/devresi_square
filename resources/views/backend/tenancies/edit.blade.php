@@ -52,17 +52,7 @@
             </select>
         </div>
 
-        <div id="tenant-options" class="mt-3">
-            @foreach ($tenancy->tenantMembers as $tenantMembersUser)
-                <div class="form-check">
-                    <input type="radio" name="is_main_person" value="{{ $tenantMembersUser->user->id }}"
-                        id="is_main_person{{ $tenantMembersUser->user->id }}" class="form-check-input"
-                        @if ($tenantMembersUser->is_main_person) checked @endif>
-                    <label for="is_main_person{{ $tenantMembersUser->user->id }}"
-                        class="form-check-label">{{ $tenantMembersUser->user->name }}</label>
-                </div>
-            @endforeach
-        </div>
+        <div id="tenant-options" class="mt-3" data-current-main="{{ $tenancy->tenantMembers->where('is_main_person', 1)->first()?->user_id ?? '' }}"></div>
 
         <div class="row">
             <div class="col">
@@ -196,7 +186,7 @@
                     <div class="form-group field-tenancies-deposit">
                         <label class="control-label" for="tenancies-deposit">Deposit</label>
                         <input type="number" inputmode="numeric" pattern="[0-9]" id="tenancies-deposit"
-                            class="form-control" name="deposit" value="{{ $deposit }}">
+                            class="form-control" name="deposit" value="{{ $deposit }}" readonly>
                     </div>
                 </div>
             </div>
@@ -323,14 +313,37 @@
 <script>
     initSelect3('.select2');
 
+    // Re-initialize tenant_id with Select2 that properly shows pre-selected values
+    $('#tenant_id').select2({
+        placeholder: 'Start typing at least 3 characters',
+        minimumInputLength: 3,
+        language: {
+            inputTooShort: function () { return 'Please enter 3 or more characters'; }
+        }
+    });
+
+    // ── Deposit auto-calculation: Rent × 12 ÷ 52 × Weeks ──────────────────
+    function calcDeposit() {
+        const rent  = parseFloat($('#tenancies-rent').val()) || 0;
+        const weeks = parseFloat($('#depositNumber').val()) || 0;
+        if (rent > 0 && weeks > 0) {
+            const deposit = (rent * 12 / 52 * weeks).toFixed(2);
+            $('#tenancies-deposit').val(deposit);
+        } else {
+            $('#tenancies-deposit').val('');
+        }
+    }
+    $('#tenancies-rent, #depositNumber').on('input change', calcDeposit);
+    calcDeposit();
+    // ────────────────────────────────────────────────────────────────────────
+
     // Render main person radio buttons when tenants are selected/changed
     function renderMainPersonOptions() {
-        const userSelect = $('#tenant_id');
-        const container = $('#tenant-options');
+        const userSelect    = $('#tenant_id');
+        const container     = $('#tenant-options');
         const selectedUsers = userSelect.val() || [];
-
-        // Remember currently checked main person before re-rendering
-        const currentMain = $('input[name="is_main_person"]:checked').val() || null;
+        const defaultMain   = container.data('current-main') || null;
+        const currentMain   = $('input[name="is_main_person"]:checked').val() || defaultMain;
 
         container.empty();
         $('#main-person-error').remove();
@@ -339,7 +352,7 @@
             let html = '<div class="mb-3"><label class="form-label fw-semibold">Select Main Tenant <span class="text-danger">*</span></label>';
             selectedUsers.forEach(function(userId) {
                 const userName = userSelect.find('option[value="' + userId + '"]').text();
-                const isChecked = (currentMain == userId) ? 'checked' : '';
+                const isChecked = (String(currentMain) === String(userId)) ? 'checked' : '';
                 html += '<div class="form-check">' +
                     '<input type="radio" name="is_main_person" value="' + userId + '" id="is_main_' + userId + '" class="form-check-input" ' + isChecked + '>' +
                     '<label for="is_main_' + userId + '" class="form-check-label">' + userName + '</label>' +
@@ -348,7 +361,6 @@
             html += '</div>';
             container.html(html);
 
-            // Auto-select if only one tenant
             if (selectedUsers.length === 1) {
                 container.find('input[type="radio"]').prop('checked', true);
             }
@@ -359,6 +371,9 @@
     $('#tenant_id').on('change', function() {
         renderMainPersonOptions();
     });
+
+    // Run on load — reads only the currently selected tenants (not all options)
+    renderMainPersonOptions();
 
     // Form submission validation
     $('#editTenancyForm').on('submit', function(e) {

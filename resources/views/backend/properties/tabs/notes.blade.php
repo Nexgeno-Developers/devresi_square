@@ -5,7 +5,7 @@
     @include("backend.properties.popup_forms.notes_tab", ['property' => $property, 'notes' => $notes,])
 </div> --}}
 
-<x-backend-notes-component
+<x-backend.notes.notes
     :noteable-type="get_class($property)"
     :noteable-id="$property->id"
     :note-types="$noteTypes"

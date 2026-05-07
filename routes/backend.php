@@ -523,6 +523,8 @@ Route::middleware('auth')->group(function () {
 
             Route::get('sale/invoices/search', [SaleInvoiceController::class, 'ajaxSearchForReceipts'])
                 ->name('sale.invoices.search');
+            Route::get('sale/invoices/link-to-search', [SaleInvoiceController::class, 'linkToSearch'])
+                ->name('sale.invoices.linkToSearch');
             Route::get('sale/invoices/property-context/{property}', [SaleInvoiceController::class, 'propertyContext'])
                 ->name('sale.invoices.propertyContext');
             Route::get('sale/invoices/tenancy-context/{property}/{tenant}', [SaleInvoiceController::class, 'tenancyContext'])

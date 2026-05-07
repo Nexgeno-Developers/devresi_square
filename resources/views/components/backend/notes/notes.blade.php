@@ -1,4 +1,4 @@
-@props(['noteableType', 'noteableId', 'noteTypes'])
+@props(['noteableType', 'noteableId', 'noteTypes', 'initialNotes' => null])
 <div class="notes-component" data-noteable-type="{{ $noteableType }}" data-noteable-id="{{ $noteableId }}">
 
     {{-- ADD NEW --}}
@@ -6,7 +6,7 @@
         <button type="button" class="btn btn-outline-primary notes-add">Add New Note</button>
     </div>
     {{-- ONLY SHOW FILTER IF THERE ARE NOTES --}}
-    @if( count($initialNotes) > 0 )
+    @if( $initialNotes && count($initialNotes) > 0 )
         {{-- FILTER FORM --}}
         <form class="notes-filter-form row g-2 mb-3">
             <div class="col-md-3">

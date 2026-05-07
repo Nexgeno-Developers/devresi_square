@@ -77,6 +77,39 @@ class PropertyController
 
         // If AJAX request for property list only (search/pagination)
         if ($request->ajax() && $request->has('list_only')) {
+            // If a highlight_id is given, jump to the page that contains it
+            if ($request->filled('highlight_id')) {
+                $highlightId = (int) $request->highlight_id;
+                $perPage = 15;
+
+                // Rebuild a fresh query with the same role-based filters to find the position
+                $positionQuery = Property::query();
+                if ($request->filled('search')) {
+                    $search = $request->search;
+                    $positionQuery->where(function ($q) use ($search) {
+                        $q->where('prop_name', 'like', "%{$search}%")
+                          ->orWhere('prop_ref_no', 'like', "%{$search}%")
+                          ->orWhere('line_1', 'like', "%{$search}%")
+                          ->orWhere('line_2', 'like', "%{$search}%")
+                          ->orWhere('city', 'like', "%{$search}%")
+                          ->orWhere('postcode', 'like', "%{$search}%")
+                          ->orWhere('property_type', 'like', "%{$search}%");
+                    });
+                }
+                if ($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')) {
+                    $positionQuery->where('created_by', $user->id);
+                } elseif ($user->hasRole('Estate Agent')) {
+                    $createdUserIds = User::where('created_by', $user->id)->pluck('id');
+                    $positionQuery->whereIn('created_by', $createdUserIds->push($user->id));
+                }
+
+                $position = $positionQuery->orderBy('id', 'desc')->pluck('id')->search($highlightId);
+
+                if ($position !== false) {
+                    $page = (int) floor($position / $perPage) + 1;
+                    $properties = $positionQuery->orderBy('id', 'desc')->paginate($perPage, ['*'], 'page', $page);
+                }
+            }
             return response()->json([
                 'html' => view('backend.properties.partials.property-list', compact('properties'))->render()
             ]);
@@ -92,9 +125,16 @@ class PropertyController
         $propertyId = $request->query('property_id');
         $tabName = $request->query('tabname', 'property'); // Default to 'property' if no tab is specified
 
-        // Check if the property_id is provided, otherwise, select the first property or handle it gracefully
-        // $property = $propertyId ? Property::findOrFail($propertyId) : $properties->first(); // Use the first property if none is selected
-        $property = $propertyId ? Property::find($propertyId) : null; // Use null if no property is selected
+        // If no property_id in URL, redirect to first property on page 1
+        if (!$propertyId) {
+            $firstProperty = $properties->first();
+            return redirect()->route('admin.properties.index', [
+                'property_id' => $firstProperty->id,
+                'tabname'     => $tabName,
+            ]);
+        }
+
+        $property = Property::find($propertyId);
 
         /*if (!$property) {
             // Get the first property that is NOT soft-deleted
@@ -126,9 +166,12 @@ class PropertyController
                 abort(403, 'Unauthorized to view this property.');
             }
         } else {
-            // If property not found, fallback
-            $property = $properties->first();
-            $propertyId = $property->id;
+            // property_id missing, invalid, or deleted — redirect to first property on page 1
+            $firstProperty = $properties->first();
+            return redirect()->route('admin.properties.index', [
+                'property_id' => $firstProperty->id,
+                'tabname'     => $tabName,
+            ]);
         }
 
         $availableTabs = [

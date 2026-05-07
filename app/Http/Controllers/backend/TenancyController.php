@@ -28,27 +28,15 @@ class TenancyController
     }
 
     // Show the form for creating a new tenancy
-    public function create()
+    public function create(Request $request)
     {
-        // Get users where category_id is 3 (Tenant)
-        // $tenants = User::where('category_id', 3)->get();
-
-        // Get users where category_id is 2 (Property Manager)
-        // $property_managers = User::where('category_id', 2)->get();
-        
-        // Get all tenants (users with role 'tenant')
         $tenants = User::role('Tenant')->get();
-
-        // Get all property managers (users with role 'property_manager')
         $property_managers = User::role('Property Manager')->get();
-
-        // Fetch all tenancy types (if they're stored in a model TenancyType)
         $tenancyTypes = TenancyType::all();
-
-        // Fetch all tenancy sub statuses (if they're stored in a model TenancySubStatus)
         $tenancySubStatuses = TenancySubStatus::all();
+        $propertyId = $request->query('property_id');
 
-        return view('backend.tenancies.create', compact('tenants', 'property_managers', 'tenancyTypes', 'tenancySubStatuses'));
+        return view('backend.tenancies.create', compact('tenants', 'property_managers', 'tenancyTypes', 'tenancySubStatuses', 'propertyId'));
     }
 
 
@@ -395,8 +383,14 @@ class TenancyController
     public function destroy($id)
     {
         $tenancy = Tenancy::findOrFail($id);
+        $propertyId = $tenancy->property_id;
         $tenancy->delete();
 
-        return redirect()->route('admin.tenancies.index')->with('success', 'Tenancy deleted successfully!');
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return redirect()->route('admin.properties.index', ['property_id' => $propertyId, 'tabname' => 'tenancy'])
+            ->with('success', 'Tenancy deleted successfully!');
     }
 }
