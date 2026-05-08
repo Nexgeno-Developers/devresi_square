@@ -1,34 +1,31 @@
-@props(['documentableType', 'documentableId', 'documentTypes'])
+@props(['documentableType', 'documentableId', 'documentTypes', 'initialDocuments' => null])
 <div class="documents-component" data-documentable-type="{{ $documentableType }}" data-documentable-id="{{ $documentableId }}">
 
     {{-- ADD NEW --}}
     <div class="mb-3">
         <button type="button" class="btn btn-outline-primary documents-add">Add New Document</button>
     </div>
-    {{-- ONLY SHOW FILTER IF THERE ARE DOCUMENTS --}}
-    @if(count($initialDocuments) > 0)
-        {{-- FILTER FORM --}}
-        <form class="documents-filter-form row g-2 mb-3">
-            <div class="col-md-3">
-                <select name="document_type_id" class="form-select">
-                    <option value="">All Types</option>
-                    @foreach($documentTypes as $type)
-                        <option value="{{ $type->id }}">{{ $type->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-2">
-                <input type="date" name="from_date" class="form-control">
-            </div>
-            <div class="col-md-2">
-                <input type="date" name="to_date" class="form-control">
-            </div>
-            <div class="col-md-2 d-flex gap-1">
-                <button type="submit" class="btn btn-primary">Filter</button>
-                <button type="button" class="btn btn-secondary documents-reset">Reset</button>
-            </div>
-        </form>
-    @endif
+    {{-- FILTER FORM --}}
+    <form class="documents-filter-form row g-2 mb-3">
+        <div class="col-md-3">
+            <select name="document_type_id" class="form-select">
+                <option value="">All Types</option>
+                @foreach($documentTypes as $type)
+                    <option value="{{ $type->id }}">{{ $type->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-md-2">
+            <input type="date" name="from_date" class="form-control">
+        </div>
+        <div class="col-md-2">
+            <input type="date" name="to_date" class="form-control">
+        </div>
+        <div class="col-md-2 d-flex gap-1">
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <button type="button" class="btn btn-secondary documents-reset">Reset</button>
+        </div>
+    </form>
     {{-- LIST --}}
     {{-- <div class="documents-list"></div> --}}
     {{-- Render initial list server-side: --}}

@@ -211,22 +211,52 @@ var_dump($userId);
             var userId = getUrlParameter('user_id'); // Get user_id from URL
 
             if (tabName && userId) {
-                // Convert underscores back to spaces
-                // var displayTabName = tabName.replace(/_/g, ' ');
-
-                // Find the tab and user card with the matching data attributes
-                var selectedTab = $('.tab-link[data-tab-name="' + tabName + '"]');
+                var selectedTab      = $('.tab-link[data-tab-name="' + tabName + '"]');
                 var selectedUserCard = $('.user-card[data-user-id="' + userId + '"]');
 
-                // Mark the selected tab and user card as active/current
                 $('.tab-link').removeClass('active');
-                $('.user-card').removeClass('current');
                 selectedTab.addClass('active');
-                selectedUserCard.addClass('current');
 
-                // Load the content dynamically
-                loadTabContent(userId, tabName);
+                if (selectedUserCard.length) {
+                    // Card is already in the DOM — highlight and scroll
+                    $('.user-card').removeClass('current');
+                    selectedUserCard.addClass('current');
+                    scrollToCard(selectedUserCard);
+                    loadTabContent(userId, tabName);
+                } else {
+                    // Card is on a different page — reload list to correct page first
+                    $.ajax({
+                        url: '{{ route('admin.users.index') }}',
+                        type: 'GET',
+                        data: { list_only: 1, highlight_id: userId },
+                        success: function(response) {
+                            $('#userListContainer').html(response.html);
+                            $('.user-card').removeClass('current');
+                            var card = $('.user-card[data-user-id="' + userId + '"]');
+                            card.addClass('current');
+                            scrollToCard(card);
+                            loadTabContent(userId, tabName);
+                        },
+                        error: function() {
+                            // User doesn't exist — fall back to first card
+                            var firstCard = $('.user-card').first();
+                            var firstId   = firstCard.data('user-id');
+                            firstCard.addClass('current');
+                            loadTabContent(firstId, tabName);
+                        }
+                    });
+                }
             }
+        }
+
+        // Scroll the user list so the given card is centred in view
+        function scrollToCard(card) {
+            if (!card || !card.length) return;
+            var container = $('.pv_card_wrapper');
+            if (!container.length) return;
+            container.animate({
+                scrollTop: container.scrollTop() + card.position().top - (container.height() / 2) + (card.outerHeight() / 2)
+            }, 300);
         }
 
         // Simulate the first tab and first user card selection on page load
@@ -361,6 +391,10 @@ $(document).on('click', '.editForm, .addForm', function() {
             // }
             if (formType === "notes_tab") {
                 AIZ.plugins.textEditor();
+            }
+            if (formType === "compliance") {
+                // Re-trigger the checkbox state so the dependent fields show if already checked
+                $('#right_to_rent_check').trigger('change');
             }
             // if (formType === "property_info") {
             //     toggleDescriptions();

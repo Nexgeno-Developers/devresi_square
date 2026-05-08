@@ -217,6 +217,39 @@ class UserController
 
         // If AJAX request for user list only (search/pagination)
         if ($request->ajax() && $request->has('list_only')) {
+            // If a highlight_id is given, jump to the page that contains it
+            if ($request->filled('highlight_id')) {
+                $highlightId = (int) $request->highlight_id;
+                $perPage = 15;
+
+                // Rebuild a fresh query with the same filters to find the position
+                $positionQuery = User::orderBy('id', 'desc')
+                    ->where(function ($q) {
+                        $q->whereNull('user_type')
+                          ->orWhereNotIn('user_type', ['staff', 'super_admin']);
+                    })
+                    ->whereDoesntHave('roles', function ($q) {
+                        $q->whereIn('name', ['Staff', 'Super Admin']);
+                    });
+
+                if ($request->filled('search')) {
+                    $search = $request->search;
+                    $positionQuery->where(function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                          ->orWhere('first_name', 'like', "%{$search}%")
+                          ->orWhere('last_name', 'like', "%{$search}%")
+                          ->orWhere('email', 'like', "%{$search}%")
+                          ->orWhere('phone', 'like', "%{$search}%");
+                    });
+                }
+
+                $position = $positionQuery->pluck('id')->search($highlightId);
+
+                if ($position !== false) {
+                    $page  = (int) floor($position / $perPage) + 1;
+                    $users = $positionQuery->paginate($perPage, ['*'], 'page', $page);
+                }
+            }
             return response()->json([
                 'html' => view('backend.users.partials.user-list', compact('users'))->render(),
             ]);
@@ -230,26 +263,35 @@ class UserController
         }
 
         // Decide which user/tab to show
-        $userId = $request->query('user_id');
+        $userId  = $request->query('user_id');
         $tabName = $request->query('tabname', 'Contact');
 
-        // Try to find the requested user - fetch directly if user_id is provided
-        if ($userId) {
-            $user = User::with([
-                'roles',
-                'details',
-                'tenancies',
-                'repairIssues',
-                'tenantMembers',
-                'documents',
-            ])->find($userId);
-        } else {
-            $user = null;
+        // If no user_id in URL, redirect to first user
+        if (!$userId) {
+            $firstUser = $users->first();
+            return redirect()->route('admin.users.index', [
+                'user_id' => $firstUser->id,
+                'tabname' => $tabName,
+            ]);
         }
 
-        if (! $user) {
-            $user = $users->first();
-            $userId = $user->id;
+        // Try to find the requested user
+        $user = User::with([
+            'roles',
+            'details',
+            'tenancies',
+            'repairIssues',
+            'tenantMembers',
+            'documents',
+        ])->find($userId);
+
+        if (!$user) {
+            // Invalid/deleted user_id — redirect to first user
+            $firstUser = $users->first();
+            return redirect()->route('admin.users.index', [
+                'user_id' => $firstUser->id,
+                'tabname' => $tabName,
+            ]);
         }
 
         // Define your tab list
@@ -337,26 +379,22 @@ class UserController
                 $nationalities = Nationality::orderBy('name')->pluck('name', 'id');
                 // load all users for the “checked by” dropdown
                 $users = User::orderBy('name')->pluck('name', 'id');
+                // eager-load the staff member who did the check
+                $user->load('details.userCheckedBy');
 
                 return view('backend.users.tabs.compliance', compact('userId', 'user', 'users', 'nationalities'))->render();
 
             case 'documents':
                 $documents = $user->documents()->with('documentType')->orderByDesc('updated_at')->paginate(5);
-
-                // Ensure it's an empty collection if no documents are found
-                if ($documents->isEmpty()) {
-                    $documents = collect();  // Make sure it's an empty collection, not null
-                }
                 $documentTypes = DocumentType::all();
 
-                // return 1;
                 return view('backend.users.tabs.documents', compact('userId', 'user', 'documents', 'documentTypes'))->render();
 
             case 'notes':
                 // Fetch the notes related to the specific user by user ID
                 $notes = $user->notes()->with('noteType')->orderByDesc('updated_at')->paginate(5);
                 $noteTypes = NoteType::all();
-dd($notes);
+
                 return view('backend.users.tabs.notes', compact('userId', 'user', 'notes', 'noteTypes'))->render();
 
             case 'statement':
@@ -406,7 +444,7 @@ dd($notes);
             // Check if first name, middle name, and last name are present
             $fullName = trim($request->first_name.' '.$request->middle_name.' '.$request->last_name);
 
-            // Store full name if it's not empty
+            // Store full name if it's not empty                                    
             if (! empty($fullName)) {
                 $validatedData['name'] = $fullName;
             }
@@ -1070,6 +1108,38 @@ dd($notes);
         return response()->json(['results' => $results]);
     }
 
+    /**
+     * AJAX endpoint to search staff users for Select2 (compliance checked_by_user field).
+     * Returns 6 by default, searches on 2+ characters.
+     */
+    public function staffAjaxList(Request $request)
+    {
+        $term = $request->input('q', '');
+
+        $query = User::whereHas('roles', function ($q) {
+            $q->whereIn('name', ['Staff', 'Super Admin', 'Property Manager']);
+        });
+
+        if (strlen($term) >= 2) {
+            $query->where(function ($q) use ($term) {
+                $q->where('name', 'like', "%$term%")
+                  ->orWhere('email', 'like', "%$term%");
+            });
+        }
+
+        $users = $query->select('id', 'name', 'email')
+            ->orderBy('name')
+            ->limit(6)
+            ->get();
+
+        return response()->json([
+            'results' => $users->map(fn($u) => [
+                'id'   => $u->id,
+                'text' => $u->name . ' (' . $u->email . ')',
+            ]),
+        ]);
+    }
+
     private function sendPasswordResetMail(User $user): void
     {
         try {
@@ -1141,7 +1211,7 @@ dd($notes);
             'date_to' => $end?->toDateString(),
         ];
     }
-
+                                    
     private function streamStatementCsv(User $user, array $statement)
     {
         return response()->streamDownload(function () use ($user, $statement) {

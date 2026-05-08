@@ -46,7 +46,7 @@
             <p>{{ $rightToRent }}</p>
                <div class="mt-2">
                     <strong>Checked By (Internal Staff):</strong>
-                    <p>{{ $details->user->name ?? 'N/A' }}</p>
+                    <p>{{ $details->userCheckedBy->name ?? 'N/A' }}</p>
 
                     <strong>Checked By (External Person):</strong>
                     <p>{{ $details->checked_by_external ?? 'N/A' }}</p>
@@ -100,7 +100,7 @@
                 <input
                     type="text"
                     class="form-control"
-                    name="passport_no"
+                    name="passport_no"`
                     id="passport_no"
                     value="{{ old('passport_no', $details->passport_no ?? '') }}"
                 >
@@ -138,14 +138,16 @@
                     {{-- Internal staff --}}
                     <div class="col-md-6">
                     <label for="checked_by_user" class="form-label"><strong>Select Staff</strong></label>
-                    <select name="checked_by_user" id="checked_by_user" class="form-select">
-                        <option value="">-- Select User --</option>
-                        @foreach($users as $id => $name)
-                        <option value="{{ $id }}"
-                            {{ old('checked_by_user', $details->checked_by_user ?? '') == $id ? 'selected' : '' }}>
-                            {{ $name }}
-                        </option>
-                        @endforeach
+                    <select name="checked_by_user" id="checked_by_user" class="select2-staff w-100">
+                        {{-- Pre-populate the currently saved value so Select2 shows it on edit --}}
+                        @if(isset($details->checked_by_user) && $details->checked_by_user)
+                            @php $staffUser = \App\Models\User::find($details->checked_by_user); @endphp
+                            @if($staffUser)
+                                <option value="{{ $staffUser->id }}" selected>
+                                    {{ $staffUser->name }} ({{ $staffUser->email }})
+                                </option>
+                            @endif
+                        @endif
                     </select>
                     </div>
 
@@ -177,5 +179,56 @@
 
         <button type="submit" class="btn btn_secondary mt-3 float-end">Save Changes</button>
     </form>
+
+    <style>
+    /* Make Select2 match Bootstrap 5 form-control appearance */
+    #checked_by_user + .select2-container .select2-selection--single {
+        height: calc(1.5em + 0.75rem + 2px);
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #212529;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        display: flex;
+        align-items: center;
+    }
+    #checked_by_user + .select2-container .select2-selection--single .select2-selection__rendered {
+        padding: 0;
+        line-height: 1.5;
+        color: #212529;
+    }
+    #checked_by_user + .select2-container .select2-selection--single .select2-selection__arrow {
+        height: 100%;
+        top: 0;
+        right: 8px;
+    }
+    </style>
+    <script>
+    $(function () {
+        $('#checked_by_user').select2({
+            dropdownParent: $('#extraLargeModal'),
+            placeholder: '-- Select Staff --',
+            allowClear: true,
+            minimumInputLength: 0,
+            width: '100%',
+            ajax: {
+                url: '{{ route('admin.users.staffAjax') }}',
+                dataType: 'json',
+                delay: 300,
+                data: function (params) {
+                    // Only send q if user has typed at least 2 chars, else send empty
+                    return { q: (params.term && params.term.length >= 2) ? params.term : '' };
+                },
+                processResults: function (data) {
+                    return { results: data.results };
+                },
+                cache: true,
+            },
+        });
+    });
+    </script>
 @endif
 

@@ -201,6 +201,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/save-form', 'saveForm')->name('saveForm');
 
             Route::get('/ajax', 'ajaxList')->name('ajax');  // AJAX endpoint to list users for a select dropdown
+            Route::get('/staff-ajax', 'staffAjaxList')->name('staffAjax');  // AJAX endpoint to search staff users
             Route::get('/profile', 'profile')->name('profile.show');  // Show user profile
             Route::get('/profile/edit', 'profileEdit')->name('profile.edit');  // Show user profile edit form
             Route::post('/profile/update', 'profileUpdate')->name('profile.update');  // Update user profile
