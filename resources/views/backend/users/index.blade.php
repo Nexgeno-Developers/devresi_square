@@ -208,13 +208,20 @@ var_dump($userId);
         // Function to activate tab based on URL parameter
         function activateTabFromUrl() {
             var tabName = getUrlParameter('tabname'); // Get tabname from URL
-            var userId = getUrlParameter('user_id'); // Get user_id from URL
+            var userId  = getUrlParameter('user_id'); // Get user_id from URL
 
             if (tabName && userId) {
-                var selectedTab      = $('.tab-link[data-tab-name="' + tabName + '"]');
+                // Tab links use lowercase data-tab-name, URL may have mixed case
+                var tabNameLower = tabName.toLowerCase();
+                var selectedTab      = $('.tab-link[data-tab-name="' + tabNameLower + '"]');
                 var selectedUserCard = $('.user-card[data-user-id="' + userId + '"]');
 
                 $('.tab-link').removeClass('active');
+                // If no matching tab found, fall back to first tab (Contact)
+                if (!selectedTab.length) {
+                    selectedTab = $('.tab-link').first();
+                    tabName = selectedTab.data('tab-name') || 'contact';
+                }
                 selectedTab.addClass('active');
 
                 if (selectedUserCard.length) {
@@ -261,20 +268,18 @@ var_dump($userId);
 
         // Simulate the first tab and first user card selection on page load
         function simulateTabClickAndUserCard() {
-            var firstUserCard = $('.user-card').first(); // Get the first user card
-            var firstTab = $('.tab-link').first(); // Get the first tab
+            var firstUserCard = $('.user-card').first();
+            // Always default to Contact tab
+            var firstTab = $('.tab-link[data-tab-name="contact"]').first();
+            if (!firstTab.length) firstTab = $('.tab-link').first();
 
-            // Get the userId and tabName from the first user card and tab
-            var userId = firstUserCard.data('user-id');
-            var tabName = firstTab.data('tab-name');
-            console.log(userId);
-            console.log(tabName);
+            var userId  = firstUserCard.data('user-id');
+            var tabName = firstTab.data('tab-name') || 'contact';
 
-            // Trigger the AJAX load
             if (userId && tabName) {
+                firstUserCard.addClass('current');
+                firstTab.addClass('active');
                 loadTabContent(userId, tabName);
-                firstUserCard.addClass('current'); // Add 'current' class to the first user card
-                firstTab.addClass('active'); // Add 'active' class to the first tab
             }
         }
 
@@ -285,26 +290,20 @@ var_dump($userId);
 
         // Function to load tab content dynamically via AJAX
         function loadTabContent(userId, tabName) {
-            console.log('loadTabContent called with userId:', userId, 'tabName:', tabName); // Debug
-            // Replace spaces with underscores for the URL
-            // var formattedTabName = tabName.replace(/\s+/g, '_');
-            // Correctly format the URL with query parameters instead of placeholders
             var url = '{{ route('admin.users.index') }}' + '?user_id=' + userId + '&tabname=' + tabName;
-            console.log('Loading URL:', url); // Debug
+            if (activeRole) url += '&role=' + encodeURIComponent(activeRole);
 
             $.ajax({
                 url: url,
                 type: 'GET',
                 dataType: 'json',
                 success: function(response) {
-                    console.log('Response received:', response); // Debug
                     $('.pv_content_detail').html(response.content);
                     updateTitle(response.tabName, userId);
-                    // Update URL (optional, for browser navigation)
                     window.history.pushState(null, null, url);
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error loading tab content:', error, xhr); // Enhanced debug
+                    console.error('Error loading tab content:', error, xhr);
                 }
             });
         }
@@ -523,15 +522,31 @@ $(document).on('click', '.viewNote', function() {
         });
     });
 
-    // Contact Search and Pagination
+    // Active role — read from URL on page load so sidebar links work correctly
+    var activeRole = '{{ request('role', '') }}';
+
+    // Activate the correct role filter button on page load
+    if (activeRole) {
+        $('.role-filter-btn').removeClass('active');
+        $('.role-filter-btn[data-role="' + activeRole + '"]').addClass('active');
+    }
+
+    // Role filter button clicks
+    $(document).on('click', '.role-filter-btn', function() {
+        $('.role-filter-btn').removeClass('active');
+        $(this).addClass('active');
+        activeRole = $(this).data('role');
+        loadUserList($('#contactSearch').val(), activeRole);
+    });
+
+    // Contact Search
     let searchTimeout;
     $('#contactSearch').on('input', function() {
         clearTimeout(searchTimeout);
         const searchValue = $(this).val();
-        
         searchTimeout = setTimeout(function() {
-            loadUserList(searchValue);
-        }, 500); // Debounce 500ms
+            loadUserList(searchValue, activeRole);
+        }, 500);
     });
 
     // Handle pagination clicks
@@ -539,14 +554,10 @@ $(document).on('click', '.viewNote', function() {
         e.preventDefault();
         const url = $(this).attr('href');
         const searchValue = $('#contactSearch').val();
-        
         $.ajax({
             url: url,
             type: 'GET',
-            data: { 
-                list_only: 1,
-                search: searchValue
-            },
+            data: { list_only: 1, search: searchValue, role: activeRole },
             success: function(response) {
                 $('#userListContainer').html(response.html);
             },
@@ -556,16 +567,21 @@ $(document).on('click', '.viewNote', function() {
         });
     });
 
-    function loadUserList(search = '') {
+    function loadUserList(search = '', role = '') {
         $.ajax({
             url: '{{ route('admin.users.index') }}',
             type: 'GET',
-            data: { 
-                list_only: 1,
-                search: search
-            },
+            data: { list_only: 1, search: search, role: role },
             success: function(response) {
                 $('#userListContainer').html(response.html);
+                // Auto-select first card and open Contact tab
+                var firstCard = $('.user-card').first();
+                if (firstCard.length) {
+                    $('.user-card').removeClass('current');
+                    firstCard.addClass('current');
+                    var tabName = $('.tab-link.active').data('tab-name') || 'contact';
+                    loadTabContent(firstCard.data('user-id'), tabName);
+                }
             },
             error: function() {
                 console.error('Failed to load users');

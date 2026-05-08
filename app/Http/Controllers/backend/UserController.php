@@ -265,14 +265,16 @@ class UserController
         // Decide which user/tab to show
         $userId  = $request->query('user_id');
         $tabName = $request->query('tabname', 'Contact');
+        $role    = $request->query('role', '');
 
-        // If no user_id in URL, redirect to first user
+        // If no user_id in URL, redirect to first user (preserving role filter)
         if (!$userId) {
             $firstUser = $users->first();
-            return redirect()->route('admin.users.index', [
+            return redirect()->route('admin.users.index', array_filter([
                 'user_id' => $firstUser->id,
                 'tabname' => $tabName,
-            ]);
+                'role'    => $role,
+            ]));
         }
 
         // Try to find the requested user
@@ -286,12 +288,13 @@ class UserController
         ])->find($userId);
 
         if (!$user) {
-            // Invalid/deleted user_id — redirect to first user
+            // Invalid/deleted user_id — redirect to first user (preserving role filter)
             $firstUser = $users->first();
-            return redirect()->route('admin.users.index', [
+            return redirect()->route('admin.users.index', array_filter([
                 'user_id' => $firstUser->id,
                 'tabname' => $tabName,
-            ]);
+                'role'    => $role,
+            ]));
         }
 
         // Define your tab list
