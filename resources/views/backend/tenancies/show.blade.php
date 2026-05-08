@@ -76,7 +76,7 @@
 
     <div class="row mt-3">
         <div class="col">
-            <strong>Deposit Type:</strong> {{ $tenancy->deposit_type }}
+            <strong>Deposit Type:</strong> {{ $tenancy->deposit_type ? beautify_string($tenancy->deposit_type) : 'N/A' }}
         </div>
         <div class="col">
             <strong>Deposit Number:</strong> {{ $tenancy->deposit_number }}
@@ -85,16 +85,16 @@
 
     <div class="row mt-3">
         <div class="col">
-            <strong>Deposit Held By:</strong> {{ $tenancy->deposit_held_by }}
+            <strong>Deposit Held By:</strong> {{ $tenancy->deposit_held_by ? beautify_string($tenancy->deposit_held_by) : 'N/A' }}
         </div>
         <div class="col">
-            <strong>Deposit Service:</strong> {{ $tenancy->deposit_service }}
+            <strong>Deposit Service:</strong> {{ $tenancy->deposit_service ? beautify_string($tenancy->deposit_service) : 'N/A' }}
         </div>
     </div>
 
-    @if($tenancy->tds_dps_number)
+    @if($tenancy->deposit_service === 'tds_dps_number' || $tenancy->tds_dps_number)
     <div class="mt-2">
-        <strong>TDS / DPS Reference Number:</strong> {{ $tenancy->tds_dps_number }}
+        <strong>TDS / DPS Reference Number:</strong> {{ $tenancy->tds_dps_number ?? 'N/A' }}
     </div>
     @endif
 

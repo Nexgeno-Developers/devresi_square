@@ -62,6 +62,9 @@ class TenancyController
             'tenancy_type_id' => 'nullable|exists:tenancy_types,id', // Assuming foreign key relationship
             'deposit_held_by' => 'nullable|string|max:255',
             'deposit_service' => 'nullable|string|max:255',
+            'tds_dps_number' => 'nullable|string|max:155',
+            'reference_number' => 'nullable|string|max:155',
+            'deposit_scheme' => 'nullable|string|max:155',
             // 'periodic' => 'nullable|boolean', // Assuming it's a boolean field
             // 'rolling_contract' => 'nullable|boolean', // Assuming it's a boolean field
             // 'renewal_exempt' => 'nullable|boolean', // Assuming it's a boolean field
