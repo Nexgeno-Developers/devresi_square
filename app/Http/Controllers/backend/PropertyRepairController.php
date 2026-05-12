@@ -26,16 +26,27 @@ class PropertyRepairController
 {
     public function repairRaise()
     {
-        $categories = RepairCategory::with(['subCategories', 'parentCategory'])  // Pass as an array of relationships
+        $categories = RepairCategory::with(['subCategories', 'parentCategory'])
             ->whereNull('parent_id')
             ->orderBy('level')
             ->orderBy('position')
             ->get();
 
-        // Get the maximum level in the table
         $maxLevel = RepairCategory::max('level');
 
-        return view('backend.repair.create_raise_issue', compact('categories', 'maxLevel'));
+        // For Tenant users: resolve their linked active-tenancy properties
+        $tenantProperties = null;
+        if (auth()->user()->hasRole('Tenant')) {
+            $tenantProperties = \App\Models\TenantMember::where('user_id', auth()->id())
+                ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+                ->where('tenancies.status', 'Active')
+                ->join('properties', 'tenancies.property_id', '=', 'properties.id')
+                ->select('properties.id', 'properties.prop_name', 'properties.prop_ref_no',
+                         'properties.line_1', 'properties.line_2', 'properties.city', 'properties.postcode')
+                ->get();
+        }
+
+        return view('backend.repair.create_raise_issue', compact('categories', 'maxLevel', 'tenantProperties'));
     }
 
     public function getSubCategories($categoryId)
@@ -154,7 +165,17 @@ class PropertyRepairController
             $query->where('status', $request->status);
         }
 
-        $repairIssues = $query->paginate(10);
+        // Tenant: only see repair issues for their linked active-tenancy properties
+        if (auth()->user()->hasRole('Tenant')) {
+            $tenantPropertyIds = TenantMember::where('user_id', auth()->id())
+                ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+                ->where('tenancies.status', 'Active')
+                ->pluck('tenancies.property_id')
+                ->unique();
+            $query->whereIn('property_id', $tenantPropertyIds);
+        }
+
+        $repairIssues = $query->orderByDesc('id')->paginate(10);
 
         // Check if it's an AJAX request
         if ($request->ajax()) {
@@ -318,6 +339,18 @@ class PropertyRepairController
 
         $jobTypes = JobType::getHierarchy();
 
+        // For Tenant: resolve their linked active-tenancy properties
+        $tenantProperties = null;
+        if (auth()->user()->hasRole('Tenant')) {
+            $tenantProperties = \App\Models\TenantMember::where('user_id', auth()->id())
+                ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+                ->where('tenancies.status', 'Active')
+                ->join('properties', 'tenancies.property_id', '=', 'properties.id')
+                ->select('properties.id', 'properties.prop_name', 'properties.prop_ref_no',
+                         'properties.line_1', 'properties.line_2', 'properties.city', 'properties.postcode')
+                ->get();
+        }
+
         return view('backend.repair.edit_raise_issue', data: compact(
             'repairIssue',
             'categories',
@@ -327,6 +360,7 @@ class PropertyRepairController
             'contractorAssignments',
             'contractors',
             'jobTypes',
+            'tenantProperties',
         ));
     }
 

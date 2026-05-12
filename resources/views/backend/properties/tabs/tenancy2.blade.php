@@ -58,6 +58,7 @@
                                             <button data-url="{{ route('admin.tenancies.show', $tenancy->id) }}" class="popup-tab-tenancy-view btn btn-sm btn-outline-info me-1" title="View Tenancy">
                                                 <i class="bi bi-eye"></i>
                                             </button>
+                                            @unless(auth()->user()->hasRole('Tenant'))
                                             <button data-url="{{ route('admin.tenancies.edit', $tenancy->id) }}" class="popup-tab-tenancy-edit btn btn-sm btn-outline-warning me-1" title="Edit Tenancy">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
@@ -65,10 +66,8 @@
                                                 onclick="deleteTenancy('{{ route('admin.tenancies.delete', $tenancy->id) }}', this)">
                                                 <i class="bi bi-trash"></i>
                                             </button>
+                                            @endunless
                                         </div>
-
-                                        {{-- <button  class="popup-tab-tenancy-edit btn btn-sm btn-warning">Edit</button>
-                                        <button class="btn btn-sm btn-danger action-icon" >Delete</button> --}}
                                     </td>
                                 </tr>
                             @endforeach

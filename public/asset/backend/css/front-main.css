@@ -575,9 +575,10 @@ form {
 } */
 
 .sidebar-list-item.submenu_wrapper a.active {
-    /* padding: 8px 16px !important; */
-    /* font-weight: 600; */
-    /* display: block; */
+    color: var(--primary) !important;
+    font-weight: 600;
+    background-color: var(--primary-100);
+    border-radius: 6px;
 }
 
 ul#propertiesSubmenu li.sidebar-sub-list-item {

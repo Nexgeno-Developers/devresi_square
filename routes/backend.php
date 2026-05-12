@@ -113,6 +113,10 @@ Route::middleware('auth')->group(function () {
 
     // Dashboard Route
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('backend.dashboard');
+    // Tenant home — blank landing page after login
+    Route::get('/home', function () {
+        return view('backend.tenant.home');
+    })->name('backend.home');
     // Route::get('/dashboard', [DashboardController::class, 'dashboard'])->middleware('can:view-dashboard')->name('backend.dashboard');
 
     Route::resource('user-categories', UserCategoryController::class);
@@ -259,6 +263,8 @@ Route::middleware('auth')->group(function () {
 
         // Keeping this route separate since it follows a different URL structure
         Route::get('/properties/{propertyId}/tenancies', [TenancyController::class, 'index'])->name('tenancies.index');
+        // Global tenancies listing
+        Route::get('/tenancies', [TenancyController::class, 'all'])->name('tenancies.all');
 
         // Offer
         Route::prefix('offers')->name('offers.')->controller(OfferController::class)->group(function () {

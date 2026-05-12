@@ -30,31 +30,55 @@
                 <div class="row justify-content-center align-items-center">
                     <h2 class="text-center my-3">Where is the problem?</h2>
                     <div class="col-md-6">
-                        <div class="form-group text-center mt-lg-0 mt-4">
-                            <label class="mb-2" for="search_property1">Search And Select Property</label>
-                            <!-- Search Input -->
-                            <div class="form-group">
-                                <div class="rs_input input_search position-relative">
-                                    <div class="right_icon position-absolute top-50 translate-middle-y end-0 pe-2">
-                                        <i class="bi bi-search"></i>
-                                    </div>
-                                    <input type="text" id="search_property1" placeholder="Search Property" class="form-control search_property" />
+
+                        @if(isset($tenantProperties) && $tenantProperties !== null)
+                            {{-- TENANT: property pre-selected and locked --}}
+                            @if($tenantProperties->count() === 1)
+                                @php $tp = $tenantProperties->first(); @endphp
+                                <div class="alert alert-info text-center">
+                                    <strong>Property:</strong>
+                                    {{ trim(implode(', ', array_filter([$tp->line_1, $tp->city, $tp->postcode]))) }}
+                                    @if($tp->prop_ref_no) &nbsp;({{ $tp->prop_ref_no }}) @endif
                                 </div>
-                                <div id="error_message" class="mt-1 text-danger" style="display: none;"></div>
+                                <input type="hidden" id="selected_properties" name="property_id" value="{{ json_encode([$tp->id]) }}">
+                            @else
+                                {{-- Multiple properties: restricted dropdown --}}
+                                <div class="form-group text-center mt-lg-0 mt-4">
+                                    <label class="mb-2">Select Your Property</label>
+                                    <select id="tenant_property_select" class="form-select">
+                                        <option value="">-- Select a property --</option>
+                                        @foreach($tenantProperties as $tp)
+                                            <option value="{{ $tp->id }}">
+                                                {{ trim(implode(', ', array_filter([$tp->line_1, $tp->city, $tp->postcode]))) }}
+                                                @if($tp->prop_ref_no) ({{ $tp->prop_ref_no }}) @endif
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <input type="hidden" id="selected_properties" name="property_id" value="">
+                                </div>
+                            @endif
+                        @else
+                            {{-- NON-TENANT: original search UI --}}
+                            <div class="form-group text-center mt-lg-0 mt-4">
+                                <label class="mb-2" for="search_property1">Search And Select Property</label>
+                                <div class="form-group">
+                                    <div class="rs_input input_search position-relative">
+                                        <div class="right_icon position-absolute top-50 translate-middle-y end-0 pe-2">
+                                            <i class="bi bi-search"></i>
+                                        </div>
+                                        <input type="text" id="search_property1" placeholder="Search Property" class="form-control search_property" />
+                                    </div>
+                                    <div id="error_message" class="mt-1 text-danger" style="display: none;"></div>
+                                </div>
+                                <ul id="property_results" class="list-group mt-2"></ul>
+                                <input type="hidden" id="selected_properties" name="property_id" value="{{ json_encode(isset($selectedProperties) ? $selectedProperties : []) }}">
                             </div>
-                            <!-- Search Results -->
-                            <ul id="property_results" class="list-group mt-2"></ul>
-                            <!-- Hidden field for selected property IDs -->
-                            <input type="hidden" id="selected_properties" name="property_id" value="{{ json_encode(isset($selectedProperties) ? $selectedProperties : []) }}">
-                        </div>
-                    </div>
-                    <!-- Dynamic Property Table -->
-                    <div id="dynamic_property_table" class="d-none mt-4">
-                        @php
-                            $headers = ['Address', 'Type', 'Availability', 'Actions'];
-                            $rows = []; // Initially empty
-                        @endphp
-                        <x-backend.dynamic-table :headers="$headers" :rows="$rows" class="user_add_property" />
+                            <div id="dynamic_property_table" class="d-none mt-4">
+                                @php $headers = ['Address', 'Type', 'Availability', 'Actions']; $rows = []; @endphp
+                                <x-backend.dynamic-table :headers="$headers" :rows="$rows" class="user_add_property" />
+                            </div>
+                        @endif
+
                     </div>
                 </div>
             </div>
@@ -200,6 +224,26 @@
         resetBreadcrumb();
 
         // ----------------- STEP 1: PROPERTY SELECTION ----------------- //
+
+        @if(isset($tenantProperties) && $tenantProperties !== null && $tenantProperties->count() === 1)
+        // Single tenant property — auto-select on load
+        selectedProperty = {{ $tenantProperties->first()->id }};
+        enableNextButton();
+        @endif
+
+        // Tenant multi-property dropdown handler
+        $(document).on('change', '#tenant_property_select', function() {
+            var val = $(this).val();
+            if (val) {
+                selectedProperty = parseInt(val);
+                $('#selected_properties').val(JSON.stringify([selectedProperty]));
+                enableNextButton();
+            } else {
+                selectedProperty = null;
+                $('#selected_properties').val('');
+                disableNextButton();
+            }
+        });
 
         $(document).on('keyup keydown', '#search_property1', function () {
             var query = $(this).val().trim();

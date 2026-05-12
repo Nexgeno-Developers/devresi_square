@@ -195,6 +195,11 @@ class UserController
             $usersQuery->role($request->role); // Spatie's `role()` scope
         }
 
+        // Tenants only see themselves
+        if (auth()->user()->hasRole('Tenant')) {
+            $usersQuery->where('id', auth()->id());
+        }
+
         // Fetch all users (newest first)
         // $users = $usersQuery->orderBy('id', 'desc')->exclude('user_type', 'staff')->get();
         // $users = $usersQuery->orderBy('id', 'desc')->whereDoesntHave('roles', function ($query) {
@@ -496,8 +501,13 @@ class UserController
 
             // ✅ Only if it's the final step AND the user was just created
             if ($request->step >= $totalSteps && $isNewUser) {
-                Log::info('Sending password reset email to user ID '.$user->id);
-                $this->sendPasswordResetMail($user);
+                if ($user->hasRole('Tenant')) {
+                    Log::info('Sending tenant welcome email to user ID '.$user->id);
+                    $this->sendTenantWelcomeEmail($user);
+                } else {
+                    Log::info('Sending password reset email to user ID '.$user->id);
+                    $this->sendPasswordResetMail($user);
+                }
             }
 
             // Check if the current step is the last one
@@ -885,6 +895,11 @@ class UserController
             return response()->json(['error' => 'user not found'], 404);
         }
 
+        // Tenants can only edit their own record
+        if (auth()->user()->hasRole('Tenant') && $user->id !== auth()->id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
         $extraData = []; // <-- This prevents undefined variable errors
 
         // Save the form data based on the form type
@@ -1176,6 +1191,56 @@ class UserController
         } catch (\Exception $e) {
             Log::error("Failed to send password reset email: {$e->getMessage()}", [
                 'email' => $user->email,
+                'user_id' => $user->id,
+            ]);
+        }
+    }
+
+    private function sendTenantWelcomeEmail(User $user): void
+    {
+        try {
+            // Generate a password and save it
+            $plainPassword = \Illuminate\Support\Str::random(10);
+            $user->update(['password' => \Illuminate\Support\Facades\Hash::make($plainPassword)]);
+            $resetLink = $user->createResetLink();
+
+            $template = \App\Models\EmailTemplate::getByIdentifier('tenant_account_created');
+
+            $placeholders = [
+                'tenant_name'      => $user->name ?? $user->email,
+                'tenant_email'     => $user->email,
+                'tenant_password'  => $plainPassword,
+                'property_name'    => '—',
+                'property_address' => '—',
+                'move_in_date'     => '—',
+                'rent'             => '—',
+                'reset_link'       => $resetLink,
+                'login_url'        => url('/admin/login'),
+                'crm_name'         => config('app.name'),
+                'admin_email'      => config('mail.from.address'),
+            ];
+
+            if ($template) {
+                $renderedHtml = $template->replace($placeholders, ['reset_link', 'login_url']);
+                $subject = render_template($template->subject, $placeholders);
+            } else {
+                $subject = 'Welcome to ' . config('app.name') . ' — Your Tenant Account';
+                $renderedHtml = "<p>Hi {$placeholders['tenant_name']},</p>"
+                    . "<p>Your account has been created.</p>"
+                    . "<p>Email: {$placeholders['tenant_email']} | Password: <strong>{$placeholders['tenant_password']}</strong></p>"
+                    . "<p><a href='{$placeholders['login_url']}'>Login</a> | <a href='{$resetLink}'>Change Password</a></p>";
+            }
+
+            Mail::to($user->email)->send(new \App\Mail\MailManager([
+                'subject'     => $subject,
+                'content'     => $renderedHtml,
+                'attachments' => [],
+            ]));
+
+            Log::info("Tenant welcome email sent to {$user->email}");
+        } catch (\Exception $e) {
+            Log::error("Failed to send tenant welcome email: {$e->getMessage()}", [
+                'email'   => $user->email,
                 'user_id' => $user->id,
             ]);
         }

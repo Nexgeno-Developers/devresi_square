@@ -14,16 +14,20 @@ class DashboardController extends Controller
 {
     public function dashboard()
     {
-        // Check if the user is authenticated
         if (!Auth::check()) {
-            return redirect()->route('login');  // Redirect to the login page if not authenticated
+            return redirect()->route('login');
         }
-        
+
+        $user = Auth::user();
+
+        // Tenants don't have a dashboard — send them to their home page
+        if ($user->hasRole('Tenant')) {
+            return redirect()->route('backend.home');
+        }
+
         $this->authorize('view dashboard');
         // $this->middleware(middleware: 'auth'); // Ensure the user is authenticated
         // $this->middleware('can:view dashboard'); // Optional: Ensure the user has permission to view the dashboard
-
-        $user = Auth::user();
 
         if (!$user->hasAnyRole(['Super Admin', 'Landlord', 'Staff', 'Property Manager', 'Estate Agent', 'Test'])) {
             abort(403);

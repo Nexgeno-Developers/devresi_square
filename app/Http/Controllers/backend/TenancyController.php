@@ -11,7 +11,12 @@ use App\Models\TenancyType;
 use App\Models\TenancySubStatus;
 use App\Models\PropertyManagerTenancy;
 use App\Models\SysSaleInvoice;
+use App\Models\EmailTemplate;
+use App\Mail\MailManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class TenancyController
 {
@@ -25,6 +30,20 @@ class TenancyController
             ->get();
 
         return view('backend.properties.tabs.tenancy', compact('tenancies', 'propertyId'));
+    }
+
+    // Global tenancies listing
+    public function all(Request $request)
+    {
+        $query = Tenancy::with(['property', 'tenantMembers.user', 'tenancySubStatus'])
+            ->orderByDesc('id');
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $tenancies = $query->paginate(20);
+        return view('backend.tenancies.index', compact('tenancies'));
     }
 
     // Show the form for creating a new tenancy
@@ -121,6 +140,66 @@ class TenancyController
             ]);
         }
 
+        // ── Feature 1: Add property_id to each tenant's selected_properties ──
+        $property = Property::find($validated['property_id']);
+        foreach ($request->user_id as $userId) {
+            $tenantUser = User::find($userId);
+            if ($tenantUser) {
+                $existing = is_array($tenantUser->selected_properties)
+                    ? $tenantUser->selected_properties
+                    : (json_decode($tenantUser->selected_properties ?? '[]', true) ?? []);
+                if (!in_array((int) $validated['property_id'], $existing)) {
+                    $existing[] = (int) $validated['property_id'];
+                    $tenantUser->update(['selected_properties' => json_encode($existing)]);
+                }
+            }
+        }
+
+        // ── Feature 2: Send tenancy details email to each tenant ──
+        $template = EmailTemplate::getByIdentifier('tenant_welcome');
+        foreach ($request->user_id as $userId) {
+            $tenantUser = User::find($userId);
+            if (!$tenantUser) continue;
+
+            $placeholders = [
+                'tenant_name'      => $tenantUser->name ?? $tenantUser->email,
+                'tenant_email'     => $tenantUser->email,
+                'property_name'    => $property->prop_name ?? $property->line_1 ?? 'N/A',
+                'property_address' => trim(implode(', ', array_filter([
+                    $property->line_1, $property->line_2,
+                    $property->city, $property->postcode,
+                ]))),
+                'move_in_date'     => $validated['move_in'] ?? 'N/A',
+                'rent'             => '£' . number_format((float)($validated['rent'] ?? 0), 2),
+                'login_url'        => url('/admin/login'),
+                'crm_name'         => config('app.name'),
+                'admin_email'      => config('mail.from.address'),
+            ];
+
+            try {
+                if ($template) {
+                    $renderedHtml = $template->replace($placeholders, ['login_url']);
+                    $subject = render_template($template->subject, $placeholders);
+                } else {
+                    $subject = 'Your Tenancy at ' . $placeholders['property_name'];
+                    $renderedHtml = "<p>Hi {$placeholders['tenant_name']},</p>"
+                        . "<p>You have been added as a tenant for <strong>{$placeholders['property_name']}</strong>.</p>"
+                        . "<p>Move-in: {$placeholders['move_in_date']} | Rent: {$placeholders['rent']}</p>"
+                        . "<p><a href='{$placeholders['login_url']}'>Login here</a></p>";
+                }
+
+                Mail::to($tenantUser->email)->send(new MailManager([
+                    'subject'     => $subject,
+                    'content'     => $renderedHtml,
+                    'attachments' => [],
+                ]));
+
+                Log::info("Tenant tenancy email sent to {$tenantUser->email}");
+            } catch (\Exception $e) {
+                Log::error("Failed to send tenant tenancy email to {$tenantUser->email}: {$e->getMessage()}");
+            }
+        }
+
         flash("Tenancy Added successfully!")->success();
         
         if (request()->ajax()) {
@@ -128,9 +207,6 @@ class TenancyController
         }
         
         return back();
-
-        // Redirect back with success message
-        // return redirect()->route('tenancies.index')->with('success', 'Tenancy created successfully!');
     }
 
     // Display the specified tenancy

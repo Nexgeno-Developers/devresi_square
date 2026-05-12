@@ -86,6 +86,7 @@
                                         <span>Add Owner</span>
                                         <span class="icon_btn"></span>
                                     </a> --}}
+                            @unless(auth()->user()->hasRole('Tenant'))
                             <a data-url="{{ route('admin.owner-groups.create_group') }}"
                                 class="popup-tab-owner-group-create btn btn-sm btn-outline-danger btn-sm tab-owners-group-btn d-none">
                                 <span>Add Owner Group</span>
@@ -96,6 +97,7 @@
                                 <span>Add Tenancy</span>
                                 <span class="icon_btn"></span>
                             </a>
+                            @endunless
 
                             {{-- @if (isset($property) && isset($propertyId)) --}}
                             {{-- <x-backend.outline-link-button class="" name="Edit Property"

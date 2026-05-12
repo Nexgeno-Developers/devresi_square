@@ -43,6 +43,7 @@
                 <!-- Action -->
                 <td>
                     <div class="d-flex justify-content-end">
+                        @unless(auth()->user()->hasRole('Tenant'))
                         <button class="btn btn-sm btn-outline-warning popup-tab-owner-group-edit me-1" title="Edit Owner Group" data-url="{{ route('admin.owner-groups.edit', $ownerGroup->id) }}">
                             <i class="bi bi-pencil">Edit</i>
                         </button>
@@ -50,6 +51,7 @@
                             onclick="deleteOwnerGroup('{{ route('admin.owner-groups.delete_group', $ownerGroup->id) }}', this)">
                             <i class="bi bi-trash"></i> Delete
                         </button>
+                        @endunless
                     </div>
                 </td>
             </tr>

@@ -24,47 +24,48 @@
                 <div class="card mb-3 validate-card" id="property-display-card">
                     <div class="card-header d-flex justify-content-between align-items-center">Property
                         <span>
-                            <!-- Change Property Button (Initially hidden) -->
+                            @unless(isset($tenantProperties) && $tenantProperties !== null)
+                            <!-- Change Property Button — hidden for Tenant -->
                             <button id="change_property_button" class="btn btn-info d-none">Change Property</button>
-
-                            <!-- Cancel Button for Property Change (Initially hidden) -->
                             <button id="cancel_property_change" class="btn btn-warning d-none">Cancel</button>
+                            @endunless
                         </span>
                     </div>
                     <div class="card-body">
-                        <div class="form-group text-center mt-lg-0 mt-4">
-                            <div class="set-display-none" id="search_property_section" style="display: none;">
-                                <label class="mb-2" for="search_property1">Search And Select Property</label>
-
-                                <!-- Search Input (Initially hidden) -->
-                                <div class="form-group">
-                                    <div class="rs_input input_search position-relative">
-                                        <div class="right_icon position-absolute top-50 translate-middle-y end-0 pe-2">
-                                            <i class="bi bi-search"></i>
-                                        </div>
-                                        <input type="text" id="search_property1" placeholder="Search Property" class="form-control search_property" />
-                                    </div>
-                                    <div id="error_message" class="mt-1 text-danger" style="display: none;"></div>
-
-                                </div>
+                        @if(isset($tenantProperties) && $tenantProperties !== null)
+                            {{-- Tenant: show current property as read-only, locked --}}
+                            <div class="alert alert-info mb-0">
+                                <strong>Property:</strong>
+                                {{ getPropertyDetails($repairIssue->property_id, ['prop_name', 'line_1', 'city', 'postcode']) }}
                             </div>
-
-                            <!-- Search Results -->
-                            <ul id="property_results" class="list-group mt-2"></ul>
-                            <!-- Hidden field for selected property IDs -->
-                            <input type="hidden" id="selected_properties" name="property_id" value="{{ json_encode(is_array($repairIssue->property->id) ? $repairIssue->property->id : [$repairIssue->property->id]) }}">
-
-                            {{-- <input type="hidden" id="selected_properties" name="property_id" value="{{ json_encode(isset($repairIssue->property->id) ? $repairIssue->property->id : []) }}"> --}}
-                        </div>
-                        <!-- Dynamic Property Table -->
-                        <div id="dynamic_property_table" class="d-none px-3">
-                            @php
-                                $headers = ['Address', 'Type', 'Availability'];
-                                // $headers = ['Address', 'Type', 'Availability', 'Actions'];
-                                $rows = []; // Initially empty
-                            @endphp
-                            <x-backend.dynamic-table :headers="$headers" :rows="$rows" :actionBtn="False" class="user_add_property" />
-                        </div>
+                            <input type="hidden" id="selected_properties" name="property_id"
+                                value="{{ json_encode([$repairIssue->property_id]) }}">
+                        @else
+                            {{-- Non-tenant: original search UI --}}
+                            <div class="form-group text-center mt-lg-0 mt-4">
+                                <div class="set-display-none" id="search_property_section" style="display: none;">
+                                    <label class="mb-2" for="search_property1">Search And Select Property</label>
+                                    <div class="form-group">
+                                        <div class="rs_input input_search position-relative">
+                                            <div class="right_icon position-absolute top-50 translate-middle-y end-0 pe-2">
+                                                <i class="bi bi-search"></i>
+                                            </div>
+                                            <input type="text" id="search_property1" placeholder="Search Property" class="form-control search_property" />
+                                        </div>
+                                        <div id="error_message" class="mt-1 text-danger" style="display: none;"></div>
+                                    </div>
+                                </div>
+                                <ul id="property_results" class="list-group mt-2"></ul>
+                                <input type="hidden" id="selected_properties" name="property_id" value="{{ json_encode(is_array($repairIssue->property->id) ? $repairIssue->property->id : [$repairIssue->property->id]) }}">
+                            </div>
+                            <div id="dynamic_property_table" class="d-none px-3">
+                                @php
+                                    $headers = ['Address', 'Type', 'Availability'];
+                                    $rows = [];
+                                @endphp
+                                <x-backend.dynamic-table :headers="$headers" :rows="$rows" :actionBtn="False" class="user_add_property" />
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>

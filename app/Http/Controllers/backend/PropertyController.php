@@ -59,6 +59,16 @@ class PropertyController
         if ($user->hasRole('Property Manager') || $user->hasRole('Super Admin')) {
             // Property managers see all properties
             $properties = $propertiesQuery->orderBy('id', 'desc')->paginate(15);
+        } elseif ($user->hasRole('Tenant')) {
+            // Tenants see only properties where they have an active tenancy
+            $propertyIds = \App\Models\TenantMember::where('user_id', $user->id)
+                ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+                ->where('tenancies.status', 'Active')
+                ->pluck('tenancies.property_id')
+                ->unique();
+            $properties = $propertiesQuery->whereIn('id', $propertyIds)
+                ->orderBy('id', 'desc')
+                ->paginate(15);
         } elseif ($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')  ) {
             // Landlords see only properties they created
             $properties = $propertiesQuery->where('created_by', $user->id)
@@ -71,8 +81,8 @@ class PropertyController
                 ->orderBy('id', 'desc')
                 ->paginate(15);
         } else {
-            // Default: no access
-            $properties = collect(); // empty collection
+            // Default: no access — return empty paginator
+            $properties = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
         }
 
         // If AJAX request for property list only (search/pagination)
@@ -117,16 +127,42 @@ class PropertyController
         
         // Redirect to 'quick' if there are no properties
         if ($properties->isEmpty()) {
+            if ($user->hasRole('Tenant')) {
+                // Show properties page with empty state — no redirect
+                $tabs = $this->buildPermissionTabs($user);
+                $content = '<div class="alert alert-info m-3">You don\'t have any active tenancy properties linked to your account. Please contact your property manager.</div>';
+                return view('backend.properties.index', [
+                    'properties' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15),
+                    'tabs'       => $tabs,
+                    'propertyId' => null,
+                    'tabName'    => 'property',
+                    'content'    => $content,
+                    'property'   => null,
+                ]);
+            }
             flash("You don't have any properties yet!")->error();
             return redirect()->route('admin.properties.quick');
         }
 
         // Get property_id and tabname from query parameters
         $propertyId = $request->query('property_id');
-        $tabName = $request->query('tabname', 'property'); // Default to 'property' if no tab is specified
+        $tabName = $request->query('tabname', 'property');
 
-        // If no property_id in URL, redirect to first property on page 1
+        // If no property_id in URL:
+        // Tenant → show list only, nothing selected (clean page)
+        // Others → redirect to first property
         if (!$propertyId) {
+            if ($user->hasRole('Tenant')) {
+                $tabs = $this->buildPermissionTabs($user);
+                return view('backend.properties.index', [
+                    'properties' => $properties,
+                    'tabs'       => $tabs,
+                    'propertyId' => null,
+                    'tabName'    => $tabName,
+                    'content'    => '',
+                    'property'   => null,
+                ]);
+            }
             $firstProperty = $properties->first();
             return redirect()->route('admin.properties.index', [
                 'property_id' => $firstProperty->id,
@@ -160,7 +196,12 @@ class PropertyController
                 $user->hasRole('Property Manager') || 
                 ($user->hasRole('Landlord') && $property->created_by === $user->id) || 
                 ($user->hasRole('Estate Agent') && ($property->created_by === $user->id || $user->createdUsers()->pluck('id')->contains($property->created_by))) ||
-                ($user->hasRole('Staff') || $user->hasRole('Test') && $property->created_by === $user->id);
+                ($user->hasRole('Staff') || $user->hasRole('Test') && $property->created_by === $user->id) ||
+                ($user->hasRole('Tenant') && \App\Models\TenantMember::where('user_id', $user->id)
+                    ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+                    ->where('tenancies.status', 'Active')
+                    ->where('tenancies.property_id', $property->id)
+                    ->exists());
 
             if (! $isAuthorized) {
                 abort(403, 'Unauthorized to view this property.');
@@ -227,6 +268,31 @@ class PropertyController
 
         // Pass data to the view
         return view('backend.properties.index', compact('properties', 'tabs', 'propertyId', 'tabName', 'content', 'property'));
+    }
+
+    private function buildPermissionTabs($user): array
+    {
+        $availableTabs = [
+            'view properties'          => 'Property',
+            'view property owners'     => 'Owners',
+            'manage property compliance' => 'Compliance',
+            'view property media'      => 'Media',
+            'view property offers'     => 'Offers',
+            'view property tenancy'    => 'Tenancy',
+            'view property aps'        => 'APS',
+            'view property teams'      => 'Teams',
+            'view property documents'  => 'Documents',
+            'view property notes'      => 'Notes',
+            'view property appointments' => 'Appointments',
+            'view property statement'  => 'Statement',
+        ];
+        $tabs = [];
+        foreach ($availableTabs as $permission => $name) {
+            if ($user->can($permission)) {
+                $tabs[] = ['name' => $name];
+            }
+        }
+        return $tabs;
     }
 
     private function getTabContent($tabname, $propertyId, $property)
