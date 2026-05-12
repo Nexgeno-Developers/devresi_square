@@ -1376,6 +1376,12 @@ var_dump($propertyId);
                     success: function(response) {
                         $('.pv_content_detail').html(response.content);
                         updateTitle(tabName, propertyId);
+                        if (tabName === 'documents') {
+                            $('.pv_content_detail .documents-component').trigger('documents:refresh');
+                        }
+                        if (tabName === 'notes') {
+                            $('.pv_content_detail .notes-component').trigger('notes:refresh');
+                        }
                         // Stamp the current property ID onto action buttons so click handlers can read it reliably
                         $('.tab-tenancy-group-btn, .tab-owners-group-btn, .tab-offers-btn').attr('data-property-id', propertyId);
                         window.history.pushState(null, null, url);

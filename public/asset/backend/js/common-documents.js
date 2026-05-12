@@ -53,6 +53,16 @@
     load($c);
   });
 
+  // Allow dynamically loaded tabs to refresh the list with the same clean state as Reset.
+  $(document).on('documents:refresh', '.documents-component', function () {
+    const $c = $(this);
+    const $filt = $c.find('.documents-filter-form');
+    if ($filt.length && $filt[0]) {
+      $filt[0].reset();
+    }
+    load($c);
+  });
+
   // Add button
   $(document).on('click', '.documents-add', function(){
     const $comp = $(this).closest('.documents-component');
