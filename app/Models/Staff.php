@@ -11,12 +11,8 @@ class Staff extends Model
         'user_id',
         'parent_id',
         'role_id',
-        // if you have other columns, e.g.:
-        // 'department',
-        // 'status',
     ];
 
-    // Relations, etc...
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -29,7 +25,22 @@ class Staff extends Model
 
     public function role()
     {
-    return $this->belongsTo(Role::class);
+        return $this->belongsTo(Role::class);
     }
 
+    public function contacts()
+    {
+        return $this->hasMany(StaffContact::class);
+    }
+
+    public function emails()
+    {
+        return $this->hasMany(StaffContact::class)->where('type', 'email');
+    }
+
+    public function phones()
+    {
+        return $this->hasMany(StaffContact::class)->where('type', 'phone');
+    }
 }
+

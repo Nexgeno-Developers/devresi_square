@@ -44,6 +44,20 @@
             </div>
         </div>
 
+        {{-- Type Dropdown --}}
+        <div class="col-12">
+            <div class="form-floating">
+                <select name="user_role" class="form-select" id="user_role" required>
+                    <option value="" disabled selected>Select type</option>
+                    <option value="landlord">Landlord</option>
+                    <option value="owner">Owner</option>
+                    <option value="freelancing_agent">Freelancing Agent</option>
+                    <option value="contractor">Contractor</option>
+                </select>
+                <label for="user_role">Type</label>
+            </div>
+        </div>
+
         <div class="col-md-6">
             <div class="form-floating">
                 <input type="date" name="demo_date" class="form-control" id="demo_date" required placeholder="Demo Date">

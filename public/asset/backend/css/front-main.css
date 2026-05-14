@@ -581,6 +581,11 @@ form {
     border-radius: 6px;
 }
 
+/* Speed up sidebar collapse animation */
+.sidebar .collapsing {
+    transition: height 0.15s ease !important;
+}
+
 ul#propertiesSubmenu li.sidebar-sub-list-item {
     padding: 6px 0 6px 18px !important
 }

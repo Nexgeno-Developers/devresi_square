@@ -16,17 +16,18 @@ class FormController
     {
         $validated = $request->validate([
             'first_name' => 'nullable|string|max:255',
-            'last_name' => 'nullable|string|max:255',
-            'email' => 'nullable|email',
-            'phone' => 'nullable|string|max:20',
-            'demo_date' => 'nullable|date',
-            'demo_time' => 'nullable',
+            'last_name'  => 'nullable|string|max:255',
+            'email'      => 'nullable|email',
+            'phone'      => 'nullable|string|max:20',
+            'user_role'  => 'nullable|in:landlord,owner,freelancing_agent,contractor',
+            'demo_date'  => 'nullable|date',
+            'demo_time'  => 'nullable',
             'hear_about' => 'nullable|string|max:255',
-            'subscribe' => 'sometimes',
+            'subscribe'  => 'sometimes',
             'attachment' => 'nullable|file|max:2048',
-            'ip' => 'nullable|string',
-            'ip_data' => 'nullable|string',
-            'ref_url' => 'nullable|string',
+            'ip'         => 'nullable|string',
+            'ip_data'    => 'nullable|string',
+            'ref_url'    => 'nullable|string',
         ]);
 
         if ($request->hasFile('attachment')) {

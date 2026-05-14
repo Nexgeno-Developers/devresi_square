@@ -6,6 +6,8 @@ use Hash;
 // use App\Models\Role;
 use App\Models\User;
 use App\Models\Staff;
+use App\Models\Designation;
+use App\Models\StaffContact;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -33,10 +35,8 @@ class StaffController extends Controller
     {
         $roles = Role::with('permissions')->where('id', '!=', 1)->orderBy('id', 'asc')->get();
         $permissions = Permission::orderBy('name')->get();
-        return view('backend.staff.staffs.create', compact('roles', 'permissions'));
-        
-        // $roles = Role::where('id','!=',1)->orderBy('id', 'desc')->get();
-        // return view('backend.staff.staffs.create', compact('roles'));
+        $designations = Designation::orderBy('title')->get();
+        return view('backend.staff.staffs.create', compact('roles', 'permissions', 'designations'));
     }
 
     // used to create staff with single role and additional permissions
@@ -44,17 +44,23 @@ class StaffController extends Controller
     {
         try {
             $data = $request->validate([
-                'title'     => 'required|string|max:255',
-                'first_name' => 'required|string|max:255',
-                'middle_name' => 'nullable|string|max:255',
-                'last_name' => 'required|string|max:255',
-                // 'name'      => 'required|string|max:255',
-                'email'     => 'required|email|unique:users,email',
-                'password'  => 'required',
-                'role_id'   => 'required|exists:roles,id',
+                'title'          => 'required|string|max:255',
+                'first_name'     => 'required|string|max:255',
+                'middle_name'    => 'nullable|string|max:255',
+                'last_name'      => 'required|string|max:255',
+                'email'          => 'required|email|unique:users,email',
+                'phone'          => 'nullable|string|max:20',
+                'password'       => 'required',
+                'role_id'        => 'required|exists:roles,id',
+                'designation_id' => 'nullable|exists:designations,id',
                 'enable_additional_permissions' => 'nullable|in:on',
                 'additional_permissions'   => 'nullable|array',
                 'additional_permissions.*' => 'exists:permissions,name',
+                // multiple emails & phones
+                'extra_emails'   => 'nullable|array',
+                'extra_emails.*' => 'nullable|email|max:255',
+                'extra_phones'   => 'nullable|array',
+                'extra_phones.*' => 'nullable|string|max:20',
             ]);
         } catch (ValidationException $e) {
             flashValidationErrors($e);
@@ -64,59 +70,69 @@ class StaffController extends Controller
         DB::beginTransaction();
         try {
             $user = User::create([
-                'title'     => $data['title'],
-                'first_name' => $data['first_name'],
-                'middle_name' => $data['middle_name'],
-                'last_name'   => $data['last_name'],
-                // 'name'      => $data['name'],
-                'email'     => $data['email'],
-                'user_type' => 'staff',
-                'password'  => Hash::make($data['password']),
+                'title'          => $data['title'],
+                'first_name'     => $data['first_name'],
+                'middle_name'    => $data['middle_name'] ?? null,
+                'last_name'      => $data['last_name'],
+                'email'          => $data['email'],
+                'phone'          => $data['phone'] ?? null,
+                'user_type'      => 'staff',
+                'designation_id' => $data['designation_id'] ?? null,
+                'password'       => Hash::make($data['password']),
             ]);
 
             $roleId = $data['role_id'];
             $role = Role::with('permissions')->findOrFail($roleId);
             DB::table('model_has_roles')->insert([
-                'role_id'     => $roleId,
-                'model_type'  => get_class($user), // Will be 'App\Models\User'
-                'model_id'    => $user->id,
+                'role_id'    => $roleId,
+                'model_type' => get_class($user),
+                'model_id'   => $user->id,
             ]);
-            
-            // Handle additional permissions if checkbox is enabled
+
             if (isset($data['enable_additional_permissions']) && !empty($data['additional_permissions'])) {
                 $inheritedPermissions = $role->permissions->pluck('name')->toArray();
-
-                $filtered = collect($data['additional_permissions'])
-                    ->diff($inheritedPermissions);
-
+                $filtered = collect($data['additional_permissions'])->diff($inheritedPermissions);
                 if ($filtered->isNotEmpty()) {
                     $user->givePermissionTo($filtered);
                 }
             }
 
-            Staff::create([
+            $staff = Staff::create([
                 'user_id' => $user->id,
                 'role_id' => $roleId,
             ]);
+
+            // Save extra emails
+            foreach (($data['extra_emails'] ?? []) as $email) {
+                if (!empty($email)) {
+                    StaffContact::create([
+                        'staff_id' => $staff->id,
+                        'type'     => 'email',
+                        'value'    => $email,
+                    ]);
+                }
+            }
+
+            // Save extra phones
+            foreach (($data['extra_phones'] ?? []) as $phone) {
+                if (!empty($phone)) {
+                    StaffContact::create([
+                        'staff_id' => $staff->id,
+                        'type'     => 'phone',
+                        'value'    => $phone,
+                    ]);
+                }
+            }
 
             DB::commit();
             flash()->success('Staff has been added successfully');
             return redirect()->route('staffs.index');
         } catch (\Throwable $e) {
             DB::rollBack();
-
             \Log::error('Staff creation failed', ['error' => $e->getMessage()]);
-
-            if ($request->ajax()) {
-                return response()->json([
-                    'status' => false,
-                    'message' => 'Failed to add staff: ' . $e->getMessage()
-                ], 500);
-            }
-
             flash()->error('Failed to add staff: ' . $e->getMessage());
             return back()->withInput();
-        }        
+        }
     }
 
 
@@ -233,14 +249,13 @@ class StaffController extends Controller
 
     public function edit($id)
     {
-        $staff = Staff::with(['role.permissions', 'user.permissions'])->findOrFail(decrypt($id));
+        $staff = Staff::with(['role.permissions', 'user.permissions', 'contacts'])->findOrFail(decrypt($id));
         $roles = Role::with('permissions')->where('id', '!=', 1)->orderBy('id', 'desc')->get();
-        // $permissions = Permission::orderBy('name')->get();
-        // $userPermissions = $staff->user->getDirectPermissions()->pluck('name')->toArray();
         $permissions = Permission::all();
         $userPermissions = $staff->user->permissions->pluck('name')->toArray();
+        $designations = Designation::orderBy('title')->get();
 
-        return view('backend.staff.staffs.edit', compact('staff', 'roles', 'permissions', 'userPermissions'));
+        return view('backend.staff.staffs.edit', compact('staff', 'roles', 'permissions', 'userPermissions', 'designations'));
     }
 
     public function update(Request $request, $id)
@@ -250,17 +265,23 @@ class StaffController extends Controller
 
         try {
             $data = $request->validate([
-                'title'     => 'required|string|max:255',
-                'first_name' => 'required|string|max:255',
-                'middle_name' => 'nullable|string|max:255',
-                'last_name' => 'required|string|max:255',
-                // 'name'      => 'required|string|max:255',
-                'email'     => "required|email|unique:users,email,{$user->id}",
-                'password'  => 'nullable|string|min:6',
-                'role_id'   => 'required|exists:roles,id',
+                'title'          => 'required|string|max:255',
+                'first_name'     => 'required|string|max:255',
+                'middle_name'    => 'nullable|string|max:255',
+                'last_name'      => 'required|string|max:255',
+                'email'          => "required|email|unique:users,email,{$user->id}",
+                'phone'          => 'nullable|string|max:20',
+                'password'       => 'nullable|string|min:6',
+                'role_id'        => 'required|exists:roles,id',
+                'designation_id' => 'nullable|exists:designations,id',
                 'enable_additional_permissions' => 'nullable|in:on',
                 'additional_permissions'   => 'nullable|array',
                 'additional_permissions.*' => 'exists:permissions,name',
+                // multiple emails & phones
+                'extra_emails'   => 'nullable|array',
+                'extra_emails.*' => 'nullable|email|max:255',
+                'extra_phones'   => 'nullable|array',
+                'extra_phones.*' => 'nullable|string|max:20',
             ]);
         } catch (ValidationException $e) {
             flashValidationErrors($e);
@@ -270,12 +291,13 @@ class StaffController extends Controller
         DB::beginTransaction();
         try {
             // 1. Update user
-            $user->title = $data['title'];
-            $user->first_name = $data['first_name'];
-            $user->middle_name = $data['middle_name'];
-            $user->last_name = $data['last_name'];
-            // $user->name = $data['name'];
-            $user->email = $data['email'];
+            $user->title          = $data['title'];
+            $user->first_name     = $data['first_name'];
+            $user->middle_name    = $data['middle_name'] ?? null;
+            $user->last_name      = $data['last_name'];
+            $user->email          = $data['email'];
+            $user->phone          = $data['phone'] ?? null;
+            $user->designation_id = $data['designation_id'] ?? null;
             if (!empty($data['password'])) {
                 $user->password = Hash::make($data['password']);
             }
@@ -285,27 +307,49 @@ class StaffController extends Controller
             $staff->role_id = $data['role_id'];
             $staff->save();
 
-            // 3. Delete previous role mapping
+            // 3. Delete previous role mapping and insert new
             DB::table('model_has_roles')->where([
                 ['model_id', '=', $user->id],
                 ['model_type', '=', get_class($user)]
             ])->delete();
 
-            // 4. Insert new role
             $role = Role::with('permissions')->findOrFail($data['role_id']);
             DB::table('model_has_roles')->insert([
-                'role_id'     => $data['role_id'],
-                'model_type'  => get_class($user),
-                'model_id'    => $user->id,
+                'role_id'    => $data['role_id'],
+                'model_type' => get_class($user),
+                'model_id'   => $user->id,
             ]);
 
-            // 5. Handle additional permissions
+            // 4. Handle additional permissions
             if (isset($data['enable_additional_permissions'])) {
                 $inheritedPermissions = $role->permissions->pluck('name')->toArray();
                 $additional = collect($data['additional_permissions'] ?? [])->diff($inheritedPermissions);
                 $user->syncPermissions($additional);
             } else {
-                $user->syncPermissions([]); // Remove all direct permissions
+                $user->syncPermissions([]);
+            }
+
+            // 5. Sync extra emails (delete all then re-insert)
+            $staff->contacts()->delete();
+
+            foreach (($data['extra_emails'] ?? []) as $email) {
+                if (!empty($email)) {
+                    StaffContact::create([
+                        'staff_id' => $staff->id,
+                        'type'     => 'email',
+                        'value'    => $email,
+                    ]);
+                }
+            }
+
+            foreach (($data['extra_phones'] ?? []) as $phone) {
+                if (!empty($phone)) {
+                    StaffContact::create([
+                        'staff_id' => $staff->id,
+                        'type'     => 'phone',
+                        'value'    => $phone,
+                    ]);
+                }
             }
 
             DB::commit();

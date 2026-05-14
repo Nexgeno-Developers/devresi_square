@@ -38,6 +38,11 @@ Route::group(['middleware' => 'web'], function () {
     // Frontend routes
     Route::get('/', [FrontendController::class, 'index'])->name('home');
     Route::get('/pricing', [FrontendController::class, 'pricing'])->name('pricing');
+    // Handle GET /logout gracefully (e.g. from email links or direct URL)
+    Route::get('/logout', function () {
+        \Illuminate\Support\Facades\Auth::logout();
+        return redirect()->route('login');
+    });
 
     // Password Reset Routes
     Route::get('/password/reset/form/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset.form');
