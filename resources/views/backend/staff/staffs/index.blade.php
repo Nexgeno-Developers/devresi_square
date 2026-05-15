@@ -28,7 +28,7 @@
                     <th>Name</th>
                     <th data-breakpoints="lg">Email</th>
                     {{-- <th data-breakpoints="lg">Phone</th> --}}
-                    <th data-breakpoints="lg">Role</th>
+                    <th data-breakpoints="lg">Designation</th>
                     <th width="10%" class="text-right">Options</th>
                 </tr>
             </thead>
@@ -41,9 +41,7 @@
                             <td>{{$staff->user->email}}</td>
                             {{-- <td>{{$staff->user->phone}}</td> --}}
                             <td>
-								@if ($staff->role != null)
-									{{ $staff->role->name }}
-								@endif
+								{{ $staff->user->designation?->title }}
 							</td>
                             <td class="text-right">
                                 @can('edit staff')

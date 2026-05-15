@@ -222,6 +222,20 @@
         </li> 
         --}}
 
+        {{-- Registrations (public sign-up approvals) --}}
+        <li class="sidebar-list-item submenu_wrapper">
+            <a href="{{ route('admin.registrations.index') }}"
+                class="{{ request()->routeIs('admin.registrations.*') ? 'active' : '' }}">
+                <span class="icon_wrapper">
+                    <i class="fa-solid fa-user-plus"></i>Registrations
+                    @php $pendingCount = \App\Models\Registration::whereNotIn('status', ['approved','rejected'])->count(); @endphp
+                    @if($pendingCount > 0)
+                        <span class="badge bg-danger ms-1">{{ $pendingCount }}</span>
+                    @endif
+                </span>
+            </a>
+        </li>
+
         @can('manage tenancies')
         <li class="sidebar-list-item submenu_wrapper">
             <a href="{{ route('admin.tenancies.all') }}"
@@ -797,18 +811,18 @@
         @endcanany
 
         <!-- Staffs -->
-        @canany(['view all staffs', 'view staff roles'])
+        @canany(['view all staffs', 'manage designations'])
             <li class="sidebar-list-item submenu_wrapper">
                 <a href="#staffsSubmenu" data-bs-toggle="collapse"
-                    aria-expanded="{{ areActiveRoutes(['staffs.index', 'staffs.create', 'staffs.edit', 'roles.index', 'roles.create', 'roles.edit'], 'true') }}"
-                    class="dropdown-toggle {{ areActiveRoutes(['staffs.index', 'staffs.create', 'staffs.edit', 'roles.index', 'roles.create', 'roles.edit']) }}">
+                    aria-expanded="{{ areActiveRoutes(['staffs.index', 'staffs.create', 'staffs.edit', 'admin.designations.index', 'admin.designations.create', 'admin.designations.edit'], 'true') }}"
+                    class="dropdown-toggle {{ areActiveRoutes(['staffs.index', 'staffs.create', 'staffs.edit', 'admin.designations.index', 'admin.designations.create', 'admin.designations.edit']) }}">
                     <span class="icon_wrapper pb_25">
                         <i class="fa-solid fa-users"></i> Staffs
                     </span>
                     <i class="fa fa-angle-down"></i>
                 </a>
 
-                <ul class="nav-second-level list-unstyled collapse {{ areActiveRoutes(['staffs.index', 'staffs.create', 'staffs.edit', 'roles.index', 'roles.create', 'roles.edit'], 'show') }}"
+                <ul class="nav-second-level list-unstyled collapse {{ areActiveRoutes(['staffs.index', 'staffs.create', 'staffs.edit', 'admin.designations.index', 'admin.designations.create', 'admin.designations.edit'], 'show') }}"
                     id="staffsSubmenu">
 
                     @can('view all staffs')
@@ -819,11 +833,11 @@
                         @endcomponent
                     @endcan
 
-                    @can('view staff roles')
+                    @can('manage designations')
                         @component('components.backend.common.sidebar-sublink')
-                            @slot('class') {{ areActiveRoutes(['roles.index', 'roles.create', 'roles.edit']) }} @endslot
-                            @slot('link') {{ route('roles.index') }} @endslot
-                            @slot('link_name') Staff permissions @endslot
+                            @slot('class') {{ areActiveRoutes(['admin.designations.index', 'admin.designations.create', 'admin.designations.edit']) }} @endslot
+                            @slot('link') {{ route('admin.designations.index') }} @endslot
+                            @slot('link_name') Designation permissions @endslot
                         @endcomponent
                     @endcan
 

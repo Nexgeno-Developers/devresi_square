@@ -672,6 +672,15 @@ Route::middleware('auth')->group(function () {
     Route::resource('staffs', StaffController::class);
     Route::get('/staffs/destroy/{id}', [StaffController::class, 'destroy'])->name('staffs.destroy');
 
+    // Registrations (public sign-up approvals)
+    Route::prefix('registrations')->name('admin.registrations.')->controller(\App\Http\Controllers\Backend\RegistrationController::class)->group(function () {
+        Route::get('/',                    'index')->name('index');
+        Route::get('/{id}',                'show')->name('show');
+        Route::post('/{id}/approve',       'approve')->name('approve');
+        Route::post('/{id}/reject',        'reject')->name('reject');
+        Route::post('/{id}/permissions',   'updatePermissions')->name('permissions');
+    });
+
     
     Route::post('/upload-note-image', function (Request $request) {
         if ($request->hasFile('file')) {
@@ -687,6 +696,20 @@ Route::middleware('auth')->group(function () {
         Route::get('/email-template/{id}', 'index')->name('email-templates.index');
         Route::post('/email-template/update-status', 'updateStatus')->name('email-template.update-status');
         Route::post('/test/smtp', 'testEmail')->name('test.smtp');
+    });
+
+    // OTP / SMS Configuration
+    Route::prefix('otp-configuration')->name('otp.')->controller(\App\Http\Controllers\Backend\OTPController::class)->group(function () {
+        Route::get('/',                    'configure_index')->name('index');
+        Route::post('/update/activation',  'updateActivationSettings')->name('activation');
+        Route::post('/update/credentials', 'update_credentials')->name('credentials');
+    });
+
+    // SMS Templates
+    Route::prefix('sms-templates')->name('sms-templates.')->controller(\App\Http\Controllers\Backend\SmsTemplateController::class)->group(function () {
+        Route::get('/',          'index')->name('index');
+        Route::get('/{id}/edit', 'edit')->name('edit');
+        Route::put('/{id}',      'update')->name('update');
     });
 
 });

@@ -192,6 +192,18 @@ class User extends Authenticatable
         return $this->belongsTo(Designation::class);
     }
 
+    public function hasDesignationPermission(string $permissionName): bool
+    {
+        if (!$this->relationLoaded('designation')) {
+            $this->load('designation.permissions');
+        } elseif ($this->designation && !$this->designation->relationLoaded('permissions')) {
+            $this->designation->load('permissions');
+        }
+
+        return (bool) $this->designation?->permissions
+            ->contains('name', $permissionName);
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');

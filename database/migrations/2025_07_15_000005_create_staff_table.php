@@ -12,7 +12,7 @@ class CreateStaffTable extends Migration
             $table->bigIncrements('id');
             $table->unsignedBigInteger('user_id'); // references the actual user
             $table->unsignedBigInteger('parent_id')->nullable(); // manager or creator
-            $table->unsignedBigInteger('role_id'); // from spatie roles
+            $table->unsignedBigInteger('role_id')->nullable(); // removed by later designation-permission migration
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');

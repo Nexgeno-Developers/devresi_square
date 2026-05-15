@@ -15,6 +15,7 @@
             <tr>
                 <th>#</th>
                 <th>Title</th>
+                <th>Permissions</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -23,6 +24,7 @@
                 <tr>
                     <td>{{ $designation->id }}</td>
                     <td>{{ $designation->title }}</td>
+                    <td>{{ $designation->permissions_count }}</td>
                     <td>
                         <a href="{{ route('admin.designations.edit', $designation->id) }}" class="btn btn_outline_primary btn-sm me-2">Edit</a>
                         <form action="{{ route('admin.designations.destroy', $designation->id) }}" method="POST" style="display:inline;">

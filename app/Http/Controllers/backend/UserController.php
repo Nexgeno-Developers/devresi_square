@@ -754,6 +754,15 @@ class UserController
     }
 
     /**
+     * Redirect to the user index with the user highlighted/selected.
+     */
+    public function show($id)
+    {
+        // The index page handles user detail via ?user_id= query param
+        return redirect()->route('admin.users.index', ['user_id' => $id]);
+    }
+
+    /**
      * Show the form for editing the specified resource.
      */
     public function edit($id)

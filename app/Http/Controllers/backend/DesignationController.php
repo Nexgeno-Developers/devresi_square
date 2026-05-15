@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Backend;
 
 use Illuminate\Http\Request;
 use App\Models\Designation;
+use Spatie\Permission\Models\Permission;
 
 class DesignationController
 {
@@ -12,7 +13,7 @@ class DesignationController
      */
     public function index()
     {
-        $designations = Designation::all();
+        $designations = Designation::withCount('permissions')->get();
         return view('backend.designations.index', compact('designations'));
     }
 
@@ -21,7 +22,8 @@ class DesignationController
      */
     public function create()
     {
-        return view('backend.designations.create');
+        $permissions = Permission::orderBy('name')->get();
+        return view('backend.designations.create', compact('permissions'));
     }
 
     /**
@@ -31,9 +33,12 @@ class DesignationController
     {
         $request->validate([
             'title' => 'required|string|max:255|unique:designations',
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'integer|exists:permissions,id',
         ]);
 
-        Designation::create($request->only('title'));
+        $designation = Designation::create($request->only('title'));
+        $designation->permissions()->sync($request->input('permissions', []));
 
         return redirect()->route('admin.designations.index')->with('success', 'Designation created successfully.');
     }
@@ -51,8 +56,11 @@ class DesignationController
      */
     public function edit($id)
     {
-        $designation = Designation::findOrFail($id);
-        return view('backend.designations.edit', compact('designation'));
+        $designation = Designation::with('permissions')->findOrFail($id);
+        $permissions = Permission::orderBy('name')->get();
+        $selectedPermissions = $designation->permissions->pluck('id')->toArray();
+
+        return view('backend.designations.edit', compact('designation', 'permissions', 'selectedPermissions'));
     }
 
     /**
@@ -62,10 +70,13 @@ class DesignationController
     {
         $request->validate([
             'title' => 'required|string|max:255|unique:designations,title,' . $id,
+            'permissions' => 'nullable|array',
+            'permissions.*' => 'integer|exists:permissions,id',
         ]);
 
         $designation = Designation::findOrFail($id);
         $designation->update($request->only('title'));
+        $designation->permissions()->sync($request->input('permissions', []));
 
         return redirect()->route('admin.designations.index')->with('success', 'Designation updated successfully.');
     }
