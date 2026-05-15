@@ -1,5 +1,5 @@
 @php
-    $roles = auth()->user()->getRoleNames();
+    $authUser = auth()->user();
 @endphp
 <aside id="menu" class="sidebar bg-light sidebar">
     <div class="dropdown position-relative">
@@ -13,9 +13,9 @@
             @endif
 
             <div class="flex-grow-1 text-start user-info">
-                <h6 class="mb-0 text-truncate" title="{{ auth()->user()->name }}">{{ auth()->user()->name }}</h6>
-                <small title="{{ auth()->user()->email }}" class="text-muted d-block text-truncate">{{ auth()->user()->email }}</small>
-                <small title="{{ $roles->implode(', ') }}" class="text-muted role-text">{{ $roles->count() === 1 ? 'Role' : 'Roles' }}: {{ $roles->implode(', ') }}</small>
+                <h6 class="mb-0 text-truncate" title="{{ $authUser->name }}">{{ $authUser->name }}</h6>
+                <small title="{{ $authUser->email }}" class="text-muted d-block text-truncate">{{ $authUser->email }}</small>
+                <small title="{{ $authUser->access_label }}" class="text-muted role-text">{{ $authUser->access_label_type }}: {{ $authUser->access_label }}</small>
             </div>
         </button>
 

@@ -110,6 +110,43 @@ class User extends Authenticatable
         return $this->hasRole('Super Admin');
     }
 
+    public function isStaffAccount(): bool
+    {
+        if ($this->user_type === 'staff') {
+            return true;
+        }
+
+        if ($this->hasRole('Staff')) {
+            if (!$this->relationLoaded('staff')) {
+                $this->load('staff');
+            }
+
+            return (bool) $this->staff;
+        }
+
+        return false;
+    }
+
+    public function getAccessLabelAttribute(): string
+    {
+        if ($this->isStaffAccount()) {
+            if (!$this->relationLoaded('designation')) {
+                $this->load('designation');
+            }
+
+            return $this->designation?->title ?: 'Staff';
+        }
+
+        $roles = $this->getRoleNames();
+
+        return $roles->isNotEmpty() ? $roles->implode(', ') : 'N/A';
+    }
+
+    public function getAccessLabelTypeAttribute(): string
+    {
+        return $this->isStaffAccount() ? 'Designation' : 'Role';
+    }
+
     /**
      * Create a password reset link for this user.
      */
@@ -199,7 +236,7 @@ class User extends Authenticatable
 
     public function hasCustomizedStaffPermissions(): bool
     {
-        if ($this->user_type !== 'staff') {
+        if (!$this->isStaffAccount()) {
             return false;
         }
 
@@ -220,6 +257,22 @@ class User extends Authenticatable
 
         return (bool) $this->designation?->permissions
             ->contains('name', $permissionName);
+    }
+
+    public function hasEffectivePermission(string $permissionName): bool
+    {
+        if ($this->isStaffAccount()) {
+            if ($this->hasCustomizedStaffPermissions()) {
+                return $this->getDirectPermissions()->contains('name', $permissionName);
+            }
+
+            if ($this->designation_id) {
+                return $this->hasDesignationPermission($permissionName);
+            }
+        }
+
+        return $this->hasPermissionTo($permissionName)
+            || $this->hasDesignationPermission($permissionName);
     }
 
     public function creator()

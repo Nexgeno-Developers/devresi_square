@@ -3,7 +3,7 @@
 @section('content')
 <div class="row">
     <div class="col-lg-10 mt-3 mx-auto">
-        <div class="card">
+        <div class="card mb-3 mb-md-5 pb-3">
             <div class="card-header">
                 <h5 class="mb-0 h6">Staff Information</h5>
             </div>
@@ -136,19 +136,33 @@
                         </div>
                     </div>
 
-                    <div class="form-group row">
-                        <label class="col-sm-3 col-from-label pt-2">Custom Permission</label>
-                    </div>
-
                     @php
                         $oldPermissionIds = collect(old('custom_permissions', $selectedPermissionIds))->map(fn($id) => (int) $id)->toArray();
                     @endphp
 
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-from-label pt-2">Custom Permission</label>
+                        <div class="col-sm-9">
+                            <span class="staff-permission-count-badge">
+                                <span id="selected-permission-count">{{ count($oldPermissionIds) }}</span> selected
+                                / {{ $permissions->count() }} available
+                            </span>
+                        </div>
+                    </div>
+
                     <div id="custom-permissions-wrapper">
                         <input type="hidden" name="custom_permissions_submitted" value="1">
                         @foreach($permissions->groupBy(fn($permission) => $permission->section ?? 'general') as $section => $permissionGroup)
-                            <ul class="list-group mb-4">
-                                <li class="list-group-item bg-light fw-semibold">{{ Str::headline($section) }}</li>
+                            <ul class="list-group mb-4 staff-permission-section">
+                                <li class="list-group-item bg-light fw-semibold staff-permission-section-header">
+                                    <div>
+                                        <span>{{ Str::headline($section) }}</span>
+                                        <small>{{ $permissionGroup->count() }} {{ Str::plural('permission', $permissionGroup->count()) }}</small>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-primary staff-permission-section-toggle">
+                                        Enable all
+                                    </button>
+                                </li>
                                 <li class="list-group-item">
                                     <div class="row">
                                         @foreach($permissionGroup as $permission)
@@ -173,11 +187,11 @@
                         @endforeach
                     </div>
 
-                </div>
-                <div class="card-footer text-right">
-                    <button type="submit" class="btn btn-primary px-4">
-                        <i class="fas fa-save me-1"></i> Save
-                    </button>
+                    <div class="form-group mb-0 text-right">
+                        <button type="submit" class="btn btn-primary px-4 float-end">
+                            <i class="fas fa-save me-1"></i> Save
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -202,6 +216,10 @@
         $('.custom-permission-checkbox').each(function () {
             $(this).prop('checked', permissionIds.has(Number($(this).val())));
         });
+
+        if (window.refreshStaffPermissionTools) {
+            window.refreshStaffPermissionTools();
+        }
     }
 
     function addContactRow(listId, inputName, placeholder) {
@@ -239,3 +257,5 @@
     });
 </script>
 @endsection
+
+@include('backend.staff.staffs.partials.permission-tools')

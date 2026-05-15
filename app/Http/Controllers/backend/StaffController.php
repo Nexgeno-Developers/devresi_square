@@ -27,7 +27,10 @@ class StaffController extends Controller
 
     public function index()
     {
-        $staffs = Staff::with('user.designation')->paginate(10);
+        $staffs = Staff::with('user.designation')
+            ->whereHas('user', fn($query) => $query->where('user_type', 'staff'))
+            ->paginate(10);
+
         return view('backend.staff.staffs.index', compact('staffs'));
     }
 
@@ -81,12 +84,13 @@ class StaffController extends Controller
 
             Role::firstOrCreate(['name' => 'Staff', 'guard_name' => 'web']);
             $user->syncRoles(['Staff']);
-            $user->syncPermissions(Permission::whereIn('id', $data['custom_permissions'] ?? [])->get());
 
             $staff = Staff::create([
                 'user_id' => $user->id,
-                'permissions_customized' => true,
+                'permissions_customized' => false,
             ]);
+
+            $this->syncStaffPermissionOverride($user, $staff, (int) $data['designation_id'], $data['custom_permissions'] ?? []);
 
             // Save extra emails
             foreach (($data['extra_emails'] ?? []) as $email) {
@@ -179,10 +183,7 @@ class StaffController extends Controller
 
             Role::firstOrCreate(['name' => 'Staff', 'guard_name' => 'web']);
             $user->syncRoles(['Staff']);
-            $user->syncPermissions(Permission::whereIn('id', $data['custom_permissions'] ?? [])->get());
-
-            $staff->permissions_customized = true;
-            $staff->save();
+            $this->syncStaffPermissionOverride($user, $staff, (int) $data['designation_id'], $data['custom_permissions'] ?? []);
 
             // 2. Sync extra emails (delete all then re-insert)
             $staff->contacts()->delete();
@@ -226,5 +227,36 @@ class StaffController extends Controller
         }
         flash()->error('Something went wrong');
         return back();
+    }
+
+    private function syncStaffPermissionOverride(User $user, Staff $staff, int $designationId, array $permissionIds): void
+    {
+        $selectedPermissionIds = collect($permissionIds)
+            ->map(fn($id) => (int) $id)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $designationPermissionIds = Designation::with('permissions:id')
+            ->findOrFail($designationId)
+            ->permissions
+            ->pluck('id')
+            ->map(fn($id) => (int) $id)
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $permissionsCustomized = $selectedPermissionIds !== $designationPermissionIds;
+
+        $user->syncPermissions(
+            $permissionsCustomized
+                ? Permission::whereIn('id', $selectedPermissionIds)->get()
+                : []
+        );
+
+        $staff->permissions_customized = $permissionsCustomized;
+        $staff->save();
     }
 }
