@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\Models\Permission;
 use Illuminate\Validation\ValidationException;
 
 class StaffController extends Controller
@@ -32,8 +33,10 @@ class StaffController extends Controller
 
     public function create()
     {
-        $designations = Designation::orderBy('title')->get();
-        return view('backend.staff.staffs.create', compact('designations'));
+        $designations = Designation::with('permissions')->orderBy('title')->get();
+        $permissions = Permission::orderBy('name')->get();
+
+        return view('backend.staff.staffs.create', compact('designations', 'permissions'));
     }
 
     // Staff permissions are inherited live from the selected designation.
@@ -49,6 +52,8 @@ class StaffController extends Controller
                 'phone'          => 'nullable|string|max:20',
                 'password'       => 'required',
                 'designation_id' => 'required|exists:designations,id',
+                'custom_permissions' => 'nullable|array',
+                'custom_permissions.*' => 'integer|exists:permissions,id',
                 // multiple emails & phones
                 'extra_emails'   => 'nullable|array',
                 'extra_emails.*' => 'nullable|email|max:255',
@@ -76,9 +81,11 @@ class StaffController extends Controller
 
             Role::firstOrCreate(['name' => 'Staff', 'guard_name' => 'web']);
             $user->syncRoles(['Staff']);
+            $user->syncPermissions(Permission::whereIn('id', $data['custom_permissions'] ?? [])->get());
 
             $staff = Staff::create([
                 'user_id' => $user->id,
+                'permissions_customized' => true,
             ]);
 
             // Save extra emails
@@ -117,10 +124,14 @@ class StaffController extends Controller
 
     public function edit($id)
     {
-        $staff = Staff::with(['user.designation', 'contacts'])->findOrFail(decrypt($id));
-        $designations = Designation::orderBy('title')->get();
+        $staff = Staff::with(['user.designation.permissions', 'user.permissions', 'contacts'])->findOrFail(decrypt($id));
+        $designations = Designation::with('permissions')->orderBy('title')->get();
+        $permissions = Permission::orderBy('name')->get();
+        $selectedPermissionIds = $staff->permissions_customized
+            ? $staff->user->getDirectPermissions()->pluck('id')->toArray()
+            : ($staff->user->designation?->permissions->pluck('id')->toArray() ?? []);
 
-        return view('backend.staff.staffs.edit', compact('staff', 'designations'));
+        return view('backend.staff.staffs.edit', compact('staff', 'designations', 'permissions', 'selectedPermissionIds'));
     }
 
     public function update(Request $request, $id)
@@ -138,6 +149,8 @@ class StaffController extends Controller
                 'phone'          => 'nullable|string|max:20',
                 'password'       => 'nullable|string|min:6',
                 'designation_id' => 'required|exists:designations,id',
+                'custom_permissions' => 'nullable|array',
+                'custom_permissions.*' => 'integer|exists:permissions,id',
                 // multiple emails & phones
                 'extra_emails'   => 'nullable|array',
                 'extra_emails.*' => 'nullable|email|max:255',
@@ -166,6 +179,10 @@ class StaffController extends Controller
 
             Role::firstOrCreate(['name' => 'Staff', 'guard_name' => 'web']);
             $user->syncRoles(['Staff']);
+            $user->syncPermissions(Permission::whereIn('id', $data['custom_permissions'] ?? [])->get());
+
+            $staff->permissions_customized = true;
+            $staff->save();
 
             // 2. Sync extra emails (delete all then re-insert)
             $staff->contacts()->delete();

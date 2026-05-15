@@ -58,6 +58,10 @@ class AppServiceProvider extends ServiceProvider
 
         foreach ($permissions as $permission) {
             Gate::define($permission->name, function ($user) use ($permission) {
+                if ($user->hasCustomizedStaffPermissions()) {
+                    return $user->getDirectPermissions()->contains('name', $permission->name);
+                }
+
                 return $user->hasPermissionTo($permission->name)
                     || $user->hasDesignationPermission($permission->name);
             });

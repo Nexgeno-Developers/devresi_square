@@ -192,6 +192,24 @@ class User extends Authenticatable
         return $this->belongsTo(Designation::class);
     }
 
+    public function staff()
+    {
+        return $this->hasOne(Staff::class);
+    }
+
+    public function hasCustomizedStaffPermissions(): bool
+    {
+        if ($this->user_type !== 'staff') {
+            return false;
+        }
+
+        if (!$this->relationLoaded('staff')) {
+            $this->load('staff');
+        }
+
+        return (bool) $this->staff?->permissions_customized;
+    }
+
     public function hasDesignationPermission(string $permissionName): bool
     {
         if (!$this->relationLoaded('designation')) {

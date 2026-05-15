@@ -9,6 +9,11 @@ class Staff extends Model
     protected $fillable = [
         'user_id',
         'parent_id',
+        'permissions_customized',
+    ];
+
+    protected $casts = [
+        'permissions_customized' => 'boolean',
     ];
 
     public function user()

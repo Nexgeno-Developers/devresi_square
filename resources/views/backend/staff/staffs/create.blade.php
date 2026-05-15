@@ -106,6 +106,44 @@
                         </div>
                     </div>
 
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-from-label pt-2">Custom Permission</label>
+                    </div>
+
+                    @php
+                        $oldPermissionIds = collect(old('custom_permissions', []))->map(fn($id) => (int) $id)->toArray();
+                        $hasOldPermissions = old('custom_permissions_submitted') !== null;
+                    @endphp
+
+                    <div id="custom-permissions-wrapper">
+                        <input type="hidden" name="custom_permissions_submitted" value="1">
+                        @foreach($permissions->groupBy(fn($permission) => $permission->section ?? 'general') as $section => $permissionGroup)
+                            <ul class="list-group mb-4">
+                                <li class="list-group-item bg-light fw-semibold">{{ Str::headline($section) }}</li>
+                                <li class="list-group-item">
+                                    <div class="row">
+                                        @foreach($permissionGroup as $permission)
+                                            <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6 permission-item"
+                                                 data-permission-id="{{ $permission->id }}">
+                                                <div class="p-2 border mt-1 mb-2">
+                                                    <label class="control-label d-flex small">{{ Str::headline($permission->name) }}</label>
+                                                    <label class="aiz-switch aiz-switch-success">
+                                                        <input type="checkbox"
+                                                               name="custom_permissions[]"
+                                                               class="form-control custom-permission-checkbox"
+                                                               value="{{ $permission->id }}"
+                                                               {{ $hasOldPermissions && in_array($permission->id, $oldPermissionIds) ? 'checked' : '' }}>
+                                                        <span class="slider round"></span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </li>
+                            </ul>
+                        @endforeach
+                    </div>
+
                     <div class="form-group mb-0 text-right">
                         <button type="submit" class="btn btn-sm btn-primary">Save</button>
                     </div>
@@ -119,6 +157,22 @@
 @include('backend.partials.assets.select2')
 @section('page.scripts')
 <script>
+    const designationPermissionsMap = @json(
+        $designations->mapWithKeys(fn($designation) => [
+            $designation->id => $designation->permissions->pluck('id')->values()
+        ])
+    );
+    const hasOldPermissionInput = @json($hasOldPermissions);
+
+    function applyDesignationPermissions() {
+        const designationId = $('#designation_id').val();
+        const permissionIds = new Set((designationPermissionsMap[designationId] || []).map(Number));
+
+        $('.custom-permission-checkbox').each(function () {
+            $(this).prop('checked', permissionIds.has(Number($(this).val())));
+        });
+    }
+
     function addContactRow(listId, inputName, placeholder) {
         const row = $(`
             <div class="form-group row contact-row">
@@ -137,6 +191,11 @@
 
     $(document).ready(function () {
         initSelect2('.select2');
+
+        $('#designation_id').on('change', applyDesignationPermissions);
+        if (!hasOldPermissionInput) {
+            applyDesignationPermissions();
+        }
 
         $('#add-email-btn').on('click', function () {
             addContactRow('extra-emails-list', 'extra_emails', 'Enter email address');
