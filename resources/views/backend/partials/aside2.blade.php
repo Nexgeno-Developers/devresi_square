@@ -49,7 +49,7 @@
     </div>
 
     <ul class="list-unstyled components">
-        @unless(auth()->user()->hasRole('Tenant'))
+        @unless(auth()->user()->hasRole('Tenant') || auth()->user()->hasRole('Contractor'))
         <li class="sidebar-list-item submenu_wrapper">
             <a class="{{ request()->routeIs('backend.dashboard') ? 'active' : '' }}"
                 href="{{ route('backend.dashboard') }}">
@@ -223,6 +223,7 @@
         --}}
 
         {{-- Registrations (public sign-up approvals) --}}
+        @unless(auth()->user()->hasRole('Contractor'))
         <li class="sidebar-list-item submenu_wrapper">
             <a href="{{ route('admin.registrations.index') }}"
                 class="{{ request()->routeIs('admin.registrations.*') ? 'active' : '' }}">
@@ -235,6 +236,7 @@
                 </span>
             </a>
         </li>
+        @endunless
 
         @can('manage tenancies')
         <li class="sidebar-list-item submenu_wrapper">
@@ -322,6 +324,43 @@
             </ul>
         </li>
         @endcanany
+
+        {{-- ── Contractor: only sees Repair Issues ── --}}
+        @if(auth()->user()->hasRole('Contractor'))
+        <li class="sidebar-list-item submenu_wrapper">
+            <a href="#contractorRepairSubmenu" data-bs-toggle="collapse"
+                aria-expanded="{{ request()->routeIs('contractor.repairs.*') ? 'true' : 'false' }}"
+                class="dropdown-toggle {{ request()->routeIs('contractor.repairs.*') ? 'active' : '' }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-wrench"></i>Repair Issues</span>
+                <i class="fa fa-angle-down"></i>
+            </a>
+            <ul class="nav-second-level collapse list-unstyled {{ request()->routeIs('contractor.repairs.*') ? 'show' : '' }}"
+                id="contractorRepairSubmenu">
+
+                @php
+                    $contractorStatuses = ['Pending','Reported','Under Process','Work Completed','Invoice Received','Invoice Paid','Closed'];
+                    $currentContractorStatus = request('status');
+                @endphp
+
+                {{-- All --}}
+                <li class="sidebar-sub-list-item py-0 mb-0">
+                    <a href="{{ route('contractor.repairs.index') }}"
+                       class="{{ request()->routeIs('contractor.repairs.index') && !request()->filled('status') ? 'active' : '' }}">
+                        All
+                    </a>
+                </li>
+
+                @foreach($contractorStatuses as $status)
+                <li class="sidebar-sub-list-item py-0 mb-0">
+                    <a href="{{ route('contractor.repairs.index', ['status' => $status]) }}"
+                       class="{{ $currentContractorStatus === $status ? 'active' : '' }}">
+                        {{ $status }}
+                    </a>
+                </li>
+                @endforeach
+            </ul>
+        </li>
+        @endif
 
         @can('view invoices')
         @php
@@ -872,7 +911,7 @@
             </li>
         @endcanany
 
-        @unless(auth()->user()->hasRole('Tenant'))
+        @unless(auth()->user()->hasRole('Tenant') || auth()->user()->hasRole('Contractor'))
         <li class="sidebar-list-item submenu_wrapper">
             <a href="#accountingSubmenu" data-bs-toggle="collapse"
                 aria-expanded="{{ request()->routeIs('backend.accounting.*') ? 'true' : 'false' }}"

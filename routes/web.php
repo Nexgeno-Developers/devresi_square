@@ -12,6 +12,7 @@ use App\Http\Controllers\Frontend\FrontendController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Backend\AuthenticateController;
 use App\Http\Controllers\Frontend\CustomerStatementController;
+use App\Http\Controllers\Frontend\ContractorPortalController;
 
 // Route::get('/test-pdf', function() {
 //     $pdf = PDF::loadHTML('<h1>Hello World</h1>');
@@ -57,6 +58,12 @@ Route::group(['middleware' => 'web'], function () {
     // Customer self-serve statement
     Route::middleware('auth')->group(function () {
         Route::get('/customer/statements', [CustomerStatementController::class, 'show'])->name('customer.statements');
+    });
+
+    // Contractor portal — repair listing & detail (auth required)
+    Route::middleware('auth')->prefix('contractor')->name('contractor.')->group(function () {
+        Route::get('/repairs',       [ContractorPortalController::class, 'index'])->name('repairs.index');
+        Route::get('/repairs/{id}',  [ContractorPortalController::class, 'show'])->name('repairs.show');
     });
 
 });

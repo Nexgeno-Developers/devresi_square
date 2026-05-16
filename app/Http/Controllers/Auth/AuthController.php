@@ -38,6 +38,11 @@ class AuthController
                 return redirect()->route('backend.home');
             }
 
+            // Contractor goes to the same welcome home page
+            if ($user->hasRole('Contractor')) {
+                return redirect()->route('backend.home');
+            }
+
             if (
                 $user->hasAnyRole([
                     'Super Admin',
@@ -48,7 +53,6 @@ class AuthController
                     'Agent',
                     'Staff',
                     'Test',
-                    'Contractor',
                 ])
             ) {
                 return redirect()->route('backend.dashboard');
