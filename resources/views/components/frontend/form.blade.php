@@ -51,7 +51,7 @@
                     <option value="" disabled selected>Select type</option>
                     <option value="landlord">Landlord</option>
                     <option value="owner">Owner</option>
-                    <option value="freelancing_agent">Freelancing Agent</option>
+                    <option value="estate_agent">Estate Agent</option>
                     <option value="contractor">Contractor</option>
                 </select>
                 <label for="user_role">Type</label>
