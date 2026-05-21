@@ -9,14 +9,14 @@ use Illuminate\View\Component;
 class PropertyCard extends Component
 {
 
-    public $class, $propertyName, $bed, $bath, $floor, $living, $price, $lettingPrice, $type, $available, $cardStyle, $propertyId, $weeklyLettingPrice;
+    public $class, $propertyName, $bed, $bath, $floor, $living, $price, $lettingPrice, $type, $available, $cardStyle, $propertyId, $weeklyLettingPrice, $brochureUrl, $importantNote;
 
     /**
      * Create a new component instance.
      *
      * @return void
      */
-    public function __construct($class = null, $propertyName, $bed, $bath, $floor, $living, $price, $lettingPrice = null, $type, $available, $cardStyle = 'horizontal', $propertyId)
+    public function __construct($class = null, $propertyName, $bed, $bath, $floor, $living, $price, $lettingPrice = null, $type, $available, $cardStyle = 'horizontal', $propertyId, $brochureUrl = null, $importantNote = null)
     {
         $this->class = $class;
         $this->propertyName = $propertyName;
@@ -30,6 +30,8 @@ class PropertyCard extends Component
         $this->available = $available;
         $this->cardStyle = $cardStyle;  // Vertical | Horizontal
         $this->propertyId = $propertyId;
+        $this->brochureUrl = $brochureUrl ?: ($propertyId ? route('admin.properties.brochure', $propertyId) : null);
+        $this->importantNote = $importantNote;
 
         // Weekly rent calculation
         if ($lettingPrice) {

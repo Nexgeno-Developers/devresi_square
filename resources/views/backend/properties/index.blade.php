@@ -146,6 +146,40 @@
             height: auto;
             margin: auto;
         }
+        .property-brochure-btn {
+            display: inline-flex !important;
+            position: relative;
+            z-index: 2;
+            white-space: nowrap;
+            width: auto !important;
+            min-width: unset !important;
+            max-width: max-content;
+            padding: 2px 7px;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #0d6efd !important;
+            background: #fff !important;
+            border-color: #0d6efd !important;
+        }
+        .property-brochure-btn:hover,
+        .property-brochure-btn:focus,
+        .pv_content_wrapper:hover .property-brochure-btn,
+        .pv_content_wrapper.current .property-brochure-btn {
+            color: #fff !important;
+            background: #0d6efd !important;
+            border-color: #0d6efd !important;
+            opacity: 1 !important;
+        }
+        .property_brochure {
+            position: absolute;
+            right: 20px;
+            bottom: 14px;
+            width: auto;
+        }
+        .pv_content_wrapper.property-card {
+            position: relative;
+            padding-bottom: 48px !important;
+        }
 
         .add-tenant-btn {
             color: #ff4500;
@@ -247,6 +281,22 @@
     <!-- Include the Modal Component -->
     @include('backend.components.modal')
     @include('backend.events.modal')
+    <div class="modal fade" id="importantNoteVisitModal" tabindex="-1" aria-labelledby="importantNoteVisitModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-md">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importantNoteVisitModalLabel">Important Note</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="importantNoteVisitContent" style="white-space: pre-wrap;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn_secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 @endsection
 @push('styles')
 <link href="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.css" rel="stylesheet">
@@ -527,6 +577,8 @@ var_dump($propertyId);
             "property_accessibility": "Edit Property Accessibility",
             "property_services": "Edit Property Services",
             "property_status": "Edit Property Status",
+            "property_description": "Edit Description",
+            "responsibility": "Edit Responsibility Mapping",
             "notes": "Edit Important Note",
             notes_tab: noteId ? 'Edit Note' : 'Add Note',
         };
@@ -539,7 +591,7 @@ var_dump($propertyId);
         $("#extraLargeModal .modal-dialog").removeClass("modal-sm modal-lg modal-xl");
 
         // Apply the appropriate modal size based on the formType
-        if (formType === "property_status" || formType === "notes" || formType === "property_services") {
+        if (formType === "property_status" || formType === "notes" || formType === "property_services" || formType === "property_description") {
             // Use small modal for "notes" or "notes_tab"
             $("#extraLargeModal .modal-dialog").addClass("modal-md");
         // } else if (formType === "property_info") {
@@ -581,6 +633,9 @@ var_dump($propertyId);
                 if (formType === "property_info") {
                     toggleDescriptions();
                 }
+                if (formType === "responsibility") {
+                    $('.select2').select2();
+                }
                 },
                 error: function(error) {
                     console.error(error);
@@ -613,7 +668,11 @@ var_dump($propertyId);
                 // Check if the response indicates success
                 if (response.success) {
                     // Dynamically update the relevant accordion section
-                    $("#section-" + formType + "-" + propertyId).html(response.updated_html);
+                    if (formType === "responsibility") {
+                        $("#section-" + formType + "-" + propertyId).replaceWith(response.updated_html);
+                    } else {
+                        $("#section-" + formType + "-" + propertyId).html(response.updated_html);
+                    }
 
                     // Close the modal
                     $("#extraLargeModal").modal("hide");
@@ -1248,6 +1307,19 @@ var_dump($propertyId);
 
             }
 
+            function showImportantNoteForCard(card) {
+                if (!card || !card.length) {
+                    return;
+                }
+
+                var importantNote = (card.attr('data-important-note') || '').trim();
+
+                if (importantNote) {
+                    $('#importantNoteVisitContent').text(importantNote);
+                    $('#importantNoteVisitModal').modal('show');
+                }
+            }
+
             // Handle Tab Clicks
             // Event listener for property cards (left side)
             $(document).on('click', '.property-card', function() {
@@ -1255,6 +1327,7 @@ var_dump($propertyId);
                 $('.property-card').removeClass('current');
                 $(this).addClass('current');
                 var tabName = $('.tab-link.active').data('tab-name');
+                showImportantNoteForCard($(this));
                 loadTabContent(propertyId, tabName);
             });
 
@@ -1313,6 +1386,7 @@ var_dump($propertyId);
                         $('.property-card').removeClass('current');
                         selectedPropertyCard.addClass('current');
                         scrollToCard(selectedPropertyCard);
+                        showImportantNoteForCard(selectedPropertyCard);
                         loadTabContent(propertyId, tabName);
                     } else {
                         // Card is on a different page — reload the list to the correct page first
@@ -1327,6 +1401,7 @@ var_dump($propertyId);
                                 var card = $('.property-card[data-property-id="' + propertyId + '"]');
                                 card.addClass('current');
                                 scrollToCard(card);
+                                showImportantNoteForCard(card);
                                 loadTabContent(propertyId, tabName);
                             },
                             error: function() {
@@ -1334,6 +1409,7 @@ var_dump($propertyId);
                                 var firstCard = $('.property-card').first();
                                 var firstId   = firstCard.data('property-id');
                                 firstCard.addClass('current');
+                                showImportantNoteForCard(firstCard);
                                 loadTabContent(firstId, tabName);
                             }
                         });
@@ -1357,6 +1433,7 @@ var_dump($propertyId);
                     loadTabContent(propertyId, tabName);
                     firstPropertyCard.addClass('current'); // Add 'current' class to the first property card
                     firstTab.addClass('active'); // Add 'active' class to the first tab
+                    showImportantNoteForCard(firstPropertyCard);
                 }
             }
 

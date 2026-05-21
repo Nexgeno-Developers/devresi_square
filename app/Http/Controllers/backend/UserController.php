@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Mail\MailManager;
+use App\Models\Company;
 use App\Models\Country;
 use App\Models\DocumentType;
 use App\Models\EmailTemplate;
@@ -18,6 +19,7 @@ use App\Services\Accounting\StatementService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -28,23 +30,36 @@ class UserController
 {
     public function profile()
     {
-        $authUser = auth()->user();
+        $authUser = auth()->user()->load([
+            'ownedCompany.branches',
+            'ownedCompany.ownerTransfers.oldOwner',
+            'ownedCompany.ownerTransfers.newOwner',
+            'ownedCompany.ownerTransfers.transferredBy',
+        ]);
         // $countryName = Country::find($authUser->country_id)?->name ?? 'N/A';
         // Use cached countries to find the user's country
         $countryName = Country::allCached()->firstWhere('id', $authUser->country_id)->name ?? 'N/A';
+        $transferUsers = User::where('id', '!=', $authUser->id)
+            ->where(function ($query) {
+                $query->whereIn('user_type', ['agent', 'estate_agent'])
+                    ->orWhereHas('roles', fn($roleQuery) => $roleQuery->whereIn('name', ['Agent', 'Estate Agent']));
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
 
-        return view('backend.users.profile.show', compact('authUser', 'countryName'));
+        return view('backend.users.profile.show', compact('authUser', 'countryName', 'transferUsers'));
     }
 
     public function profileEdit()
     {
         // Fetch the authenticated user
 
-        $user = User::with('country')->find(auth()->id());
+        $user = User::with('country', 'details', 'ownedCompany')->find(auth()->id());
         // $categories = UserCategory::all();
         $countries = Country::allCached();
+        $company = $this->canManageCompanyProfile($user) ? $this->ownedCompanyFor($user) : null;
 
-        return view('backend.users.profile.edit', compact('user', 'countries'));
+        return view('backend.users.profile.edit', compact('user', 'countries', 'company'));
         // return view('backend.users.profile.edit', compact('user', 'categories', 'countries'));
     }
 
@@ -52,13 +67,17 @@ class UserController
     {
         $user = auth()->user();
 
-        $validatedData = $request->validate([
+        $rules = [
             'title' => 'required|string|max:10',
             'first_name' => 'required|string|max:55',
             'middle_name' => 'nullable|string|max:55',
             'last_name' => 'required|string|max:55',
-            'phone' => 'required|string|max:20',
-            'email' => 'required|email|max:55|unique:users,email,'.$user->id,
+            'emails' => 'required|array|min:1',
+            'emails.*' => 'nullable|email|max:255',
+            'primary_email' => 'required|email|max:255|unique:users,email,'.$user->id,
+            'phones' => 'required|array|min:1',
+            'phones.*' => 'nullable|string|max:20',
+            'primary_phone' => 'required|string|max:20',
             'address_line_1' => 'required|string|max:255',
             'address_line_2' => 'nullable|string|max:255',
             'postcode' => 'required|string|max:15',
@@ -68,7 +87,40 @@ class UserController
             'profile_picture' => 'nullable|image|max:2048', // 2MB max
             // 'category_id' => 'required|exists:users_categories,id',
             // 'role' => 'required|exists:roles,name',
-        ]);
+        ];
+
+        if ($this->canManageCompanyProfile($user)) {
+            $rules = array_merge($rules, [
+                'company.name' => 'nullable|string|max:255',
+                'company.registration_number' => 'nullable|string|max:255',
+                'company.registered_address' => 'nullable|string',
+                'company.communication_address' => 'nullable|string',
+                'company.emails' => 'nullable|array',
+                'company.emails.*' => 'nullable|email|max:255',
+                'company.phones' => 'nullable|array',
+                'company.phones.*' => 'nullable|string|max:50',
+                'company.vat_number' => 'nullable|string|max:255',
+                'company.website' => 'nullable|url|max:255',
+                'company.social_media' => 'nullable|array',
+                'company.social_media.*' => 'nullable|url|max:255',
+                'company.services' => 'nullable|array',
+                'company.services.*' => 'nullable|in:lettings,sales,property_management',
+                'company_logo' => 'nullable|image|max:4096',
+                'company_stamp' => 'nullable|image|max:4096',
+            ]);
+        }
+
+        $validatedData = $request->validate($rules);
+        $contactEmails = array_values(array_unique(array_filter($validatedData['emails'] ?? [])));
+        $contactPhones = array_values(array_unique(array_filter($validatedData['phones'] ?? [])));
+
+        if (! in_array($validatedData['primary_email'], $contactEmails, true)) {
+            return back()->withErrors(['primary_email' => 'The primary email must be one of the entered emails.'])->withInput();
+        }
+
+        if (! in_array($validatedData['primary_phone'], $contactPhones, true)) {
+            return back()->withErrors(['primary_phone' => 'The primary phone must be one of the entered phone numbers.'])->withInput();
+        }
 
         // Handle profile picture removal
         if ($request->has('remove_profile_picture') && $user->profile_picture) {
@@ -94,30 +146,106 @@ class UserController
 
         $fullName = trim($request->input('first_name').' '.$request->input('middle_name').' '.$request->input('last_name'));
 
-        $user->update([
-            'title' => $validatedData['title'],
-            'first_name' => $validatedData['first_name'],
-            'middle_name' => $validatedData['middle_name'],
-            'last_name' => $validatedData['last_name'],
-            'name' => $fullName,
-            'phone' => $validatedData['phone'],
-            'email' => $validatedData['email'],
-            'address_line_1' => $validatedData['address_line_1'],
-            'address_line_2' => $validatedData['address_line_2'],
-            'postcode' => $validatedData['postcode'],
-            'city' => $validatedData['city'],
-            // 'country' => $validatedData['country'],
-            'country_id' => $validatedData['country_id'] ?? null,
-            // 'category_id' => $validatedData['category_id'],
-            'updated_by' => auth()->id(),
-            'profile_picture' => $user->profile_picture, // set new path if uploaded
-        ]);
+        DB::transaction(function () use ($request, $user, $validatedData, $fullName, $contactEmails, $contactPhones) {
+            $user->update([
+                'title' => $validatedData['title'],
+                'first_name' => $validatedData['first_name'],
+                'middle_name' => $validatedData['middle_name'],
+                'last_name' => $validatedData['last_name'],
+                'name' => $fullName,
+                'phone' => $validatedData['primary_phone'],
+                'email' => $validatedData['primary_email'],
+                'address_line_1' => $validatedData['address_line_1'],
+                'address_line_2' => $validatedData['address_line_2'],
+                'postcode' => $validatedData['postcode'],
+                'city' => $validatedData['city'],
+                // 'country' => $validatedData['country'],
+                'country_id' => $validatedData['country_id'] ?? null,
+                // 'category_id' => $validatedData['category_id'],
+                'updated_by' => auth()->id(),
+                'profile_picture' => $user->profile_picture, // set new path if uploaded
+            ]);
+
+            $user->details()->updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'emails' => $contactEmails,
+                    'primary_email' => $validatedData['primary_email'],
+                    'phones' => $contactPhones,
+                    'primary_phone' => $validatedData['primary_phone'],
+                ]
+            );
+
+            if ($this->canManageCompanyProfile($user)) {
+                $this->syncOwnedCompany($request, $user);
+            }
+        });
 
         // Sync new role (removes old ones and assigns the new one)
         // $user->syncRoles([$validatedData['role']]);
         flash('Profile updated successfully!')->success();
 
         return redirect()->route('admin.users.profile.show');
+    }
+
+    private function canManageCompanyProfile(User $user): bool
+    {
+        $manageOwnCompanyPermissionExists = \Spatie\Permission\Models\Permission::where('name', 'manage own company')
+            ->where('guard_name', 'web')
+            ->exists();
+
+        return in_array($user->user_type, ['agent', 'estate_agent'], true)
+            || $user->hasAnyRole(['Agent', 'Estate Agent', 'Super Admin'])
+            || $user->ownedCompany()->exists()
+            || ($manageOwnCompanyPermissionExists && $user->hasEffectivePermission('manage own company'));
+    }
+
+    private function ownedCompanyFor(User $user): Company
+    {
+        return $user->ownedCompany()->firstOrCreate(
+            ['owner_user_id' => $user->id],
+            [
+                'name' => $user->company?->name ?: ($user->name ? $user->name . ' Company' : 'My Company'),
+                'created_by' => $user->id,
+            ]
+        );
+    }
+
+    private function syncOwnedCompany(Request $request, User $user): void
+    {
+        $company = $this->ownedCompanyFor($user);
+        $companyInput = $request->input('company', []);
+
+        if ($request->hasFile('company_logo')) {
+            if ($company->logo_path && Storage::disk('public')->exists($company->logo_path)) {
+                Storage::disk('public')->delete($company->logo_path);
+            }
+            $companyInput['logo_path'] = $request->file('company_logo')->store('company_logos', 'public');
+        }
+
+        if ($request->hasFile('company_stamp')) {
+            if ($company->stamp_path && Storage::disk('public')->exists($company->stamp_path)) {
+                Storage::disk('public')->delete($company->stamp_path);
+            }
+            $companyInput['stamp_path'] = $request->file('company_stamp')->store('company_stamps', 'public');
+        }
+
+        $company->update([
+            'name' => $companyInput['name'] ?? $company->name,
+            'registration_number' => $companyInput['registration_number'] ?? null,
+            'registered_address' => $companyInput['registered_address'] ?? null,
+            'communication_address' => $companyInput['communication_address'] ?? null,
+            'emails' => array_values(array_filter($companyInput['emails'] ?? [])),
+            'phones' => array_values(array_filter($companyInput['phones'] ?? [])),
+            'logo_path' => $companyInput['logo_path'] ?? $company->logo_path,
+            'stamp_path' => $companyInput['stamp_path'] ?? $company->stamp_path,
+            'vat_number' => $companyInput['vat_number'] ?? null,
+            'website' => $companyInput['website'] ?? null,
+            'social_media' => array_filter($companyInput['social_media'] ?? []),
+            'services' => array_values($companyInput['services'] ?? []),
+            'updated_by' => $user->id,
+        ]);
+
     }
 
     public function profilePasswordUpdate(Request $request)

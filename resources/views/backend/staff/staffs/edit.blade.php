@@ -8,7 +8,7 @@
                 <h5 class="mb-0 h6">Staff Information</h5>
             </div>
 
-            <form action="{{ route('staffs.update', $staff->id) }}" method="POST">
+            <form action="{{ route('staffs.update', $staff->id) }}" method="POST" enctype="multipart/form-data">
                 @method('PATCH')
                 @csrf
                 <div class="card-body">
@@ -54,6 +54,16 @@
                             <input type="text" placeholder="Name" id="name" name="name" value="{{ $staff->user->name }}" class="form-control" required>
                         </div>
                     </div> --}}
+
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-from-label" for="profile_picture">Staff Photo</label>
+                        <div class="col-sm-9">
+                            <input type="file" id="profile_picture" name="profile_picture" class="form-control" accept="image/*">
+                            @if($staff->user->profile_picture)
+                                <img src="{{ asset('storage/' . $staff->user->profile_picture) }}" alt="Staff Photo" class="img-thumbnail mt-2" style="max-height: 80px;">
+                            @endif
+                        </div>
+                    </div>
 
                     <div class="form-group row">
                         <label class="col-sm-3 col-from-label" for="email">Email</label>
@@ -131,6 +141,18 @@
                                     <option value="{{ $designation->id }}" {{ $staff->user->designation_id == $designation->id ? 'selected' : '' }}>
                                         {{ $designation->title }}
                                     </option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-from-label" for="branch_id">Branch</label>
+                        <div class="col-sm-9">
+                            <select id="branch_id" name="branch_id" class="form-control select2">
+                                <option value="">Select Branch</option>
+                                @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}" @selected(old('branch_id', $staff->branch_id) == $branch->id)>{{ $branch->name }}</option>
                                 @endforeach
                             </select>
                         </div>

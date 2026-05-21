@@ -52,6 +52,8 @@ Route::group(['middleware' => 'web'], function () {
     });
 
     // Password Reset Routes
+    Route::get('/password/forgot', [PasswordResetController::class, 'showLinkRequestForm'])->name('password.request');
+    Route::post('/password/email', [PasswordResetController::class, 'sendResetLinkEmail'])->name('password.email');
     Route::get('/password/reset/form/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset.form');
     Route::post('/password/reset/', [PasswordResetController::class, 'reset'])->name('password.reset');
 

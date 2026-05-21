@@ -1,4 +1,4 @@
-<div class="pv_content_wrapper {{ $cardStyle == 'vertical'? 'vertical_card' : '' }} {{$class}}" data-property-id="{{ $propertyId }}">
+<div class="pv_content_wrapper {{ $cardStyle == 'vertical'? 'vertical_card' : '' }} {{$class}}" data-property-id="{{ $propertyId }}" data-important-note="{{ e($importantNote ?? '') }}">
     <div class="pv_image">
         <img src="{{ asset('/asset/images/temp-property.webp') }}" alt="property">
     </div>
@@ -101,6 +101,13 @@
                     N/A
                 @endif
             </span>
+        </div>
+        @endif
+        @if($brochureUrl)
+        <div class="property_brochure mt-1">
+            <a href="{{ $brochureUrl }}" class="btn btn-sm btn-outline-primary property-brochure-btn d-inline-flex align-items-center gap-1" onclick="event.preventDefault(); event.stopPropagation(); window.open(this.href, '_blank');">
+                <i class="bi bi-file-earmark-pdf"></i> Brochure
+            </a>
         </div>
         @endif
     </div>

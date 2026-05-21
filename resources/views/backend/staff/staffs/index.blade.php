@@ -46,6 +46,7 @@
                         <th scope="col">Staff member</th>
                         <th scope="col">Contact</th>
                         <th scope="col">Designation</th>
+                        <th scope="col">Branch</th>
                         <th scope="col">Access</th>
                         <th scope="col" class="text-end">Actions</th>
                     </tr>
@@ -56,9 +57,13 @@
                             <td class="staff-id">{{ ($staffs->firstItem() ?? 1) + $loop->index }}</td>
                             <td>
                                 <div class="staff-person">
-                                    <div class="staff-avatar" aria-hidden="true">
-                                        {{ Str::of($staff->user->name)->trim()->substr(0, 1)->upper() }}
-                                    </div>
+                                    @if($staff->user->profile_picture)
+                                        <img class="staff-avatar" src="{{ asset('storage/' . $staff->user->profile_picture) }}" alt="{{ $staff->user->name }}">
+                                    @else
+                                        <div class="staff-avatar" aria-hidden="true">
+                                            {{ Str::of($staff->user->name)->trim()->substr(0, 1)->upper() }}
+                                        </div>
+                                    @endif
                                     <div>
                                         <div class="staff-name">{{ $staff->user->name }}</div>
                                         <div class="staff-muted">ID {{ $staff->user->id }}</div>
@@ -76,6 +81,13 @@
                             <td>
                                 @if($staff->user->designation)
                                     <span class="designation-badge">{{ $staff->user->designation->title }}</span>
+                                @else
+                                    <span class="staff-muted">Not assigned</span>
+                                @endif
+                            </td>
+                            <td>
+                                @if($staff->branch)
+                                    <span class="designation-badge">{{ $staff->branch->name }}</span>
                                 @else
                                     <span class="staff-muted">Not assigned</span>
                                 @endif
@@ -105,7 +117,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6">
+                            <td colspan="7">
                                 <div class="staff-empty">
                                     <i class="bi bi-people"></i>
                                     <strong>No staff found</strong>
@@ -266,6 +278,7 @@
             height: 38px;
             justify-content: center;
             width: 38px;
+            object-fit: cover;
         }
 
         .staff-name {

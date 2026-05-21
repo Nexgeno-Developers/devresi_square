@@ -113,6 +113,11 @@ class Property extends Model
         return $this->hasMany(PropertyResponsibility::class, 'property_id');
     }
 
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function estateCharge()
     {
         return $this->belongsTo(EstateCharge::class, 'estate_charges_id');

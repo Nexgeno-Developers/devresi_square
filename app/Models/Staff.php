@@ -9,6 +9,7 @@ class Staff extends Model
     protected $fillable = [
         'user_id',
         'parent_id',
+        'branch_id',
         'permissions_customized',
     ];
 
@@ -24,6 +25,11 @@ class Staff extends Model
     public function parent()
     {
         return $this->belongsTo(User::class, 'parent_id');
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function contacts()

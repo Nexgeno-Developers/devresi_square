@@ -10,17 +10,25 @@
     'price' => '',
     'lettingPrice' => '',
     'cardStyle' => '',
-    'propertyId' => ''
+    'propertyId' => '',
+    'brochureUrl' => '',
+    'importantNote' => ''
 ])
 
-<div class="pv_content_wrapper {{ $cardStyle == 'vertical'? 'vertical_card' : '' }} {{$class}}" data-property-id="{{ $propertyId }}">
+@php
+    $brochureUrl = $brochureUrl ?: ($propertyId ? route('admin.properties.brochure', $propertyId) : '');
+@endphp
+
+<div class="pv_content_wrapper {{ $cardStyle == 'vertical'? 'vertical_card' : '' }} {{$class}}" data-property-id="{{ $propertyId }}" data-important-note="{{ e($importantNote) }}">
     <div class="pv_content">
-        <div class="pvc_property_name">
-            @if($propertyName)
-                {{ $propertyName }}
-            @else
-                <em>Property address not available</em>
-            @endif
+        <div class="d-flex justify-content-between align-items-start gap-2">
+            <div class="pvc_property_name">
+                @if($propertyName)
+                    {{ $propertyName }}
+                @else
+                    <em>Property address not available</em>
+                @endif
+            </div>
         </div>
 
         <div class="property_details mt-2">
@@ -63,6 +71,13 @@
                     </div>
                 @endif
             </div>
+            @if($brochureUrl)
+                <div class="property_brochure mt-2">
+                    <a href="{{ $brochureUrl }}" class="btn btn-sm btn-outline-primary property-brochure-btn" onclick="event.preventDefault(); event.stopPropagation(); window.open(this.href, '_blank');">
+                        <i class="bi bi-file-earmark-pdf"></i> Brochure
+                    </a>
+                </div>
+            @endif
         </div>
     </div>
 </div>

@@ -57,6 +57,13 @@
 
                     {{-- Primary Email --}}
                     <div class="form-group row">
+                        <label class="col-sm-3 col-from-label" for="profile_picture">Staff Photo</label>
+                        <div class="col-sm-9">
+                            <input type="file" id="profile_picture" name="profile_picture" class="form-control" accept="image/*">
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
                         <label class="col-sm-3 col-from-label" for="email">Email</label>
                         <div class="col-sm-9">
                             <div class="input-group">
@@ -101,6 +108,18 @@
                                 <option value="">Select Designation</option>
                                 @foreach($designations as $designation)
                                     <option value="{{ $designation->id }}">{{ $designation->title }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <label class="col-sm-3 col-from-label" for="branch_id">Branch</label>
+                        <div class="col-sm-9">
+                            <select id="branch_id" name="branch_id" class="form-control select2">
+                                <option value="">Select Branch</option>
+                                @foreach($branches as $branch)
+                                    <option value="{{ $branch->id }}" @selected(old('branch_id') == $branch->id)>{{ $branch->name }}</option>
                                 @endforeach
                             </select>
                         </div>

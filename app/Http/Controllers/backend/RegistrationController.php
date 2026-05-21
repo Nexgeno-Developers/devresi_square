@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Mail\MailManager;
+use App\Models\Company;
 use App\Models\Registration;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -117,6 +118,16 @@ class RegistrationController extends Controller
                 'model_type' => get_class($user),
                 'model_id'   => $user->id,
             ]);
+
+            if ($registration->type === 'estate_agent') {
+                Company::firstOrCreate(
+                    ['owner_user_id' => $user->id],
+                    [
+                        'name' => trim($registration->full_name . ' Company'),
+                        'created_by' => $user->id,
+                    ]
+                );
+            }
 
             // Update registration
             $registration->update([

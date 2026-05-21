@@ -6,11 +6,13 @@ use Hash;
 // use App\Models\Role;
 use App\Models\User;
 use App\Models\Staff;
+use App\Models\Branch;
 use App\Models\Designation;
 use App\Models\StaffContact;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +30,7 @@ class StaffController extends Controller
     public function index()
     {
         $staffs = Staff::with('user.designation')
+            ->with('branch')
             ->whereHas('user', fn($query) => $query->where('user_type', 'staff'))
             ->paginate(10);
 
@@ -38,8 +41,9 @@ class StaffController extends Controller
     {
         $designations = Designation::with('permissions')->orderBy('title')->get();
         $permissions = Permission::orderBy('name')->get();
+        $branches = $this->branchOptionsFor(auth()->user());
 
-        return view('backend.staff.staffs.create', compact('designations', 'permissions'));
+        return view('backend.staff.staffs.create', compact('designations', 'permissions', 'branches'));
     }
 
     // Staff permissions are inherited live from the selected designation.
@@ -55,6 +59,8 @@ class StaffController extends Controller
                 'phone'          => 'nullable|string|max:20',
                 'password'       => 'required',
                 'designation_id' => 'required|exists:designations,id',
+                'branch_id'      => 'nullable|exists:branches,id',
+                'profile_picture' => 'nullable|image|max:2048',
                 'custom_permissions' => 'nullable|array',
                 'custom_permissions.*' => 'integer|exists:permissions,id',
                 // multiple emails & phones
@@ -70,6 +76,10 @@ class StaffController extends Controller
 
         DB::beginTransaction();
         try {
+            $profilePicture = $request->hasFile('profile_picture')
+                ? $request->file('profile_picture')->store('profile_pictures', 'public')
+                : null;
+
             $user = User::create([
                 'title'          => $data['title'],
                 'first_name'     => $data['first_name'],
@@ -79,6 +89,8 @@ class StaffController extends Controller
                 'phone'          => $data['phone'] ?? null,
                 'user_type'      => 'staff',
                 'designation_id' => $data['designation_id'],
+                'branch_id'      => $data['branch_id'] ?? null,
+                'profile_picture' => $profilePicture,
                 'password'       => Hash::make($data['password']),
             ]);
 
@@ -87,6 +99,7 @@ class StaffController extends Controller
 
             $staff = Staff::create([
                 'user_id' => $user->id,
+                'branch_id' => $data['branch_id'] ?? null,
                 'permissions_customized' => false,
             ]);
 
@@ -131,11 +144,12 @@ class StaffController extends Controller
         $staff = Staff::with(['user.designation.permissions', 'user.permissions', 'contacts'])->findOrFail(decrypt($id));
         $designations = Designation::with('permissions')->orderBy('title')->get();
         $permissions = Permission::orderBy('name')->get();
+        $branches = $this->branchOptionsFor(auth()->user());
         $selectedPermissionIds = $staff->permissions_customized
             ? $staff->user->getDirectPermissions()->pluck('id')->toArray()
             : ($staff->user->designation?->permissions->pluck('id')->toArray() ?? []);
 
-        return view('backend.staff.staffs.edit', compact('staff', 'designations', 'permissions', 'selectedPermissionIds'));
+        return view('backend.staff.staffs.edit', compact('staff', 'designations', 'permissions', 'selectedPermissionIds', 'branches'));
     }
 
     public function update(Request $request, $id)
@@ -153,6 +167,8 @@ class StaffController extends Controller
                 'phone'          => 'nullable|string|max:20',
                 'password'       => 'nullable|string|min:6',
                 'designation_id' => 'required|exists:designations,id',
+                'branch_id'      => 'nullable|exists:branches,id',
+                'profile_picture' => 'nullable|image|max:2048',
                 'custom_permissions' => 'nullable|array',
                 'custom_permissions.*' => 'integer|exists:permissions,id',
                 // multiple emails & phones
@@ -176,10 +192,20 @@ class StaffController extends Controller
             $user->email          = $data['email'];
             $user->phone          = $data['phone'] ?? null;
             $user->designation_id = $data['designation_id'];
+            $user->branch_id      = $data['branch_id'] ?? null;
+            if ($request->hasFile('profile_picture')) {
+                if ($user->profile_picture && Storage::disk('public')->exists($user->profile_picture)) {
+                    Storage::disk('public')->delete($user->profile_picture);
+                }
+                $user->profile_picture = $request->file('profile_picture')->store('profile_pictures', 'public');
+            }
             if (!empty($data['password'])) {
                 $user->password = Hash::make($data['password']);
             }
             $user->save();
+
+            $staff->branch_id = $data['branch_id'] ?? null;
+            $staff->save();
 
             Role::firstOrCreate(['name' => 'Staff', 'guard_name' => 'web']);
             $user->syncRoles(['Staff']);
@@ -258,5 +284,18 @@ class StaffController extends Controller
 
         $staff->permissions_customized = $permissionsCustomized;
         $staff->save();
+    }
+
+    private function branchOptionsFor(User $user)
+    {
+        if ($user->ownedCompany) {
+            return $user->ownedCompany->branches()->orderBy('name')->get();
+        }
+
+        if ($user->company_id) {
+            return Branch::where('company_id', $user->company_id)->orderBy('name')->get();
+        }
+
+        return Branch::orderBy('name')->get();
     }
 }

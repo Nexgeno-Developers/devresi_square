@@ -13,6 +13,7 @@ use App\Http\Controllers\Backend\NotesController;
 use App\Http\Controllers\Backend\OfferController;
 use App\Http\Controllers\Backend\StaffController;
 use App\Http\Controllers\Backend\BranchController;
+use App\Http\Controllers\Backend\CompanyController;
 use App\Http\Controllers\Backend\InvoiceController;
 use App\Http\Controllers\Backend\JobTypeController;
 use App\Http\Controllers\Backend\TenancyController;
@@ -144,6 +145,11 @@ Route::middleware('auth')->group(function () {
             Route::post('/save-form', 'saveForm')->name('saveForm');
             
             Route::get('/ajax', 'ajaxList')->name('ajax');
+            Route::get('/{property}/brochure', 'brochure')->name('brochure');
+        });
+
+        Route::prefix('companies')->name('companies.')->controller(CompanyController::class)->group(function () {
+            Route::post('/{company}/transfer-owner', 'transferOwner')->name('transfer-owner');
         });
 
         // Designation

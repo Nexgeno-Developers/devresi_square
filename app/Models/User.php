@@ -219,6 +219,16 @@ class User extends Authenticatable
         return $this->belongsTo(Company::class);
     }
 
+    public function ownedCompany()
+    {
+        return $this->hasOne(Company::class, 'owner_user_id');
+    }
+
+    public function createdUsers()
+    {
+        return $this->hasMany(User::class, 'created_by');
+    }
+
     public function branch()
     {
         return $this->belongsTo(Branch::class);
