@@ -13,6 +13,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Backend\AuthenticateController;
 use App\Http\Controllers\Frontend\CustomerStatementController;
 use App\Http\Controllers\Frontend\ContractorPortalController;
+use App\Http\Controllers\Frontend\RepairQuoteController;
 
 // Route::get('/test-pdf', function() {
 //     $pdf = PDF::loadHTML('<h1>Hello World</h1>');
@@ -67,6 +68,13 @@ Route::group(['middleware' => 'web'], function () {
         Route::get('/repairs',       [ContractorPortalController::class, 'index'])->name('repairs.index');
         Route::get('/repairs/{id}',  [ContractorPortalController::class, 'show'])->name('repairs.show');
     });
+
+    Route::get('/repair-quotes/{assignment}/{token}', [RepairQuoteController::class, 'show'])
+        ->middleware('signed')
+        ->name('repair-quotes.show');
+    Route::post('/repair-quotes/{assignment}/{token}', [RepairQuoteController::class, 'submit'])
+        ->middleware('signed')
+        ->name('repair-quotes.submit');
 
 });
 

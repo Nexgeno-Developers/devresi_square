@@ -276,12 +276,12 @@
                 <!-- Repair Issues Section -->
                 <li class="sidebar-sub-list-item py-0 mb-0 submenu_wrapper">
                     <a href="#repairIssuesSubmenu" data-bs-toggle="collapse"
-                        aria-expanded="{{ request()->routeIs('admin.property_repairs.index') ? 'true' : 'false' }}"
-                        class="dropdown-toggle {{ request()->routeIs('admin.property_repairs.index') || request()->routeIs('admin.property_repairs.show') ? 'active' : '' }}">
+                        aria-expanded="{{ request()->routeIs('admin.property_repairs.index') || request()->routeIs('admin.property_repairs.index_tabbed') ? 'true' : 'false' }}"
+                        class="dropdown-toggle {{ request()->routeIs('admin.property_repairs.index') || request()->routeIs('admin.property_repairs.index_tabbed') || request()->routeIs('admin.property_repairs.show') ? 'active' : '' }}">
                         <span class="icon_wrapper">Repair Issues</span>
                         <i class="fa fa-angle-down"></i>
                     </a>
-                    <ul class="nav-third-level collapse list-unstyled {{ request()->routeIs('admin.property_repairs.index') ? 'show' : '' }}"
+                    <ul class="nav-third-level collapse list-unstyled {{ request()->routeIs('admin.property_repairs.index') || request()->routeIs('admin.property_repairs.index_tabbed') ? 'show' : '' }}"
                         id="repairIssuesSubmenu">
 
                         <!-- "All" Status Option -->
@@ -289,6 +289,12 @@
                             @slot('class') {{ request()->fullUrl() === route('admin.property_repairs.index') ? 'active' : '' }} @endslot
                             @slot('link') {{ route('admin.property_repairs.index') }} @endslot
                             @slot('link_name') All @endslot
+                        @endcomponent
+
+                        @component('components.backend.common.sidebar-sublink')
+                            @slot('class') {{ request()->routeIs('admin.property_repairs.index_tabbed') ? 'active' : '' }} @endslot
+                            @slot('link') {{ route('admin.property_repairs.index_tabbed') }} @endslot
+                            @slot('link_name') Issue List (Tabbed) @endslot
                         @endcomponent
 
                         {{-- <li class="sidebar-sub-list-item">
@@ -1028,6 +1034,11 @@
                 <li class="sidebar-sub-list-item">
                     <a class="{{ request()->routeIs('backend.accounting.statements.accounts') ? 'active' : '' }}" href="{{ route('backend.accounting.statements.accounts') }}">
                         <span class="icon_wrapper">Account Ledger</span>
+                    </a>
+                </li>
+                <li class="sidebar-sub-list-item">
+                    <a class="{{ request()->routeIs('backend.accounting.uncharged_repair_work_orders.*') ? 'active' : '' }}" href="{{ route('backend.accounting.uncharged_repair_work_orders.index') }}">
+                        <span class="icon_wrapper">Uncharged repair work order</span>
                     </a>
                 </li>
 

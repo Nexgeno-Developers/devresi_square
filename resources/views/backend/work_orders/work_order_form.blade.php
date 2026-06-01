@@ -1,3 +1,7 @@
+@php
+    $showInvoiceActions = $showInvoiceActions ?? true;
+@endphp
+
 <form id="workOrderForm" action="{{ route('admin.work_orders.store') }}" method="POST" novalidate>
     @csrf
     <input type="hidden" id="repair_issue_id" name="repair_issue_id" value="{{ $repairIssue->id }}">
@@ -48,7 +52,8 @@
                 <div class="col-md-4 mb-3">
                     <div class="form-group">
                         <label class="form-label">Job Sub Type</label>
-                        <select name="job_sub_type_id" id="jobSubTypeSelect" class="form-control">
+                        <select name="job_sub_type_id" id="jobSubTypeSelect" class="form-control"
+                            data-existing-sub-type="{{ $repairIssue->workOrder->job_sub_type_id ?? '' }}">
                             <option disabled aria-disabled="true" value="">Select Job Sub Type</option>
                         </select>
                     </div>
@@ -273,7 +278,9 @@
 
     </div>
 
-    <div id="invoice-message" class="mt-2"></div>
+    @if ($showInvoiceActions)
+        <div id="invoice-message" class="mt-2"></div>
+    @endif
     <div class="d-flex gap-3 float-end">
         <!-- Save Work Order Button -->
         <button type="submit" class="btn btn_secondary">Save Work Order</button>
@@ -287,14 +294,16 @@
             </button>
         </span>
     
-        <!-- Generate Invoice Button -->
-        <span class="d-inline-block" data-bs-toggle="tooltip" title="{{ !$workorder ? 'Create Work Order first' : ($invoice ? 'Invoice already generated' : '') }}">
-            <button id="generateInvoiceBtn" data-workorder-id="{{ $workorder->id ?? '' }}" 
-                class="btn btn-primary"  
-                {{ !$workorder || $invoice ? 'disabled' : '' }}>
-                {{ $workorder && $invoice ? 'Invoice Generated' : 'Generate Invoice' }}
-            </button>
-        </span>
+        @if ($showInvoiceActions)
+            <!-- Generate Invoice Button -->
+            <span class="d-inline-block" data-bs-toggle="tooltip" title="{{ !$workorder ? 'Create Work Order first' : ($invoice ? 'Invoice already generated' : '') }}">
+                <button id="generateInvoiceBtn" data-workorder-id="{{ $workorder->id ?? '' }}" 
+                    class="btn btn-primary"  
+                    {{ !$workorder || $invoice ? 'disabled' : '' }}>
+                    {{ $workorder && $invoice ? 'Invoice Generated' : 'Generate Invoice' }}
+                </button>
+            </span>
+        @endif
     </div>
     
               
