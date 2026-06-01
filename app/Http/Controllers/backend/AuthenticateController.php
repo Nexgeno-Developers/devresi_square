@@ -16,13 +16,13 @@ class AuthenticateController
         if (Auth::check()) {
             $user = User::find(Auth::id());
 
-            if ($user->hasRole('Tenant')) {
-                return redirect()->route('backend.home');
-            }
-
+            // Backend‑eligible roles
             $backendRoles = [
-                'Super Admin', 'Owner', 'Property Manager',
-                'Landlord', 'Staff', 'Estate Agent', 'Agent', 'Test', 'Contractor',
+                'Super Admin',
+                'Owner',
+                'Property Manager',
+                'Landlord',
+                'Staff'
             ];
 
             if ($user->hasAnyRole($backendRoles)) {
@@ -35,6 +35,9 @@ class AuthenticateController
         return view('backend.login');
     }
 
+    /**
+     * Handle login submission.
+     */
     public function login(Request $request)
     {
         $request->validate([
@@ -45,13 +48,12 @@ class AuthenticateController
         if (Auth::attempt($request->only('email','password'), $request->boolean('remember'))) {
             $user = User::find(Auth::id());
 
-            if ($user->hasRole('Tenant')) {
-                return redirect()->route('backend.home');
-            }
-
             $backendRoles = [
-                'Super Admin', 'Owner', 'Property Manager',
-                'Landlord', 'Staff', 'Estate Agent', 'Agent', 'Test', 'Contractor',
+                'Super Admin',
+                'Owner',
+                'Property Manager',
+                'Landlord',
+                'Staff'
             ];
 
             if ($user->hasAnyRole($backendRoles)) {

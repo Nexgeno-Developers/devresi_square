@@ -4,14 +4,10 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
+class CreateUsersCategoriesTable extends Migration
 {
     public function up()
     {
-        if (Schema::hasTable('users_categories')) {
-            return;
-        }
-
         Schema::create('users_categories', function (Blueprint $table) {
             $table->id(); // automatically unsigned big integer and primary key
             $table->string('name', 155);
@@ -24,4 +20,4 @@ return new class extends Migration
     {
         Schema::dropIfExists('users_categories');
     }
-};
+}

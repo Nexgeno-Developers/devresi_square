@@ -58,31 +58,31 @@ class AppServiceProvider extends ServiceProvider
 
         foreach ($permissions as $permission) {
             Gate::define($permission->name, function ($user) use ($permission) {
-                return $user->hasEffectivePermission($permission->name);
+                return $user->hasPermissionTo($permission->name);
             });
         }
         
         Relation::enforceMorphMap([
-            // Short keys used in sale invoices (link_to_type, charge_to_type)
-            'Property'   => Property::class,
-            'Tenancy'    => Tenancy::class,
-            'Owner'      => Owner::class,
-            'Tenant'     => Tenant::class,
-            'Contractor' => Contractor::class,
-            // Short keys for accounting
-            'sale_invoice'     => SysSaleInvoice::class,
+            // preferred short keys
+            'sale_invoice' => SysSaleInvoice::class,
             'purchase_invoice' => SysPurchaseInvoice::class,
-            'receipt'          => SysReceipt::class,
-            // Full class names — used by notes, documents, and other polymorphic relations
-            'App\\Models\\User'       => User::class,
-            'App\\Models\\Property'   => Property::class,
-            'App\\Models\\Tenancy'    => Tenancy::class,
-            'App\\Models\\Owner'      => Owner::class,
-            'App\\Models\\Tenant'     => Tenant::class,
-            'App\\Models\\Contractor' => Contractor::class,
-            'App\\Models\\SysSaleInvoice'     => SysSaleInvoice::class,
+            'user' => User::class,
+            'receipt' => SysReceipt::class,
+            'Property' => Property::class,
+            'Tenancy' => Tenancy::class,
+            'Owner' => Owner::class,
+            'Tenant' => Tenant::class,
+            'Contractor' => Contractor::class,
+            // allow legacy stored class names to keep working
+            'App\\Models\\SysSaleInvoice' => SysSaleInvoice::class,
             'App\\Models\\SysPurchaseInvoice' => SysPurchaseInvoice::class,
-            'App\\Models\\SysReceipt'         => SysReceipt::class,
+            'App\\Models\\User' => User::class,
+            'App\\Models\\SysReceipt' => SysReceipt::class,
+            'App\\Models\\Property' => Property::class,
+            'App\\Models\\Tenancy' => Tenancy::class,
+            'App\\Models\\Owner' => Owner::class,
+            'App\\Models\\Tenant' => Tenant::class,
+            'App\\Models\\Contractor' => Contractor::class,
         ]);
     }
 }

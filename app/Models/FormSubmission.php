@@ -12,7 +12,6 @@ class FormSubmission extends Model
         'last_name',
         'email',
         'phone',
-        'user_role',
         'demo_date',
         'demo_time',
         'hear_about',
@@ -28,9 +27,9 @@ class FormSubmission extends Model
     ];
 
     protected $casts = [
-        'subscribe'  => 'boolean',
+        'subscribe' => 'boolean',
         'email_sent' => 'boolean',
-        'demo_date'  => 'date',
-        'demo_time'  => 'datetime:H:i',
+        'demo_date' => 'date',
+        'demo_time' => 'datetime:H:i',
     ];
 }

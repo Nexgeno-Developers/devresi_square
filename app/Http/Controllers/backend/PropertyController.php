@@ -13,7 +13,6 @@ use App\Models\NoteType;
 use App\Models\Property;
 use App\Models\OwnerGroup;
 use App\Models\SchoolName;
-use App\Models\Upload;
 use App\Models\Designation;
 use App\Models\StationName;
 // use App\Models\EstateCharge;
@@ -26,7 +25,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use App\Models\PropertyResponsibility;
 use Illuminate\Support\Facades\Validator;
-use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 class PropertyController
 {
@@ -61,16 +59,6 @@ class PropertyController
         if ($user->hasRole('Property Manager') || $user->hasRole('Super Admin')) {
             // Property managers see all properties
             $properties = $propertiesQuery->orderBy('id', 'desc')->paginate(15);
-        } elseif ($user->hasRole('Tenant')) {
-            // Tenants see only properties where they have an active tenancy
-            $propertyIds = \App\Models\TenantMember::where('user_id', $user->id)
-                ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
-                ->where('tenancies.status', 'Active')
-                ->pluck('tenancies.property_id')
-                ->unique();
-            $properties = $propertiesQuery->whereIn('id', $propertyIds)
-                ->orderBy('id', 'desc')
-                ->paginate(15);
         } elseif ($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')  ) {
             // Landlords see only properties they created
             $properties = $propertiesQuery->where('created_by', $user->id)
@@ -83,45 +71,12 @@ class PropertyController
                 ->orderBy('id', 'desc')
                 ->paginate(15);
         } else {
-            // Default: no access — return empty paginator
-            $properties = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
+            // Default: no access
+            $properties = collect(); // empty collection
         }
 
         // If AJAX request for property list only (search/pagination)
         if ($request->ajax() && $request->has('list_only')) {
-            // If a highlight_id is given, jump to the page that contains it
-            if ($request->filled('highlight_id')) {
-                $highlightId = (int) $request->highlight_id;
-                $perPage = 15;
-
-                // Rebuild a fresh query with the same role-based filters to find the position
-                $positionQuery = Property::query();
-                if ($request->filled('search')) {
-                    $search = $request->search;
-                    $positionQuery->where(function ($q) use ($search) {
-                        $q->where('prop_name', 'like', "%{$search}%")
-                          ->orWhere('prop_ref_no', 'like', "%{$search}%")
-                          ->orWhere('line_1', 'like', "%{$search}%")
-                          ->orWhere('line_2', 'like', "%{$search}%")
-                          ->orWhere('city', 'like', "%{$search}%")
-                          ->orWhere('postcode', 'like', "%{$search}%")
-                          ->orWhere('property_type', 'like', "%{$search}%");
-                    });
-                }
-                if ($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')) {
-                    $positionQuery->where('created_by', $user->id);
-                } elseif ($user->hasRole('Estate Agent')) {
-                    $createdUserIds = User::where('created_by', $user->id)->pluck('id');
-                    $positionQuery->whereIn('created_by', $createdUserIds->push($user->id));
-                }
-
-                $position = $positionQuery->orderBy('id', 'desc')->pluck('id')->search($highlightId);
-
-                if ($position !== false) {
-                    $page = (int) floor($position / $perPage) + 1;
-                    $properties = $positionQuery->orderBy('id', 'desc')->paginate($perPage, ['*'], 'page', $page);
-                }
-            }
             return response()->json([
                 'html' => view('backend.properties.partials.property-list', compact('properties'))->render()
             ]);
@@ -129,50 +84,17 @@ class PropertyController
         
         // Redirect to 'quick' if there are no properties
         if ($properties->isEmpty()) {
-            if ($user->hasRole('Tenant')) {
-                // Show properties page with empty state — no redirect
-                $tabs = $this->buildPermissionTabs($user);
-                $content = '<div class="alert alert-info m-3">You don\'t have any active tenancy properties linked to your account. Please contact your property manager.</div>';
-                return view('backend.properties.index', [
-                    'properties' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15),
-                    'tabs'       => $tabs,
-                    'propertyId' => null,
-                    'tabName'    => 'property',
-                    'content'    => $content,
-                    'property'   => null,
-                ]);
-            }
             flash("You don't have any properties yet!")->error();
             return redirect()->route('admin.properties.quick');
         }
 
         // Get property_id and tabname from query parameters
         $propertyId = $request->query('property_id');
-        $tabName = $request->query('tabname', 'property');
+        $tabName = $request->query('tabname', 'property'); // Default to 'property' if no tab is specified
 
-        // If no property_id in URL:
-        // Tenant → show list only, nothing selected (clean page)
-        // Others → redirect to first property
-        if (!$propertyId) {
-            if ($user->hasRole('Tenant')) {
-                $tabs = $this->buildPermissionTabs($user);
-                return view('backend.properties.index', [
-                    'properties' => $properties,
-                    'tabs'       => $tabs,
-                    'propertyId' => null,
-                    'tabName'    => $tabName,
-                    'content'    => '',
-                    'property'   => null,
-                ]);
-            }
-            $firstProperty = $properties->first();
-            return redirect()->route('admin.properties.index', [
-                'property_id' => $firstProperty->id,
-                'tabname'     => $tabName,
-            ]);
-        }
-
-        $property = Property::find($propertyId);
+        // Check if the property_id is provided, otherwise, select the first property or handle it gracefully
+        // $property = $propertyId ? Property::findOrFail($propertyId) : $properties->first(); // Use the first property if none is selected
+        $property = $propertyId ? Property::find($propertyId) : null; // Use null if no property is selected
 
         /*if (!$property) {
             // Get the first property that is NOT soft-deleted
@@ -198,23 +120,15 @@ class PropertyController
                 $user->hasRole('Property Manager') || 
                 ($user->hasRole('Landlord') && $property->created_by === $user->id) || 
                 ($user->hasRole('Estate Agent') && ($property->created_by === $user->id || $user->createdUsers()->pluck('id')->contains($property->created_by))) ||
-                ($user->hasRole('Staff') || $user->hasRole('Test') && $property->created_by === $user->id) ||
-                ($user->hasRole('Tenant') && \App\Models\TenantMember::where('user_id', $user->id)
-                    ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
-                    ->where('tenancies.status', 'Active')
-                    ->where('tenancies.property_id', $property->id)
-                    ->exists());
+                ($user->hasRole('Staff') || $user->hasRole('Test') && $property->created_by === $user->id);
 
             if (! $isAuthorized) {
                 abort(403, 'Unauthorized to view this property.');
             }
         } else {
-            // property_id missing, invalid, or deleted — redirect to first property on page 1
-            $firstProperty = $properties->first();
-            return redirect()->route('admin.properties.index', [
-                'property_id' => $firstProperty->id,
-                'tabname'     => $tabName,
-            ]);
+            // If property not found, fallback
+            $property = $properties->first();
+            $propertyId = $property->id;
         }
 
         $availableTabs = [
@@ -240,10 +154,6 @@ class PropertyController
             if ($user->can($permission)) {
                 $tabs[] = ['name' => $name];
             }
-        }
-
-        if ($user->can('view property teams')) {
-            $tabs[] = ['name' => 'Responsibility'];
         }
 
         // Get tabs for properties (you can customize the tabs as per your needs)
@@ -274,36 +184,6 @@ class PropertyController
 
         // Pass data to the view
         return view('backend.properties.index', compact('properties', 'tabs', 'propertyId', 'tabName', 'content', 'property'));
-    }
-
-    private function buildPermissionTabs($user): array
-    {
-        $availableTabs = [
-            'view properties'          => 'Property',
-            'view property owners'     => 'Owners',
-            'manage property compliance' => 'Compliance',
-            'view property media'      => 'Media',
-            'view property offers'     => 'Offers',
-            'view property tenancy'    => 'Tenancy',
-            'view property aps'        => 'APS',
-            'view property teams'      => 'Teams',
-            'view property documents'  => 'Documents',
-            'view property notes'      => 'Notes',
-            'view property appointments' => 'Appointments',
-            'view property statement'  => 'Statement',
-        ];
-        $tabs = [];
-        foreach ($availableTabs as $permission => $name) {
-            if ($user->can($permission)) {
-                $tabs[] = ['name' => $name];
-            }
-        }
-
-        if ($user->can('view property teams')) {
-            $tabs[] = ['name' => 'Responsibility'];
-        }
-
-        return $tabs;
     }
 
     private function getTabContent($tabname, $propertyId, $property)
@@ -398,13 +278,7 @@ class PropertyController
             case 'media':
                 return view('backend.properties.tabs.media', compact('propertyId', 'property'))->render();
             case 'teams':
-                return view('backend.properties.tabs.teams', compact('propertyId', 'property'))->render();
-            case 'responsibility':
-                $responsibilities = PropertyResponsibility::with('user')
-                    ->where('property_id', $propertyId)
-                    ->get();
-
-                return view('backend.properties.tabs.responsibility', compact('propertyId', 'property', 'responsibilities'))->render();
+                return view('backend.properties.tabs.teams', compact('propertyId'))->render();
             case 'documents':
 
                 $documents = $property->documents()->with('documentType')->orderByDesc('updated_at')->paginate(5);
@@ -1085,12 +959,6 @@ class PropertyController
                     'letting_status_description'
                 ]);
                 break;
-            case 'property_description':
-                $data = $request->only([
-                    'sales_status_description',
-                    'letting_status_description',
-                ]);
-                break;
             case 'property_accessibility':
                 // $data = $request->only([
                 //     'access_arrangement', 'key_highlights', 'nearest_station', 'nearest_school', 'nearest_places', 'useful_information'
@@ -1201,64 +1069,6 @@ class PropertyController
                     'status_description'
                 ]);
                 break;
-            case 'responsibility':
-                $validated = $request->validate([
-                    'responsibility_staff' => 'nullable|array',
-                    'responsibility_staff.property_manager' => 'nullable|exists:users,id',
-                    'responsibility_staff.sales_consultant' => 'nullable|exists:users,id',
-                    'responsibility_staff.lettings_consultant' => 'nullable|exists:users,id',
-                    'responsibility_staff.sales_manager' => 'nullable|exists:users,id',
-                    'responsibility_staff.lettings_manager' => 'nullable|exists:users,id',
-                ]);
-
-                $responsibilityTypes = [
-                    'property_manager',
-                    'sales_consultant',
-                    'lettings_consultant',
-                    'sales_manager',
-                    'lettings_manager',
-                ];
-
-                foreach ($responsibilityTypes as $type) {
-                    $userId = $validated['responsibility_staff'][$type] ?? null;
-
-                    if (! $userId) {
-                        PropertyResponsibility::where('property_id', $property->id)
-                            ->where('responsibility_type', $type)
-                            ->update(['deleted_by' => Auth::id()]);
-
-                        PropertyResponsibility::where('property_id', $property->id)
-                            ->where('responsibility_type', $type)
-                            ->delete();
-
-                        continue;
-                    }
-
-                    PropertyResponsibility::updateOrCreate(
-                        [
-                            'property_id' => $property->id,
-                            'responsibility_type' => $type,
-                        ],
-                        [
-                            'property_id' => $property->id,
-                            'user_id' => $userId,
-                            'added_by' => Auth::id(),
-                        ]
-                    );
-                }
-
-                $extraData = $this->getFormTypeExtras($formType, $property);
-                $updatedView = view('backend.properties.tabs.responsibility', array_merge([
-                    'propertyId' => $property->id,
-                    'property' => $property,
-                ], $extraData))->render();
-
-                return response()->json([
-                    'success' => 'Form updated successfully',
-                    'updated_html' => $updatedView,
-                    'status' => true,
-                    'message' => 'Updated successfully',
-                ]);
             case 'notes':
                 $data = $request->only([
                     'imp_notes'
@@ -1354,19 +1164,6 @@ class PropertyController
                 }
             ])->orderBy('name')->get();
             return compact('groups');
-        } elseif ($formType === 'responsibility') {
-            $users = User::where(function ($query) {
-                $query->where('user_type', 'staff')
-                    ->orWhereHas('roles', fn($roleQuery) => $roleQuery->where('name', 'Staff'))
-                    ->orWhereHas('staff');
-            })
-                ->orderBy('name')
-                ->get(['id', 'name', 'email']);
-            $responsibilities = PropertyResponsibility::with('user')
-                ->where('property_id', $property->id)
-                ->get();
-
-            return compact('users', 'responsibilities');
         }
         /*elseif ($formType === 'notes_tab') {
             // 1) full list for view mode
@@ -1572,91 +1369,6 @@ class PropertyController
             default:
                 return [];
         }
-    }
-
-    public function brochure(Property $property)
-    {
-        if (! $this->canAccessProperty(auth()->user(), $property)) {
-            abort(403, 'Unauthorized to download this brochure.');
-        }
-
-        $property->load(['creator.ownedCompany.branches', 'localAuthority']);
-        $company = $property->creator?->ownedCompany;
-        $branch = $company?->branches?->first();
-        $stationIds = collect(explode(',', (string) $property->nearest_station))
-            ->map(fn($id) => trim($id))
-            ->filter()
-            ->values();
-        $schoolIds = collect(explode(',', (string) $property->nearest_school))
-            ->map(fn($id) => trim($id))
-            ->filter()
-            ->values();
-        $stations = $stationIds->isNotEmpty()
-            ? StationName::whereIn('id', $stationIds)->pluck('name')->toArray()
-            : [];
-        $schools = $schoolIds->isNotEmpty()
-            ? SchoolName::whereIn('id', $schoolIds)->pluck('name')->toArray()
-            : [];
-        $photoIds = collect(explode(',', (string) $property->photos))
-            ->map(fn($id) => trim($id))
-            ->filter()
-            ->take(4)
-            ->values();
-        $photoPaths = Upload::whereIn('id', $photoIds)
-            ->get()
-            ->sortBy(fn($upload) => $photoIds->search((string) $upload->id))
-            ->map(function ($upload) {
-                if (! empty($upload->external_link)) {
-                    return $upload->external_link;
-                }
-
-                $path = public_path('storage/' . $upload->file_name);
-
-                return file_exists($path) ? $path : null;
-            })
-            ->filter()
-            ->values();
-
-        $pdf = Pdf::loadView(
-            'backend.properties.brochure',
-            compact('property', 'company', 'branch', 'photoPaths', 'stations', 'schools'),
-            [],
-            ['format' => 'A4']
-        );
-
-        $filename = 'property-brochure-' . ($property->prop_ref_no ?: $property->id) . '.pdf';
-
-        return $pdf->download($filename);
-    }
-
-    private function canAccessProperty($user, Property $property): bool
-    {
-        if (! $user) {
-            return false;
-        }
-
-        if ($user->hasRole('Super Admin') || $user->hasRole('Property Manager')) {
-            return true;
-        }
-
-        if (($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')) && (int) $property->created_by === (int) $user->id) {
-            return true;
-        }
-
-        if ($user->hasRole('Estate Agent')) {
-            $createdUserIds = $user->createdUsers()->pluck('id')->push($user->id);
-            return $createdUserIds->contains($property->created_by);
-        }
-
-        if ($user->hasRole('Tenant')) {
-            return \App\Models\TenantMember::where('user_id', $user->id)
-                ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
-                ->where('tenancies.status', 'Active')
-                ->where('tenancies.property_id', $property->id)
-                ->exists();
-        }
-
-        return false;
     }
 
     private function getValidationRules($step)

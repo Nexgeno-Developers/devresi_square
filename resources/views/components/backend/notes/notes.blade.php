@@ -1,34 +1,37 @@
-@props(['noteableType', 'noteableId', 'noteTypes', 'initialNotes' => null])
+@props(['noteableType', 'noteableId', 'noteTypes'])
 <div class="notes-component" data-noteable-type="{{ $noteableType }}" data-noteable-id="{{ $noteableId }}">
 
     {{-- ADD NEW --}}
     <div class="mb-3">
         <button type="button" class="btn btn-outline-primary notes-add">Add New Note</button>
     </div>
-    {{-- FILTER FORM --}}
-    <form class="notes-filter-form row g-2 mb-3">
-        <div class="col-md-3">
-            <select name="note_type_id" class="form-select">
-                <option value="">All Types</option>
-                @foreach($noteTypes as $type)
-                    <option value="{{ $type->id }}">{{ $type->name }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="col-md-3">
-            <input type="text" name="search" class="form-control" placeholder="Search content…">
-        </div>
-        <div class="col-md-2">
-            <input type="date" name="from_date" class="form-control">
-        </div>
-        <div class="col-md-2">
-            <input type="date" name="to_date" class="form-control">
-        </div>
-        <div class="col-md-2 d-flex gap-1">
-            <button type="submit" class="btn btn-primary">Filter</button>
-            <button type="button" class="btn btn-secondary notes-reset">Reset</button>
-        </div>
-    </form>
+    {{-- ONLY SHOW FILTER IF THERE ARE NOTES --}}
+    @if( count($initialNotes) > 0 )
+        {{-- FILTER FORM --}}
+        <form class="notes-filter-form row g-2 mb-3">
+            <div class="col-md-3">
+                <select name="note_type_id" class="form-select">
+                    <option value="">All Types</option>
+                    @foreach($noteTypes as $type)
+                        <option value="{{ $type->id }}">{{ $type->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="text" name="search" class="form-control" placeholder="Search content…">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="from_date" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <input type="date" name="to_date" class="form-control">
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-primary">Filter</button>
+                <button type="button" class="btn btn-secondary notes-reset">Reset</button>
+            </div>
+        </form>
+    @endif
     {{-- LIST --}}
     {{-- <div class="notes-list"></div> --}}
     {{-- Render initial list server-side: --}}

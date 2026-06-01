@@ -147,19 +147,6 @@ $secondHalf = array_slice($allFeatures, $halfCount);
     {{-- pv_content end  --}}
 </div>
 
-<div class="property_note">
-    <span class="fw-semibold">Description
-    <div class="property-description-update-ajax" id="section-property_description-{{ $property->id }}">
-        @include("backend.properties.popup_forms.property_description", ['property' => $property])
-    </div>
-    </span>
-    @can('edit properties')
-    <button class="btn btn-outline-danger btn-sm editForm" data-form="{{ 'property_description' }}" data-id="{{ $property->id }}">
-        Edit
-    </button>
-    @endcan
-</div>
-
 @canany(['edit important note', 'view important note'])
 <div class="property_note">
     <span class="fw-semibold">Important Note

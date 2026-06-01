@@ -22,9 +22,7 @@
         price="{{ $property['price'] }}" 
         lettingPrice="{{ $property['letting_price'] ?? '' }}" 
         cardStyle="" 
-        propertyId="{{ $property['id'] }}"
-        brochure-url="{{ route('admin.properties.brochure', $property['id']) }}"
-        important-note="{{ $property['imp_notes'] ?? '' }}"
+        propertyId="{{ $property['id'] }}" 
     />
 @endforeach
 

@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('estate_charges', function (Blueprint $table) {
+        Schema::create('charges', function (Blueprint $table) {
             $table->id();
             $table->integer('ref_no');
             $table->unsignedBigInteger('property_id')->nullable();
@@ -57,12 +57,12 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::table('estate_charges', function (Blueprint $table) {
+        Schema::table('charges', function (Blueprint $table) {
             // Drop foreign key constraints before dropping the columns
             $table->dropForeign(['property_id']);
             $table->dropForeign(['ownergroup_id']); // Drop the foreign key reference for ownergroup_id
         });
 
-        Schema::dropIfExists('estate_charges');
+        Schema::dropIfExists('charges');
     }
 };

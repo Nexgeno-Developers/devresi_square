@@ -208,78 +208,43 @@ var_dump($userId);
         // Function to activate tab based on URL parameter
         function activateTabFromUrl() {
             var tabName = getUrlParameter('tabname'); // Get tabname from URL
-            var userId  = getUrlParameter('user_id'); // Get user_id from URL
+            var userId = getUrlParameter('user_id'); // Get user_id from URL
 
             if (tabName && userId) {
-                // Tab links use lowercase data-tab-name, URL may have mixed case
-                var tabNameLower = tabName.toLowerCase();
-                var selectedTab      = $('.tab-link[data-tab-name="' + tabNameLower + '"]');
+                // Convert underscores back to spaces
+                // var displayTabName = tabName.replace(/_/g, ' ');
+
+                // Find the tab and user card with the matching data attributes
+                var selectedTab = $('.tab-link[data-tab-name="' + tabName + '"]');
                 var selectedUserCard = $('.user-card[data-user-id="' + userId + '"]');
 
+                // Mark the selected tab and user card as active/current
                 $('.tab-link').removeClass('active');
-                // If no matching tab found, fall back to first tab (Contact)
-                if (!selectedTab.length) {
-                    selectedTab = $('.tab-link').first();
-                    tabName = selectedTab.data('tab-name') || 'contact';
-                }
+                $('.user-card').removeClass('current');
                 selectedTab.addClass('active');
+                selectedUserCard.addClass('current');
 
-                if (selectedUserCard.length) {
-                    // Card is already in the DOM — highlight and scroll
-                    $('.user-card').removeClass('current');
-                    selectedUserCard.addClass('current');
-                    scrollToCard(selectedUserCard);
-                    loadTabContent(userId, tabName);
-                } else {
-                    // Card is on a different page — reload list to correct page first
-                    $.ajax({
-                        url: '{{ route('admin.users.index') }}',
-                        type: 'GET',
-                        data: { list_only: 1, highlight_id: userId },
-                        success: function(response) {
-                            $('#userListContainer').html(response.html);
-                            $('.user-card').removeClass('current');
-                            var card = $('.user-card[data-user-id="' + userId + '"]');
-                            card.addClass('current');
-                            scrollToCard(card);
-                            loadTabContent(userId, tabName);
-                        },
-                        error: function() {
-                            // User doesn't exist — fall back to first card
-                            var firstCard = $('.user-card').first();
-                            var firstId   = firstCard.data('user-id');
-                            firstCard.addClass('current');
-                            loadTabContent(firstId, tabName);
-                        }
-                    });
-                }
+                // Load the content dynamically
+                loadTabContent(userId, tabName);
             }
-        }
-
-        // Scroll the user list so the given card is centred in view
-        function scrollToCard(card) {
-            if (!card || !card.length) return;
-            var container = $('.pv_card_wrapper');
-            if (!container.length) return;
-            container.animate({
-                scrollTop: container.scrollTop() + card.position().top - (container.height() / 2) + (card.outerHeight() / 2)
-            }, 300);
         }
 
         // Simulate the first tab and first user card selection on page load
         function simulateTabClickAndUserCard() {
-            var firstUserCard = $('.user-card').first();
-            // Always default to Contact tab
-            var firstTab = $('.tab-link[data-tab-name="contact"]').first();
-            if (!firstTab.length) firstTab = $('.tab-link').first();
+            var firstUserCard = $('.user-card').first(); // Get the first user card
+            var firstTab = $('.tab-link').first(); // Get the first tab
 
-            var userId  = firstUserCard.data('user-id');
-            var tabName = firstTab.data('tab-name') || 'contact';
+            // Get the userId and tabName from the first user card and tab
+            var userId = firstUserCard.data('user-id');
+            var tabName = firstTab.data('tab-name');
+            console.log(userId);
+            console.log(tabName);
 
+            // Trigger the AJAX load
             if (userId && tabName) {
-                firstUserCard.addClass('current');
-                firstTab.addClass('active');
                 loadTabContent(userId, tabName);
+                firstUserCard.addClass('current'); // Add 'current' class to the first user card
+                firstTab.addClass('active'); // Add 'active' class to the first tab
             }
         }
 
@@ -290,20 +255,26 @@ var_dump($userId);
 
         // Function to load tab content dynamically via AJAX
         function loadTabContent(userId, tabName) {
+            console.log('loadTabContent called with userId:', userId, 'tabName:', tabName); // Debug
+            // Replace spaces with underscores for the URL
+            // var formattedTabName = tabName.replace(/\s+/g, '_');
+            // Correctly format the URL with query parameters instead of placeholders
             var url = '{{ route('admin.users.index') }}' + '?user_id=' + userId + '&tabname=' + tabName;
-            if (activeRole) url += '&role=' + encodeURIComponent(activeRole);
+            console.log('Loading URL:', url); // Debug
 
             $.ajax({
                 url: url,
                 type: 'GET',
                 dataType: 'json',
                 success: function(response) {
+                    console.log('Response received:', response); // Debug
                     $('.pv_content_detail').html(response.content);
                     updateTitle(response.tabName, userId);
+                    // Update URL (optional, for browser navigation)
                     window.history.pushState(null, null, url);
                 },
                 error: function(xhr, status, error) {
-                    console.error('Error loading tab content:', error, xhr);
+                    console.error('Error loading tab content:', error, xhr); // Enhanced debug
                 }
             });
         }
@@ -390,10 +361,6 @@ $(document).on('click', '.editForm, .addForm', function() {
             // }
             if (formType === "notes_tab") {
                 AIZ.plugins.textEditor();
-            }
-            if (formType === "compliance") {
-                // Re-trigger the checkbox state so the dependent fields show if already checked
-                $('#right_to_rent_check').trigger('change');
             }
             // if (formType === "property_info") {
             //     toggleDescriptions();
@@ -522,31 +489,15 @@ $(document).on('click', '.viewNote', function() {
         });
     });
 
-    // Active role — read from URL on page load so sidebar links work correctly
-    var activeRole = '{{ request('role', '') }}';
-
-    // Activate the correct role filter button on page load
-    if (activeRole) {
-        $('.role-filter-btn').removeClass('active');
-        $('.role-filter-btn[data-role="' + activeRole + '"]').addClass('active');
-    }
-
-    // Role filter button clicks
-    $(document).on('click', '.role-filter-btn', function() {
-        $('.role-filter-btn').removeClass('active');
-        $(this).addClass('active');
-        activeRole = $(this).data('role');
-        loadUserList($('#contactSearch').val(), activeRole);
-    });
-
-    // Contact Search
+    // Contact Search and Pagination
     let searchTimeout;
     $('#contactSearch').on('input', function() {
         clearTimeout(searchTimeout);
         const searchValue = $(this).val();
+        
         searchTimeout = setTimeout(function() {
-            loadUserList(searchValue, activeRole);
-        }, 500);
+            loadUserList(searchValue);
+        }, 500); // Debounce 500ms
     });
 
     // Handle pagination clicks
@@ -554,10 +505,14 @@ $(document).on('click', '.viewNote', function() {
         e.preventDefault();
         const url = $(this).attr('href');
         const searchValue = $('#contactSearch').val();
+        
         $.ajax({
             url: url,
             type: 'GET',
-            data: { list_only: 1, search: searchValue, role: activeRole },
+            data: { 
+                list_only: 1,
+                search: searchValue
+            },
             success: function(response) {
                 $('#userListContainer').html(response.html);
             },
@@ -567,21 +522,16 @@ $(document).on('click', '.viewNote', function() {
         });
     });
 
-    function loadUserList(search = '', role = '') {
+    function loadUserList(search = '') {
         $.ajax({
             url: '{{ route('admin.users.index') }}',
             type: 'GET',
-            data: { list_only: 1, search: search, role: role },
+            data: { 
+                list_only: 1,
+                search: search
+            },
             success: function(response) {
                 $('#userListContainer').html(response.html);
-                // Auto-select first card and open Contact tab
-                var firstCard = $('.user-card').first();
-                if (firstCard.length) {
-                    $('.user-card').removeClass('current');
-                    firstCard.addClass('current');
-                    var tabName = $('.tab-link.active').data('tab-name') || 'contact';
-                    loadTabContent(firstCard.data('user-id'), tabName);
-                }
             },
             error: function() {
                 console.error('Failed to load users');

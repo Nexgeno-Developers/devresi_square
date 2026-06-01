@@ -35,7 +35,6 @@
         enctype="multipart/form-data">
         @csrf
         <input type="hidden" name="property_id" class="form-control" value="{{ $tenancy->property_id }}">
-        <input type="hidden" name="property_id" class="form-control" value="{{ $tenancy->property_id }}">
 
         <div class="form-group">
             <button type="button" class="btn btn-outline-primary btn-sm" id="addUserBtn">
@@ -52,7 +51,17 @@
             </select>
         </div>
 
-        <div id="tenant-options" class="mt-3" data-current-main="{{ $tenancy->tenantMembers->where('is_main_person', 1)->first()?->user_id ?? '' }}"></div>
+        <div id="tenant-options" class="mt-3">
+            @foreach ($tenancy->tenantMembers as $tenantMembersUser)
+                <div class="form-check">
+                    <input type="radio" name="is_main_person" value="{{ $tenantMembersUser->user->id }}"
+                        id="is_main_person{{ $tenantMembersUser->user->id }}" class="form-check-input"
+                        @if ($tenantMembersUser->is_main_person) checked @endif>
+                    <label for="is_main_person{{ $tenantMembersUser->user->id }}"
+                        class="form-check-label">{{ $tenantMembersUser->user->name }}</label>
+                </div>
+            @endforeach
+        </div>
 
         <div class="row">
             <div class="col">
@@ -186,7 +195,7 @@
                     <div class="form-group field-tenancies-deposit">
                         <label class="control-label" for="tenancies-deposit">Deposit</label>
                         <input type="number" inputmode="numeric" pattern="[0-9]" id="tenancies-deposit"
-                            class="form-control" name="deposit" value="{{ $deposit }}" readonly>
+                            class="form-control" name="deposit" value="{{ $deposit }}">
                     </div>
                 </div>
             </div>
@@ -313,37 +322,15 @@
 <script>
     initSelect3('.select2');
 
-    // Re-initialize tenant_id with Select2 that properly shows pre-selected values
-    $('#tenant_id').select2({
-        placeholder: 'Start typing at least 3 characters',
-        minimumInputLength: 3,
-        language: {
-            inputTooShort: function () { return 'Please enter 3 or more characters'; }
-        }
-    });
-
-    // ── Deposit auto-calculation: Rent × 12 ÷ 52 × Weeks ──────────────────
-    function calcDeposit() {
-        const rent  = parseFloat($('#tenancies-rent').val()) || 0;
-        const weeks = parseFloat($('#depositNumber').val()) || 0;
-        if (rent > 0 && weeks > 0) {
-            const deposit = (rent * 12 / 52 * weeks).toFixed(2);
-            $('#tenancies-deposit').val(deposit);
-        } else {
-            $('#tenancies-deposit').val('');
-        }
-    }
-    $('#tenancies-rent, #depositNumber').on('input change', calcDeposit);
-    calcDeposit();
-    // ────────────────────────────────────────────────────────────────────────
-
+<<<<<<< HEAD
     // Render main person radio buttons when tenants are selected/changed
     function renderMainPersonOptions() {
-        const userSelect    = $('#tenant_id');
-        const container     = $('#tenant-options');
+        const userSelect = $('#tenant_id');
+        const container = $('#tenant-options');
         const selectedUsers = userSelect.val() || [];
-        const defaultMain   = container.data('current-main') || null;
-        const currentMain   = $('input[name="is_main_person"]:checked').val() || defaultMain;
+
+        // Remember currently checked main person before re-rendering
+        const currentMain = $('input[name="is_main_person"]:checked').val() || null;
 
         container.empty();
         $('#main-person-error').remove();
@@ -352,7 +339,7 @@
             let html = '<div class="mb-3"><label class="form-label fw-semibold">Select Main Tenant <span class="text-danger">*</span></label>';
             selectedUsers.forEach(function(userId) {
                 const userName = userSelect.find('option[value="' + userId + '"]').text();
-                const isChecked = (String(currentMain) === String(userId)) ? 'checked' : '';
+                const isChecked = (currentMain == userId) ? 'checked' : '';
                 html += '<div class="form-check">' +
                     '<input type="radio" name="is_main_person" value="' + userId + '" id="is_main_' + userId + '" class="form-check-input" ' + isChecked + '>' +
                     '<label for="is_main_' + userId + '" class="form-check-label">' + userName + '</label>' +
@@ -361,6 +348,7 @@
             html += '</div>';
             container.html(html);
 
+            // Auto-select if only one tenant
             if (selectedUsers.length === 1) {
                 container.find('input[type="radio"]').prop('checked', true);
             }
@@ -372,9 +360,6 @@
         renderMainPersonOptions();
     });
 
-    // Run on load — reads only the currently selected tenants (not all options)
-    renderMainPersonOptions();
-
     // Form submission validation
     $('#editTenancyForm').on('submit', function(e) {
         if ($('input[name="is_main_person"]:checked').length === 0) {
@@ -382,7 +367,111 @@
             $('#main-person-error').remove();
             $('#tenant-options').append('<div id="main-person-error" class="text-danger small mt-1">Please select a main tenant.</div>');
             $('#smallModal .modal-body').scrollTop(0);
+=======
+    var editTenancyForm = $('#editTenancyForm');
+    var tenantSelect = editTenancyForm.find('#tenant_id');
+    var tenantOptionsContainer = editTenancyForm.find('#tenant-options');
+    var selectedMainTenant = editTenancyForm.find('input[name="is_main_person"]:checked').val() || null;
+
+    function getSelectedTenantIds() {
+        var selectedUsers = tenantSelect.val() || [];
+
+        if (selectedUsers.length === 0) {
+            selectedUsers = editTenancyForm.find('input[name="is_main_person"]').map(function() {
+                return this.value;
+            }).get();
+>>>>>>> 5387906c787613155590e18e5e2df58bc9195f27
         }
+
+        return selectedUsers;
+    }
+
+    function syncTenantHiddenInputs(selectedUsers) {
+        editTenancyForm.find('input[data-synced-tenant-id="1"]').remove();
+
+        if ((tenantSelect.val() || []).length > 0) {
+            return;
+        }
+
+        selectedUsers.forEach(function(userId) {
+            editTenancyForm.append($('<input>', {
+                type: 'hidden',
+                name: 'user_id[]',
+                value: userId,
+                'data-synced-tenant-id': '1'
+            }));
+        });
+    }
+
+    function renderMainTenantOptions() {
+        const selectedUsers = getSelectedTenantIds();
+        tenantOptionsContainer.empty();
+
+        if (selectedUsers.length === 0) {
+            selectedMainTenant = null;
+            return;
+        }
+
+        tenantOptionsContainer.append($('<label class="mb-2">').text('Select Main User'));
+
+        selectedUsers.forEach(function(userId) {
+            const userName = tenantSelect.find('option[value="' + userId + '"]').text();
+            const radioId = 'is_main_person' + userId;
+            const radio = $('<input>', {
+                type: 'radio',
+                name: 'is_main_person',
+                value: userId,
+                id: radioId,
+                class: 'form-check-input'
+            });
+
+            if (selectedMainTenant === userId) {
+                radio.prop('checked', true);
+            }
+
+            tenantOptionsContainer.append(
+                $('<div class="form-check">').append(
+                    radio,
+                    $('<label>', {
+                        for: radioId,
+                        class: 'form-check-label'
+                    }).text(userName)
+                )
+            );
+        });
+
+        if (!selectedUsers.includes(selectedMainTenant)) {
+            selectedMainTenant = null;
+        }
+    }
+
+    tenantSelect.on('change', renderMainTenantOptions);
+
+    $(document).on('change', '#editTenancyForm input[name="is_main_person"]', function() {
+        selectedMainTenant = $(this).val();
+    });
+
+    // Form submission validation
+    editTenancyForm.on('submit', function(e) {
+        e.stopImmediatePropagation();
+
+        const selectedUsers = getSelectedTenantIds();
+        const mainTenant = editTenancyForm.find('input[name="is_main_person"]:checked').val();
+
+        if (selectedUsers.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one tenant.');
+            return;
+        }
+
+        if (!mainTenant || !selectedUsers.includes(mainTenant)) {
+            e.preventDefault();
+            alert('Please select a main user.');
+            return;
+        }
+
+        syncTenantHiddenInputs(selectedUsers);
+        tenantSelect.prop('required', false);
     });
 
     $(document).on('change', '#depositService', function () {

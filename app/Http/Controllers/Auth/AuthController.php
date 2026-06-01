@@ -33,16 +33,7 @@ class AuthController
         if (Auth::attempt($request->only('email', 'password'), $remember)) {
             $user = Auth::user();
 
-            // Tenant goes to a clean home page
-            if ($user->hasRole('Tenant')) {
-                return redirect()->route('backend.home');
-            }
-
-            // Contractor goes to the same welcome home page
-            if ($user->hasRole('Contractor')) {
-                return redirect()->route('backend.home');
-            }
-
+            // Add Landlord (and any others) here:
             if (
                 $user->hasAnyRole([
                     'Super Admin',

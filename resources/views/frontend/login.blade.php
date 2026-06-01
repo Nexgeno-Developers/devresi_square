@@ -28,7 +28,7 @@
                             <label class="form-check-label" for="remember">Remember Me</label>
                         </div>
 
-                        <p class="small mb-5 pb-lg-2"><a class="" href="{{ route('password.request') }}">Forgot password?</a></p>
+                        <p class="small mb-5 pb-lg-2"><a class="" href="#!">Forgot password?</a></p>
 
                         <button class="btn btn_outline_secondary btn-lg px-5 w-100 d-flex justify-content-center" type="submit">Login</button>
 

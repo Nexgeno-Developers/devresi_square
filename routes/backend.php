@@ -13,7 +13,6 @@ use App\Http\Controllers\Backend\NotesController;
 use App\Http\Controllers\Backend\OfferController;
 use App\Http\Controllers\Backend\StaffController;
 use App\Http\Controllers\Backend\BranchController;
-use App\Http\Controllers\Backend\CompanyController;
 use App\Http\Controllers\Backend\InvoiceController;
 use App\Http\Controllers\Backend\JobTypeController;
 use App\Http\Controllers\Backend\TenancyController;
@@ -114,10 +113,6 @@ Route::middleware('auth')->group(function () {
 
     // Dashboard Route
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('backend.dashboard');
-    // Tenant home — blank landing page after login
-    Route::get('/home', function () {
-        return view('backend.tenant.home');
-    })->name('backend.home');
     // Route::get('/dashboard', [DashboardController::class, 'dashboard'])->middleware('can:view-dashboard')->name('backend.dashboard');
 
     Route::resource('user-categories', UserCategoryController::class);
@@ -145,11 +140,6 @@ Route::middleware('auth')->group(function () {
             Route::post('/save-form', 'saveForm')->name('saveForm');
             
             Route::get('/ajax', 'ajaxList')->name('ajax');
-            Route::get('/{property}/brochure', 'brochure')->name('brochure');
-        });
-
-        Route::prefix('companies')->name('companies.')->controller(CompanyController::class)->group(function () {
-            Route::post('/{company}/transfer-owner', 'transferOwner')->name('transfer-owner');
         });
 
         // Designation
@@ -211,7 +201,6 @@ Route::middleware('auth')->group(function () {
             Route::post('/save-form', 'saveForm')->name('saveForm');
 
             Route::get('/ajax', 'ajaxList')->name('ajax');  // AJAX endpoint to list users for a select dropdown
-            Route::get('/staff-ajax', 'staffAjaxList')->name('staffAjax');  // AJAX endpoint to search staff users
             Route::get('/profile', 'profile')->name('profile.show');  // Show user profile
             Route::get('/profile/edit', 'profileEdit')->name('profile.edit');  // Show user profile edit form
             Route::post('/profile/update', 'profileUpdate')->name('profile.update');  // Update user profile
@@ -269,8 +258,6 @@ Route::middleware('auth')->group(function () {
 
         // Keeping this route separate since it follows a different URL structure
         Route::get('/properties/{propertyId}/tenancies', [TenancyController::class, 'index'])->name('tenancies.index');
-        // Global tenancies listing
-        Route::get('/tenancies', [TenancyController::class, 'all'])->name('tenancies.all');
 
         // Offer
         Route::prefix('offers')->name('offers.')->controller(OfferController::class)->group(function () {
@@ -536,8 +523,6 @@ Route::middleware('auth')->group(function () {
 
             Route::get('sale/invoices/search', [SaleInvoiceController::class, 'ajaxSearchForReceipts'])
                 ->name('sale.invoices.search');
-            Route::get('sale/invoices/link-to-search', [SaleInvoiceController::class, 'linkToSearch'])
-                ->name('sale.invoices.linkToSearch');
             Route::get('sale/invoices/property-context/{property}', [SaleInvoiceController::class, 'propertyContext'])
                 ->name('sale.invoices.propertyContext');
             Route::get('sale/invoices/tenancy-context/{property}/{tenant}', [SaleInvoiceController::class, 'tenancyContext'])
@@ -678,15 +663,6 @@ Route::middleware('auth')->group(function () {
     Route::resource('staffs', StaffController::class);
     Route::get('/staffs/destroy/{id}', [StaffController::class, 'destroy'])->name('staffs.destroy');
 
-    // Registrations (public sign-up approvals)
-    Route::prefix('registrations')->name('admin.registrations.')->controller(\App\Http\Controllers\Backend\RegistrationController::class)->group(function () {
-        Route::get('/',                    'index')->name('index');
-        Route::get('/{id}',                'show')->name('show');
-        Route::post('/{id}/approve',       'approve')->name('approve');
-        Route::post('/{id}/reject',        'reject')->name('reject');
-        Route::post('/{id}/permissions',   'updatePermissions')->name('permissions');
-    });
-
     
     Route::post('/upload-note-image', function (Request $request) {
         if ($request->hasFile('file')) {
@@ -704,18 +680,97 @@ Route::middleware('auth')->group(function () {
         Route::post('/test/smtp', 'testEmail')->name('test.smtp');
     });
 
-    // OTP / SMS Configuration
-    Route::prefix('otp-configuration')->name('otp.')->controller(\App\Http\Controllers\Backend\OTPController::class)->group(function () {
-        Route::get('/',                    'configure_index')->name('index');
-        Route::post('/update/activation',  'updateActivationSettings')->name('activation');
-        Route::post('/update/credentials', 'update_credentials')->name('credentials');
-    });
-
-    // SMS Templates
-    Route::prefix('sms-templates')->name('sms-templates.')->controller(\App\Http\Controllers\Backend\SmsTemplateController::class)->group(function () {
-        Route::get('/',          'index')->name('index');
-        Route::get('/{id}/edit', 'edit')->name('edit');
-        Route::put('/{id}',      'update')->name('update');
-    });
-
 });
+
+    // ── Plans — Admin CRUD + User view ───────────────────────────────────────
+    use App\Http\Controllers\Backend\PlanController;
+    Route::prefix('plans')->name('admin.plans.')->controller(PlanController::class)->group(function () {
+        Route::get('/',               'index')->name('index');
+        Route::get('/create',         'create')->name('create');
+        Route::post('/',              'store')->name('store');
+        Route::get('/{plan}/edit',    'edit')->name('edit');
+        Route::put('/{plan}',         'update')->name('update');
+        Route::delete('/{plan}',      'destroy')->name('destroy');
+        Route::post('/{plan}/toggle', 'toggleActive')->name('toggle');
+    });
+    Route::get('/my-plan', [PlanController::class, 'myPlan'])->name('plans.my');
+
+    // ── Registrations ────────────────────────────────────────────────────────
+    Route::prefix('registrations')->name('admin.registrations.')->controller(\App\Http\Controllers\Backend\RegistrationController::class)->group(function () {
+        Route::get('/',                          'index')->name('index');
+        Route::get('/{id}',                      'show')->name('show');
+        Route::post('/{id}/approve',             'approve')->name('approve');
+        Route::post('/{id}/reject',              'reject')->name('reject');
+        Route::post('/{id}/permissions',         'updatePermissions')->name('permissions');
+    });
+
+    // ── Tenancies (all) ───────────────────────────────────────────────────────
+    Route::get('/tenancies/all', [\App\Http\Controllers\Backend\TenancyController::class, 'all'])->name('admin.tenancies.all');
+
+    // ── My Company ────────────────────────────────────────────────────────────
+    Route::prefix('my-company')->name('my_company.')->controller(\App\Http\Controllers\Backend\MyCompanyController::class)->group(function () {
+        Route::get('/',     'show')->name('show');
+        Route::get('/edit', 'edit')->name('edit');
+        Route::put('/',     'update')->name('update');
+    });
+
+    // ── Estate Agent — My Landlords ───────────────────────────────────────────
+    Route::prefix('my-landlords')->name('estate_agent.landlords.')->controller(\App\Http\Controllers\Backend\EstateAgentLandlordController::class)->group(function () {
+        Route::get('/',                    'index')->name('index');
+        Route::get('/create',              'create')->name('create');
+        Route::post('/',                   'store')->name('store');
+        Route::get('/{id}/edit',           'edit')->name('edit');
+        Route::put('/{id}',                'update')->name('update');
+        Route::delete('/{id}',             'destroy')->name('destroy');
+        Route::post('/{id}/toggle-login',  'toggleLogin')->name('toggleLogin');
+    });
+
+    // ── Staff ─────────────────────────────────────────────────────────────────
+    Route::prefix('staffs')->name('staffs.')->controller(\App\Http\Controllers\Backend\StaffController::class)->group(function () {
+        Route::get('/',           'index')->name('index');
+        Route::get('/create',     'create')->name('create');
+        Route::post('/',          'store')->name('store');
+        Route::get('/{id}/edit',  'edit')->name('edit');
+        Route::put('/{id}',       'update')->name('update');
+        Route::delete('/{id}',    'destroy')->name('destroy');
+    });
+
+    // ── SMTP Settings ─────────────────────────────────────────────────────────
+    Route::prefix('smtp-settings')->name('smtp_settings.')->controller(\App\Http\Controllers\Backend\BusinessSettingsController::class)->group(function () {
+        Route::get('/',    'smtpIndex')->name('index');
+        Route::post('/',   'smtpUpdate')->name('update');
+    });
+
+    // ── Email Templates ───────────────────────────────────────────────────────
+    Route::prefix('email-templates')->name('email_templates.')->controller(\App\Http\Controllers\Backend\EmailTemplateController::class)->group(function () {
+        Route::get('/{type}',        'index')->name('index');
+        Route::get('/{id}/edit',     'edit')->name('edit');
+        Route::put('/{id}',          'update')->name('update');
+    });
+
+    // ── Roles ─────────────────────────────────────────────────────────────────
+    Route::prefix('roles')->name('admin.roles.')->controller(\App\Http\Controllers\Backend\RoleController::class)->group(function () {
+        Route::get('/',           'index')->name('index');
+        Route::get('/create',     'create')->name('create');
+        Route::post('/',          'store')->name('store');
+        Route::get('/{id}/edit',  'edit')->name('edit');
+        Route::put('/{id}',       'update')->name('update');
+        Route::delete('/{id}',    'destroy')->name('destroy');
+    });
+
+    // ── Company transfers ─────────────────────────────────────────────────────
+    Route::post('companies/{company}/transfer-owner', [\App\Http\Controllers\Backend\CompanyController::class, 'transferOwner'])->name('admin.companies.transfer-owner');
+
+    // ── Roles (aliases for sidebar compatibility) ─────────────────────────────
+    Route::get('/roles',          [\App\Http\Controllers\Backend\RoleController::class, 'index'])->name('roles.index');
+    Route::get('/roles/create',   [\App\Http\Controllers\Backend\RoleController::class, 'create'])->name('roles.create');
+    Route::get('/roles/{id}/edit',[\App\Http\Controllers\Backend\RoleController::class, 'edit'])->name('roles.edit');
+
+    // ── Upload note image ─────────────────────────────────────────────────────
+    Route::post('/upload-note-image', function (\Illuminate\Http\Request $request) {
+        if ($request->hasFile('file')) {
+            $path = $request->file('file')->store('note-images', 'public');
+            return response()->json(['location' => \Illuminate\Support\Facades\Storage::url($path)]);
+        }
+        return response()->json(['error' => 'No file uploaded'], 400);
+    })->name('upload.note.image');

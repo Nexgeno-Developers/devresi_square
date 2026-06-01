@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::create('estate_charges_items', function (Blueprint $table) {
+        Schema::create('charges_items', function (Blueprint $table) {
             $table->id();
             $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();

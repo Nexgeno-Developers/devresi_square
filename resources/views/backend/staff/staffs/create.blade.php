@@ -3,7 +3,7 @@
 @section('content')
 <div class="row">
     <div class="col-lg-10 mt-3 mx-auto">
-        <div class="card mb-3 mb-md-5 pb-3">
+        <div class="card">
             <div class="card-header">
                 <h5 class="mb-0 h6">Staff Information</h5>
             </div>
@@ -53,119 +53,125 @@
                             <input type="text" placeholder="Name" id="name" name="name" class="form-control" required>
                         </div>
                     </div> --}}
-                    
-
-                    {{-- Primary Email --}}
-                    <div class="form-group row">
-                        <label class="col-sm-3 col-from-label" for="profile_picture">Staff Photo</label>
-                        <div class="col-sm-9">
-                            <input type="file" id="profile_picture" name="profile_picture" class="form-control" accept="image/*">
-                        </div>
-                    </div>
-
                     <div class="form-group row">
                         <label class="col-sm-3 col-from-label" for="email">Email</label>
                         <div class="col-sm-9">
-                            <div class="input-group">
-                                <input type="text" placeholder="Email" id="email" name="email" class="form-control" required>
-                                <button type="button" class="btn btn-danger" id="add-email-btn" title="Add another email">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
+                            <input type="text" placeholder="Email" id="email" name="email" class="form-control" required>
                         </div>
                     </div>
-
-                    {{-- Extra Emails --}}
-                    <div id="extra-emails-list"></div>
-
-                    {{-- Primary Phone --}}
-                    <div class="form-group row">
-                        <label class="col-sm-3 col-from-label" for="phone">Phone</label>
+                    {{-- <div class="form-group row">
+                        <label class="col-sm-3 col-from-label" for="mobile">Phone</label>
                         <div class="col-sm-9">
-                            <div class="input-group">
-                                <input type="text" placeholder="Phone Number" id="phone" name="phone" class="form-control">
-                                <button type="button" class="btn btn-danger" id="add-phone-btn" title="Add another phone">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                            </div>
+                            <input type="text" placeholder="Phone" id="mobile" name="mobile" class="form-control" required>
                         </div>
-                    </div>
-
-                    {{-- Extra Phones --}}
-                    <div id="extra-phones-list"></div>
-
+                    </div> --}}
                     <div class="form-group row">
                         <label class="col-sm-3 col-from-label" for="password">Password</label>
                         <div class="col-sm-9">
                             <input type="password" placeholder="Password" id="password" name="password" class="form-control" required>
                         </div>
                     </div>
-                    {{-- Designation --}}
                     <div class="form-group row">
-                        <label class="col-sm-3 col-from-label" for="designation_id">Designation</label>
+                        <label class="col-sm-3 col-from-label" for="name">Role</label>
                         <div class="col-sm-9">
-                            <select id="designation_id" name="designation_id" class="form-control select2" required>
-                                <option value="">Select Designation</option>
-                                @foreach($designations as $designation)
-                                    <option value="{{ $designation->id }}">{{ $designation->title }}</option>
+                            <select name="role_id" id="role_id" class="form-control select2" required>
+                                @foreach($roles as $role)
+                                    <option value="{{$role->id}}">{{$role->name}}</option>
                                 @endforeach
                             </select>
                         </div>
                     </div>
-
                     <div class="form-group row">
-                        <label class="col-sm-3 col-from-label" for="branch_id">Branch</label>
+                        <label class="col-sm-3 col-from-label">Add Additional Permissions</label>
                         <div class="col-sm-9">
-                            <select id="branch_id" name="branch_id" class="form-control select2">
-                                <option value="">Select Branch</option>
-                                @foreach($branches as $branch)
-                                    <option value="{{ $branch->id }}" @selected(old('branch_id') == $branch->id)>{{ $branch->name }}</option>
+                            <label class="aiz-switch aiz-switch-success mb-0">
+                                <input type="checkbox" id="enable-permissions" name="enable_additional_permissions">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div id="additional-permissions-wrapper" style="display: none;">
+                        <div class="card-header">
+                            <h5 class="mb-0 h6">Additional Permissions</h5>
+                        </div>
+                        <br>
+                        @php
+                            $permission_groups = \App\Models\Permission::all()->groupBy('section');
+                            $addons = ["offline_payment", "club_point", "pos_system", "paytm", "seller_subscription", "otp_system", "refund_request", "affiliate_system", "african_pg", "delivery_boy", "auction", "wholesale"];
+                        @endphp
+
+                        @foreach ($permission_groups as $permission_group)
+                            @php
+                                $show_permission_group = true;
+                                if (in_array($permission_group[0]['section'], $addons) && !addon_is_activated($permission_group[0]['section'])) {
+                                    $show_permission_group = false;
+                                }
+                            @endphp
+
+                            @if($show_permission_group)
+                                <ul class="list-group mb-4">
+                                    <li class="list-group-item bg-light">{{ Str::headline($permission_group[0]['section']) }}</li>
+                                    <li class="list-group-item">
+                                        <div class="row">
+                                            @foreach ($permission_group as $permission)
+                                                <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6 permission-item" data-permission="{{ $permission->name }}">
+                                                    <div class="p-2 border mt-1 mb-2">
+                                                        <label class="control-label d-flex">{{ Str::headline($permission->name) }}</label>
+                                                        <label class="aiz-switch aiz-switch-success">
+                                                            <input type="checkbox" name="additional_permissions[]" class="form-control" value="{{ $permission->name }}">
+                                                            <span class="slider round"></span>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </li>
+                                </ul>
+                            @endif
+                        @endforeach
+                    </div>
+
+                    {{-- <div class="form-group row">
+                        <label class="col-sm-3 col-from-label">Roles</label>
+                        <div class="col-sm-9">
+                            <select name="role_id[]" id="role_id" class="form-control select2" multiple required>
+                                @foreach($roles as $role)
+                                    <option value="{{ $role->id }}">{{ $role->name }}</option>
                                 @endforeach
                             </select>
                         </div>
                     </div>
-
+                    <div class="card-header">
+                        <h5 class="mb-0 h6">Additional Permissions</h5>
+                    </div>
+                    <br>
                     @php
-                        $oldPermissionIds = collect(old('custom_permissions', []))->map(fn($id) => (int) $id)->toArray();
-                        $hasOldPermissions = old('custom_permissions_submitted') !== null;
+                        $permission_groups = \App\Models\Permission::all()->groupBy('section');
+                        $addons = ["offline_payment", "club_point", "pos_system", "paytm", "seller_subscription", "otp_system", "refund_request", "affiliate_system", "african_pg", "delivery_boy", "auction", "wholesale"];
                     @endphp
 
-                    <div class="form-group row">
-                        <label class="col-sm-3 col-from-label pt-2">Custom Permission</label>
-                        <div class="col-sm-9">
-                            <span class="staff-permission-count-badge">
-                                <span id="selected-permission-count">{{ count($oldPermissionIds) }}</span> selected
-                                / {{ $permissions->count() }} available
-                            </span>
-                        </div>
-                    </div>
+                    @foreach ($permission_groups as $key => $permission_group)
+                        @php
+                            $show_permission_group = true;
 
-                    <div id="custom-permissions-wrapper">
-                        <input type="hidden" name="custom_permissions_submitted" value="1">
-                        @foreach($permissions->groupBy(fn($permission) => $permission->section ?? 'general') as $section => $permissionGroup)
-                            <ul class="list-group mb-4 staff-permission-section">
-                                <li class="list-group-item bg-light fw-semibold staff-permission-section-header">
-                                    <div>
-                                        <span>{{ Str::headline($section) }}</span>
-                                        <small>{{ $permissionGroup->count() }} {{ Str::plural('permission', $permissionGroup->count()) }}</small>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-outline-primary staff-permission-section-toggle">
-                                        Enable all
-                                    </button>
-                                </li>
+                            if(in_array($permission_group[0]['section'], $addons)) {
+                                if (!addon_is_activated($permission_group[0]['section'])) {
+                                    $show_permission_group = false;
+                                }
+                            }
+                        @endphp
+
+                        @if($show_permission_group)
+                            <ul class="list-group mb-4 permission-group" data-section="{{ $permission_group[0]['section'] }}">
+                                <li class="list-group-item bg-light" aria-current="true">{{ Str::headline($permission_group[0]['section']) }}</li>
                                 <li class="list-group-item">
                                     <div class="row">
-                                        @foreach($permissionGroup as $permission)
-                                            <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6 permission-item"
-                                                 data-permission-id="{{ $permission->id }}">
+                                        @foreach ($permission_group as $permission)
+                                            <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6 permission-item" data-permission="{{ $permission->name }}">
                                                 <div class="p-2 border mt-1 mb-2">
-                                                    <label class="control-label d-flex small">{{ Str::headline($permission->name) }}</label>
+                                                    <label class="control-label d-flex">{{ Str::headline($permission->name) }}</label>
                                                     <label class="aiz-switch aiz-switch-success">
-                                                        <input type="checkbox"
-                                                               name="custom_permissions[]"
-                                                               class="form-control custom-permission-checkbox"
-                                                               value="{{ $permission->id }}"
-                                                               {{ $hasOldPermissions && in_array($permission->id, $oldPermissionIds) ? 'checked' : '' }}>
+                                                        <input type="checkbox" name="additional_permissions[]" class="form-control demo-sw" value="{{ $permission->name }}">
                                                         <span class="slider round"></span>
                                                     </label>
                                                 </div>
@@ -174,13 +180,11 @@
                                     </div>
                                 </li>
                             </ul>
-                        @endforeach
-                    </div>
-
+                        @endif
+                    @endforeach --}}
+                    
                     <div class="form-group mb-0 text-right">
-                        <button type="submit" class="btn btn-primary px-4 float-end">
-                            <i class="fas fa-save me-1"></i> Save
-                        </button>
+                        <button type="submit" class="btn btn-sm btn-primary">Save</button>
                     </div>
                 </div>                
             </form>
@@ -192,63 +196,68 @@
 @include('backend.partials.assets.select2')
 @section('page.scripts')
 <script>
-    const designationPermissionsMap = @json(
-        $designations->mapWithKeys(fn($designation) => [
-            $designation->id => $designation->permissions->pluck('id')->values()
-        ])
+    const rolePermissionsMap = @json(
+        $roles->mapWithKeys(fn($role) => [$role->id => $role->permissions->pluck('name')])
     );
-    const hasOldPermissionInput = @json($hasOldPermissions);
 
-    function applyDesignationPermissions() {
-        const designationId = $('#designation_id').val();
-        const permissionIds = new Set((designationPermissionsMap[designationId] || []).map(Number));
+    function updatePermissionVisibility() {
+        const roleId = $('#role_id').val();
+        const inherited = new Set(rolePermissionsMap[roleId] || []);
 
-        $('.custom-permission-checkbox').each(function () {
-            $(this).prop('checked', permissionIds.has(Number($(this).val())));
+        $('.permission-item').each(function () {
+            const perm = $(this).data('permission');
+            if (inherited.has(perm)) {
+                $(this).hide();
+                $(this).find('input[type="checkbox"]').prop('checked', false);
+            } else {
+                $(this).show();
+            }
         });
-
-        if (window.refreshStaffPermissionTools) {
-            window.refreshStaffPermissionTools();
-        }
-    }
-
-    function addContactRow(listId, inputName, placeholder) {
-        const row = $(`
-            <div class="form-group row contact-row">
-                <div class="col-sm-9 offset-sm-3">
-                    <div class="input-group">
-                        <input type="text" name="${inputName}[]" class="form-control" placeholder="${placeholder}">
-                        <button type="button" class="btn btn-outline-danger remove-contact-btn" title="Remove">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `);
-        $(`#${listId}`).append(row);
     }
 
     $(document).ready(function () {
         initSelect2('.select2');
 
-        $('#designation_id').on('change', applyDesignationPermissions);
-        if (!hasOldPermissionInput) {
-            applyDesignationPermissions();
-        }
-
-        $('#add-email-btn').on('click', function () {
-            addContactRow('extra-emails-list', 'extra_emails', 'Enter email address');
+        $('#enable-permissions').on('change', function () {
+            $('#additional-permissions-wrapper').toggle(this.checked);
         });
 
-        $('#add-phone-btn').on('click', function () {
-            addContactRow('extra-phones-list', 'extra_phones', 'Enter phone number');
-        });
+        $('#role_id').on('change', updatePermissionVisibility);
 
-        $(document).on('click', '.remove-contact-btn', function () {
-            $(this).closest('.input-group').remove();
-        });
+        updatePermissionVisibility();
     });
 </script>
 @endsection
+{{-- 
+@section('page.scripts')
+<script>
+    const rolePermissionsMap = @json(
+        $roles->mapWithKeys(fn($role) => [$role->id => $role->permissions->pluck('name')])
+    );
 
-@include('backend.staff.staffs.partials.permission-tools')
+    function updatePermissionVisibility() {
+        const selectedRoleIds = $('#role_id').val() || [];
+        let inheritedPermissions = new Set();
+
+        selectedRoleIds.forEach(id => {
+            (rolePermissionsMap[id] || []).forEach(p => inheritedPermissions.add(p));
+        });
+
+        $('.permission-item').each(function () {
+            const permission = $(this).data('permission');
+            if (inheritedPermissions.has(permission)) {
+                $(this).hide();
+                $(this).find('input[type="checkbox"]').prop('checked', false);
+            } else {
+                $(this).show();
+            }
+        });
+    }
+
+    $(document).ready(function () {
+        initSelect2('.select2');
+        updatePermissionVisibility();
+        $('#role_id').on('change', updatePermissionVisibility);
+    });
+</script>
+@endsection --}}

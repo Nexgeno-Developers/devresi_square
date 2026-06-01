@@ -86,7 +86,6 @@
                                         <span>Add Owner</span>
                                         <span class="icon_btn"></span>
                                     </a> --}}
-                            @unless(auth()->user()->hasRole('Tenant'))
                             <a data-url="{{ route('admin.owner-groups.create_group') }}"
                                 class="popup-tab-owner-group-create btn btn-sm btn-outline-danger btn-sm tab-owners-group-btn d-none">
                                 <span>Add Owner Group</span>
@@ -97,7 +96,6 @@
                                 <span>Add Tenancy</span>
                                 <span class="icon_btn"></span>
                             </a>
-                            @endunless
 
                             {{-- @if (isset($property) && isset($propertyId)) --}}
                             {{-- <x-backend.outline-link-button class="" name="Edit Property"
@@ -145,40 +143,6 @@
         .modal-content {
             height: auto;
             margin: auto;
-        }
-        .property-brochure-btn {
-            display: inline-flex !important;
-            position: relative;
-            z-index: 2;
-            white-space: nowrap;
-            width: auto !important;
-            min-width: unset !important;
-            max-width: max-content;
-            padding: 2px 7px;
-            font-size: 12px;
-            line-height: 1.4;
-            color: #0d6efd !important;
-            background: #fff !important;
-            border-color: #0d6efd !important;
-        }
-        .property-brochure-btn:hover,
-        .property-brochure-btn:focus,
-        .pv_content_wrapper:hover .property-brochure-btn,
-        .pv_content_wrapper.current .property-brochure-btn {
-            color: #fff !important;
-            background: #0d6efd !important;
-            border-color: #0d6efd !important;
-            opacity: 1 !important;
-        }
-        .property_brochure {
-            position: absolute;
-            right: 20px;
-            bottom: 14px;
-            width: auto;
-        }
-        .pv_content_wrapper.property-card {
-            position: relative;
-            padding-bottom: 48px !important;
         }
 
         .add-tenant-btn {
@@ -281,22 +245,6 @@
     <!-- Include the Modal Component -->
     @include('backend.components.modal')
     @include('backend.events.modal')
-    <div class="modal fade" id="importantNoteVisitModal" tabindex="-1" aria-labelledby="importantNoteVisitModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-md">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="importantNoteVisitModalLabel">Important Note</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div id="importantNoteVisitContent" style="white-space: pre-wrap;"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn_secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
 @endsection
 @push('styles')
 <link href="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.css" rel="stylesheet">
@@ -322,44 +270,6 @@ var_dump($propertyId);
     history.replaceState(null, '', url.toString());
 </script>
 @endif
-
-<script>
-    // Global delete functions for tab content (tabs load via jQuery .html() which strips scripts)
-    var _deleteTenancyUrl = null;
-    var _deleteTenancyBtn = null;
-
-    function deleteTenancy(url, btn) {
-        _deleteTenancyUrl = url;
-        _deleteTenancyBtn = btn;
-        $('#confirmModal').modal('show');
-    }
-
-    // Wire the confirmModal Continue button for tenancy deletes
-    $(document).on('click', '#delete_form button[type="submit"]', function(e) {
-        if (!_deleteTenancyUrl) return; // not a tenancy delete
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        $('#confirmModal').modal('hide');
-        if (_deleteTenancyBtn) _deleteTenancyBtn.disabled = true;
-        $.ajax({
-            type: 'POST',
-            url: _deleteTenancyUrl,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            data: { _token: $('meta[name="csrf-token"]').attr('content') },
-            success: function () {
-                _deleteTenancyUrl = null;
-                _deleteTenancyBtn = null;
-                location.reload();
-            },
-            error: function () {
-                if (_deleteTenancyBtn) _deleteTenancyBtn.disabled = false;
-                _deleteTenancyUrl = null;
-                _deleteTenancyBtn = null;
-                alert('Failed to delete. Please try again.');
-            }
-        });
-    });
-</script>
 
 <script>
     function uploadImageToServer(file, editor) {
@@ -577,8 +487,6 @@ var_dump($propertyId);
             "property_accessibility": "Edit Property Accessibility",
             "property_services": "Edit Property Services",
             "property_status": "Edit Property Status",
-            "property_description": "Edit Description",
-            "responsibility": "Edit Responsibility Mapping",
             "notes": "Edit Important Note",
             notes_tab: noteId ? 'Edit Note' : 'Add Note',
         };
@@ -591,7 +499,7 @@ var_dump($propertyId);
         $("#extraLargeModal .modal-dialog").removeClass("modal-sm modal-lg modal-xl");
 
         // Apply the appropriate modal size based on the formType
-        if (formType === "property_status" || formType === "notes" || formType === "property_services" || formType === "property_description") {
+        if (formType === "property_status" || formType === "notes" || formType === "property_services") {
             // Use small modal for "notes" or "notes_tab"
             $("#extraLargeModal .modal-dialog").addClass("modal-md");
         // } else if (formType === "property_info") {
@@ -633,9 +541,6 @@ var_dump($propertyId);
                 if (formType === "property_info") {
                     toggleDescriptions();
                 }
-                if (formType === "responsibility") {
-                    $('.select2').select2();
-                }
                 },
                 error: function(error) {
                     console.error(error);
@@ -668,11 +573,7 @@ var_dump($propertyId);
                 // Check if the response indicates success
                 if (response.success) {
                     // Dynamically update the relevant accordion section
-                    if (formType === "responsibility") {
-                        $("#section-" + formType + "-" + propertyId).replaceWith(response.updated_html);
-                    } else {
-                        $("#section-" + formType + "-" + propertyId).html(response.updated_html);
-                    }
+                    $("#section-" + formType + "-" + propertyId).html(response.updated_html);
 
                     // Close the modal
                     $("#extraLargeModal").modal("hide");
@@ -1127,39 +1028,22 @@ var_dump($propertyId);
 
 
         $(document).on('click', '.popup-tab-tenancy-create', function(e) {
-            e.preventDefault();
+            e.preventDefault(); // Prevent the default action (e.g., following the link)
 
-            var baseUrl    = $(this).attr('data-url');
-            var header     = 'Add Tenancy';
+            // Get the URL for the modal (you can dynamically fetch it as needed)
+            var url = $(this).attr('data-url'); // URL passed in the 'data-url' attribute
+            var header = 'Add Tenancy'; // Custom header or dynamic header
+            var propertyId = document.getElementById('hidden-property-id').getAttribute('data-property-id') ??
+                ''; // Fetch the property_id
 
-            // Try multiple sources for property ID in order of reliability
-            var propertyId = $('.property-card.current').data('property-id')      // active card
-                          || $('.pv_content_wrapper.current').data('property-id') // alternate selector
-                          || $(this).attr('data-property-id')                     // stamped by loadTabContent
-                          || new URLSearchParams(window.location.search).get('property_id') // URL param
-                          || '';
+            // Open the modal (assuming extralargeModal is a function that handles modal rendering)
+            extralargeModal(url, header);
 
-            console.log('[AddTenancy] propertyId resolved:', propertyId);
-
-            if (!propertyId) {
-                alert('Could not determine the property. Please click on a property first.');
-                return;
-            }
-
-            // Pass property_id as query param — controller pre-populates the hidden field server-side
-            var url = baseUrl + '?property_id=' + propertyId;
-
-            $("#extraLargeModal .modal-body").html("Loading...");
-            $("#extraLargeModal .modal-title").html("Loading...");
-            $("#extraLargeModal").modal("show");
-
-            $.ajax({
-                url: url,
-                success: function(response) {
-                    $("#extraLargeModal .modal-body").html(response);
-                    $("#extraLargeModal .modal-title").html(header);
-                    initSelect3('.select2');
-                }
+            // Ensure modal content is loaded and set the property_id in the hidden field inside the modal form
+            $('#extraLargeModal').on('shown.bs.modal', function() {
+                // Set the property_id in the hidden input field inside the modal form
+                $("input[name='property_id']").val(propertyId);
+                initSelect3('.select2');
             });
         });
         $(document).on('click', '.popup-tab-tenancy-view', function(e) {
@@ -1307,19 +1191,6 @@ var_dump($propertyId);
 
             }
 
-            function showImportantNoteForCard(card) {
-                if (!card || !card.length) {
-                    return;
-                }
-
-                var importantNote = (card.attr('data-important-note') || '').trim();
-
-                if (importantNote) {
-                    $('#importantNoteVisitContent').text(importantNote);
-                    $('#importantNoteVisitModal').modal('show');
-                }
-            }
-
             // Handle Tab Clicks
             // Event listener for property cards (left side)
             $(document).on('click', '.property-card', function() {
@@ -1327,7 +1198,6 @@ var_dump($propertyId);
                 $('.property-card').removeClass('current');
                 $(this).addClass('current');
                 var tabName = $('.tab-link.active').data('tab-name');
-                showImportantNoteForCard($(this));
                 loadTabContent(propertyId, tabName);
             });
 
@@ -1354,19 +1224,6 @@ var_dump($propertyId);
             }
 
 
-            // Scroll the property list so the given card is visible
-            function scrollToCard(card) {
-                if (!card || !card.length) return;
-                var container = $('.pv_card_wrapper');
-                if (!container.length) return;
-                var cardTop    = card.position().top;
-                var cardHeight = card.outerHeight();
-                var containerHeight = container.height();
-                container.animate({
-                    scrollTop: container.scrollTop() + cardTop - (containerHeight / 2) + (cardHeight / 2)
-                }, 300);
-            }
-
             // Function to activate tab based on URL parameter
             function activateTabFromUrl() {
                 var tabName = getUrlParameter('tabname'); // Get tabname from URL
@@ -1377,43 +1234,14 @@ var_dump($propertyId);
                     var selectedTab = $('.tab-link[data-tab-name="' + tabName + '"]');
                     var selectedPropertyCard = $('.property-card[data-property-id="' + propertyId + '"]');
 
-                    // Mark the selected tab as active
+                    // Mark the selected tab and property card as active/current
                     $('.tab-link').removeClass('active');
+                    $('.property-card').removeClass('current');
                     selectedTab.addClass('active');
+                    selectedPropertyCard.addClass('current');
 
-                    // If the card is already in the DOM, highlight it and load content
-                    if (selectedPropertyCard.length) {
-                        $('.property-card').removeClass('current');
-                        selectedPropertyCard.addClass('current');
-                        scrollToCard(selectedPropertyCard);
-                        showImportantNoteForCard(selectedPropertyCard);
-                        loadTabContent(propertyId, tabName);
-                    } else {
-                        // Card is on a different page — reload the list to the correct page first
-                        $.ajax({
-                            url: '{{ route('admin.properties.index') }}',
-                            type: 'GET',
-                            data: { list_only: 1, highlight_id: propertyId },
-                            success: function(response) {
-                                $('#propertyListContainer').html(response.html);
-                                // Now highlight and scroll to the card
-                                $('.property-card').removeClass('current');
-                                var card = $('.property-card[data-property-id="' + propertyId + '"]');
-                                card.addClass('current');
-                                scrollToCard(card);
-                                showImportantNoteForCard(card);
-                                loadTabContent(propertyId, tabName);
-                            },
-                            error: function() {
-                                // Property doesn't exist — fall back to first card
-                                var firstCard = $('.property-card').first();
-                                var firstId   = firstCard.data('property-id');
-                                firstCard.addClass('current');
-                                showImportantNoteForCard(firstCard);
-                                loadTabContent(firstId, tabName);
-                            }
-                        });
-                    }
+                    // Load the content dynamically
+                    loadTabContent(propertyId, tabName);
                 }
             }
 
@@ -1433,7 +1261,6 @@ var_dump($propertyId);
                     loadTabContent(propertyId, tabName);
                     firstPropertyCard.addClass('current'); // Add 'current' class to the first property card
                     firstTab.addClass('active'); // Add 'active' class to the first tab
-                    showImportantNoteForCard(firstPropertyCard);
                 }
             }
 
@@ -1453,16 +1280,12 @@ var_dump($propertyId);
                     type: 'GET',
                     dataType: 'json',
                     success: function(response) {
+                        // Update the content of the tab with the response
+                        // You might want to populate the content into a specific div
+                        // Example: $('.pv_content_detail').html(response.content);
                         $('.pv_content_detail').html(response.content);
                         updateTitle(tabName, propertyId);
-                        if (tabName === 'documents') {
-                            $('.pv_content_detail .documents-component').trigger('documents:refresh');
-                        }
-                        if (tabName === 'notes') {
-                            $('.pv_content_detail .notes-component').trigger('notes:refresh');
-                        }
-                        // Stamp the current property ID onto action buttons so click handlers can read it reliably
-                        $('.tab-tenancy-group-btn, .tab-owners-group-btn, .tab-offers-btn').attr('data-property-id', propertyId);
+                        // Update URL (optional, for browser navigation)
                         window.history.pushState(null, null, url);
                     },
                     error: function(xhr, status, error) {

@@ -1,12 +1,13 @@
 (function($){
   const api = '/admin/documents';
 
-  // Load document list via AJAX (used for filter, reset, pagination, after save/delete)
+  // Load document list
   function load($c, extraParams = {}) {
     const type = $c.data('documentable-type');
     const id   = $c.data('documentable-id');
     const $list = $c.find('.documents-list');
 
+    $list.html('<p>Loading…</p>');
     $.get(`${api}/list`, {
       documentable_type: type,
       documentable_id: id,
@@ -28,11 +29,11 @@
     });
   }
 
-  // Initialize components — do NOT auto-load via AJAX on init.
-  // Documents are already server-rendered in .documents-list on page load.
-  // AJAX load is only triggered by filter, reset, save, delete, or pagination.
+  // Initialize components
   $(function(){
-    // nothing to do on init
+    $('.documents-component').each(function(){
+      load($(this));
+    });
   });
 
   // Handle filter form submit
@@ -50,16 +51,6 @@
     const $c = $btn.closest('.documents-component');
     const $filt = $c.find('.documents-filter-form');
     $filt[0].reset();
-    load($c);
-  });
-
-  // Allow dynamically loaded tabs to refresh the list with the same clean state as Reset.
-  $(document).on('documents:refresh', '.documents-component', function () {
-    const $c = $(this);
-    const $filt = $c.find('.documents-filter-form');
-    if ($filt.length && $filt[0]) {
-      $filt[0].reset();
-    }
     load($c);
   });
 

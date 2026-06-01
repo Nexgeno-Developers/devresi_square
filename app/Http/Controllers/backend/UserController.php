@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Mail\MailManager;
-use App\Models\Company;
 use App\Models\Country;
 use App\Models\DocumentType;
 use App\Models\EmailTemplate;
@@ -19,7 +18,6 @@ use App\Services\Accounting\StatementService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -30,36 +28,23 @@ class UserController
 {
     public function profile()
     {
-        $authUser = auth()->user()->load([
-            'ownedCompany.branches',
-            'ownedCompany.ownerTransfers.oldOwner',
-            'ownedCompany.ownerTransfers.newOwner',
-            'ownedCompany.ownerTransfers.transferredBy',
-        ]);
+        $authUser = auth()->user();
         // $countryName = Country::find($authUser->country_id)?->name ?? 'N/A';
         // Use cached countries to find the user's country
         $countryName = Country::allCached()->firstWhere('id', $authUser->country_id)->name ?? 'N/A';
-        $transferUsers = User::where('id', '!=', $authUser->id)
-            ->where(function ($query) {
-                $query->whereIn('user_type', ['agent', 'estate_agent'])
-                    ->orWhereHas('roles', fn($roleQuery) => $roleQuery->whereIn('name', ['Agent', 'Estate Agent']));
-            })
-            ->orderBy('name')
-            ->get(['id', 'name', 'email']);
 
-        return view('backend.users.profile.show', compact('authUser', 'countryName', 'transferUsers'));
+        return view('backend.users.profile.show', compact('authUser', 'countryName'));
     }
 
     public function profileEdit()
     {
         // Fetch the authenticated user
 
-        $user = User::with('country', 'details', 'ownedCompany')->find(auth()->id());
+        $user = User::with('country')->find(auth()->id());
         // $categories = UserCategory::all();
         $countries = Country::allCached();
-        $company = $this->canManageCompanyProfile($user) ? $this->ownedCompanyFor($user) : null;
 
-        return view('backend.users.profile.edit', compact('user', 'countries', 'company'));
+        return view('backend.users.profile.edit', compact('user', 'countries'));
         // return view('backend.users.profile.edit', compact('user', 'categories', 'countries'));
     }
 
@@ -67,17 +52,13 @@ class UserController
     {
         $user = auth()->user();
 
-        $rules = [
+        $validatedData = $request->validate([
             'title' => 'required|string|max:10',
             'first_name' => 'required|string|max:55',
             'middle_name' => 'nullable|string|max:55',
             'last_name' => 'required|string|max:55',
-            'emails' => 'required|array|min:1',
-            'emails.*' => 'nullable|email|max:255',
-            'primary_email' => 'required|email|max:255|unique:users,email,'.$user->id,
-            'phones' => 'required|array|min:1',
-            'phones.*' => 'nullable|string|max:20',
-            'primary_phone' => 'required|string|max:20',
+            'phone' => 'required|string|max:20',
+            'email' => 'required|email|max:55|unique:users,email,'.$user->id,
             'address_line_1' => 'required|string|max:255',
             'address_line_2' => 'nullable|string|max:255',
             'postcode' => 'required|string|max:15',
@@ -87,40 +68,7 @@ class UserController
             'profile_picture' => 'nullable|image|max:2048', // 2MB max
             // 'category_id' => 'required|exists:users_categories,id',
             // 'role' => 'required|exists:roles,name',
-        ];
-
-        if ($this->canManageCompanyProfile($user)) {
-            $rules = array_merge($rules, [
-                'company.name' => 'nullable|string|max:255',
-                'company.registration_number' => 'nullable|string|max:255',
-                'company.registered_address' => 'nullable|string',
-                'company.communication_address' => 'nullable|string',
-                'company.emails' => 'nullable|array',
-                'company.emails.*' => 'nullable|email|max:255',
-                'company.phones' => 'nullable|array',
-                'company.phones.*' => 'nullable|string|max:50',
-                'company.vat_number' => 'nullable|string|max:255',
-                'company.website' => 'nullable|url|max:255',
-                'company.social_media' => 'nullable|array',
-                'company.social_media.*' => 'nullable|url|max:255',
-                'company.services' => 'nullable|array',
-                'company.services.*' => 'nullable|in:lettings,sales,property_management',
-                'company_logo' => 'nullable|image|max:4096',
-                'company_stamp' => 'nullable|image|max:4096',
-            ]);
-        }
-
-        $validatedData = $request->validate($rules);
-        $contactEmails = array_values(array_unique(array_filter($validatedData['emails'] ?? [])));
-        $contactPhones = array_values(array_unique(array_filter($validatedData['phones'] ?? [])));
-
-        if (! in_array($validatedData['primary_email'], $contactEmails, true)) {
-            return back()->withErrors(['primary_email' => 'The primary email must be one of the entered emails.'])->withInput();
-        }
-
-        if (! in_array($validatedData['primary_phone'], $contactPhones, true)) {
-            return back()->withErrors(['primary_phone' => 'The primary phone must be one of the entered phone numbers.'])->withInput();
-        }
+        ]);
 
         // Handle profile picture removal
         if ($request->has('remove_profile_picture') && $user->profile_picture) {
@@ -146,106 +94,30 @@ class UserController
 
         $fullName = trim($request->input('first_name').' '.$request->input('middle_name').' '.$request->input('last_name'));
 
-        DB::transaction(function () use ($request, $user, $validatedData, $fullName, $contactEmails, $contactPhones) {
-            $user->update([
-                'title' => $validatedData['title'],
-                'first_name' => $validatedData['first_name'],
-                'middle_name' => $validatedData['middle_name'],
-                'last_name' => $validatedData['last_name'],
-                'name' => $fullName,
-                'phone' => $validatedData['primary_phone'],
-                'email' => $validatedData['primary_email'],
-                'address_line_1' => $validatedData['address_line_1'],
-                'address_line_2' => $validatedData['address_line_2'],
-                'postcode' => $validatedData['postcode'],
-                'city' => $validatedData['city'],
-                // 'country' => $validatedData['country'],
-                'country_id' => $validatedData['country_id'] ?? null,
-                // 'category_id' => $validatedData['category_id'],
-                'updated_by' => auth()->id(),
-                'profile_picture' => $user->profile_picture, // set new path if uploaded
-            ]);
-
-            $user->details()->updateOrCreate(
-                ['user_id' => $user->id],
-                [
-                    'emails' => $contactEmails,
-                    'primary_email' => $validatedData['primary_email'],
-                    'phones' => $contactPhones,
-                    'primary_phone' => $validatedData['primary_phone'],
-                ]
-            );
-
-            if ($this->canManageCompanyProfile($user)) {
-                $this->syncOwnedCompany($request, $user);
-            }
-        });
+        $user->update([
+            'title' => $validatedData['title'],
+            'first_name' => $validatedData['first_name'],
+            'middle_name' => $validatedData['middle_name'],
+            'last_name' => $validatedData['last_name'],
+            'name' => $fullName,
+            'phone' => $validatedData['phone'],
+            'email' => $validatedData['email'],
+            'address_line_1' => $validatedData['address_line_1'],
+            'address_line_2' => $validatedData['address_line_2'],
+            'postcode' => $validatedData['postcode'],
+            'city' => $validatedData['city'],
+            // 'country' => $validatedData['country'],
+            'country_id' => $validatedData['country_id'] ?? null,
+            // 'category_id' => $validatedData['category_id'],
+            'updated_by' => auth()->id(),
+            'profile_picture' => $user->profile_picture, // set new path if uploaded
+        ]);
 
         // Sync new role (removes old ones and assigns the new one)
         // $user->syncRoles([$validatedData['role']]);
         flash('Profile updated successfully!')->success();
 
         return redirect()->route('admin.users.profile.show');
-    }
-
-    private function canManageCompanyProfile(User $user): bool
-    {
-        $manageOwnCompanyPermissionExists = \Spatie\Permission\Models\Permission::where('name', 'manage own company')
-            ->where('guard_name', 'web')
-            ->exists();
-
-        return in_array($user->user_type, ['agent', 'estate_agent'], true)
-            || $user->hasAnyRole(['Agent', 'Estate Agent', 'Super Admin'])
-            || $user->ownedCompany()->exists()
-            || ($manageOwnCompanyPermissionExists && $user->hasEffectivePermission('manage own company'));
-    }
-
-    private function ownedCompanyFor(User $user): Company
-    {
-        return $user->ownedCompany()->firstOrCreate(
-            ['owner_user_id' => $user->id],
-            [
-                'name' => $user->company?->name ?: ($user->name ? $user->name . ' Company' : 'My Company'),
-                'created_by' => $user->id,
-            ]
-        );
-    }
-
-    private function syncOwnedCompany(Request $request, User $user): void
-    {
-        $company = $this->ownedCompanyFor($user);
-        $companyInput = $request->input('company', []);
-
-        if ($request->hasFile('company_logo')) {
-            if ($company->logo_path && Storage::disk('public')->exists($company->logo_path)) {
-                Storage::disk('public')->delete($company->logo_path);
-            }
-            $companyInput['logo_path'] = $request->file('company_logo')->store('company_logos', 'public');
-        }
-
-        if ($request->hasFile('company_stamp')) {
-            if ($company->stamp_path && Storage::disk('public')->exists($company->stamp_path)) {
-                Storage::disk('public')->delete($company->stamp_path);
-            }
-            $companyInput['stamp_path'] = $request->file('company_stamp')->store('company_stamps', 'public');
-        }
-
-        $company->update([
-            'name' => $companyInput['name'] ?? $company->name,
-            'registration_number' => $companyInput['registration_number'] ?? null,
-            'registered_address' => $companyInput['registered_address'] ?? null,
-            'communication_address' => $companyInput['communication_address'] ?? null,
-            'emails' => array_values(array_filter($companyInput['emails'] ?? [])),
-            'phones' => array_values(array_filter($companyInput['phones'] ?? [])),
-            'logo_path' => $companyInput['logo_path'] ?? $company->logo_path,
-            'stamp_path' => $companyInput['stamp_path'] ?? $company->stamp_path,
-            'vat_number' => $companyInput['vat_number'] ?? null,
-            'website' => $companyInput['website'] ?? null,
-            'social_media' => array_filter($companyInput['social_media'] ?? []),
-            'services' => array_values($companyInput['services'] ?? []),
-            'updated_by' => $user->id,
-        ]);
-
     }
 
     public function profilePasswordUpdate(Request $request)
@@ -323,11 +195,6 @@ class UserController
             $usersQuery->role($request->role); // Spatie's `role()` scope
         }
 
-        // Tenants only see themselves
-        if (auth()->user()->hasRole('Tenant')) {
-            $usersQuery->where('id', auth()->id());
-        }
-
         // Fetch all users (newest first)
         // $users = $usersQuery->orderBy('id', 'desc')->exclude('user_type', 'staff')->get();
         // $users = $usersQuery->orderBy('id', 'desc')->whereDoesntHave('roles', function ($query) {
@@ -350,39 +217,6 @@ class UserController
 
         // If AJAX request for user list only (search/pagination)
         if ($request->ajax() && $request->has('list_only')) {
-            // If a highlight_id is given, jump to the page that contains it
-            if ($request->filled('highlight_id')) {
-                $highlightId = (int) $request->highlight_id;
-                $perPage = 15;
-
-                // Rebuild a fresh query with the same filters to find the position
-                $positionQuery = User::orderBy('id', 'desc')
-                    ->where(function ($q) {
-                        $q->whereNull('user_type')
-                          ->orWhereNotIn('user_type', ['staff', 'super_admin']);
-                    })
-                    ->whereDoesntHave('roles', function ($q) {
-                        $q->whereIn('name', ['Staff', 'Super Admin']);
-                    });
-
-                if ($request->filled('search')) {
-                    $search = $request->search;
-                    $positionQuery->where(function ($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%")
-                          ->orWhere('first_name', 'like', "%{$search}%")
-                          ->orWhere('last_name', 'like', "%{$search}%")
-                          ->orWhere('email', 'like', "%{$search}%")
-                          ->orWhere('phone', 'like', "%{$search}%");
-                    });
-                }
-
-                $position = $positionQuery->pluck('id')->search($highlightId);
-
-                if ($position !== false) {
-                    $page  = (int) floor($position / $perPage) + 1;
-                    $users = $positionQuery->paginate($perPage, ['*'], 'page', $page);
-                }
-            }
             return response()->json([
                 'html' => view('backend.users.partials.user-list', compact('users'))->render(),
             ]);
@@ -396,38 +230,26 @@ class UserController
         }
 
         // Decide which user/tab to show
-        $userId  = $request->query('user_id');
+        $userId = $request->query('user_id');
         $tabName = $request->query('tabname', 'Contact');
-        $role    = $request->query('role', '');
 
-        // If no user_id in URL, redirect to first user (preserving role filter)
-        if (!$userId) {
-            $firstUser = $users->first();
-            return redirect()->route('admin.users.index', array_filter([
-                'user_id' => $firstUser->id,
-                'tabname' => $tabName,
-                'role'    => $role,
-            ]));
+        // Try to find the requested user - fetch directly if user_id is provided
+        if ($userId) {
+            $user = User::with([
+                'roles',
+                'details',
+                'tenancies',
+                'repairIssues',
+                'tenantMembers',
+                'documents',
+            ])->find($userId);
+        } else {
+            $user = null;
         }
 
-        // Try to find the requested user
-        $user = User::with([
-            'roles',
-            'details',
-            'tenancies',
-            'repairIssues',
-            'tenantMembers',
-            'documents',
-        ])->find($userId);
-
-        if (!$user) {
-            // Invalid/deleted user_id — redirect to first user (preserving role filter)
-            $firstUser = $users->first();
-            return redirect()->route('admin.users.index', array_filter([
-                'user_id' => $firstUser->id,
-                'tabname' => $tabName,
-                'role'    => $role,
-            ]));
+        if (! $user) {
+            $user = $users->first();
+            $userId = $user->id;
         }
 
         // Define your tab list
@@ -515,23 +337,33 @@ class UserController
                 $nationalities = Nationality::orderBy('name')->pluck('name', 'id');
                 // load all users for the “checked by” dropdown
                 $users = User::orderBy('name')->pluck('name', 'id');
-                // eager-load the staff member who did the check
-                $user->load('details.userCheckedBy');
 
                 return view('backend.users.tabs.compliance', compact('userId', 'user', 'users', 'nationalities'))->render();
 
             case 'documents':
                 $documents = $user->documents()->with('documentType')->orderByDesc('updated_at')->paginate(5);
+
+                // Ensure it's an empty collection if no documents are found
+                if ($documents->isEmpty()) {
+                    $documents = collect();  // Make sure it's an empty collection, not null
+                }
                 $documentTypes = DocumentType::all();
 
+                // return 1;
                 return view('backend.users.tabs.documents', compact('userId', 'user', 'documents', 'documentTypes'))->render();
 
             case 'notes':
                 // Fetch the notes related to the specific user by user ID
                 $notes = $user->notes()->with('noteType')->orderByDesc('updated_at')->paginate(5);
+
+                // Ensure it's an empty collection if no notes are found
+                if ($notes->isEmpty()) {
+                    $notes = collect();  // Make sure it's an empty collection, not null
+                }
                 $noteTypes = NoteType::all();
 
                 return view('backend.users.tabs.notes', compact('userId', 'user', 'notes', 'noteTypes'))->render();
+                // return view('backend.users.tabs.notes', compact('userId', 'user'))->render();
 
             case 'statement':
                 $filters = $this->statementFilters($request);
@@ -572,7 +404,7 @@ class UserController
             $isNewUser = false;
 
             // Validate the request data
-            $validatedData = $request->validate($this->getValidationRulesQuick($request->step, $request->user_id ?? null));
+            $validatedData = $request->validate($this->getValidationRulesQuick($request->step));
 
             // Get user_id from the request
             $user_id = $request->user_id;
@@ -580,7 +412,7 @@ class UserController
             // Check if first name, middle name, and last name are present
             $fullName = trim($request->first_name.' '.$request->middle_name.' '.$request->last_name);
 
-            // Store full name if it's not empty                                    
+            // Store full name if it's not empty
             if (! empty($fullName)) {
                 $validatedData['name'] = $fullName;
             }
@@ -629,13 +461,8 @@ class UserController
 
             // ✅ Only if it's the final step AND the user was just created
             if ($request->step >= $totalSteps && $isNewUser) {
-                if ($user->hasRole('Tenant')) {
-                    Log::info('Sending tenant welcome email to user ID '.$user->id);
-                    $this->sendTenantWelcomeEmail($user);
-                } else {
-                    Log::info('Sending password reset email to user ID '.$user->id);
-                    $this->sendPasswordResetMail($user);
-                }
+                Log::info('Sending password reset email to user ID '.$user->id);
+                $this->sendPasswordResetMail($user);
             }
 
             // Check if the current step is the last one
@@ -664,7 +491,7 @@ class UserController
         }
     }
 
-    private function getValidationRulesQuick($step, $userId = null)
+    private function getValidationRulesQuick($step)
     {
         switch ($step) {
             case 1:
@@ -675,16 +502,12 @@ class UserController
                     'role_ids.*' => 'integer|exists:roles,id',
                 ];
             case 2:
-                $emailRule = 'required|email|max:55|unique:users,email';
-                if ($userId) {
-                    $emailRule .= ',' . $userId; // ignore current user when editing
-                }
                 return [
                     'first_name' => 'required|string|max:55',
                     'middle_name' => 'nullable|string|max:55',
                     'last_name' => 'required|string|max:55',
                     'phone' => 'required|string|max:20',
-                    'email' => $emailRule,
+                    'email' => 'required|email|max:55',
                     'address_line_1' => 'required|string|max:255',
                     'address_line_2' => 'nullable|string|max:255',
                     'postcode' => 'required|string|max:15',
@@ -882,15 +705,6 @@ class UserController
     }
 
     /**
-     * Redirect to the user index with the user highlighted/selected.
-     */
-    public function show($id)
-    {
-        // The index page handles user detail via ?user_id= query param
-        return redirect()->route('admin.users.index', ['user_id' => $id]);
-    }
-
-    /**
      * Show the form for editing the specified resource.
      */
     public function edit($id)
@@ -1000,7 +814,7 @@ class UserController
         }
 
         $extraData = []; // <-- This prevents undefined variable errors
-        $extraData = $this->getFormTypeExtras($formType, $user, $request->note_id ?? null, $request->bank_detail_id ?? null, $request);
+        $extraData = $this->getFormTypeExtras($formType, $user, $request, $request->note_id ?? null, $request->bank_detail_id ?? null);
         // ** NEW: if we have a note_id, fetch that note and pass it in **
         // if ($formType === 'notes_tab' && $request->filled('note_id')) {
         //     $note = $user->notes()->findOrFail($request->note_id);
@@ -1030,11 +844,6 @@ class UserController
         $formType = $request->input('form_type');
         if (! $user) {
             return response()->json(['error' => 'user not found'], 404);
-        }
-
-        // Tenants can only edit their own record
-        if (auth()->user()->hasRole('Tenant') && $user->id !== auth()->id()) {
-            return response()->json(['error' => 'Unauthorized'], 403);
         }
 
         $extraData = []; // <-- This prevents undefined variable errors
@@ -1263,38 +1072,6 @@ class UserController
         return response()->json(['results' => $results]);
     }
 
-    /**
-     * AJAX endpoint to search staff users for Select2 (compliance checked_by_user field).
-     * Returns 6 by default, searches on 2+ characters.
-     */
-    public function staffAjaxList(Request $request)
-    {
-        $term = $request->input('q', '');
-
-        $query = User::whereHas('roles', function ($q) {
-            $q->whereIn('name', ['Staff', 'Super Admin', 'Property Manager']);
-        });
-
-        if (strlen($term) >= 2) {
-            $query->where(function ($q) use ($term) {
-                $q->where('name', 'like', "%$term%")
-                  ->orWhere('email', 'like', "%$term%");
-            });
-        }
-
-        $users = $query->select('id', 'name', 'email')
-            ->orderBy('name')
-            ->limit(6)
-            ->get();
-
-        return response()->json([
-            'results' => $users->map(fn($u) => [
-                'id'   => $u->id,
-                'text' => $u->name . ' (' . $u->email . ')',
-            ]),
-        ]);
-    }
-
     private function sendPasswordResetMail(User $user): void
     {
         try {
@@ -1333,56 +1110,6 @@ class UserController
         }
     }
 
-    private function sendTenantWelcomeEmail(User $user): void
-    {
-        try {
-            // Generate a password and save it
-            $plainPassword = \Illuminate\Support\Str::random(10);
-            $user->update(['password' => \Illuminate\Support\Facades\Hash::make($plainPassword)]);
-            $resetLink = $user->createResetLink();
-
-            $template = \App\Models\EmailTemplate::getByIdentifier('tenant_account_created');
-
-            $placeholders = [
-                'tenant_name'      => $user->name ?? $user->email,
-                'tenant_email'     => $user->email,
-                'tenant_password'  => $plainPassword,
-                'property_name'    => '—',
-                'property_address' => '—',
-                'move_in_date'     => '—',
-                'rent'             => '—',
-                'reset_link'       => $resetLink,
-                'login_url'        => url('/admin/login'),
-                'crm_name'         => config('app.name'),
-                'admin_email'      => config('mail.from.address'),
-            ];
-
-            if ($template) {
-                $renderedHtml = $template->replace($placeholders, ['reset_link', 'login_url']);
-                $subject = render_template($template->subject, $placeholders);
-            } else {
-                $subject = 'Welcome to ' . config('app.name') . ' — Your Tenant Account';
-                $renderedHtml = "<p>Hi {$placeholders['tenant_name']},</p>"
-                    . "<p>Your account has been created.</p>"
-                    . "<p>Email: {$placeholders['tenant_email']} | Password: <strong>{$placeholders['tenant_password']}</strong></p>"
-                    . "<p><a href='{$placeholders['login_url']}'>Login</a> | <a href='{$resetLink}'>Change Password</a></p>";
-            }
-
-            Mail::to($user->email)->send(new \App\Mail\MailManager([
-                'subject'     => $subject,
-                'content'     => $renderedHtml,
-                'attachments' => [],
-            ]));
-
-            Log::info("Tenant welcome email sent to {$user->email}");
-        } catch (\Exception $e) {
-            Log::error("Failed to send tenant welcome email: {$e->getMessage()}", [
-                'email'   => $user->email,
-                'user_id' => $user->id,
-            ]);
-        }
-    }
-
     private function statementFilters(Request $request): array
     {
         $preset = $request->query('preset', 'this_month');
@@ -1416,7 +1143,7 @@ class UserController
             'date_to' => $end?->toDateString(),
         ];
     }
-                                    
+
     private function streamStatementCsv(User $user, array $statement)
     {
         return response()->streamDownload(function () use ($user, $statement) {

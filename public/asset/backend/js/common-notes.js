@@ -1,12 +1,13 @@
 (function($){
   const api = '/admin/notes';
 
-  // Load note list via AJAX (used for filter, reset, pagination, after save/delete)
+  // Load note list
   function load($c, extraParams = {}) {
     const type = $c.data('noteable-type');
     const id   = $c.data('noteable-id');
     const $list = $c.find('.notes-list');
 
+    $list.html('<p>Loading…</p>');
     $.get(`${api}/list`, {
       noteable_type: type,
       noteable_id: id,
@@ -31,11 +32,11 @@
     });
   }
 
-  // Initialize components — do NOT auto-load via AJAX on init.
-  // Notes are already server-rendered in .notes-list on page load.
-  // AJAX load is only triggered by filter, reset, save, delete, or pagination.
+  // Initialize components
   $(function(){
-    // nothing to do on init
+    $('.notes-component').each(function(){
+      load($(this));
+    });
   });
 
   // Handle filter form submit
@@ -53,16 +54,6 @@
     const $c = $btn.closest('.notes-component');
     const $filt = $c.find('.notes-filter-form');
     $filt[0].reset();
-    load($c);
-  });
-
-  // Allow dynamically loaded tabs to refresh the list with the same clean state as Reset.
-  $(document).on('notes:refresh', '.notes-component', function () {
-    const $c = $(this);
-    const $filt = $c.find('.notes-filter-form');
-    if ($filt.length && $filt[0]) {
-      $filt[0].reset();
-    }
     load($c);
   });
 

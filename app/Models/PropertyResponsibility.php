@@ -13,7 +13,6 @@ class PropertyResponsibility extends Model
 
     protected $fillable = [
         'property_id',
-        'responsibility_type',
         'user_id',
         'branch_id',
         'designation_id',

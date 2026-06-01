@@ -1,5 +1,5 @@
 
-<x-backend.notes.notes
+<x-backend-notes-component
     :noteable-type="get_class($user)"
     :noteable-id="$user->id"
     :note-types="$noteTypes"

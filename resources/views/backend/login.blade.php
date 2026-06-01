@@ -18,9 +18,6 @@
                 <input type="checkbox" class="form-check-input" id="remember" name="remember" checked>
                 <label class="form-check-label" for="remember">Remember Me</label>
             </div>
-            <div class="mb-3">
-                <a href="{{ route('password.request') }}">Forgot password?</a>
-            </div>
             <button type="submit" class="btn btn-primary">Login</button>
         </form>
     </div>

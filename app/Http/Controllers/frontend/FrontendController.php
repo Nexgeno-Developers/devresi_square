@@ -29,9 +29,16 @@ class FrontendController
 
     public function pricing()
     {
-        
         return view('frontend.pricing');
     }
-    
 
+    public function ourPlans()
+    {
+        $plans = \App\Models\Plan::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        return view('frontend.our_plans', compact('plans'));
+    }
 }

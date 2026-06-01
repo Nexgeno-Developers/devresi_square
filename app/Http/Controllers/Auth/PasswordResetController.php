@@ -11,50 +11,10 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash as FacadesHash;
-use Illuminate\Support\Str;
 
 class PasswordResetController extends Controller
 {
-    public function showLinkRequestForm()
-    {
-        return view('auth.passwords.email');
-    }
-
-    public function sendResetLinkEmail(Request $request)
-    {
-        $request->validate([
-            'email' => ['required', 'email'],
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-
-        if ($user) {
-            $token = Str::random(64);
-
-            DB::table('password_reset_tokens')->updateOrInsert(
-                ['email' => $user->email],
-                [
-                    'token' => Hash::make($token),
-                    'created_at' => now(),
-                ]
-            );
-
-            $resetLink = route('password.reset.form', ['token' => $token, 'email' => $user->email]);
-
-            Mail::raw(
-                "Hello {$user->name},\n\nUse the link below to reset your password:\n{$resetLink}\n\nIf you did not request this, you can ignore this email.",
-                function ($message) use ($user) {
-                    $message->to($user->email)
-                        ->subject('Reset Your Password');
-                }
-            );
-        }
-
-        return back()->with('status', 'If this email exists, a password reset link has been sent.');
-    }
-
     /**
      * Show the password reset form.
      */

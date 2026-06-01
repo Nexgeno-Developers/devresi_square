@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Spatie\Permission\Models\Role;
 use Illuminate\Database\Eloquent\Model;
 
 class Staff extends Model
@@ -9,14 +10,13 @@ class Staff extends Model
     protected $fillable = [
         'user_id',
         'parent_id',
-        'branch_id',
-        'permissions_customized',
+        'role_id',
+        // if you have other columns, e.g.:
+        // 'department',
+        // 'status',
     ];
 
-    protected $casts = [
-        'permissions_customized' => 'boolean',
-    ];
-
+    // Relations, etc...
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -27,23 +27,9 @@ class Staff extends Model
         return $this->belongsTo(User::class, 'parent_id');
     }
 
-    public function branch()
+    public function role()
     {
-        return $this->belongsTo(Branch::class);
+    return $this->belongsTo(Role::class);
     }
 
-    public function contacts()
-    {
-        return $this->hasMany(StaffContact::class);
-    }
-
-    public function emails()
-    {
-        return $this->hasMany(StaffContact::class)->where('type', 'email');
-    }
-
-    public function phones()
-    {
-        return $this->hasMany(StaffContact::class)->where('type', 'phone');
-    }
 }
