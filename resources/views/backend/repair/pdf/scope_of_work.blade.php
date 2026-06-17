@@ -71,7 +71,10 @@
         @foreach(explode(',', (string) $photo->photos) as $photoId)
             @php
                 $photoId = trim($photoId);
-                $url = $photoId ? uploaded_asset($photoId) : null;
+                $upload = $photoId ? \App\Models\Upload::find($photoId) : null;
+                $path = $upload && ! $upload->external_link ? storage_path('app/public/' . $upload->file_name) : null;
+                $mime = $path && is_file($path) ? mime_content_type($path) : null;
+                $url = $path && $mime ? 'data:' . $mime . ';base64,' . base64_encode(file_get_contents($path)) : null;
                 $hasPhotos = $hasPhotos || (bool) $url;
             @endphp
             @if($url)

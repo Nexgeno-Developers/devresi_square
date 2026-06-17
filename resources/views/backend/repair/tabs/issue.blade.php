@@ -1,7 +1,10 @@
 <div class="d-flex justify-content-end mb-3">
-    <a href="{{ route('admin.property_repairs.edit', $repairIssue->id) }}" class="btn btn-sm btn-outline-danger">
+    <button type="button" class="btn btn-sm btn-outline-danger editRepairForm"
+        data-id="{{ $repairIssue->id }}"
+        data-form="property_issue_details"
+        data-title="Edit Issue">
         <i class="fas fa-edit"></i> Edit
-    </a>
+    </button>
 </div>
 
 <div class="accordion" id="repairIssueTabAccordion">

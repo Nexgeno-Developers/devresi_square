@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Backend;
 
 use Carbon\Carbon;
+use App\Mail\MailManager;
+use App\Models\RepairIssueContractorAssignment;
 use App\Models\Upload;
 use App\Models\TaxRates;
 use App\Models\WorkOrder;
 use Illuminate\Http\Request;
 use App\Models\WorkOrderItem;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rule;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 class WorkOrderController
@@ -33,6 +37,11 @@ class WorkOrderController
             'booked_date' => 'nullable|date',
             'status' => 'required|string',
             'extra_notes' => 'nullable|string',
+            'final_contractor_assignment_id' => [
+                'required',
+                Rule::exists('repair_issue_contractor_assignments', 'id')
+                    ->where(fn ($query) => $query->where('repair_issue_id', $request->repair_issue_id)),
+            ],
             'items' => 'nullable|array',
             'items.*.title' => 'required|string',
             'items.*.description' => 'nullable|string',
@@ -40,6 +49,9 @@ class WorkOrderController
             'items.*.quantity' => 'required|numeric|min:1',
             'items.*.tax_name' => 'required|string',
             'items.*.tax_rate' => 'required|numeric|min:0|max:100',
+        ], [
+            'final_contractor_assignment_id.required' => 'Please select final contractor before saving work order.',
+            'final_contractor_assignment_id.exists' => 'Selected final contractor is not valid for this repair issue.',
         ]);
 
         // Check if we're updating an existing Work Order
@@ -104,6 +116,13 @@ class WorkOrderController
                     'total_price' => $total,
                 ]);
             }
+        }
+
+        if ($request->filled('final_contractor_assignment_id')) {
+            $this->setFinalContractorFromAssignment(
+                (int) $request->repair_issue_id,
+                (int) $request->final_contractor_assignment_id
+            );
         }
 
         return response()->json([
@@ -247,26 +266,89 @@ class WorkOrderController
 
     public function generateWorkOrderPDF($id)
     {
-        // Fetch Work Order
-        $workorder = WorkOrder::with('items', 'repairIssue.finalContractor')->findOrFail($id);
-        
-        // Fetch tax rates
-        $taxRates = TaxRates::all();
-
-        // PDF Options
-        $data = [
-            'workorder' => $workorder,
-            'taxRates' => $taxRates,
-            'direction' => 'ltr', // Adjust if RTL is needed
-            'text_align' => 'left',
-            'not_text_align' => 'right',
-        ];
-
-        // Generate PDF
-        $pdf = Pdf::loadView('backend.work_orders.work_order_pdf', $data);
+        $workorder = $this->workOrderForPdf((int) $id);
+        $pdf = $this->buildWorkOrderPdf($workorder);
 
         // Download PDF
         return $pdf->download('workorder-invoice-' . $workorder->works_order_no . '.pdf');
+    }
+
+    public function sendWorkOrder($id)
+    {
+        $workorder = $this->workOrderForPdf((int) $id);
+        $contractor = $workorder->repairIssue?->finalContractor;
+
+        if (! $contractor?->email) {
+            return response()->json(['message' => 'Select a final contractor with an email before sending the work order.'], 422);
+        }
+
+        $pdf = $this->buildWorkOrderPdf($workorder);
+
+        Mail::to($contractor->email)->send(new MailManager([
+            'subject' => 'Work order - ' . $workorder->works_order_no,
+            'content' => view('emails.repair_work_assigned', [
+                'repairIssue' => $workorder->repairIssue,
+                'contractor' => $contractor,
+                'assignment' => RepairIssueContractorAssignment::where('repair_issue_id', $workorder->repair_issue_id)
+                    ->where('contractor_id', $contractor->id)
+                    ->first(),
+            ])->render(),
+            'attachments' => [[
+                'type' => 'data',
+                'data' => $pdf->output(),
+                'name' => 'work-order-' . $workorder->works_order_no . '.pdf',
+                'options' => ['mime' => 'application/pdf'],
+            ]],
+        ]));
+
+        return response()->json(['message' => 'Work order sent to final contractor successfully.']);
+    }
+
+    private function setFinalContractorFromAssignment(int $repairIssueId, int $assignmentId): void
+    {
+        $assignment = RepairIssueContractorAssignment::where('repair_issue_id', $repairIssueId)
+            ->findOrFail($assignmentId);
+
+        $assignment->repairIssue()->update([
+            'final_contractor_id' => $assignment->contractor_id,
+        ]);
+
+        RepairIssueContractorAssignment::where('repair_issue_id', $repairIssueId)
+            ->where('status', 'Finalized')
+            ->update(['status' => 'Proposed']);
+
+        $assignment->update(['status' => 'Finalized']);
+    }
+
+    private function workOrderForPdf(int $id): WorkOrder
+    {
+        return WorkOrder::with([
+            'items',
+            'jobType',
+            'jobSubType',
+            'repairIssue.finalContractor',
+            'repairIssue.property.creator',
+            'repairIssue.repairCategory',
+            'repairIssue.tenant',
+        ])->findOrFail($id);
+    }
+
+    private function buildWorkOrderPdf(WorkOrder $workorder)
+    {
+        $tempDir = storage_path('app/mpdf');
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0775, true);
+        }
+
+        return Pdf::loadView('backend.work_orders.work_order_pdf', [
+            'workorder' => $workorder,
+            'taxRates' => TaxRates::all(),
+            'direction' => 'ltr',
+            'text_align' => 'left',
+            'not_text_align' => 'right',
+        ], [], [
+            'tempDir' => $tempDir,
+        ]);
     }
 
 }

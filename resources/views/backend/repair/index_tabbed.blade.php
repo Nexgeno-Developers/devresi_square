@@ -63,6 +63,26 @@
         #quoteRequestModal .btn {
             white-space: normal;
         }
+
+        #largeModalScrollable .repair-manager-select-wrap,
+        #largeModalScrollable .repair-manager-select,
+        #largeModalScrollable .select2-container {
+            max-width: 100%;
+            width: 100% !important;
+        }
+
+        #largeModalScrollable .repair-manager-select {
+            min-height: 42px;
+        }
+
+        #largeModalScrollable .select2-selection--multiple {
+            min-height: 42px;
+            padding-bottom: 4px;
+        }
+
+        #largeModalScrollable .select2-search__field {
+            min-width: 180px;
+        }
     </style>
 
     <div class="row g-0 view_properties">
@@ -151,10 +171,15 @@
         $(function () {
             const tabbedIndexUrl = "{{ route('admin.property_repairs.index_tabbed') }}";
             const workOrderStoreUrl = "{{ route('admin.work_orders.store') }}";
+            const repairLoadFormUrl = "{{ route('admin.property_repairs.loadForm') }}";
+            const repairSaveFormUrl = "{{ route('admin.property_repairs.saveForm') }}";
+            const propertyAjaxUrl = "{{ route('admin.properties.ajax') }}";
             const quoteContractorStoreUrl = "{{ route('admin.property_repairs.quote_contractors.store') }}";
             const jobSubTypeUrl = "{{ route('admin.job_types.getSubCategories', '__ID__') }}";
+            const repairSubCategoryUrl = "{{ route('admin.property_repairs.getSubCategories', '__ID__') }}";
             const usersByPropertyUrl = "{{ route('admin.getUsersByProperty', ['propertyId' => 'PROPERTYID', 'roleId' => 'ROLEID']) }}";
             const tenantsByPropertyUrl = "{{ route('admin.getTenantsByProperty', ['propertyId' => 'PROPERTYID']) }}";
+            const poundSymbol = @json(getPoundSymbol());
             const csrfToken = $('meta[name="csrf-token"]').attr('content');
 
             let currentRepairId = "{{ $selectedRepairId }}";
@@ -166,7 +191,7 @@
                 const labels = {
                     'issue': 'Issue',
                     'property-manager': 'Property Manager',
-                    'contractors': 'Contractors',
+                    'contractors': 'Request a quote',
                     'work-order': 'Work Order'
                 };
 
@@ -414,6 +439,60 @@
                 updateStatusOptions(selectedInvoiceTo);
                 loadInvoiceToDetails(selectedInvoiceTo, $('#property_id').val());
                 calculateWorkOrderTotals();
+                updateFinalContractorDetails(false);
+            }
+
+            function updateFinalContractorDetails(markUnsaved = true) {
+                const $select = $('#finalContractorAssignmentSelect');
+                if (!$select.length) return;
+
+                const $selected = $select.find('option:selected');
+                const selectedValue = $select.val();
+                const $panel = $('#finalContractorDetailPanel');
+
+                if (!selectedValue) {
+                    $panel.addClass('d-none');
+                    if (markUnsaved) {
+                        $('#sendWorkOrderBtn, #downloadWorkOrderPdfBtn').prop('disabled', true);
+                    }
+                    return;
+                }
+
+                const costPrice = $selected.data('cost-price');
+                const startDate = $selected.data('start-date');
+                const endDate = $selected.data('end-date');
+
+                $('#finalContractorName').text($selected.data('contractor-name') || 'N/A');
+                $('#finalContractorEmail').text($selected.data('contractor-email') || 'N/A');
+                $('#finalContractorPhone').text($selected.data('contractor-phone') || 'N/A');
+                $('#finalContractorCost').text(costPrice !== undefined && costPrice !== '' ? poundSymbol + Number(costPrice).toFixed(2) : '-');
+                $('#finalContractorAvailability').text($selected.data('availability') || '-');
+                $('#finalContractorNotes').text($selected.data('notes') || '-');
+                $panel.removeClass('d-none');
+
+                if (markUnsaved && costPrice !== undefined && costPrice !== '') {
+                    const $firstUnitPrice = $('#workorder-items tr:first .unit-price');
+                    if ($firstUnitPrice.length) {
+                        $firstUnitPrice.val(Number(costPrice).toFixed(2));
+                    }
+                }
+
+                if (markUnsaved && startDate) {
+                    $('input[name="tentative_start_date"]').val(startDate);
+                }
+
+                if (markUnsaved && endDate) {
+                    $('input[name="tentative_end_date"]').val(endDate);
+                }
+
+                if (markUnsaved) {
+                    calculateWorkOrderTotals();
+                }
+
+                if (markUnsaved) {
+                    $('#sendWorkOrderBtn, #downloadWorkOrderPdfBtn').prop('disabled', true);
+                    AIZ.plugins.notify('warning', 'Save the work order to apply this final contractor.');
+                }
             }
 
             function initialiseTabPlugins() {
@@ -423,12 +502,209 @@
                     const $select = $(this);
                     if ($select.hasClass('select2-hidden-accessible')) return;
 
-                    if (typeof initSelect2 === 'function') {
-                        initSelect2($select);
-                    } else {
-                        $select.select2({ width: '100%' });
-                    }
+                    $select.select2({
+                        width: '100%',
+                        placeholder: $select.data('placeholder') || 'Select option(s)',
+                        dropdownParent: $select.closest('.modal-content').length
+                            ? $select.closest('.modal-content')
+                            : $(document.body)
+                    });
                 });
+            }
+
+            function initialiseRepairEditForm(formType) {
+                initialiseTabPlugins();
+
+                if (formType === 'property_issue_details') {
+                    if (typeof AIZ !== 'undefined' && AIZ.uploader) {
+                        AIZ.uploader.previewGenerate();
+                    }
+
+                    initialiseIssuePropertySelector();
+                    initialiseIssueTenantSelector();
+                    initialiseIssueCategorySelector();
+                }
+
+                if (formType === 'contractor_assign') {
+                    if (typeof AIZ !== 'undefined' && AIZ.uploader) {
+                        AIZ.uploader.previewGenerate();
+                    }
+                    initialiseContractorAssignmentSelects();
+                    reindexContractorRows();
+                    syncFinalContractorOptions();
+                }
+            }
+
+            function initialiseContractorAssignmentSelects() {
+                $('.contractor-select').each(function () {
+                    const $select = $(this);
+                    const contractorId = String($select.data('current-contractor-id') || '');
+
+                    if (!contractorId) return;
+
+                    if (!$select.find('option[value="' + contractorId + '"]').length) {
+                        const label = $select.closest('.contractor-assignment-row').find('.current-contractor-label').text().replace(/^Current:\s*/, '').trim();
+                        if (label) {
+                            $select.append(new Option(label, contractorId, true, true));
+                        }
+                    }
+
+                    $select.val(contractorId).trigger('change.select2');
+                });
+            }
+
+            function initialiseIssuePropertySelector() {
+                $('#changeIssuePropertyBtn').off('click').on('click', function () {
+                    $('#issuePropertySelectorWrap').toggleClass('d-none');
+                });
+
+                if (! $.fn.select2 || !$('#issue_property_id').length) return;
+
+                $('#issue_property_id').select2({
+                    width: '100%',
+                    dropdownParent: $('#largeModalScrollable .modal-content'),
+                    ajax: {
+                        url: propertyAjaxUrl,
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return { q: params.term };
+                        },
+                        processResults: function (data) {
+                            return { results: data.results || [] };
+                        }
+                    },
+                    minimumInputLength: 2
+                });
+            }
+
+            function initialiseIssueTenantSelector() {
+                const propertyId = $('#issue_property_id').val() || $('#selected_property').val();
+                const selectedTenantId = $('#selected_tenant').val();
+
+                function fetchTenants(propertyIdToFetch) {
+                    if (!propertyIdToFetch || !$('#tenant-select').length) return;
+
+                    $('#tenant-select').html('<option value="">Loading...</option>');
+                    $.ajax({
+                        url: "{{ route('admin.getTenantsByProperty', ['propertyId' => 'PROPERTYID']) }}".replace('PROPERTYID', propertyIdToFetch),
+                        type: 'GET',
+                        success: function (response) {
+                            let options = '<option value="">-- Select Tenant --</option>';
+                            $.each(response, function (index, tenant) {
+                                const selected = String(tenant.id) === String(selectedTenantId) ? 'selected' : '';
+                                options += `<option value="${tenant.id}" data-email="${tenant.email || ''}" data-phone="${tenant.phone || ''}" ${selected}>${tenant.name}</option>`;
+                            });
+                            $('#tenant-select').html(options).trigger('change');
+                        },
+                        error: function () {
+                            $('#tenant-select').html('<option value="">Unable to load tenants</option>');
+                        }
+                    });
+                }
+
+                fetchTenants(propertyId);
+
+                $('#issue_property_id').off('change.issueTenant').on('change.issueTenant', function () {
+                    $('#selected_property').val($(this).val());
+                    fetchTenants($(this).val());
+                });
+            }
+
+            function initialiseIssueCategorySelector() {
+                $('#change-category-btn').off('click').on('click', function () {
+                    $('#category-display-card').addClass('d-none');
+                    $('#category-edit-card').removeClass('d-none');
+                    $('#cancel-category-btn').removeClass('d-none');
+                });
+
+                $('#cancel-category-btn').off('click').on('click', function () {
+                    $('#category-edit-card').addClass('d-none');
+                    $('#category-display-card').removeClass('d-none');
+                });
+
+                $('.category-select').off('change').on('change', function () {
+                    const $select = $(this);
+                    const selectedId = $select.val();
+                    const level = parseInt($select.data('level'), 10);
+                    const selectedCategories = {};
+
+                    $('.category-select').each(function () {
+                        const value = $(this).val();
+                        const itemLevel = $(this).data('level');
+                        if (value && itemLevel <= level) {
+                            selectedCategories['level_' + itemLevel] = value;
+                        }
+                    });
+
+                    $('#selected_categories').val(JSON.stringify(selectedCategories));
+                    $('#last_selected_category').val(selectedId);
+
+                    $('.category-level').filter(function () {
+                        return parseInt($(this).data('level'), 10) > level;
+                    }).hide().find('select').html('<option value="">-- Select --</option>');
+
+                    if (!selectedId) return;
+
+                    $.ajax({
+                        url: repairSubCategoryUrl.replace('__ID__', selectedId),
+                        type: 'GET',
+                        success: function (response) {
+                            if (!Array.isArray(response) || response.length === 0) return;
+
+                            const nextLevel = level + 1;
+                            const $next = $('.category-level[data-level="' + nextLevel + '"]');
+                            let options = '<option value="">-- Select --</option>';
+                            response.forEach(function (category) {
+                                options += `<option value="${category.id}">${category.name}</option>`;
+                            });
+                            $next.show().find('select').html(options);
+                        }
+                    });
+                });
+            }
+
+            function reindexContractorRows() {
+                $('#contractorAssignmentRows .contractor-assignment-row').each(function (index) {
+                    $(this).find('input, select').each(function () {
+                        const name = $(this).attr('name');
+                        if (name) {
+                            $(this).attr('name', name.replace(/contractor_assignments\[\d+\]/, 'contractor_assignments[' + index + ']'));
+                        }
+                    });
+                });
+            }
+
+            function syncFinalContractorOptions() {
+                const $finalSelect = $('#final_contractor_id');
+                if (!$finalSelect.length) return;
+
+                const currentValue = String($finalSelect.val() || '');
+                const contractors = new Map();
+
+                $('.contractor-select').each(function () {
+                    const value = String($(this).val() || '');
+                    if (!value || contractors.has(value)) return;
+
+                    const text = $(this).find('option:selected').text();
+                    contractors.set(value, text);
+                });
+
+                if ($finalSelect.hasClass('select2-hidden-accessible')) {
+                    $finalSelect.select2('destroy');
+                }
+
+                $finalSelect.empty().append(new Option('No final contractor', '', false, currentValue === ''));
+
+                contractors.forEach(function (text, value) {
+                    $finalSelect.append(new Option(text, value, false, value === currentValue));
+                });
+
+                if (currentValue && !contractors.has(currentValue)) {
+                    $finalSelect.val('');
+                }
+
+                initialiseTabPlugins();
             }
 
             function destroyQuoteContractorSelect() {
@@ -578,6 +854,103 @@
                 loadRepairList($(this).attr('href'));
             });
 
+            $(document).on('click', '.editRepairForm', function () {
+                const formType = $(this).data('form');
+                const repairId = $(this).data('id');
+                const modalTitle = $(this).data('title') || 'Edit Details';
+
+                $('#largeModalScrollable .modal-title').text(modalTitle);
+                $('#largeModalScrollable .modal-body').html('Loading...');
+
+                $.ajax({
+                    url: repairLoadFormUrl,
+                    type: 'GET',
+                    data: { form_type: formType, repair_id: repairId },
+                    success: function (response) {
+                        $('#largeModalScrollable .modal-body').html(response.form_html);
+                        $('#largeModalScrollable').modal('show');
+                        initialiseRepairEditForm(formType);
+                    },
+                    error: function (error) {
+                        const message = error.responseJSON?.message || 'Failed to load edit form.';
+                        AIZ.plugins.notify('danger', message);
+                    }
+                });
+            });
+
+            $(document).on('submit', '#largeModalScrollable form', function (e) {
+                e.preventDefault();
+
+                const $form = $(this);
+                const formType = $form.find('input[name="form_type"]').val();
+
+                $.ajax({
+                    url: repairSaveFormUrl,
+                    type: 'POST',
+                    data: new FormData(this),
+                    processData: false,
+                    contentType: false,
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                    success: function () {
+                        $('#largeModalScrollable').modal('hide');
+                        AIZ.plugins.notify('success', 'Form updated successfully');
+                        loadTabContent(currentRepairId, currentTab, false);
+                    },
+                    error: function (error) {
+                        const message = error.responseJSON?.message || 'An error occurred while saving the form.';
+                        AIZ.plugins.notify('danger', message);
+                    }
+                });
+            });
+
+            $(document).on('click', '#addContractorAssignmentRow', function () {
+                const $firstRow = $('#contractorAssignmentRows .contractor-assignment-row:first');
+                const $newRow = $firstRow.clone();
+
+                $newRow.find('.select2-container').remove();
+                $newRow.find('input[type="hidden"][name*="[contractor_id]"]').remove();
+                $newRow.find('select')
+                    .prop('disabled', false)
+                    .addClass('select2')
+                    .removeClass('select2-hidden-accessible')
+                    .removeAttr('data-select2-id aria-hidden tabindex')
+                    .removeAttr('data-current-contractor-id')
+                    .attr('name', 'contractor_assignments[0][contractor_id]')
+                    .val('');
+                $newRow.find('.current-contractor-label').remove();
+                $newRow.find('input[type="hidden"]').val('');
+                $newRow.find('input[type="number"], input[type="datetime-local"]').val('');
+                $newRow.find('.file-preview').empty();
+                $('#contractorAssignmentRows').append($newRow);
+                reindexContractorRows();
+                initialiseTabPlugins();
+                syncFinalContractorOptions();
+            });
+
+            $(document).on('click', '.remove-contractor-row', function () {
+                if ($('#contractorAssignmentRows .contractor-assignment-row').length === 1) {
+                    $(this).closest('.contractor-assignment-row').find('input, select').val('');
+                    syncFinalContractorOptions();
+                    return;
+                }
+
+                $(this).closest('.contractor-assignment-row').remove();
+                reindexContractorRows();
+                syncFinalContractorOptions();
+            });
+
+            $(document).on('change', '.contractor-select', function () {
+                syncFinalContractorOptions();
+            });
+
+            $(document).on('click', '#toggleWorkOrderEdit', function () {
+                const editing = $('#workOrderEditView').hasClass('d-none');
+                $('#workOrderEditView').toggleClass('d-none', !editing);
+                $('#workOrderDetailView').toggleClass('d-none', editing);
+                $(this).text(editing ? 'View Work Order' : ($('#workOrderDetailView').length ? 'Edit Work Order' : 'Create Work Order'));
+                initialiseWorkOrderTab();
+            });
+
             $(document).on('shown.bs.modal', '#quoteRequestModal', function () {
                 setTimeout(function () {
                     initialiseQuoteContractorSelect();
@@ -718,6 +1091,13 @@
             $(document).on('submit', '#workOrderForm', function (e) {
                 e.preventDefault();
 
+                const $finalContractorSelect = $('#finalContractorAssignmentSelect');
+                if ($finalContractorSelect.length && !$finalContractorSelect.val()) {
+                    AIZ.plugins.notify('danger', 'Please select final contractor before saving work order.');
+                    $finalContractorSelect.focus();
+                    return;
+                }
+
                 if (typeof initValidate === 'function') {
                     initValidate('#workOrderForm');
                     $(this).attr('novalidate', 'novalidate');
@@ -738,6 +1118,39 @@
                     error: function (error) {
                         const errorMessage = error.responseJSON?.message || 'Error Creating Work Order';
                         AIZ.plugins.notify('danger', errorMessage);
+                    }
+                });
+            });
+
+            $(document).on('change', '#finalContractorAssignmentSelect', function () {
+                updateFinalContractorDetails(true);
+            });
+
+            $(document).on('click', '#sendWorkOrderBtn, .send-work-order-btn', function () {
+                const $button = $(this);
+                const sendUrl = $button.data('send-url');
+
+                if (!sendUrl) {
+                    AIZ.plugins.notify('warning', 'Save the work order before sending.');
+                    return;
+                }
+
+                const originalText = $button.text();
+                $button.prop('disabled', true).text('Sending...');
+
+                $.ajax({
+                    url: sendUrl,
+                    type: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                    success: function (response) {
+                        AIZ.plugins.notify('success', response.message);
+                    },
+                    error: function (error) {
+                        const message = error.responseJSON?.message || 'Failed to send work order.';
+                        AIZ.plugins.notify('danger', message);
+                    },
+                    complete: function () {
+                        $button.prop('disabled', false).text(originalText);
                     }
                 });
             });
@@ -767,26 +1180,6 @@
                     complete: function () {
                         $submitButton.text(originalText);
                         updateQuoteRequestSubmitState();
-                    }
-                });
-            });
-
-            $(document).on('click', '.finalize-contractor-btn', function () {
-                if (!confirm('Finalize this contractor for the repair issue? This can only be done once.')) {
-                    return;
-                }
-
-                $.ajax({
-                    url: $(this).data('url'),
-                    type: 'POST',
-                    headers: { 'X-CSRF-TOKEN': csrfToken },
-                    success: function (response) {
-                        AIZ.plugins.notify('success', response.message);
-                        loadTabContent(currentRepairId, 'contractors', false);
-                    },
-                    error: function (error) {
-                        const message = error.responseJSON?.message || 'Failed to finalize contractor.';
-                        AIZ.plugins.notify('danger', message);
                     }
                 });
             });

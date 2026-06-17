@@ -92,6 +92,11 @@
     @endif
     
 @else
+    @php
+        $currentUser = auth()->user();
+        $isTenantUser = $currentUser?->hasRole('Tenant');
+        $canEditRepairAdminFields = $currentUser?->hasAnyRole(['Super Admin', 'Landlord', 'Estate Agent', 'Agent']);
+    @endphp
     <form id="propertyNotesForm">
         @csrf
         <!-- somewhere above your tenant block… -->
@@ -99,6 +104,40 @@
         <input type="hidden" name="repair_id" value="{{ $repairIssue->id }}">
         <input type="hidden" name="form_type" value="property_issue_details">
         <div class="row">
+            <div class="col-12">
+                <div class="card mb-3 validate-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        Property
+                        @if($canEditRepairAdminFields)
+                            <button type="button" class="btn btn-info btn-sm" id="changeIssuePropertyBtn">Change Property</button>
+                        @endif
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">
+                            <strong>Current Property:</strong>
+                            {{ $repairIssue->property->prop_ref_no ?? '' }}
+                            {{ $repairIssue->property->prop_name ?? 'N/A' }}
+                            @if($repairIssue->property)
+                                - {{ $repairIssue->property->line_1 }} {{ $repairIssue->property->city }}
+                            @endif
+                        </p>
+                        @if($canEditRepairAdminFields)
+                            <div class="form-group d-none" id="issuePropertySelectorWrap">
+                                <label for="issue_property_id">Search And Select Property</label>
+                                <select name="property_id" id="issue_property_id" class="form-control" style="width: 100%;">
+                                    @if($repairIssue->property)
+                                        <option value="{{ $repairIssue->property->id }}" selected>
+                                            {{ $repairIssue->property->prop_ref_no }} - {{ $repairIssue->property->prop_name }}, {{ $repairIssue->property->line_1 }}, {{ $repairIssue->property->city }}
+                                        </option>
+                                    @endif
+                                </select>
+                            </div>
+                        @else
+                            <input type="hidden" name="property_id" value="{{ $repairIssue->property_id }}">
+                        @endif
+                    </div>
+                </div>
+            </div>
             <div class="col-12">
                 <!-- Category Display Card: Read-only view with current selection -->
                 <div class="card mb-3 validate-card" id="category-display-card">
@@ -186,6 +225,7 @@
                     </div>
                 </div>
             </div>
+            @if($canEditRepairAdminFields)
             <div class="col-6">
                 <div class="mb-3">
                     <h6>Priority</h6>
@@ -226,6 +266,7 @@
                     </select>
                 </div>
             </div>
+            @endif
             <div class="col-6">
                 <!-- New Fields: Tenant/Owner Availability and Access Details -->
                 <h6>Tenant/Owner Details</h6>
@@ -242,17 +283,23 @@
                         rows="3">{{ old('access_details', $repairIssue->access_details) }}</textarea>
                 </div>
                 <div class="form-group">
-                    <input type="hidden" id="selected_tenant" value="{{ $repairIssue->tenant_id ?? '' }}">
+                    <input type="hidden" id="selected_tenant" value="{{ $isTenantUser ? auth()->id() : ($repairIssue->tenant_id ?? '') }}">
                     <label for="tenant-select">Select Tenant</label>
-                    <select name="tenant_id" id="tenant-select" class="form-control">
-                        <option value="">-- Select Tenant --</option>
-                        <!-- Options will be populated dynamically via AJAX -->
-                    </select>
+                    @if($isTenantUser)
+                        <input type="hidden" name="tenant_id" value="{{ auth()->id() }}">
+                        <input type="text" class="form-control" value="{{ auth()->user()->name }}" readonly>
+                    @else
+                        <select name="tenant_id" id="tenant-select" class="form-control">
+                            <option value="">-- Select Tenant --</option>
+                            <!-- Options will be populated dynamically via AJAX -->
+                        </select>
+                    @endif
                 </div>
                 <div id="tenant-preview" class="mt-3">
                     <!-- Tenant details preview will appear here -->
                 </div>
             </div>
+            @if($canEditRepairAdminFields)
             <div class="col-6">
                 <!-- Estimated Price (Only for admin/property manager) -->
                 {{-- @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('property_manager')) --}}
@@ -302,6 +349,7 @@
             
                 {{-- @endif --}}
             </div>
+            @endif
         </div>
         <div class="modal-footer px-0">
             <div class="row">

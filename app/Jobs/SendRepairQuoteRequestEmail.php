@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
@@ -46,9 +47,12 @@ class SendRepairQuoteRequestEmail implements ShouldQueue
             now()->addDays(14),
             ['assignment' => $assignment->id, 'token' => $assignment->quote_token]
         );
+        $tempDir = storage_path('app/mpdf');
+        File::ensureDirectoryExists($tempDir);
+
         $pdf = Pdf::loadView('backend.repair.pdf.scope_of_work', [
             'repairIssue' => $repairIssue,
-        ], [], ['format' => 'A4']);
+        ], [], ['format' => 'A4', 'tempDir' => $tempDir]);
 
         Mail::to($contractor->email)->send(new MailManager([
             'subject' => 'Quote request for repair ' . $repairIssue->reference_number,

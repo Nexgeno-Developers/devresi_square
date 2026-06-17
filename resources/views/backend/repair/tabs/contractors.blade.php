@@ -4,11 +4,14 @@
         Scope of Work PDF
     </a>
     <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#quoteRequestModal">
-        Quote Request
+        send quote request
     </button>
-    <a href="{{ route('admin.property_repairs.edit', $repairIssue->id) }}" class="btn btn-sm btn-outline-danger">
+    <button type="button" class="btn btn-sm btn-outline-danger editRepairForm"
+        data-id="{{ $repairIssue->id }}"
+        data-form="contractor_assign"
+        data-title="Edit Contractor Assignment">
         <i class="fas fa-edit"></i> Edit Contractors
-    </a>
+    </button>
 </div>
 
 <div class="accordion" id="repairContractorsTabAccordion">
@@ -34,17 +37,11 @@
                                         <p class="mb-1"><strong>Email:</strong> {{ $assignment->contractor->email ?? 'N/A' }}</p>
                                         <p class="mb-1"><strong>Status:</strong> {{ $assignment->status }}</p>
                                     </div>
-                                    <div>
-                                        @if(! $repairIssue->final_contractor_id)
-                                            <button type="button"
-                                                class="btn btn-sm btn-success finalize-contractor-btn"
-                                                data-url="{{ route('admin.property_repairs.contractors.finalize', [$repairIssue->id, $assignment->id]) }}">
-                                                Finalize Contractor
-                                            </button>
-                                        @elseif((int) $repairIssue->final_contractor_id === (int) $assignment->contractor_id)
+                                    @if((int) $repairIssue->final_contractor_id === (int) $assignment->contractor_id)
+                                        <div>
                                             <span class="badge bg-success">Final Contractor</span>
-                                        @endif
-                                    </div>
+                                        </div>
+                                    @endif
                                 </div>
 
                                 <hr>
@@ -114,21 +111,6 @@
         </div>
     </div>
 
-    <div class="accordion-item">
-        <h2 class="accordion-header" id="heading-final-contractor">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                data-bs-target="#collapse-final-contractor" aria-expanded="true"
-                aria-controls="collapse-final-contractor">
-                Final Contractor
-            </button>
-        </h2>
-        <div id="collapse-final-contractor" class="accordion-collapse collapse show"
-            aria-labelledby="heading-final-contractor">
-            <div class="accordion-body">
-                @include('backend.repair.popup_forms.final_contractor', ['repairIssue' => $repairIssue])
-            </div>
-        </div>
-    </div>
 </div>
 
 <div class="modal fade" id="quoteRequestModal" tabindex="-1" aria-labelledby="quoteRequestModalLabel" aria-hidden="true">
@@ -137,7 +119,7 @@
             <form id="quoteRequestForm" action="{{ route('admin.property_repairs.quote_requests.store', $repairIssue->id) }}" method="POST">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title" id="quoteRequestModalLabel">Quote Request</h5>
+                    <h5 class="modal-title" id="quoteRequestModalLabel">send quote request</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -212,7 +194,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="sendQuoteRequestBtn" disabled>Send Quote Request</button>
+                    <button type="submit" class="btn btn-primary" id="sendQuoteRequestBtn" disabled>send quote request</button>
                 </div>
             </form>
         </div>

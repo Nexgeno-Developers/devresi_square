@@ -119,8 +119,20 @@
         .header { text-align: center; margin-bottom: 20px; }
         .company-info { text-align: center; font-size: 18px; }
         .workorder-details { margin-top: 20px; }
+        .workorder-detail-table { width: 100%; border-collapse: collapse; margin-top: 12px; margin-bottom: 18px; }
+        .workorder-detail-table th { width: 28%; background: #f4f4f4; border: 1px solid #ddd; padding: 7px; text-align: left; font-weight: bold; vertical-align: top; }
+        .workorder-detail-table td { border: 1px solid #ddd; padding: 7px; text-align: left; vertical-align: top; line-height: 1.4; }
         .workorder-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
         .workorder-table th, .workorder-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .authorisation-box { margin-top: 24px; border: 1px solid #d7dbe2; border-left: 4px solid #c38127; background: #f8f9fb; padding: 12px 14px; text-align: left; }
+        .authorisation-box .label { font-size: 11px; text-transform: uppercase; font-weight: bold; color: #111; margin-bottom: 8px; letter-spacing: 0; }
+        .authorisation-box address { margin: 0; line-height: 1.45; color: #333; }
+        .authorisation-box address span { color: #666; }
+        .authorisation-box address strong { color: #111; font-size: 13px; }
+        .instructions-conditions { margin-top: 20px; text-align: left; }
+        .instructions-conditions h3 { margin-bottom: 8px; font-size: 15px; }
+        .instructions-conditions ul { margin-top: 0; padding-left: 18px; }
+        .instructions-conditions li { margin-bottom: 5px; line-height: 1.4; }
         .footer { margin-top: 20px; text-align: center; font-size: 12px; color: gray; }
     </style>
     @stack('styles')
@@ -146,26 +158,23 @@
                         @endif
                     </td>
                     <td class="text-right">
-                        <h1>@yield('workorder_title', 'workorder')</h2>
+                        <h1>@yield('workorder_title', 'workorder')</h1>
                         <p># @yield('workorder_number')</p>
-                        <p>@yield('workorder_status')</p>
+                        {{-- <p>@yield('workorder_status')</p> --}}
+                        <p class="text-right small" style="padding-top: 2rem;"><span class="gry-color small">Work Order Date:</span> <span class=" strong">@yield('workorder_date')</span></p>
                     </td>
                 </tr>
             </table>
-            <div style="margin-top:3.2rem;"></div>
+            <div style="margin-top:2rem;"></div>
             <table>
                 <tr>
-                    <td style="font-size: 1.2rem;" class="strong">@yield('workorder_from', get_setting('company_name') ?: 'Resisquare' )</td>
-                    <td style="font-size: 1.2rem;" class="text-right strong">@yield('workorder_to', '')</td>
+                    <td style="font-size: 1.2rem;" class="strong">@yield('workorder_to', '')</td>
+                    <td style="font-size: 1.2rem;" class="text-right strong"></td>
                 </tr>
-                <tr>
+                {{-- <tr>
                     <td class="gry-color small"></td>
                     <td class="text-right small" style="padding-top: 2rem;"><span class="gry-color small">Work Order Date:</span> <span class=" strong">@yield('workorder_date')</span></td>
-                </tr>
-                <tr>
-                    <td class="gry-color small"></td>
-                    <td class="text-right small"><span class="gry-color small">Work Order Due Date:</span> <span class=" strong">@yield('workorder_due_date')</span></td>
-                </tr>
+                </tr> --}}
             </table>
         </div>
     </div>
@@ -181,6 +190,11 @@
     </div>
     
     @yield('additional_workorder_info')
+
+    <div class="authorisation-box">
+        <div class="label">Authorisation</div>
+        @yield('workorder_from', get_setting('company_name') ?: 'Resisquare')
+    </div>
 
     <!-- Footer -->
     <div class="footer">
