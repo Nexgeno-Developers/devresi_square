@@ -47,6 +47,10 @@
 
     --backdrop: #00000094;
 
+    --sidebar-bg: #0f173a;
+    --sidebar-color:#a3aed1;
+    --sidebar-hover-color: var(--white);
+
     --primary-color: var(--primary);
     --primary-color-dark: var(--primary-600);
     --primary-color-light: var(--primary-400);

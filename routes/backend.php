@@ -50,6 +50,7 @@ use App\Http\Controllers\Backend\Accounting\StatementController;
 use App\Http\Controllers\Backend\Accounting\ReportController;
 use App\Http\Controllers\Backend\Accounting\BankReconciliationController;
 use App\Http\Controllers\Backend\Accounting\FixedAssetController;
+use App\Http\Controllers\Backend\Accounting\UnchargedRepairWorkOrderController;
 use App\Http\Controllers\Backend\AuthenticateController;
 use App\Http\Controllers\Backend\DocumentTypeController;
 use App\Http\Controllers\Backend\EstateChargeController;
@@ -348,6 +349,7 @@ Route::middleware('auth')->group(function () {
         Route::prefix('/property-repairs')->group(function () {
             Route::controller(PropertyRepairController::class)->group(function () {
                 Route::get('/issue-list', 'index')->name('property_repairs.index');
+                Route::get('/issue-list-tabbed', 'indexTabbed')->name('property_repairs.index_tabbed');
                 Route::get('repair-show/{id}', 'show')->name('property_repairs.show');
                 Route::get('repair-edit/{id}/edit', 'edit')->name('property_repairs.edit');
                 Route::put('repair-update/{id}', 'update')->name('property_repairs.update');
@@ -360,6 +362,10 @@ Route::middleware('auth')->group(function () {
                 Route::get('/get-repair-categories', 'getCategories')->name('get.repair.categories');
                 Route::get('/selected-property/tenants', 'getPropertyTenants')->name('get.property_repairs.tenants');
                 Route::get('/repair/{repair}/workorder-invoice', 'workOrderInvoice')->name('repair.workorder.invoice');
+                Route::post('/quote-contractors', 'storeQuoteContractor')->name('property_repairs.quote_contractors.store');
+                Route::post('/{repairIssue}/quote-requests', 'sendQuoteRequests')->name('property_repairs.quote_requests.store');
+                Route::post('/{repairIssue}/contractor-assignments/{assignment}/finalize', 'finalizeContractor')->name('property_repairs.contractors.finalize');
+                Route::get('/{repairIssue}/scope-of-work-pdf', 'scopeOfWorkPdf')->name('property_repairs.scope_of_work_pdf');
 
                 Route::get('/load-form', 'loadForm')->name('property_repairs.loadForm');
                 Route::post('/save-form', 'saveForm')->name('property_repairs.saveForm');
@@ -389,6 +395,7 @@ Route::middleware('auth')->group(function () {
                 Route::post('/store', 'store')->name('work_orders.store');  // Save new work order
                 Route::get('/get/{repairIssueId}', 'getWorkOrder')->name('work_orders.get');  // Get work order by repair issue id
                 Route::get('/generate-pdf/{id}', 'generateWorkOrderPDF')->name('workorder.generate.invoice');
+                Route::post('/send/{id}', 'sendWorkOrder')->name('work_orders.send');
             });
         });
 
@@ -577,6 +584,8 @@ Route::middleware('auth')->group(function () {
 
             Route::get('statements/customers', [StatementController::class, 'customer'])->name('statements.customers');
             Route::get('statements/accounts', [StatementController::class, 'account'])->name('statements.accounts');
+            Route::get('uncharged-repair-work-orders', [UnchargedRepairWorkOrderController::class, 'index'])
+                ->name('uncharged_repair_work_orders.index');
 
             Route::get('reports/trial-balance', [ReportController::class, 'trialBalance'])->name('reports.trial_balance');
             Route::get('reports/profit-loss', [ReportController::class, 'profitLoss'])->name('reports.profit_loss');

@@ -1,7 +1,67 @@
+@php
+    $showInvoiceActions = $showInvoiceActions ?? true;
+    $workOrderFinalizeAssignments = $workOrderFinalizeAssignments ?? collect();
+    $selectedFinalAssignment = $repairIssue->final_contractor_id
+        ? $workOrderFinalizeAssignments->firstWhere('contractor_id', $repairIssue->final_contractor_id)
+        : null;
+@endphp
+
 <form id="workOrderForm" action="{{ route('admin.work_orders.store') }}" method="POST" novalidate>
     @csrf
     <input type="hidden" id="repair_issue_id" name="repair_issue_id" value="{{ $repairIssue->id }}">
     <input type="hidden" id="work_order_id" name="work_order_id" value="{{ $repairIssue->workOrder->id ?? '' }}">
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label class="form-label">Final Contractor</label>
+                <select name="final_contractor_assignment_id" id="finalContractorAssignmentSelect" class="form-control" required
+                    {{ $workOrderFinalizeAssignments->isEmpty() ? 'disabled' : '' }}>
+                    <option value="">Select final contractor</option>
+                    @foreach($workOrderFinalizeAssignments as $assignment)
+                        <option value="{{ $assignment->id }}"
+                            data-contractor-name="{{ $assignment->contractor->name ?? '' }}"
+                            data-contractor-email="{{ $assignment->contractor->email ?? '' }}"
+                            data-contractor-phone="{{ $assignment->contractor->phone ?? '' }}"
+                            data-cost-price="{{ $assignment->cost_price }}"
+                            data-start-date="{{ optional($assignment->tentative_start_date)->format('Y-m-d') }}"
+                            data-end-date="{{ optional($assignment->tentative_end_date)->format('Y-m-d') }}"
+                            data-availability="{{ optional($assignment->contractor_preferred_availability)->format('d M Y, H:i') }}"
+                            data-notes="{{ $assignment->quote_notes }}"
+                            {{ $selectedFinalAssignment && (int) $selectedFinalAssignment->id === (int) $assignment->id ? 'selected' : '' }}>
+                            {{ $assignment->contractor->name ?? 'N/A' }}{{ $assignment->contractor?->email ? ' - ' . $assignment->contractor->email : '' }}
+                        </option>
+                    @endforeach
+                </select>
+                @if($workOrderFinalizeAssignments->isEmpty())
+                    <small class="text-muted">Request a quote from a contractor before selecting a final contractor.</small>
+                @else
+                    <small class="text-muted">Save the work order after changing the final contractor.</small>
+                @endif
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div id="finalContractorDetailPanel" class="border rounded p-3 bg-light {{ $selectedFinalAssignment ? '' : 'd-none' }}">
+                <strong id="finalContractorName">{{ $selectedFinalAssignment->contractor->name ?? '' }}</strong>
+                <div id="finalContractorEmail">{{ $selectedFinalAssignment->contractor->email ?? '' }}</div>
+                <div id="finalContractorPhone">{{ $selectedFinalAssignment->contractor->phone ?? '' }}</div>
+                <div class="small mt-2">
+                    <span class="fw-semibold">Quoted Cost:</span>
+                    <span id="finalContractorCost">
+                        {{ $selectedFinalAssignment && $selectedFinalAssignment->cost_price !== null ? getPoundSymbol() . number_format($selectedFinalAssignment->cost_price, 2) : '-' }}
+                    </span>
+                </div>
+                <div class="small">
+                    <span class="fw-semibold">Availability:</span>
+                    <span id="finalContractorAvailability">{{ optional($selectedFinalAssignment?->contractor_preferred_availability)->format('d M Y, H:i') ?: '-' }}</span>
+                </div>
+                <div class="small">
+                    <span class="fw-semibold">Notes:</span>
+                    <span id="finalContractorNotes">{{ $selectedFinalAssignment->quote_notes ?? '-' }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-6">
@@ -48,7 +108,8 @@
                 <div class="col-md-4 mb-3">
                     <div class="form-group">
                         <label class="form-label">Job Sub Type</label>
-                        <select name="job_sub_type_id" id="jobSubTypeSelect" class="form-control">
+                        <select name="job_sub_type_id" id="jobSubTypeSelect" class="form-control"
+                            data-existing-sub-type="{{ $repairIssue->workOrder->job_sub_type_id ?? '' }}">
                             <option disabled aria-disabled="true" value="">Select Job Sub Type</option>
                         </select>
                     </div>
@@ -231,7 +292,7 @@
         <div class="col-md-12 mb-3">
             <div class="form-group">
                 <label class="form-label">Notes</label>
-                <textarea required name="extra_notes" class="form-control">{{ old('extra_notes', $repairIssue->workOrder->extra_notes ?? '') }}</textarea>
+                <textarea name="extra_notes" class="form-control">{{ old('extra_notes', $repairIssue->workOrder->extra_notes ?? '') }}</textarea>
             </div>
         </div>
         @if ($quoteAttachment)
@@ -273,35 +334,43 @@
 
     </div>
 
-    <div id="invoice-message" class="mt-2"></div>
+    @if ($showInvoiceActions)
+        <div id="invoice-message" class="mt-2"></div>
+    @endif
     <div class="d-flex gap-3 float-end">
         <!-- Save Work Order Button -->
         <button type="submit" class="btn btn_secondary">Save Work Order</button>
     
-        <!-- Generate Work Order PDF Button -->
-        <span class="d-inline-block" data-bs-toggle="tooltip" title="{{ !$workorder ? 'Create Work Order first' : '' }}">
-            <button type="button" class="btn btn-info"
-                onclick="{{ $workorder ? "window.location.href='".route('admin.workorder.generate.invoice', $workorder->id)."'" : '' }}"
-                {{ !$workorder ? 'disabled' : '' }}>
+        <!-- Send Work Order Button -->
+        <span class="d-inline-block" data-bs-toggle="tooltip" title="{{ !$workorder ? 'Create Work Order first' : (!$repairIssue->final_contractor_id ? 'Select final contractor and save first' : '') }}">
+            <button type="button" class="btn btn-info send-work-order-btn"
+                id="sendWorkOrderBtn"
+                data-send-url="{{ $workorder ? route('admin.work_orders.send', $workorder->id) : '' }}"
+                {{ !$workorder || !$repairIssue->final_contractor_id ? 'disabled' : '' }}>
+                send work order
+            </button>
+        </span>
+
+        <!-- Download Work Order PDF Button -->
+        <span class="d-inline-block" data-bs-toggle="tooltip" title="{{ !$workorder ? 'Create Work Order first' : (!$repairIssue->final_contractor_id ? 'Select final contractor and save first' : '') }}">
+            <button type="button" class="btn btn-outline-primary"
+                id="downloadWorkOrderPdfBtn"
+                onclick="{{ $workorder && $repairIssue->final_contractor_id ? "window.location.href='".route('admin.workorder.generate.invoice', $workorder->id)."'" : '' }}"
+                {{ !$workorder || !$repairIssue->final_contractor_id ? 'disabled' : '' }}>
                 Download Work Order PDF
             </button>
         </span>
     
-        <!-- Generate Invoice Button -->
-        <span class="d-inline-block" data-bs-toggle="tooltip" title="{{ !$workorder ? 'Create Work Order first' : ($invoice ? 'Invoice already generated' : '') }}">
-            <button id="generateInvoiceBtn" data-workorder-id="{{ $workorder->id ?? '' }}" 
-                class="btn btn-primary"  
-                {{ !$workorder || $invoice ? 'disabled' : '' }}>
-                {{ $workorder && $invoice ? 'Invoice Generated' : 'Generate Invoice' }}
-            </button>
-        </span>
+        @if ($showInvoiceActions)
+            <!-- Generate Invoice Button -->
+            <span class="d-inline-block" data-bs-toggle="tooltip" title="{{ !$workorder ? 'Create Work Order first' : ($invoice ? 'Invoice already generated' : '') }}">
+                <button id="generateInvoiceBtn" data-workorder-id="{{ $workorder->id ?? '' }}" 
+                    class="btn btn-primary"  
+                    {{ !$workorder || $invoice ? 'disabled' : '' }}>
+                    {{ $workorder && $invoice ? 'Invoice Generated' : 'Generate Invoice' }}
+                </button>
+            </span>
+        @endif
     </div>
     
-              
-        
-    {{-- <div class="d-flex gap-3 float-end">
-        <button type="submit" class="btn btn_secondary">Save Work Order</button>
-        <button type="button" class="btn btn-info" onclick="window.location.href='{{ route('admin.workorder.generate.invoice', $workorder->id ?? 0) }}'">Generate Work Order PDF </button>
-        <button id="generateInvoiceBtn" data-workorder-id="{{ $workorder->id ?? '' }}" class="btn btn-primary" {{ $workorder->invoice ? 'disabled' : '' }}> {{ $workorder->invoice ? 'Invoice Generated' : 'Generate Invoice' }} </button>
-    </div> --}}
 </form>

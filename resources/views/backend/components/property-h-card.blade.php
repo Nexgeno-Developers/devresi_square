@@ -1,3 +1,7 @@
+@php
+    $brochureUrl = $brochureUrl ?? route('admin.properties.brochure', $propertyId);
+@endphp
+
 <div class="pv_content_wrapper {{ $cardStyle == 'vertical'? 'vertical_card' : '' }} {{$class}}" data-property-id="{{ $propertyId }}" data-important-note="{{ e($importantNote ?? '') }}">
     <div class="pv_image">
         <img src="{{ asset('/asset/images/temp-property.webp') }}" alt="property">

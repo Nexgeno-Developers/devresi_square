@@ -102,7 +102,7 @@
                         <div class="col-md-12 mb-3">
                             <div class="form-group"> 
                                 <label class="form-label">Notes</label>
-                                <textarea required name="extra_notes" class="form-control">{{ old('extra_notes', $repairIssue->workOrder->extra_notes ?? '') }}</textarea>
+                                <textarea name="extra_notes" class="form-control">{{ old('extra_notes', $repairIssue->workOrder->extra_notes ?? '') }}</textarea>
                             </div>
                         </div>
                     </div>

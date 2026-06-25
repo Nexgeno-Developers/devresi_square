@@ -59,6 +59,19 @@
             </div>
         </div>
 
+        @if ($repairIssue->final_contractor_id)
+            <div class="d-flex justify-content-end gap-2 mb-3">
+                <button type="button" class="btn btn-info send-work-order-btn"
+                    data-send-url="{{ route('admin.work_orders.send', $repairIssue->workOrder->id) }}">
+                    send work order
+                </button>
+                <button type="button" class="btn btn-outline-primary"
+                    onclick="window.location.href='{{ route('admin.workorder.generate.invoice', $repairIssue->workOrder->id) }}'">
+                    Download Work Order PDF
+                </button>
+            </div>
+        @endif
+
         <hr>
 
         <h4 class="mt-4">Job Scope</h4>

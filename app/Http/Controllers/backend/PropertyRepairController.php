@@ -13,14 +13,23 @@ use App\Models\RepairIssueUser;
 use App\Models\RepairIssueContractorAssignment;
 use App\Models\RepairIssuePropertyManager;
 use App\Models\RepairPhoto;
+use App\Models\PropertyManagerTenancy;
 use App\Models\TaxRates;
 use App\Models\Tenancy;
 use App\Models\TenantMember;
+use App\Models\UserCategory;
 use App\Models\WorkOrder;
+use App\Jobs\SendFinalContractorAssignedEmail;
+use App\Jobs\SendRepairQuoteRequestEmail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
+use Spatie\Permission\Models\Role;
 
 class PropertyRepairController
 {
@@ -220,6 +229,381 @@ class PropertyRepairController
         //     'maxLevel' => $maxLevel,
         // ]);
         // return view('backend.repair.index', compact('repairIssues'));
+    }
+
+    public function indexTabbed(Request $request)
+    {
+        $query = RepairIssue::with([
+            'property',
+            'repairAssignments',
+            'repairHistories',
+            'repairIssueUsers',
+            'repairPhotos',
+            'repairCategory',
+            'repairIssuePropertyManagers.propertyManager',
+            'repairIssueContractorAssignments.contractor',
+            'finalContractor',
+            'tenant',
+            'workOrder.items',
+            'workOrder.jobType',
+            'workOrder.jobSubType',
+        ]);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('property', function ($q) use ($search) {
+                $q->where('prop_name', 'LIKE', "%$search%")
+                    ->orWhere('prop_ref_no', 'LIKE', "%$search%")
+                    ->orWhere('reference_number', 'LIKE', "%$search%");
+            });
+        }
+
+        if ($request->filled('status') && in_array($request->status, [
+            'Pending', 'Reported', 'Under Process', 'Work Completed', 'Invoice Received', 'Invoice Paid', 'Closed'
+        ])) {
+            $query->where('status', $request->status);
+        }
+
+        if (auth()->user()->hasRole('Tenant')) {
+            $tenantPropertyIds = TenantMember::where('user_id', auth()->id())
+                ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+                ->where('tenancies.status', 'Active')
+                ->pluck('tenancies.property_id')
+                ->unique();
+            $query->whereIn('property_id', $tenantPropertyIds);
+        }
+
+        $selectedRepairQuery = clone $query;
+        $repairIssues = $query->orderByDesc('id')->paginate(10);
+        $tabName = $this->normalizeRepairTabName($request->query('tabname', 'issue'));
+        $selectedRepairId = $request->query('repair_id');
+
+        if ($request->ajax() && $request->has('list_only')) {
+            if ($selectedRepairId && ! $repairIssues->contains('id', (int) $selectedRepairId)) {
+                $selectedRepairId = $repairIssues->first()?->id;
+            }
+
+            return response()->json([
+                'html' => view('backend.repair.list.tabbed-cards', compact('repairIssues', 'selectedRepairId'))->render(),
+                'selectedRepairId' => $selectedRepairId,
+            ]);
+        }
+
+        if (! $selectedRepairId && $repairIssues->count() > 0 && ! $request->ajax()) {
+            return redirect()->route('admin.property_repairs.index_tabbed', array_merge(
+                $request->except(['repair_id']),
+                [
+                    'repair_id' => $repairIssues->first()->id,
+                    'tabname' => $tabName,
+                ]
+            ));
+        }
+
+        $repairIssue = null;
+        if ($selectedRepairId) {
+            $repairIssue = $selectedRepairQuery->find($selectedRepairId);
+        }
+
+        if (! $repairIssue && $repairIssues->count() > 0) {
+            $repairIssue = $repairIssues->first();
+            $selectedRepairId = $repairIssue->id;
+        }
+
+        $tabs = [
+            ['name' => 'Issue', 'key' => 'issue'],
+            ['name' => 'Property Manager', 'key' => 'property-manager'],
+            ['name' => 'Request a quote', 'key' => 'contractors'],
+            ['name' => 'Work Order', 'key' => 'work-order'],
+        ];
+
+        $content = $repairIssue
+            ? $this->getTabbedRepairContent($tabName, $repairIssue)
+            : '<div class="alert alert-info m-3">No repair issues found.</div>';
+
+        if ($request->ajax()) {
+            return response()->json([
+                'content' => $content,
+                'repair_id' => $selectedRepairId,
+                'tabname' => $tabName,
+            ]);
+        }
+
+        return view('backend.repair.index_tabbed', [
+            'repairIssues' => $repairIssues,
+            'tabs' => $tabs,
+            'tabName' => $tabName,
+            'selectedRepairId' => $selectedRepairId,
+            'repairIssue' => $repairIssue,
+            'content' => $content,
+        ]);
+    }
+
+    private function normalizeRepairTabName(?string $tabName): string
+    {
+        $tabName = strtolower(str_replace(' ', '-', (string) $tabName));
+
+        return in_array($tabName, ['issue', 'property-manager', 'contractors', 'work-order'])
+            ? $tabName
+            : 'issue';
+    }
+
+    private function getTabbedRepairContent(string $tabName, RepairIssue $repairIssue): string
+    {
+        $tabName = $this->normalizeRepairTabName($tabName);
+        $viewData = ['repairIssue' => $repairIssue];
+
+        if ($tabName === 'work-order') {
+            $workorder = WorkOrder::where('repair_issue_id', $repairIssue->id)->with('items')->first();
+            $jobTypes = JobType::getHierarchy();
+            $taxRates = TaxRates::all();
+            $workOrderFinalizeAssignments = RepairIssueContractorAssignment::with('contractor')
+                ->where('repair_issue_id', $repairIssue->id)
+                ->get();
+            $contractorAssignment = $workOrderFinalizeAssignments
+                ->where('contractor_id', $repairIssue->final_contractor_id)
+                ->first();
+            $contractorCost = $contractorAssignment->cost_price ?? 0;
+            $quoteAttachment = $contractorAssignment->quote_attachment ?? null;
+            $propertyId = $repairIssue->property_id;
+            $showInvoiceActions = false;
+
+            $viewData = array_merge($viewData, compact(
+                'workorder',
+                'jobTypes',
+                'taxRates',
+                'contractorCost',
+                'quoteAttachment',
+                'propertyId',
+                'showInvoiceActions',
+                'workOrderFinalizeAssignments'
+            ));
+        }
+
+        if ($tabName === 'contractors') {
+            $contractors = $this->contractorUsersQuery()->orderBy('name')->get();
+            $viewData = array_merge($viewData, compact('contractors'));
+        }
+
+        if ($tabName === 'property-manager') {
+            $propertyManagers = User::role('Property Manager')->orderBy('name')->get();
+            $assignedManagers = RepairIssuePropertyManager::where('repair_issue_id', $repairIssue->id)
+                ->pluck('property_manager_id')
+                ->toArray();
+            $viewData = array_merge($viewData, compact('propertyManagers', 'assignedManagers'));
+        }
+
+        return view("backend.repair.tabs.$tabName", $viewData)->render();
+    }
+
+    private function contractorUsersQuery()
+    {
+        $contractorRoleId = Role::where('name', 'Contractor')->value('id');
+        $contractorCategoryId = UserCategory::where('name', 'Contractor')->value('id');
+
+        return User::query()
+            ->where(function ($query) use ($contractorRoleId, $contractorCategoryId) {
+                $query->whereHas('roles', function ($roleQuery) {
+                    $roleQuery->where('name', 'Contractor');
+                });
+
+                if ($contractorRoleId && Schema::hasColumn('users', 'role_id')) {
+                    $query->orWhere('role_id', $contractorRoleId);
+                }
+
+                if ($contractorCategoryId) {
+                    $query->orWhere('category_id', $contractorCategoryId);
+                }
+            });
+    }
+
+    private function saveQuoteContractor(array $contractorData): User
+    {
+        $contractorCategoryId = UserCategory::where('name', 'Contractor')->value('id');
+        $contractor = User::firstOrNew(['email' => $contractorData['email']]);
+
+        $contractor->fill([
+            'first_name' => $contractorData['first_name'] ?? $contractor->first_name,
+            'last_name' => $contractorData['last_name'] ?? $contractor->last_name,
+            'name' => trim(($contractorData['first_name'] ?? $contractor->first_name ?? '') . ' ' . ($contractorData['last_name'] ?? $contractor->last_name ?? '')) ?: $contractor->name,
+            'phone' => $contractorData['phone'] ?? $contractor->phone,
+            'address_line_1' => $contractorData['address_line_1'] ?? $contractor->address_line_1,
+            'address_line_2' => $contractorData['address_line_2'] ?? $contractor->address_line_2,
+            'city' => $contractorData['city'] ?? $contractor->city,
+            'postcode' => $contractorData['postcode'] ?? $contractor->postcode,
+            'category_id' => $contractorCategoryId ?: $contractor->category_id,
+            'created_by' => $contractor->exists ? $contractor->created_by : Auth::id(),
+            'updated_by' => Auth::id(),
+        ]);
+        $contractor->save();
+
+        $role = Role::where('name', 'Contractor')->first();
+        if ($role && ! $contractor->hasRole($role->name)) {
+            $contractor->assignRole($role);
+        }
+
+        return $contractor;
+    }
+
+    public function storeQuoteContractor(Request $request)
+    {
+        $validated = $request->validate([
+            'new_contractor.first_name' => 'nullable|string|max:55',
+            'new_contractor.last_name' => 'nullable|string|max:55',
+            'new_contractor.email' => 'required|email|max:55',
+            'new_contractor.phone' => 'nullable|string|max:20',
+            'new_contractor.address_line_1' => 'nullable|string|max:255',
+            'new_contractor.address_line_2' => 'nullable|string|max:255',
+            'new_contractor.city' => 'nullable|string|max:55',
+            'new_contractor.postcode' => 'nullable|string|max:15',
+        ]);
+
+        $contractor = $this->saveQuoteContractor($validated['new_contractor']);
+
+        return response()->json([
+            'message' => 'Contractor saved.',
+            'contractor' => [
+                'id' => $contractor->id,
+                'label' => trim($contractor->name . ' - ' . $contractor->email, ' -'),
+            ],
+        ]);
+    }
+
+    public function sendQuoteRequests(Request $request, RepairIssue $repairIssue)
+    {
+        $validated = $request->validate([
+            'contractor_ids' => 'nullable|array',
+            'contractor_ids.*' => 'integer|exists:users,id',
+            'new_contractor.first_name' => 'nullable|string|max:55',
+            'new_contractor.last_name' => 'nullable|string|max:55',
+            'new_contractor.email' => 'nullable|email|max:55',
+            'new_contractor.phone' => 'nullable|string|max:20',
+            'new_contractor.address_line_1' => 'nullable|string|max:255',
+            'new_contractor.address_line_2' => 'nullable|string|max:255',
+            'new_contractor.city' => 'nullable|string|max:55',
+            'new_contractor.postcode' => 'nullable|string|max:15',
+        ]);
+
+        $contractorIds = collect($validated['contractor_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $newContractor = $validated['new_contractor'] ?? [];
+        if (! empty($newContractor['email'])) {
+            $contractor = $this->saveQuoteContractor($newContractor);
+            $contractorIds->push($contractor->id);
+        }
+
+        if ($contractorIds->isEmpty()) {
+            return response()->json(['message' => 'Select or add at least one contractor.'], 422);
+        }
+
+        $queued = 0;
+
+        foreach ($contractorIds->unique() as $contractorId) {
+            $contractor = $this->contractorUsersQuery()->find($contractorId);
+            if (! $contractor) {
+                continue;
+            }
+
+            $assignment = RepairIssueContractorAssignment::firstOrNew([
+                'repair_issue_id' => $repairIssue->id,
+                'contractor_id' => $contractor->id,
+            ]);
+
+            $assignment->fill([
+                'assigned_by' => Auth::id(),
+                'status' => 'Quote Requested',
+                'quote_token' => $assignment->quote_token ?: Str::random(64),
+                'quote_requested_at' => now(),
+            ]);
+            $assignment->save();
+
+            SendRepairQuoteRequestEmail::dispatch($repairIssue->id, $assignment->id)
+                ->onConnection('database')
+                ->onQueue('repair-quotes');
+            $queued++;
+        }
+
+        return response()->json([
+            'message' => "Quote request saved for {$queued} contractor(s). Emails will be sent in the background.",
+        ]);
+    }
+
+    public function finalizeContractor(Request $request, RepairIssue $repairIssue, RepairIssueContractorAssignment $assignment)
+    {
+        if ((int) $assignment->repair_issue_id !== (int) $repairIssue->id) {
+            abort(404);
+        }
+
+        if ($repairIssue->final_contractor_id) {
+            return response()->json(['message' => 'A final contractor has already been selected for this repair issue.'], 422);
+        }
+
+        $repairIssue->update(['final_contractor_id' => $assignment->contractor_id]);
+        $assignment->update(['status' => 'Finalized']);
+        $this->sendFinalContractorAssignedEmail($repairIssue->fresh(), (int) $assignment->contractor_id);
+
+        return response()->json(['message' => 'Final contractor selected successfully.']);
+    }
+
+    public function scopeOfWorkPdf(RepairIssue $repairIssue)
+    {
+        $startedAt = microtime(true);
+
+        try {
+            Log::info('Scope of work PDF request started.', [
+                'repair_issue_id' => $repairIssue->id,
+                'reference_number' => $repairIssue->reference_number,
+            ]);
+
+            $repairIssue->load(['property', 'repairCategory', 'repairPhotos']);
+
+            Log::info('Scope of work PDF relations loaded.', [
+                'repair_issue_id' => $repairIssue->id,
+                'photo_rows' => $repairIssue->repairPhotos->count(),
+            ]);
+
+            $pdf = $this->buildScopeOfWorkPdf($repairIssue);
+            $content = $pdf->output();
+            $reference = Str::slug($repairIssue->reference_number ?: $repairIssue->id);
+            $filename = 'scope-of-work-' . $reference . '.pdf';
+
+            Log::info('Scope of work PDF rendered.', [
+                'repair_issue_id' => $repairIssue->id,
+                'bytes' => strlen($content),
+                'seconds' => round(microtime(true) - $startedAt, 3),
+            ]);
+
+            return response($content, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Content-Length' => strlen($content),
+                'Cache-Control' => 'private, max-age=0, must-revalidate',
+                'Pragma' => 'public',
+                'X-Content-Type-Options' => 'nosniff',
+            ]);
+        } catch (\Throwable $exception) {
+            Log::error('Scope of work PDF failed.', [
+                'repair_issue_id' => $repairIssue->id,
+                'message' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+            ]);
+
+            throw $exception;
+        }
+    }
+
+    private function buildScopeOfWorkPdf(RepairIssue $repairIssue)
+    {
+        $tempDir = storage_path('app/mpdf');
+        File::ensureDirectoryExists($tempDir);
+
+        return Pdf::loadView('backend.repair.pdf.scope_of_work', [
+            'repairIssue' => $repairIssue,
+        ], [], ['format' => 'A4', 'tempDir' => $tempDir]);
     }
 
     /*
@@ -469,6 +853,12 @@ class PropertyRepairController
             $repairCategoryId = $request->input('repair_category_id_old');
         }
 
+        if ($repairIssue->final_contractor_id && (int) $repairIssue->final_contractor_id !== (int) $finalContractorId) {
+            $finalContractorId = $repairIssue->final_contractor_id;
+        }
+
+        $previousPropertyId = (int) $repairIssue->property_id;
+
         // Update the main repair issue record.
         $repairIssue->update([
             'property_id' => $propertyId,
@@ -484,20 +874,28 @@ class PropertyRepairController
             'vat_percentage' => $validated['vat_percentage'],
             'final_contractor_id' => $finalContractorId,
         ]);
-        // Update property manager assignments:
-        RepairIssuePropertyManager::where('repair_issue_id', $id)->delete();
-        if ($request->has('property_managers')) {
-            $assignedBy = Auth::id();
-            if (!$assignedBy) {
-                abort(403, 'Unauthorized: No user logged in.');
-            }
-            foreach ($request->input('property_managers') as $managerId) {
-                RepairIssuePropertyManager::create([
-                    'repair_issue_id' => $id,
-                    'property_manager_id' => $managerId,
-                    'assigned_by' => $assignedBy,
-                    'assigned_at' => now(),
-                ]);
+
+        if ($previousPropertyId !== (int) $propertyId) {
+            $this->syncRepairIssuePropertyManagers(
+                $repairIssue,
+                $this->propertyManagerIdsForProperty((int) $propertyId)
+            );
+        } else {
+            // Update property manager assignments:
+            RepairIssuePropertyManager::where('repair_issue_id', $id)->delete();
+            if ($request->has('property_managers')) {
+                $assignedBy = Auth::id();
+                if (!$assignedBy) {
+                    abort(403, 'Unauthorized: No user logged in.');
+                }
+                foreach ($request->input('property_managers') as $managerId) {
+                    RepairIssuePropertyManager::create([
+                        'repair_issue_id' => $id,
+                        'property_manager_id' => $managerId,
+                        'assigned_by' => $assignedBy,
+                        'assigned_at' => now(),
+                    ]);
+                }
             }
         }
 
@@ -633,6 +1031,11 @@ class PropertyRepairController
             'status' => 'Pending',
             'reference_number' => $repairReference,  // Store the reference number
         ]);
+
+        $this->syncRepairIssuePropertyManagers(
+            $repair,
+            $this->propertyManagerIdsForProperty($propertyId)
+        );
 
         // Store repair photos
         if ($request->has('repair_photos')) {
@@ -822,6 +1225,8 @@ class PropertyRepairController
         }
 
         $extraData = [];  // <-- This prevents undefined variable errors
+        $previousPropertyId = (int) $repairIssue->property_id;
+        $syncManagersFromPropertyId = null;
 
         // Save the form data based on the form type
         switch ($formType) {
@@ -845,6 +1250,9 @@ class PropertyRepairController
                 $data = [
                     'property_id' => $propertyId,
                 ];
+                if ($previousPropertyId !== (int) $propertyId) {
+                    $syncManagersFromPropertyId = (int) $propertyId;
+                }
 
                 // $data = $request->only([
                 //     'property_id'
@@ -854,6 +1262,7 @@ class PropertyRepairController
                 // Get the values from the request (could be empty)
                 $repairNavigation = $request->input('repair_navigation');
                 $repairCategoryId = $request->input('repair_category_id');
+                $tenant_id = $repairIssue->tenant_id;
 
                 // Fallback to old values if new values are empty or '{}'
                 if (empty($repairNavigation) || $repairNavigation === '{}') {
@@ -868,6 +1277,9 @@ class PropertyRepairController
                     $tenant_id = $request->input('tenant_id');
                    
                 }
+                if (Auth::user()?->hasRole('Tenant')) {
+                    $tenant_id = Auth::id();
+                }
                 
                 // Assuming there's a pivot table for many-to-many relationship
                 if ($request->has('repair_photos')) {
@@ -878,21 +1290,42 @@ class PropertyRepairController
                     $repairIssue->repairPhotos()->update(['photos' => $photoIds]);
                 }
                 
-                // Get the rest of the values directly
+                $user = Auth::user();
+                $canEditRepairAdminFields = $user && $user->hasAnyRole(['Super Admin', 'Landlord', 'Estate Agent', 'Agent']);
+                $propertyId = $repairIssue->property_id;
+                if ($canEditRepairAdminFields && $request->filled('property_id')) {
+                    $propertyInput = $request->input('property_id');
+                    if (is_array($propertyInput)) {
+                        $propertyInput = reset($propertyInput);
+                    }
+                    $propertyId = (int) $propertyInput;
+                }
+
+                $priority = $canEditRepairAdminFields ? $request->input('priority', $repairIssue->priority) : $repairIssue->priority;
+                $status = $canEditRepairAdminFields ? $request->input('status', $repairIssue->status) : $repairIssue->status;
+                $subStatus = $canEditRepairAdminFields ? $request->input('sub_status', $repairIssue->sub_status) : $repairIssue->sub_status;
+                $estimatedPrice = $canEditRepairAdminFields ? $request->input('estimated_price', $repairIssue->estimated_price) : $repairIssue->estimated_price;
+                $vatType = $canEditRepairAdminFields ? $request->input('vat_type', $repairIssue->vat_type) : $repairIssue->vat_type;
+                $vatPercentage = $canEditRepairAdminFields ? $request->input('vat_percentage', $repairIssue->vat_percentage) : $repairIssue->vat_percentage;
+
                 $data = [
+                    'property_id' => $propertyId,
                     'repair_navigation' => $repairNavigation,
                     'repair_category_id' => $repairCategoryId,
                     'description' => $request->input('description'),
-                    'priority' => $request->input('priority'),
-                    'sub_status' => $request->input('status'),
-                    'status' => $request->input('status'),
+                    'priority' => $priority,
+                    'sub_status' => $subStatus,
+                    'status' => $status,
                     'tenant_availability' => $request->input('tenant_availability'),
                     'access_details' => $request->input('access_details'),
-                    'estimated_price' => $request->input('estimated_price'),
-                    'vat_type' => $request->input('vat_type'),
-                    'vat_percentage' => $request->input('vat_percentage'),
+                    'estimated_price' => $estimatedPrice,
+                    'vat_type' => $vatType,
+                    'vat_percentage' => $vatPercentage,
                     'tenant_id' => $tenant_id,
                 ];
+                if ($previousPropertyId !== (int) $propertyId) {
+                    $syncManagersFromPropertyId = (int) $propertyId;
+                }
                 break;
             case 'manager_assign':
                 
@@ -913,22 +1346,35 @@ class PropertyRepairController
                     }
                 }
                 
-                $data = $request->only([
-                    'property_managers'
-                ]);
+                $data = [];
                 // $extraData = $this->getFormTypeExtras($formType, $repair);
                 break;
             case 'contractor_assign':
 
                 // Update contractor assignments:
                 $submittedAssignments = $request->input('contractor_assignments', []);
+                $submittedAssignmentIds = collect($submittedAssignments)
+                    ->pluck('id')
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+
+                RepairIssueContractorAssignment::where('repair_issue_id', $repairIssue->id)
+                    ->when(! empty($submittedAssignmentIds), function ($query) use ($submittedAssignmentIds) {
+                        $query->whereNotIn('id', $submittedAssignmentIds);
+                    })
+                    ->delete();
 
                 foreach ($submittedAssignments as $index => $assignmentData) {
+                    if (empty($assignmentData['contractor_id'])) {
+                        continue;
+                    }
+
                     if (!isset($assignmentData['id']) || empty($assignmentData['id'])) {
                         RepairIssueContractorAssignment::create([
                             'repair_issue_id' => $repairIssue->id,
                             'contractor_id' => $assignmentData['contractor_id'],
-                            'cost_price' => $assignmentData['cost_price'],
+                            'cost_price' => $assignmentData['cost_price'] ?? null,
                             'assigned_by' => Auth::id(),
                             'quote_attachment' => $assignmentData['quote_attachment'] ?? null,
                             'contractor_preferred_availability' => $assignmentData['contractor_preferred_availability'] ?? null,
@@ -938,7 +1384,7 @@ class PropertyRepairController
                         RepairIssueContractorAssignment::where('id', $assignmentData['id'])
                             ->update([
                                 'contractor_id' => $assignmentData['contractor_id'],
-                                'cost_price' => $assignmentData['cost_price'],
+                                'cost_price' => $assignmentData['cost_price'] ?? null,
                                 'assigned_by' => Auth::id(),
                                 'quote_attachment' => $assignmentData['quote_attachment'] ?? null,
                                 'contractor_preferred_availability' => $assignmentData['contractor_preferred_availability'] ?? null,
@@ -946,14 +1392,16 @@ class PropertyRepairController
                     }
                 }
 
-                $data = $request->only([
-                    ''
-                ]);
+                $data = [];
                 break;
             case 'final_contractor':
-                $data = $request->only([
-                    'final_contractor_id'
-                ]);
+                $requestedFinalContractorId = $request->input('final_contractor_id');
+                $previousFinalContractorId = $repairIssue->final_contractor_id;
+                $data = ['final_contractor_id' => $requestedFinalContractorId ?: null];
+                if ($requestedFinalContractorId && (int) $previousFinalContractorId !== (int) $requestedFinalContractorId) {
+                    $repairIssue->forceFill($data);
+                    $this->sendFinalContractorAssignedEmail($repairIssue, (int) $requestedFinalContractorId);
+                }
                 break;
             case 'repair_history':
                 $status = $request->input('status');
@@ -989,6 +1437,15 @@ class PropertyRepairController
 
         $repairIssue->update($data);
 
+        if ($syncManagersFromPropertyId !== null) {
+            $this->syncRepairIssuePropertyManagers(
+                $repairIssue,
+                $this->propertyManagerIdsForProperty($syncManagersFromPropertyId)
+            );
+        }
+
+        $repairIssue->refresh()->load(['repairIssuePropertyManagers.propertyManager']);
+
         // 🛠️ Fix: Re-fetch related data like school/station names
         $extraData = $this->getFormTypeExtras($formType, $repairIssue);
 
@@ -1004,6 +1461,38 @@ class PropertyRepairController
 
     private function getFormTypeExtras($formType, $repair)
     {
+        if ($formType === 'manager_assign') {
+            $propertyManagers = User::role('Property Manager')->orderBy('name')->get();
+            $assignedManagers = RepairIssuePropertyManager::where('repair_issue_id', $repair->id)
+                ->pluck('property_manager_id')
+                ->toArray();
+
+            return compact('propertyManagers', 'assignedManagers');
+        }
+
+        if ($formType === 'contractor_assign' || $formType === 'final_contractor') {
+            $contractors = $this->contractorUsersQuery()->orderBy('name')->get();
+            $contractorAssignments = RepairIssueContractorAssignment::where('repair_issue_id', $repair->id)
+                ->get();
+            $assignedContractorIds = $contractorAssignments
+                ->pluck('contractor_id')
+                ->filter()
+                ->unique()
+                ->values();
+            $assignedContractorUsers = User::whereIn('id', $assignedContractorIds)->get()->keyBy('id');
+
+            if ($assignedContractorIds->isNotEmpty()) {
+                $assignedContractors = $assignedContractorUsers->values();
+                $contractors = $contractors
+                    ->merge($assignedContractors)
+                    ->unique('id')
+                    ->sortBy('name')
+                    ->values();
+            }
+
+            return compact('contractors', 'contractorAssignments', 'assignedContractorUsers');
+        }
+
         if ($formType === 'any') {
             // Fetch all stations and schools
             // $allstations = StationName::select('id', 'name')->get();
@@ -1021,6 +1510,41 @@ class PropertyRepairController
         }
 
         return [];
+    }
+
+    private function sendFinalContractorAssignedEmail(RepairIssue $repairIssue, int $contractorId): void
+    {
+        SendFinalContractorAssignedEmail::dispatch($repairIssue->id, $contractorId)
+            ->onConnection('database')
+            ->onQueue('repair-assignments');
+    }
+
+    private function propertyManagerIdsForProperty(?int $propertyId): array
+    {
+        if (! $propertyId) {
+            return [];
+        }
+
+        return PropertyManagerTenancy::where('property_id', $propertyId)
+            ->pluck('property_manager_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function syncRepairIssuePropertyManagers(RepairIssue $repairIssue, array $managerIds): void
+    {
+        RepairIssuePropertyManager::where('repair_issue_id', $repairIssue->id)->delete();
+
+        foreach (array_unique(array_filter($managerIds)) as $managerId) {
+            RepairIssuePropertyManager::create([
+                'repair_issue_id' => $repairIssue->id,
+                'property_manager_id' => $managerId,
+                'assigned_by' => Auth::id(),
+                'assigned_at' => now(),
+            ]);
+        }
     }
 
     public function ajaxList(Request $request)
