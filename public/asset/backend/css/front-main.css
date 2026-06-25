@@ -150,6 +150,18 @@ a:hover {
 div.dataTables_wrapper div.dataTables_filter input {
     width: 100%;
 }
+#menu-search{
+    background: transparent;
+    color: white;
+    border: 1px solid #696969;
+}
+#menu-search:focus{
+    outline:none;
+    box-shadow: none;
+}
+#menu-search::placeholder{
+    color: rgb(173, 173, 173);
+}
 
 .accordion {
     .accordion-item {
@@ -440,6 +452,133 @@ form {
           Sdebar
 ==========================================*/
 
+
+/* Sidebar Styling */
+.sidebar{
+    background-color: var(--sidebar-bg);
+    height: calc(100vh - 64px);
+    overflow: auto;
+}
+    /* Categories/Headers */
+    .sidebar-heading {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1rem;
+      padding: 1.5rem 1.5rem 0.5rem;
+      color: var(--sidebar-header-color);
+      font-weight: 700;
+    }
+
+    /* Menu Links */
+    .nav-link {
+      color: var(--sidebar-color) !important;
+      padding: 0.2rem 1.15rem;
+      display: flex;
+      align-items: center;
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .nav-link:hover {
+      color: var(--sidebar-hover-color);
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+
+    .nav-link i:first-child {
+      font-size: 1rem;
+      width: 20px;
+      text-align: center;
+    }
+
+    /* Chevron arrow at the end */
+    .nav-link .bi-chevron-right {
+      margin-left: auto;
+      font-size: 0.75rem;
+      opacity: 0.7;
+      transition: transform 0.2s ease;
+    }
+
+    /* Handle arrow rotation when Bootstrap menu unfolds */
+    .nav-link:not(.collapsed) .bi-chevron-right {
+      transform: rotate(90deg);
+    }
+
+    .nav-link .icon_wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--sidebar-header-color);
+    }
+    /* Submenu Layout */
+    .submenu {
+      list-style: none;
+      padding-left: 2.25rem;
+      margin-bottom: 0.5rem;
+    }
+    .submenu li{
+        margin-bottom: 0;
+    }
+
+    .submenu-link {
+      color: var(--sidebar-color);
+      padding: .5rem .5rem;
+      display: flex;
+      align-items: center;
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .submenu-link:hover {
+      color: var(--sidebar-hover-color);
+    }
+
+    /* Subtle circle bullet (◦) indicator matching image_31765f.png */
+    .submenu-link::before {
+      content: "◦";
+      font-weight: bold;
+      font-size: 1.1rem;
+      margin-right: 0.75rem;
+      color: var(--sidebar-color);
+      opacity: 0.6;
+      line-height: 0;
+      position: relative;
+      top: -1px;
+    }
+    
+    .submenu-link:hover::before {
+      color: var(--sidebar-hover-color);
+      opacity: 1;
+    }
+
+    /* Custom Badges */
+    .badge-new {
+      background-color: rgba(13, 110, 253, 0.15);
+      color: #0d6efd;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+    }
+
+    .badge-hot {
+      background-color: rgba(220, 53, 69, 0.15);
+      color: #dc3545;
+      font-size: 0.7rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      margin-left: 0.5rem;
+    }
+
+    .footer_user_profile_menu{
+        padding: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--sidebar-color);
+    }
+    
+
 /* .sidebar-list-item:has(.show),
 .sidebar-list-item:has(a.active) {
     background-color: var(--primary-300);
@@ -452,6 +591,9 @@ form {
     color: var(--black);
     cursor: pointer;
 } */
+
+
+/*  ---- working sidebar  comented by Altamash ----
 .sidebar .list-unstyled {
     padding: 20px;
 }
@@ -516,7 +658,6 @@ form {
 }
 
 .components>li.sidebar-list-item {
-    /* color: var(--primary-color); */
     padding: 12px 20px;
 }
 
@@ -528,7 +669,7 @@ form {
     background: none;
 }
 
-/*sidebar*/
+/*sideba --- 
 .sidebar {
     top: 0;
     left: 0;
@@ -542,7 +683,6 @@ form {
 
 .sidebar.collapsed {
     width: 60px;
-    /* Change to desired collapsed width */
 }
 
 .sidebar-header {
@@ -569,10 +709,7 @@ form {
     }
 }
 
-/* .sidebar-list-item.submenu_wrapper a {
-    padding: 8px 16px !important;
-    display: block;
-} */
+
 
 .sidebar-list-item.submenu_wrapper a.active {
     color: var(--primary) !important;
@@ -581,7 +718,6 @@ form {
     border-radius: 6px;
 }
 
-/* Speed up sidebar collapse animation */
 .sidebar .collapsing {
     transition: height 0.15s ease !important;
 }
@@ -590,7 +726,18 @@ ul#propertiesSubmenu li.sidebar-sub-list-item {
     padding: 6px 0 6px 18px !important
 }
 
+.components li.sidebar-list-item .logout_btn {
+    padding: 0;
+    text-decoration: none;
+    color: var(--black);
+    height: unset;
+}  ---- working sidebar  comented by Altamash end---- */
 
+/* .sidebar-list-item.submenu_wrapper a {
+    padding: 8px 16px !important;
+    display: block;
+} */
+ 
 /* ul#propertiesSubmenu li.sidebar-sub-list-item:hover {
     background-color: var(--primary-200);
     color: var(--primary);
@@ -600,12 +747,7 @@ ul#propertiesSubmenu li.sidebar-sub-list-item:hover a {
     color: var(--primary);
 } */
 
-.components li.sidebar-list-item .logout_btn {
-    padding: 0;
-    text-decoration: none;
-    color: var(--black);
-    height: unset;
-}
+
 
 /* ================================= */
 
