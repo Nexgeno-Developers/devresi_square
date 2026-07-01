@@ -1,0 +1,42 @@
+flowchart LR
+    User[User] --> UserModel[App\Models\User]
+    UserModel --> HasRoles[Spatie HasRoles Trait]
+    UserModel --> StaffAccount{Staff Account?}
+
+    HasRoles --> MHR[model_has_roles]
+    MHR --> Role[roles]
+    Role --> RHP[role_has_permissions]
+    RHP --> Permission[permissions]
+
+    UserModel --> MHP[model_has_permissions]
+    MHP --> Permission
+
+    StaffAccount -- yes --> Customized{permissions_customized?}
+    Customized -- yes --> MHP
+    Customized -- no --> Designation[designations]
+    Designation --> DHP[designation_has_permissions]
+    DHP --> Permission
+
+    Request[HTTP Request] --> Auth[auth middleware]
+    Auth --> Route[Route]
+    Route --> PermissionMW{permission middleware?}
+    PermissionMW -- yes --> SpatieMW[Spatie PermissionMiddleware]
+    PermissionMW -- no --> Controller[Controller]
+    SpatieMW --> Permission
+    SpatieMW --> Controller
+
+    Controller --> Gate{Gate or authorize?}
+    Gate -- yes --> LaravelGate[Laravel Gate]
+    LaravelGate --> SuperAdmin{Super Admin?}
+    SuperAdmin -- yes --> Allow[Allow]
+    SuperAdmin -- no --> Effective[hasEffectivePermission]
+    Effective --> Permission
+    Gate -- no --> Hardcoded{Hardcoded role/owner checks?}
+    Hardcoded -- yes --> Role
+    Hardcoded -- no --> View[Blade View]
+    Allow --> View
+    Permission --> View
+    Role --> View
+
+    View --> BladeCan[@can / @canany / hasRole]
+    BladeCan --> Response[Response]
