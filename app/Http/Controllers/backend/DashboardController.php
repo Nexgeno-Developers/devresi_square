@@ -81,26 +81,51 @@ class DashboardController extends Controller
 
         $planUsageSummary = $planUsageAccount
             ? app(AccountLimitService::class)->summary($planUsageAccount)
-            : null;
+            : $this->emptyPlanUsageSummary();
 
-        return view('backend.dashboard', compact(
-            // 'users',
-            'usersCount',
-            'propertiesCount',
-            'invoicesCount',
-            'workOrdersCount',
-            'repairIssuesCount',
-            'activeTenanciesCount',
-            'openRepairsCount',
-            'branchesCount',
-            'staffCount',
-            'recentProperties',
-            'recentRepairs',
-            'recentTenancies',
-            'dashboardRole',
-            'planUsageAccount',
-            'planUsageSummary'
-        ));
+        return view('backend.dashboard', [
+            'usersCount' => $usersCount,
+            'propertiesCount' => $propertiesCount,
+            'invoicesCount' => $invoicesCount,
+            'workOrdersCount' => $workOrdersCount,
+            'repairIssuesCount' => $repairIssuesCount,
+            'activeTenanciesCount' => $activeTenanciesCount,
+            'openRepairsCount' => $openRepairsCount,
+            'branchesCount' => $branchesCount,
+            'staffCount' => $staffCount,
+            'recentProperties' => $recentProperties,
+            'recentRepairs' => $recentRepairs,
+            'recentTenancies' => $recentTenancies,
+            'dashboardRole' => $dashboardRole,
+            'planUsageAccount' => $planUsageAccount,
+            'planUsageSummary' => $planUsageSummary,
+        ]);
+    }
+
+    private function emptyPlanUsageSummary(): array
+    {
+        $emptyResource = [
+            'used' => 0,
+            'limit' => 0,
+            'remaining' => 0,
+            'can_add' => false,
+        ];
+
+        return [
+            'plan_name' => null,
+            'subscription_status' => null,
+            'trial_ends_at' => null,
+            'properties' => $emptyResource,
+            'branches' => $emptyResource,
+            'staff' => $emptyResource,
+            'property_managers' => $emptyResource,
+            'features' => [
+                'company_profile' => false,
+                'invoice_branding' => false,
+                'roles_permissions' => false,
+                'contact_login' => false,
+            ],
+        ];
     }
 
     private function superAdminDashboard()
