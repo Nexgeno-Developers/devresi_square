@@ -2,18 +2,26 @@
 
 namespace App\Http\Controllers\Backend;
 
+use App\Http\Controllers\Backend\Concerns\EnforcesSaasPlanLimits;
 use Illuminate\Http\Request;
 use App\Models\Designation;
 use Spatie\Permission\Models\Permission;
 
 class DesignationController
 {
+    use EnforcesSaasPlanLimits;
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $designations = Designation::withCount('permissions')->get();
+        $this->abortIfSaasLimitDenied('roles_permissions');
+
+        $designations = Designation::withCount('permissions')
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->get();
+
         return view('backend.designations.index', compact('designations'));
     }
 
@@ -22,6 +30,8 @@ class DesignationController
      */
     public function create()
     {
+        $this->abortIfSaasLimitDenied('roles_permissions');
+
         $permissions = Permission::orderBy('name')->get();
         return view('backend.designations.create', compact('permissions'));
     }
@@ -31,13 +41,19 @@ class DesignationController
      */
     public function store(Request $request)
     {
+        $this->abortIfSaasLimitDenied('roles_permissions');
+
         $request->validate([
             'title' => 'required|string|max:255|unique:designations',
             'permissions' => 'nullable|array',
             'permissions.*' => 'integer|exists:permissions,id',
         ]);
 
-        $designation = Designation::create($request->only('title'));
+        $designation = Designation::create([
+            'account_id' => current_account_id(),
+            'title' => $request->input('title'),
+            'status' => 'active',
+        ]);
         $designation->permissions()->sync($request->input('permissions', []));
 
         return redirect()->route('admin.designations.index')->with('success', 'Designation created successfully.');
@@ -56,7 +72,11 @@ class DesignationController
      */
     public function edit($id)
     {
+        $this->abortIfSaasLimitDenied('roles_permissions');
+
         $designation = Designation::with('permissions')->findOrFail($id);
+        ensureModelBelongsToCurrentAccount($designation);
+
         $permissions = Permission::orderBy('name')->get();
         $selectedPermissions = $designation->permissions->pluck('id')->toArray();
 
@@ -68,6 +88,8 @@ class DesignationController
      */
     public function update(Request $request, $id)
     {
+        $this->abortIfSaasLimitDenied('roles_permissions');
+
         $request->validate([
             'title' => 'required|string|max:255|unique:designations,title,' . $id,
             'permissions' => 'nullable|array',
@@ -75,6 +97,8 @@ class DesignationController
         ]);
 
         $designation = Designation::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($designation);
+
         $designation->update($request->only('title'));
         $designation->permissions()->sync($request->input('permissions', []));
 
@@ -86,7 +110,11 @@ class DesignationController
      */
     public function destroy($id)
     {
+        $this->abortIfSaasLimitDenied('roles_permissions');
+
         $designation = Designation::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($designation);
+
         $designation->delete();
 
         return redirect()->route('admin.designations.index')->with('success', 'Designation deleted successfully.');

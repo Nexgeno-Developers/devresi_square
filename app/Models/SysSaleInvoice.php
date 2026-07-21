@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use App\Models\GlJournal;
 
 class SysSaleInvoice extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSaasAccount;
 
     public const LINK_TO_TYPES = ['Property', 'Tenancy', 'Contractor'];
     public const CHARGE_TO_TYPES = ['Owner', 'Tenant', 'Contractor'];
@@ -56,6 +57,16 @@ class SysSaleInvoice extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function invoiceHeader(): BelongsTo

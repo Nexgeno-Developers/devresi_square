@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Backend;
 
 use Hash;
 // use App\Models\Role;
+use App\Http\Controllers\Backend\Concerns\EnforcesSaasPlanLimits;
+use App\Models\AccountUser;
 use App\Models\User;
 use App\Models\Staff;
 use App\Models\Branch;
@@ -19,6 +21,8 @@ use Illuminate\Validation\ValidationException;
 
 class StaffController extends Controller
 {
+    use EnforcesSaasPlanLimits;
+
     public function __construct() {
         // Staff Permission Check
         $this->middleware(['permission:view all staffs'])->only('index');
@@ -31,6 +35,7 @@ class StaffController extends Controller
     {
         $staffs = Staff::with('user.designation')
             ->with('branch')
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->whereHas('user', fn($query) => $query->where('user_type', 'staff'))
             ->paginate(10);
 
@@ -39,16 +44,34 @@ class StaffController extends Controller
 
     public function create()
     {
-        $designations = Designation::with('permissions')->orderBy('title')->get();
+        if ($response = $this->redirectIfSaasLimitDenied('staff', 'staffs.index')) {
+            return $response;
+        }
+
+        $designations = Designation::with('permissions')
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->orderBy('title')
+            ->get();
         $permissions = Permission::orderBy('name')->get();
         $branches = $this->branchOptionsFor(auth()->user());
+        $canCustomizePermissions = $this->canCustomizeStaffPermissions();
 
-        return view('backend.staff.staffs.create', compact('designations', 'permissions', 'branches'));
+        return view('backend.staff.staffs.create', compact('designations', 'permissions', 'branches', 'canCustomizePermissions'));
     }
 
     // Staff permissions are inherited live from the selected designation.
     public function store(Request $request)
     {
+        if ($response = $this->backIfSaasLimitDenied('staff')) {
+            return $response;
+        }
+
+        if (! $this->canCustomizeStaffPermissions() && ($request->filled('custom_permissions') || $request->filled('custom_permissions_submitted'))) {
+            flash('Your current plan does not include staff roles and permissions.')->error();
+
+            return back()->withInput();
+        }
+
         try {
             $data = $request->validate([
                 'title'          => 'required|string|max:255',
@@ -76,6 +99,16 @@ class StaffController extends Controller
 
         DB::beginTransaction();
         try {
+            $accountId = current_account_id();
+            if (! auth()->user()?->hasRole('Super Admin') && ! $accountId) {
+                abort(403, 'No active SaaS account found for this user.');
+            }
+
+            if (! empty($data['branch_id'])) {
+                $branch = Branch::findOrFail($data['branch_id']);
+                ensureModelBelongsToCurrentAccount($branch);
+            }
+
             $profilePicture = $request->hasFile('profile_picture')
                 ? $request->file('profile_picture')->store('profile_pictures', 'public')
                 : null;
@@ -98,12 +131,33 @@ class StaffController extends Controller
             $user->syncRoles(['Staff']);
 
             $staff = Staff::create([
+                'account_id' => $accountId,
                 'user_id' => $user->id,
                 'branch_id' => $data['branch_id'] ?? null,
                 'permissions_customized' => false,
             ]);
 
-            $this->syncStaffPermissionOverride($user, $staff, (int) $data['designation_id'], $data['custom_permissions'] ?? []);
+            if ($accountId) {
+                AccountUser::updateOrCreate(
+                    [
+                        'account_id' => $accountId,
+                        'user_id' => $user->id,
+                    ],
+                    [
+                        'member_type' => 'staff',
+                        'access_level' => 'edit',
+                        'can_login' => true,
+                        'branch_id' => $data['branch_id'] ?? null,
+                        'designation_id' => $data['designation_id'],
+                        'status' => 'active',
+                        'created_by' => auth()->id(),
+                    ]
+                );
+            }
+
+            if ($this->canCustomizeStaffPermissions()) {
+                $this->syncStaffPermissionOverride($user, $staff, (int) $data['designation_id'], $data['custom_permissions'] ?? []);
+            }
 
             // Save extra emails
             foreach (($data['extra_emails'] ?? []) as $email) {
@@ -142,19 +196,33 @@ class StaffController extends Controller
     public function edit($id)
     {
         $staff = Staff::with(['user.designation.permissions', 'user.permissions', 'contacts'])->findOrFail(decrypt($id));
-        $designations = Designation::with('permissions')->orderBy('title')->get();
+        ensureModelBelongsToCurrentAccount($staff);
+
+        $designations = Designation::with('permissions')
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->orderBy('title')
+            ->get();
         $permissions = Permission::orderBy('name')->get();
         $branches = $this->branchOptionsFor(auth()->user());
+        $canCustomizePermissions = $this->canCustomizeStaffPermissions();
         $selectedPermissionIds = $staff->permissions_customized
             ? $staff->user->getDirectPermissions()->pluck('id')->toArray()
             : ($staff->user->designation?->permissions->pluck('id')->toArray() ?? []);
 
-        return view('backend.staff.staffs.edit', compact('staff', 'designations', 'permissions', 'selectedPermissionIds', 'branches'));
+        return view('backend.staff.staffs.edit', compact('staff', 'designations', 'permissions', 'selectedPermissionIds', 'branches', 'canCustomizePermissions'));
     }
 
     public function update(Request $request, $id)
     {
         $staff = Staff::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($staff);
+
+        if (! $this->canCustomizeStaffPermissions() && ($request->filled('custom_permissions') || $request->filled('custom_permissions_submitted'))) {
+            flash('Your current plan does not include staff roles and permissions.')->error();
+
+            return back()->withInput();
+        }
+
         $user  = $staff->user;
 
         try {
@@ -184,6 +252,13 @@ class StaffController extends Controller
 
         DB::beginTransaction();
         try {
+            $accountId = $staff->account_id ?: current_account_id();
+
+            if (! empty($data['branch_id'])) {
+                $branch = Branch::findOrFail($data['branch_id']);
+                ensureModelBelongsToCurrentAccount($branch);
+            }
+
             // 1. Update user
             $user->title          = $data['title'];
             $user->first_name     = $data['first_name'];
@@ -205,11 +280,36 @@ class StaffController extends Controller
             $user->save();
 
             $staff->branch_id = $data['branch_id'] ?? null;
+            $staff->account_id = $accountId;
             $staff->save();
+
+            if ($accountId) {
+                AccountUser::updateOrCreate(
+                    [
+                        'account_id' => $accountId,
+                        'user_id' => $user->id,
+                    ],
+                    [
+                        'member_type' => 'staff',
+                        'access_level' => 'edit',
+                        'can_login' => true,
+                        'branch_id' => $data['branch_id'] ?? null,
+                        'designation_id' => $data['designation_id'],
+                        'status' => 'active',
+                        'created_by' => auth()->id(),
+                    ]
+                );
+            }
 
             Role::firstOrCreate(['name' => 'Staff', 'guard_name' => 'web']);
             $user->syncRoles(['Staff']);
-            $this->syncStaffPermissionOverride($user, $staff, (int) $data['designation_id'], $data['custom_permissions'] ?? []);
+            if ($this->canCustomizeStaffPermissions()) {
+                $this->syncStaffPermissionOverride($user, $staff, (int) $data['designation_id'], $data['custom_permissions'] ?? []);
+            } else {
+                $staff->permissions_customized = false;
+                $staff->save();
+                $user->syncPermissions([]);
+            }
 
             // 2. Sync extra emails (delete all then re-insert)
             $staff->contacts()->delete();
@@ -246,7 +346,10 @@ class StaffController extends Controller
 
     public function destroy($id)
     {
-        User::destroy(Staff::findOrFail($id)->user->id);
+        $staff = Staff::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($staff);
+
+        User::destroy($staff->user->id);
         if(Staff::destroy($id)){
             flash('Staff has been deleted successfully')->success();
             return redirect()->route('staffs.index');
@@ -288,6 +391,10 @@ class StaffController extends Controller
 
     private function branchOptionsFor(User $user)
     {
+        if (! $user->hasRole('Super Admin')) {
+            return Branch::forAccount(current_account_id())->orderBy('name')->get();
+        }
+
         if ($user->ownedCompany) {
             return $user->ownedCompany->branches()->orderBy('name')->get();
         }
@@ -297,5 +404,10 @@ class StaffController extends Controller
         }
 
         return Branch::orderBy('name')->get();
+    }
+
+    private function canCustomizeStaffPermissions(): bool
+    {
+        return $this->saasLimitError('roles_permissions') === null;
     }
 }

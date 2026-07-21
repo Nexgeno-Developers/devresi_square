@@ -8,6 +8,21 @@
                 <div class="card bg-light" style="border-radius: 1rem;">
                     <div class="card-body p-md-4 p-4 text-center">
 
+                        @if($selectedPlan ?? null)
+                            <div class="alert alert-info text-start mb-4">
+                                <h5 class="mb-2">Selected Plan: {{ $selectedPlan->name }}</h5>
+                                <div><strong>Billing:</strong> {{ ucfirst($selectedBillingCycle) }}</div>
+                                <div>
+                                    <strong>Price:</strong>
+                                    {{ $selectedBillingCycle === 'annual' ? $selectedPlan->formattedAnnualPrice() . '/year' : $selectedPlan->formattedMonthlyPrice() . '/month' }}
+                                </div>
+                                <div><strong>Trial:</strong> {{ $selectedPlan->trial_days }} days</div>
+                                <div><strong>Included properties:</strong> {{ $selectedPlan->property_limit }}</div>
+                                <div><strong>Branches:</strong> {{ $selectedPlan->branch_limit }}</div>
+                                <div><strong>Staff:</strong> {{ $selectedPlan->staff_limit }}</div>
+                            </div>
+                        @endif
+
                         {{-- Step indicator --}}
                         <div class="d-flex justify-content-center align-items-center gap-2 mb-4">
                             <div class="step-dot active" id="dot-1">
@@ -30,6 +45,11 @@
 
                             <form id="reg-form" novalidate>
                                 @csrf
+                                @if($selectedPlan ?? null)
+                                    <input type="hidden" name="plan_id" value="{{ $selectedPlan->id }}">
+                                    <input type="hidden" name="billing_cycle" value="{{ $selectedBillingCycle }}">
+                                    <input type="hidden" name="account_type" value="{{ $selectedAccountType }}">
+                                @endif
                                 <div class="row g-3 text-start">
 
                                     <div class="col-md-6">
@@ -60,13 +80,28 @@
                                         <div class="invalid-feedback"></div>
                                     </div>
 
+                                    <div class="col-md-6">
+                                        <input type="password" class="form-control form-control-lg"
+                                               id="password" name="password"
+                                               placeholder="Password" minlength="8" autocomplete="new-password" required />
+                                        <div class="invalid-feedback"></div>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <input type="password" class="form-control form-control-lg"
+                                               id="password_confirmation" name="password_confirmation"
+                                               placeholder="Confirm Password" minlength="8" autocomplete="new-password" required />
+                                        <div class="invalid-feedback"></div>
+                                    </div>
+
                                     <div class="col-12">
                                         <select class="form-select form-select-lg" id="type" name="type" required>
-                                            <option value="" disabled selected>I am a...</option>
-                                            <option value="landlord">Landlord</option>
-                                            <option value="owner">Owner</option>
-                                            <option value="estate_agent">Estate Agent</option>
-                                            <option value="contractor">Contractor</option>
+                                            @php($selectedType = old('type', $suggestedRegistrationType ?? null))
+                                            <option value="" disabled @selected(! $selectedType)>I am a...</option>
+                                            <option value="landlord" @selected($selectedType === 'landlord')>Landlord</option>
+                                            <option value="owner" @selected($selectedType === 'owner')>Owner</option>
+                                            <option value="estate_agent" @selected($selectedType === 'estate_agent')>Estate Agent</option>
+                                            <option value="contractor" @selected($selectedType === 'contractor')>Contractor</option>
                                         </select>
                                         <div class="invalid-feedback"></div>
                                     </div>
@@ -207,10 +242,11 @@
     // ── Helpers ────────────────────────────────────────────────────────────
     function showFieldError(name, msg) {
         const el = regForm.querySelector('[name="' + name + '"]');
-        if (!el) return;
+        if (!el || el.type === 'hidden') return false;
         el.classList.add('is-invalid');
         const fb = el.nextElementSibling;
         if (fb && fb.classList.contains('invalid-feedback')) fb.textContent = msg;
+        return true;
     }
 
     function clearFieldErrors() {
@@ -325,8 +361,9 @@
                 if (data.errors) {
                     let hasField = false;
                     Object.entries(data.errors).forEach(([field, msgs]) => {
-                        showFieldError(field, msgs[0]);
-                        hasField = true;
+                        if (showFieldError(field, msgs[0])) {
+                            hasField = true;
+                        }
                     });
                     if (!hasField) {
                         regErrors.innerHTML = '<ul class="mb-0">' +
@@ -405,4 +442,3 @@
 </script>
 @endsection
 @endsection
-

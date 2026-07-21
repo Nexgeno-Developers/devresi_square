@@ -15,7 +15,7 @@
         @include("backend.users.popup_forms.user_detail", ['user' => $user])
     </div>
     </span>
-    @can('Edit Contacts')
+    @can('edit contacts')
     <button class="btn btn-outline-danger btn-sm editForm" data-form="{{ 'user_detail' }}" data-id="{{ $userId }}">
         Edit
     </button>

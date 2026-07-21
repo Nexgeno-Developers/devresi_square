@@ -7,13 +7,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Company;
 use App\Models\User;
 use App\Models\GlAuditLog;
+use Illuminate\Database\Eloquent\Builder;
 
 class GlJournalLine extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'gl_journal_id','gl_account_id','company_id','user_id','debit','credit'
+        'account_id','gl_journal_id','gl_account_id','company_id','user_id','debit','credit'
     ];
 
     protected static function booted(): void
@@ -39,6 +40,20 @@ class GlJournalLine extends Model
     public function account()
     {
         return $this->belongsTo(GlAccount::class, 'gl_account_id');
+    }
+
+    public function saasAccount()
+    {
+        return $this->belongsTo(\App\Models\Account::class, 'account_id');
+    }
+
+    public function scopeForAccount(Builder $query, int|string|null $accountId): Builder
+    {
+        if ($accountId === null || $accountId === '') {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where($this->getTable() . '.account_id', $accountId);
     }
 
     public function company()

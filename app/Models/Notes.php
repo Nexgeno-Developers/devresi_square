@@ -2,11 +2,22 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Model;
 
 class Notes extends Model
 {
-    protected $fillable = ['noteable_id', 'noteable_type', 'content', 'note_type_id'];
+    use BelongsToSaasAccount;
+
+    protected $fillable = [
+        'account_id',
+        'noteable_id',
+        'noteable_type',
+        'content',
+        'note_type_id',
+        'visibility',
+        'created_by',
+    ];
 
     public function noteType()
     {
@@ -16,5 +27,10 @@ class Notes extends Model
     public function noteable()
     {
         return $this->morphTo();
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

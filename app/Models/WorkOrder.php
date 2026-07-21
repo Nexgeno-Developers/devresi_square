@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Upload;
@@ -9,9 +10,12 @@ use App\Traits\TracksUser;
 
 class WorkOrder extends Model
 {
-    use HasFactory, TracksUser;
+    use HasFactory, TracksUser, BelongsToSaasAccount;
 
     protected $fillable = [
+        'account_id',
+        'company_id',
+        'branch_id',
         'works_order_no',
         'repair_issue_id',
         'job_type_id',
@@ -39,6 +43,16 @@ class WorkOrder extends Model
     public function repairIssue()
     {
         return $this->belongsTo(RepairIssue::class);
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function user()

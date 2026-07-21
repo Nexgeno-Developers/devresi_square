@@ -11,7 +11,7 @@ class GlAccount extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['code', 'name', 'type', 'is_active', 'parent_id', 'group', 'sort_order'];
+    protected $fillable = ['account_id', 'code', 'name', 'type', 'is_active', 'parent_id', 'group', 'sort_order'];
 
     public function parent(): BelongsTo
     {
@@ -28,4 +28,3 @@ class GlAccount extends Model
         return $this->hasMany(GlAccountBalance::class, 'gl_account_id');
     }
 }
-

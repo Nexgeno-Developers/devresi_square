@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToAccount;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Upload extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, BelongsToAccount;
 
     /**
     * The attributes that are mass assignable.
@@ -15,7 +16,7 @@ class Upload extends Model
     * @var array
     */
     protected $fillable = [
-        'file_original_name', 'file_name', 'user_id', 'extension', 'type', 'file_size',
+        'account_id', 'file_original_name', 'file_name', 'user_id', 'extension', 'type', 'file_size', 'visibility',
     ];
 
     public function user()
@@ -38,6 +39,7 @@ class Upload extends Model
         $upload->file_name = $file->store('uploads/all', 'public'); // Store file
         $upload->user_id = auth()->id();
         $upload->file_size = $file->getSize();
+        $upload->account_id = function_exists('current_account_id') ? current_account_id() : null;
     
         // Set the file type based on extension
         $upload->type = $types[$upload->extension] ?? 'document'; // Default to 'document' if not listed

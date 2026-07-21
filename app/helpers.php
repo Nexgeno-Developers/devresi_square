@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -129,9 +130,10 @@ if (!function_exists('static_asset')) {
 if (!function_exists('getBaseURL')) {
     function getBaseURL()
     {
-        $root = '//' . $_SERVER['HTTP_HOST'];
+        $host = $_SERVER['HTTP_HOST'] ?? parse_url(config('app.url'), PHP_URL_HOST) ?? 'localhost';
+        $root = '//' . $host;
 
-        if (env('ENVIRONMENT') == 'Production') {
+        if (env('ENVIRONMENT') == 'Production' && ! empty($_SERVER['SCRIPT_NAME'])) {
             $root .= str_replace(basename($_SERVER['SCRIPT_NAME']), '', $_SERVER['SCRIPT_NAME']);
         }
 
@@ -170,6 +172,46 @@ if (!function_exists('current_user')) {
     function current_user(): ?User
     {
         return Auth::user();  // This is the best way to get the authenticated user
+    }
+}
+
+if (!function_exists('current_account')) {
+    /**
+     * Get the selected SaaS account for the current request.
+     */
+    function current_account(): ?\App\Models\Account
+    {
+        return app(\App\Services\Saas\CurrentAccountService::class)->current();
+    }
+}
+
+if (!function_exists('current_account_id')) {
+    /**
+     * Get the selected SaaS account id for the current request.
+     */
+    function current_account_id(): ?int
+    {
+        return app(\App\Services\Saas\CurrentAccountService::class)->currentId();
+    }
+}
+
+if (!function_exists('ensureModelBelongsToCurrentAccount')) {
+    /**
+     * Abort when a normal user tries to access another account's model.
+     */
+    function ensureModelBelongsToCurrentAccount($model): void
+    {
+        $user = Auth::user();
+
+        if (! $user || $user->hasRole('Super Admin')) {
+            return;
+        }
+
+        if (! $model instanceof Model || ! Schema::hasColumn($model->getTable(), 'account_id')) {
+            return;
+        }
+
+        abort_unless((int) ($model->account_id ?? 0) === (int) current_account_id(), 403);
     }
 }
 
@@ -401,18 +443,24 @@ if (!function_exists('searchProperties')) {
 
         // If IDs are provided, fetch properties by IDs
         if ($ids) {
-            $properties = Property::whereIn('id', $ids)
+            $properties = Property::query()
+                ->when(Auth::check() && ! Auth::user()->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                ->whereIn('id', $ids)
                 ->get(['id', 'prop_ref_no', 'prop_name', 'line_1', 'line_2', 'city', 'country', 'postcode', 'specific_property_type', 'available_from']);  // Return only necessary fields
         } else {
             // If no IDs are passed, search properties based on the query (default behavior)
             $query = $request->input('query');
-            $properties = Property::where('prop_ref_no', 'LIKE', '%' . $query . '%')
-                ->orWhere('prop_name', 'LIKE', '%' . $query . '%')
-                ->orWhere('line_1', 'LIKE', '%' . $query . '%')
-                ->orWhere('line_2', 'LIKE', '%' . $query . '%')
-                ->orWhere('city', 'LIKE', '%' . $query . '%')
-                ->orWhere('country', 'LIKE', '%' . $query . '%')
-                ->orWhere('postcode', 'LIKE', '%' . $query . '%')
+            $properties = Property::query()
+                ->when(Auth::check() && ! Auth::user()->hasRole('Super Admin'), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
+                ->where(function ($propertyQuery) use ($query) {
+                    $propertyQuery->where('prop_ref_no', 'LIKE', '%' . $query . '%')
+                        ->orWhere('prop_name', 'LIKE', '%' . $query . '%')
+                        ->orWhere('line_1', 'LIKE', '%' . $query . '%')
+                        ->orWhere('line_2', 'LIKE', '%' . $query . '%')
+                        ->orWhere('city', 'LIKE', '%' . $query . '%')
+                        ->orWhere('country', 'LIKE', '%' . $query . '%')
+                        ->orWhere('postcode', 'LIKE', '%' . $query . '%');
+                })
                 ->limit(10)
                 ->get(['id', 'prop_ref_no', 'prop_name', 'line_1', 'line_2', 'city', 'country', 'postcode', 'specific_property_type', 'available_from']);
         }

@@ -34,6 +34,40 @@
                     </div>
                 </div>
             </div>
+            @auth
+                @if(session()->has('impersonator_user_id'))
+                    <div class="d-flex align-items-center ms-3">
+                        <span class="small text-muted me-2">Viewing {{ current_account()?->account_name ?: 'customer account' }}</span>
+                        <form action="{{ route('backend.accounts.leave-login') }}" method="POST" class="mb-0">
+                            @csrf
+                            <button type="submit" class="btn btn-sm btn-warning text-nowrap">
+                                <i class="bi bi-arrow-return-left me-1"></i> Return to Super Admin
+                            </button>
+                        </form>
+                    </div>
+                @elseif(! auth()->user()->isSuperAdmin())
+                    @php
+                        $accountService = app(\App\Services\Saas\CurrentAccountService::class);
+                        $currentAccount = $accountService->current(auth()->user());
+                        $availableAccounts = $accountService->availableAccounts(auth()->user());
+                    @endphp
+                    @if($availableAccounts->count() > 1)
+                        <div class="d-flex align-items-center ms-3">
+                            <form action="{{ route('backend.accounts.switch') }}" method="POST" class="d-flex align-items-center gap-2 mb-0">
+                                @csrf
+                                <label class="small text-muted mb-0" for="backend-current-account">Account</label>
+                                <select id="backend-current-account" name="account_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    @foreach($availableAccounts as $account)
+                                        <option value="{{ $account->id }}" @selected((int) $currentAccount?->id === (int) $account->id)>
+                                            {{ $account->account_name ?: 'Account #' . $account->id }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </form>
+                        </div>
+                    @endif
+                @endif
+            @endauth
             <div class="collapse navbar-collapse" id="navbarAdmin">
                 <ul class="navbar-nav ms-auto">               
                     @if (Auth::check())                  

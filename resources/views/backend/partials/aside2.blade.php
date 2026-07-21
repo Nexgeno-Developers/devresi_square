@@ -1,5 +1,30 @@
 @php
     $authUser = auth()->user();
+    $billingAccount = null;
+    $canViewBilling = false;
+
+    if ($authUser) {
+        try {
+            $billingAccount = app(\App\Services\Saas\CurrentAccountService::class)->current($authUser);
+        } catch (\Throwable $e) {
+            $billingAccount = null;
+        }
+
+        if ($billingAccount && $authUser->hasRole('Super Admin')) {
+            $canViewBilling = true;
+        } elseif ($billingAccount) {
+            $billingMembership = \App\Models\AccountUser::query()
+                ->where('account_id', $billingAccount->id)
+                ->where('user_id', $authUser->id)
+                ->where('status', 'active')
+                ->first();
+
+            $canViewBilling = $billingMembership
+                && $billingMembership->can_login
+                && in_array($billingMembership->member_type, ['owner', 'admin'], true)
+                && $billingMembership->access_level === 'full';
+        }
+    }
 @endphp
 <aside id="menu" class="sidebar">
    
@@ -20,6 +45,15 @@
             </a>
         </li>
         @endunless
+
+        @if($canViewBilling)
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('backend.billing.*') ? 'active' : '' }}"
+                href="{{ route('backend.billing.index') }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-credit-card"></i>Billing &amp; Plan</span>
+            </a>
+        </li>
+        @endif
 
         @can('view calendar')
         {{-- Calendar --}}
@@ -187,7 +221,7 @@
         --}}
 
         {{-- Registrations (public sign-up approvals) --}}
-        @unless(auth()->user()->hasRole('Contractor'))
+        @if(auth()->user()->hasRole('Super Admin') && auth()->user()->can('manage registrations'))
          <li class="nav-item">
             <a href="{{ route('admin.registrations.index') }}"
                 class="nav-link {{ request()->routeIs('admin.registrations.*') ? 'active' : ''  }}">
@@ -200,7 +234,41 @@
                 </span>
             </a>
         </li>
-        @endunless
+        @endif
+
+        @if(auth()->user()->hasRole('Super Admin'))
+         <li class="nav-item">
+            <a href="#saasManagementSubmenu" data-bs-toggle="collapse"
+                aria-expanded="{{ request()->routeIs('backend.saas.*') ? 'true' : 'false' }}"
+                class="nav-link collapsed {{ request()->routeIs('backend.saas.*') ? 'active' : '' }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-layer-group"></i>SaaS Management</span>
+                <i class="bi bi-chevron-right"></i>
+            </a>
+            <ul class="nav-second-level collapse list-unstyled submenu {{ request()->routeIs('backend.saas.*') ? 'show' : '' }}"
+                id="saasManagementSubmenu">
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ request()->routeIs('backend.saas.plans.*') ? 'active submenu-link' : 'submenu-link' }} @endslot
+                    @slot('link') {{ route('backend.saas.plans.index') }} @endslot
+                    @slot('link_name') Plans @endslot
+                @endcomponent
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ request()->routeIs('backend.saas.addons.*') ? 'active submenu-link' : 'submenu-link' }} @endslot
+                    @slot('link') {{ route('backend.saas.addons.index') }} @endslot
+                    @slot('link_name') Addons @endslot
+                @endcomponent
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ request()->routeIs('backend.saas.accounts.*') ? 'active submenu-link' : 'submenu-link' }} @endslot
+                    @slot('link') {{ route('backend.saas.accounts.index') }} @endslot
+                    @slot('link_name') Accounts @endslot
+                @endcomponent
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ request()->routeIs('backend.saas.subscriptions.*') ? 'active submenu-link' : 'submenu-link' }} @endslot
+                    @slot('link') {{ route('backend.saas.subscriptions.index') }} @endslot
+                    @slot('link_name') Subscriptions @endslot
+                @endcomponent
+            </ul>
+        </li>
+        @endif
 
         @can('manage tenancies')
          <li class="nav-item">

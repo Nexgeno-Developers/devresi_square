@@ -158,11 +158,18 @@
                             </div> --}}
                         </div>
 
+                        @if(! ($canUseCompanyProfile ?? true))
+                            <div class="alert alert-secondary mt-4">
+                                Your current plan does not include estate agency company profile access.
+                            </div>
+                        @endif
+
                         @if($company)
                             @php
                                 $socialFields = ['facebook', 'instagram', 'linkedin', 'twitter', 'youtube', 'tiktok'];
                                 $companyEmails = old('company.emails', $company->emails ?: ['']);
                                 $companyPhones = old('company.phones', $company->phones ?: ['']);
+                                $canUseInvoiceBranding = $canUseInvoiceBranding ?? true;
                             @endphp
 
                             <hr class="my-4">
@@ -193,20 +200,28 @@
                                     <label class="form-label" for="website">Website</label>
                                     <input type="url" class="form-control" id="website" name="company[website]" value="{{ old('company.website', $company->website) }}">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label" for="company_logo">Company Logo</label>
-                                    <input type="file" class="form-control" id="company_logo" name="company_logo" accept="image/*">
-                                    @if($company->logo_path)
-                                        <img src="{{ asset('storage/' . $company->logo_path) }}" alt="Company Logo" class="img-thumbnail mt-2" style="max-height: 70px;">
-                                    @endif
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label" for="company_stamp">Company Stamp</label>
-                                    <input type="file" class="form-control" id="company_stamp" name="company_stamp" accept="image/*">
-                                    @if($company->stamp_path)
-                                        <img src="{{ asset('storage/' . $company->stamp_path) }}" alt="Company Stamp" class="img-thumbnail mt-2" style="max-height: 70px;">
-                                    @endif
-                                </div>
+                                @if($canUseInvoiceBranding)
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="company_logo">Company Logo</label>
+                                        <input type="file" class="form-control" id="company_logo" name="company_logo" accept="image/*">
+                                        @if($company->logo_path)
+                                            <img src="{{ asset('storage/' . $company->logo_path) }}" alt="Company Logo" class="img-thumbnail mt-2" style="max-height: 70px;">
+                                        @endif
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="company_stamp">Company Stamp</label>
+                                        <input type="file" class="form-control" id="company_stamp" name="company_stamp" accept="image/*">
+                                        @if($company->stamp_path)
+                                            <img src="{{ asset('storage/' . $company->stamp_path) }}" alt="Company Stamp" class="img-thumbnail mt-2" style="max-height: 70px;">
+                                        @endif
+                                    </div>
+                                @else
+                                    <div class="col-12">
+                                        <div class="alert alert-secondary mb-0">
+                                            Your current plan does not include invoice branding.
+                                        </div>
+                                    </div>
+                                @endif
                             </div>
 
                             <div class="row g-3 mt-1">

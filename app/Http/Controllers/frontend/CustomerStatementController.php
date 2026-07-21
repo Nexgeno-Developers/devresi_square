@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Frontend;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Services\Accounting\StatementService;
+use App\Services\Saas\PortalAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -14,6 +15,19 @@ class CustomerStatementController extends Controller
     public function show(Request $request, StatementService $service)
     {
         $user = Auth::user();
+        $accountId = current_account_id();
+        $portalAccessService = app(PortalAccessService::class);
+
+        if ($accountId && $portalAccessService->isPortalUser($user, $accountId)) {
+            $financePropertyIds = collect($portalAccessService->accessiblePropertyIds($user, $accountId))
+                ->filter(function ($propertyId) use ($portalAccessService, $user) {
+                    $property = \App\Models\Property::find($propertyId);
+
+                    return $property && $portalAccessService->canViewFinance($user, $property);
+                });
+
+            abort_if($financePropertyIds->isEmpty(), 403, 'You do not have access to statements.');
+        }
 
         $data = $request->validate([
             'company_id' => ['nullable', 'integer', 'min:1'],
@@ -35,7 +49,10 @@ class CustomerStatementController extends Controller
 
         return view('frontend.customer.statement', [
             'title' => 'My Statement',
-            'companies' => Company::orderBy('name')->pluck('name', 'id'),
+            'companies' => Company::query()
+                ->when(! $user?->hasRole('Super Admin'), fn ($query) => $query->forAccount($accountId))
+                ->orderBy('name')
+                ->pluck('name', 'id'),
             'filters' => $data + [
                 'date_from' => $statement['from'],
                 'date_to' => $statement['to'],

@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Branch extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSaasAccount;
 
     protected $fillable = [
+        'account_id',
         'company_id',
         'is_main_head_office',
         'name',
@@ -25,6 +27,7 @@ class Branch extends Model
         'alternate_phone',
         'alternate_email',
         'social_media',
+        'status',
         'created_by',
     ];
 

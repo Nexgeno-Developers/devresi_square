@@ -57,6 +57,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
             'permission' => PermissionMiddleware::class,
             'role'       => RoleMiddleware::class,
+            'current.account' => \App\Http\Middleware\EnsureCurrentAccount::class,
+            'property.participant' => \App\Http\Middleware\EnsurePropertyParticipantAccess::class,
+            'not.portal' => \App\Http\Middleware\DenyPortalUsers::class,
+            'account.status' => \App\Http\Middleware\AccountStatusGuard::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

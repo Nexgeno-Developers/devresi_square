@@ -20,6 +20,14 @@ use App\Models\Tenancy;
 use App\Models\Owner;
 use App\Models\Tenant;
 use App\Models\Contractor;
+use App\Models\Account;
+use App\Models\AccountSubscription;
+use App\Models\AccountSubscriptionAddon;
+use App\Models\AccountUser;
+use App\Models\Addon;
+use App\Models\Event;
+use App\Models\Plan;
+use App\Models\PropertyParticipant;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -54,7 +62,20 @@ class AppServiceProvider extends ServiceProvider
         });
         
         // $permissions = cache()->remember('all_permissions', 3600, fn() => Permission::all());
-        $permissions = cache()->rememberForever('all_permissions', fn() => Permission::all());
+        $permissions = collect();
+
+        try {
+            if (Schema::hasTable('permissions')) {
+                $permissions = cache()->rememberForever('all_permissions', fn() => Permission::all());
+            }
+        } catch (\Throwable $exception) {
+            $isArtisanTest = $this->app->runningInConsole()
+                && in_array('test', $_SERVER['argv'] ?? [], true);
+
+            if (! $this->app->runningUnitTests() && ! $isArtisanTest) {
+                throw $exception;
+            }
+        }
 
         foreach ($permissions as $permission) {
             Gate::define($permission->name, function ($user) use ($permission) {
@@ -75,6 +96,14 @@ class AppServiceProvider extends ServiceProvider
             'receipt'          => SysReceipt::class,
             // Full class names — used by notes, documents, and other polymorphic relations
             'App\\Models\\User'       => User::class,
+            'App\\Models\\Account'    => Account::class,
+            'App\\Models\\AccountSubscription' => AccountSubscription::class,
+            'App\\Models\\AccountSubscriptionAddon' => AccountSubscriptionAddon::class,
+            'App\\Models\\AccountUser' => AccountUser::class,
+            'App\\Models\\Addon'      => Addon::class,
+            'App\\Models\\Event'      => Event::class,
+            'App\\Models\\Plan'       => Plan::class,
+            'App\\Models\\PropertyParticipant' => PropertyParticipant::class,
             'App\\Models\\Property'   => Property::class,
             'App\\Models\\Tenancy'    => Tenancy::class,
             'App\\Models\\Owner'      => Owner::class,

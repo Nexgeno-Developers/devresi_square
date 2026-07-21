@@ -13,6 +13,7 @@ class Registration extends Model
         'phone',
         'type',
         'verify_via',
+        'password_hash',
         'otp_code',
         'otp_expires_at',
         'otp_verified_at',
@@ -29,6 +30,15 @@ class Registration extends Model
         'user_id',
         'ip',
         'ref_url',
+        'account_type',
+        'plan_id',
+        'billing_cycle',
+        'account_id',
+    ];
+
+    protected $hidden = [
+        'password_hash',
+        'otp_code',
     ];
 
     protected $casts = [
@@ -49,6 +59,16 @@ class Registration extends Model
     public function approvedBy()
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function plan()
+    {
+        return $this->belongsTo(Plan::class);
+    }
+
+    public function account()
+    {
+        return $this->belongsTo(Account::class);
     }
 
     public function getFullNameAttribute(): string

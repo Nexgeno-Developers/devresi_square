@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Backend;
 
 use App\Models\Document;
 use App\Models\DocumentType;
+use App\Models\Property;
+use App\Services\Saas\PortalAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -27,6 +29,8 @@ class DocumentsController
         }
 
         $documentable = $documentableType::findOrFail($documentableId);
+        ensureModelBelongsToCurrentAccount($documentable);
+        $this->authorizeDocumentableUpload($documentable);
         $documentTypes = DocumentType::all();
 
         return view('components.backend.documents.documents_form', compact('documentable', 'documentTypes'))
@@ -38,7 +42,11 @@ class DocumentsController
      */
     public function edit(Document $document)
     {
+        ensureModelBelongsToCurrentAccount($document);
+
         $documentable  = $document->documentable;
+        ensureModelBelongsToCurrentAccount($documentable);
+        $this->authorizeDocumentableUpload($documentable);
         $documentTypes = DocumentType::all();
 
         return view('components.backend.documents.documents_form', [
@@ -60,13 +68,20 @@ class DocumentsController
             $document = Document::where('documentable_type', $data['documentable_type'])
                                 ->where('documentable_id', $data['documentable_id'])
                                 ->findOrFail($data['document_id']);
+            ensureModelBelongsToCurrentAccount($document);
+            $this->authorizeDocumentableUpload($document->documentable);
             $document->update([
                 'upload_ids'       => $data['upload_ids'],
                 'document_type_id' => $data['document_type_id'] ?? null,
             ]);
         } else {
+            $documentable = $data['documentable_type']::findOrFail($data['documentable_id']);
+            ensureModelBelongsToCurrentAccount($documentable);
+            $this->authorizeDocumentableUpload($documentable);
+
             // Create new
             $document = Document::create([
+                'account_id' => current_account_id(),
                 'documentable_type'   => $data['documentable_type'],
                 'documentable_id'     => $data['documentable_id'],
                 'upload_ids'          => $data['upload_ids'],
@@ -115,8 +130,15 @@ class DocumentsController
         ]);
 
         $q = Document::with('documentType')
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->where('documentable_type', $data['documentable_type'])
             ->where('documentable_id',   $data['documentable_id']);
+
+        if (class_exists($data['documentable_type'])) {
+            $documentable = $data['documentable_type']::findOrFail($data['documentable_id']);
+            ensureModelBelongsToCurrentAccount($documentable);
+            $this->authorizeDocumentableView($documentable);
+        }
 
         if (! empty($data['document_type_id'])) {
             $q->where('document_type_id', $data['document_type_id']);
@@ -146,6 +168,8 @@ class DocumentsController
     public function showDocument($id)
     {
         $document = Document::with('documentType')->findOrFail($id);
+        ensureModelBelongsToCurrentAccount($document);
+        $this->authorizeDocumentableView($document->documentable);
 
         $html = view('components.backend.documents._documents_show', compact('document'))
                 ->render();
@@ -159,11 +183,53 @@ class DocumentsController
     public function deleteDocument($id)
     {
         $document = Document::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($document);
+        $this->authorizeDocumentableUpload($document->documentable);
         $document->delete();
 
         return response()->json([
             'status'  => true,
             'message' => 'Document deleted successfully!',
         ]);
+    }
+
+    private function authorizeDocumentableView($documentable): void
+    {
+        if (! $documentable instanceof Property) {
+            return;
+        }
+
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user || ! $accountId) {
+            return;
+        }
+
+        $portalAccessService = app(PortalAccessService::class);
+
+        if ($portalAccessService->isPortalUser($user, $accountId)) {
+            abort_unless($portalAccessService->canViewDocuments($user, $documentable), 403, 'You do not have access to property documents.');
+        }
+    }
+
+    private function authorizeDocumentableUpload($documentable): void
+    {
+        if (! $documentable instanceof Property) {
+            return;
+        }
+
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user || ! $accountId) {
+            return;
+        }
+
+        $portalAccessService = app(PortalAccessService::class);
+
+        if ($portalAccessService->isPortalUser($user, $accountId)) {
+            abort_unless($portalAccessService->canUploadDocuments($user, $documentable), 403, 'You cannot upload documents for this property.');
+        }
     }
 }

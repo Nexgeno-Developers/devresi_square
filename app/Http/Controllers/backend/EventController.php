@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Backend;
 
 use Carbon\Carbon;
 use App\Models\Event;
+use App\Models\Property;
+use App\Models\RepairIssue;
 use App\Models\EventInstance;
 use App\Models\EventInstanceChange;
 use GrahamCampbell\ResultType\Success;
@@ -25,7 +27,9 @@ class EventController
         $end = Carbon::parse($request->query('end'));
 
         // Fetch events directly
-        $events = Event::whereBetween('start_datetime', [$start, $end])
+        $events = Event::query()
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->whereBetween('start_datetime', [$start, $end])
             ->where('status', '!=', 'Cancelled')
             ->with('reminders', 'properties', 'repairIssues', 'users')
             ->get();
@@ -136,6 +140,7 @@ class EventController
 
             // 1. Create master event
             $master = Event::create([
+                'account_id' => current_account_id(),
                 'title' => $validated['title'],
                 'type_id' => $validated['type_id'],
                 'sub_type_id' => $validated['sub_type_id'],
@@ -188,6 +193,7 @@ class EventController
                         continue;
 
                     $child = Event::create([
+                        'account_id' => $master->account_id,
                         'parent_id' => $master->id,
                         'title' => $master->title,
                         'type_id' => $master->type_id,
@@ -232,6 +238,7 @@ class EventController
     public function updateInstance(Request $request, $id)
     {
         $event = Event::findOrFail($id); // now $event won't be null
+        ensureModelBelongsToCurrentAccount($event);
 
         $data = $request->validate([
             'start_datetime' => 'required|date',
@@ -294,6 +301,8 @@ class EventController
 
     public function updateMaster(Request $request, Event $event)
     {
+        ensureModelBelongsToCurrentAccount($event);
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'type_id' => 'required|exists:event_types,id',
@@ -332,6 +341,8 @@ class EventController
             $instanceId = $request->input('instance_id');
             $masterId = $request->input('master_id');
             $instance = Event::findOrFail($instanceId); // if instance_id is not provided, use the master event
+            ensureModelBelongsToCurrentAccount($instance);
+
             $newRrule = $validated['rrule'] ?? null;
             $rruleChanged = $instance->rrule !== $newRrule;
 
@@ -779,6 +790,7 @@ class EventController
 
             // 6) Create each child
             $child = Event::create([
+                'account_id' => $master->account_id,
                 'parent_id' => $master->id,
                 'title' => $master->title,
                 'type_id' => $master->type_id,
@@ -823,6 +835,7 @@ class EventController
             ->format('Y-m-d H:i:s');
 
         $event = Event::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($event);
 
         switch ($choice) {
             case 'single':
@@ -900,6 +913,7 @@ class EventController
             ->format('Y-m-d H:i:s');
 
         $event = Event::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($event);
 
         switch ($choice) {
             case 'single':
@@ -925,6 +939,9 @@ class EventController
             case 'series':
                 // Always resolve the real master event by following parent_id
                 $master = $event->parent_id ? Event::find($event->parent_id) : $event;
+                if ($master) {
+                    ensureModelBelongsToCurrentAccount($master);
+                }
 
                 if (!$master) {
                     return response()->json([
@@ -968,6 +985,8 @@ class EventController
         $request->validate(['status' => 'required|in:confirmed,pending,cancelled,rescheduled,scheduled,completed']);
 
         $event = Event::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($event);
+
         $event->status = $request->status;
         $event->save();
 
@@ -976,8 +995,25 @@ class EventController
 
     protected function syncMorphRelations(Event $event, array $validated)
     {
-        $event->properties()->sync($validated['property_ids'] ?? []);
-        $event->repairIssues()->sync($validated['repair_ids'] ?? []);
+        $propertyIds = $validated['property_ids'] ?? [];
+        $repairIds = $validated['repair_ids'] ?? [];
+
+        if (! auth()->user()?->hasRole('Super Admin')) {
+            $propertyIds = Property::query()
+                ->forAccount(current_account_id())
+                ->whereIn('id', $propertyIds)
+                ->pluck('id')
+                ->all();
+
+            $repairIds = RepairIssue::query()
+                ->forAccount(current_account_id())
+                ->whereIn('id', $repairIds)
+                ->pluck('id')
+                ->all();
+        }
+
+        $event->properties()->sync($propertyIds);
+        $event->repairIssues()->sync($repairIds);
         // $event->users()->sync($validated['user_ids'] ?? []);
     }
 

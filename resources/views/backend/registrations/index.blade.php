@@ -58,11 +58,12 @@
                     <th>Email</th>
                     <th>Phone</th>
                     <th>Type</th>
+                    <th>Plan</th>
                     <th>Verified via</th>
                     <th>OTP Verified</th>
                     <th>Status</th>
                     <th>Registered</th>
-                    <th width="8%" class="text-right">Action</th>
+                    <th class="text-right">Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -77,6 +78,14 @@
                         <td>{{ $reg->email }}</td>
                         <td>{{ $reg->phone ?? '—' }}</td>
                         <td>{{ Str::headline(str_replace('_', ' ', $reg->type)) }}</td>
+                        <td>
+                            @if($reg->plan)
+                                {{ $reg->plan->name }}<br>
+                                <small class="text-muted">{{ ucfirst($reg->billing_cycle) }}</small>
+                            @else
+                                -
+                            @endif
+                        </td>
                         <td>
                             @if($reg->verify_via === 'email')
                                 <i class="fas fa-envelope text-primary"></i> Email
@@ -109,7 +118,7 @@
                             </span>
                         </td>
                         <td>{{ $reg->created_at->format('d/m/Y H:i') }}</td>
-                        <td class="text-right">
+                        <td class="text-right text-nowrap">
                             {{-- Only View button — approve/reject is done on the detail page --}}
                             <a href="{{ route('admin.registrations.show', $reg->id) }}"
                                class="btn btn-sm btn-outline-primary" title="Review">
@@ -118,11 +127,22 @@
                                     Review
                                 @endif
                             </a>
+                            @if($reg->status === 'approved' && $reg->account)
+                                <form action="{{ route('backend.saas.accounts.login-as', $reg->account) }}"
+                                      method="POST" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-primary"
+                                            title="Login as {{ $reg->account->account_name }}"
+                                            @disabled(! $reg->account->owner || ! $reg->account->owner->can_login || ! $reg->account->owner->status)>
+                                        <i class="fas fa-right-to-bracket"></i> Login as account
+                                    </button>
+                                </form>
+                            @endif
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="10" class="text-center py-4 text-muted">
+                        <td colspan="11" class="text-center py-4 text-muted">
                             No verified registrations found.
                         </td>
                     </tr>

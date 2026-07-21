@@ -6,6 +6,7 @@ use App\Mail\MailManager;
 use App\Models\Company;
 use App\Models\Registration;
 use App\Models\User;
+use App\Services\Saas\AccountProvisioningService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
@@ -31,7 +32,8 @@ class RegistrationController extends Controller
     {
         // Only show registrations where OTP was verified (or already actioned)
         // Unverified (pending) registrations are NOT shown — they haven't completed verification
-        $query = Registration::whereIn('status', ['verified', 'approved', 'rejected'])
+        $query = Registration::with(['plan', 'account.owner'])
+                             ->whereIn('status', ['verified', 'approved', 'rejected'])
                              ->latest();
 
         if ($request->filled('status')) {
@@ -56,7 +58,12 @@ class RegistrationController extends Controller
     // ─── Show / Edit single registration ─────────────────────────────────────
     public function show($id)
     {
-        $registration = Registration::with('user.roles')->findOrFail($id);
+        $registration = Registration::with([
+            'user.roles',
+            'plan',
+            'account.currentSubscription.plan',
+            'account.company',
+        ])->findOrFail($id);
         $permissions  = Permission::orderBy('name')->get()->groupBy('section');
         $roles        = Role::where('id', '!=', 1)->orderBy('name')->get();
 
@@ -73,9 +80,14 @@ class RegistrationController extends Controller
     }
 
     // ─── Approve ──────────────────────────────────────────────────────────────
-    public function approve(Request $request, $id)
+    public function approve(Request $request, $id, AccountProvisioningService $accountProvisioningService)
     {
-        $registration = Registration::findOrFail($id);
+        $registration = Registration::with(['plan', 'account', 'user.roles'])->findOrFail($id);
+
+        if ($registration->account_id) {
+            flash('This registration has already been provisioned.')->error();
+            return back();
+        }
 
         if ($registration->status === 'approved') {
             flash('This registration is already approved.')->info();
@@ -83,7 +95,7 @@ class RegistrationController extends Controller
         }
 
         // Block approving unverified registrations
-        if ($registration->status === 'pending' || is_null($registration->otp_verified_at)) {
+        if ($registration->status !== 'verified' || is_null($registration->otp_verified_at)) {
             flash('Cannot approve — this registration has not completed OTP verification.')->error();
             return back();
         }
@@ -96,34 +108,38 @@ class RegistrationController extends Controller
         try {
             $role = Role::findOrFail($request->role_id);
 
-            // Generate a random password
-            $plainPassword = Str::random(10);
+            $plainPassword = null;
+            $user = $registration->user;
 
-            // Create the user
-            $user = User::create([
-                'first_name'        => $registration->first_name,
-                'last_name'         => $registration->last_name,
-                'email'             => $registration->email,
-                'phone'             => $registration->phone,
-                'user_type'         => $registration->type,
-                'status'            => 1,
-                'can_login'         => 1,
-                'password'          => Hash::make($plainPassword),
-                'email_verified_at' => $registration->otp_verified_at ?? now(),
-            ]);
+            if (! $user) {
+                $plainPassword = Str::random(10);
 
-            // Assign role
-            DB::table('model_has_roles')->insert([
-                'role_id'    => $role->id,
-                'model_type' => get_class($user),
-                'model_id'   => $user->id,
-            ]);
+                $user = User::create([
+                    'first_name'        => $registration->first_name,
+                    'last_name'         => $registration->last_name,
+                    'email'             => $registration->email,
+                    'phone'             => $registration->phone,
+                    'user_type'         => $registration->type,
+                    'status'            => 1,
+                    'can_login'         => 1,
+                    'password'          => Hash::make($plainPassword),
+                    'email_verified_at' => $registration->otp_verified_at ?? now(),
+                ]);
+            }
 
-            if ($registration->type === 'estate_agent') {
+            if (! $user->hasRole($role->name)) {
+                $user->assignRole($role);
+            }
+
+            if ($registration->plan_id) {
+                $accountProvisioningService->provisionFromRegistration($registration, $user, auth()->user());
+            } elseif ($registration->type === 'estate_agent') {
+                // TODO: Legacy no-plan registrations are approved without SaaS account/subscription provisioning.
                 Company::firstOrCreate(
                     ['owner_user_id' => $user->id],
                     [
                         'name' => trim($registration->full_name . ' Company'),
+                        'owner_user_id' => $user->id,
                         'created_by' => $user->id,
                     ]
                 );
@@ -142,7 +158,10 @@ class RegistrationController extends Controller
             // Send welcome email with credentials
             $this->sendApprovalEmail($user, $registration, $plainPassword);
 
-            flash('Registration approved. Welcome email with credentials sent.')->success();
+            flash($plainPassword
+                ? 'Registration approved. Welcome email with credentials sent.'
+                : 'Registration approved. Welcome email sent to the existing user account.'
+            )->success();
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Registration approval failed', ['error' => $e->getMessage()]);
@@ -196,7 +215,7 @@ class RegistrationController extends Controller
     }
 
     // ─── Send welcome email with generated password ───────────────────────────
-    private function sendApprovalEmail(User $user, Registration $registration, string $plainPassword): void
+    private function sendApprovalEmail(User $user, Registration $registration, ?string $plainPassword): void
     {
         try {
             $name    = $user->first_name;
@@ -204,6 +223,21 @@ class RegistrationController extends Controller
             $loginUrl = url('/login');
 
             $subject = "Welcome to {$appName} — Your Account is Ready";
+            $passwordRow = $plainPassword ? "
+                    <tr>
+                        <td style='padding:6px 12px; font-weight:bold; background:#f8f9fa; border:1px solid #dee2e6;'>Password</td>
+                        <td style='padding:6px 12px; border:1px solid #dee2e6;'><strong>{$plainPassword}</strong></td>
+                    </tr>
+            " : '';
+            $passwordNote = $plainPassword ? "
+                <p style='color:#dc3545; font-size:13px;'>
+                    <strong>Important:</strong> Please change your password after your first login.
+                </p>
+            " : "
+                <p style='color:#6c757d; font-size:13px;'>
+                    Your existing login password has not been changed.
+                </p>
+            ";
             $content = "
                 <p>Hi {$name},</p>
                 <p>Great news! Your registration with <strong>{$appName}</strong> has been approved.</p>
@@ -213,10 +247,7 @@ class RegistrationController extends Controller
                         <td style='padding:6px 12px; font-weight:bold; background:#f8f9fa; border:1px solid #dee2e6;'>Email</td>
                         <td style='padding:6px 12px; border:1px solid #dee2e6;'>{$user->email}</td>
                     </tr>
-                    <tr>
-                        <td style='padding:6px 12px; font-weight:bold; background:#f8f9fa; border:1px solid #dee2e6;'>Password</td>
-                        <td style='padding:6px 12px; border:1px solid #dee2e6;'><strong>{$plainPassword}</strong></td>
-                    </tr>
+                    {$passwordRow}
                 </table>
                 <p style='text-align:center; margin:24px 0;'>
                     <a href='{$loginUrl}'
@@ -225,9 +256,7 @@ class RegistrationController extends Controller
                         Login to Your Account
                     </a>
                 </p>
-                <p style='color:#dc3545; font-size:13px;'>
-                    <strong>Important:</strong> Please change your password after your first login.
-                </p>
+                {$passwordNote}
                 <p>— The {$appName} Team</p>
             ";
 

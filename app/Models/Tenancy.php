@@ -2,15 +2,19 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Tenancy extends Model
 {
     /** @use HasFactory<\Database\Factories\TenancyFactory> */
-    use HasFactory;
+    use HasFactory, BelongsToSaasAccount;
 
     protected $fillable = [
+        'account_id',
+        'company_id',
+        'branch_id',
         'property_id',
         'offer_id',
         'status',
@@ -40,6 +44,16 @@ class Tenancy extends Model
     public function property()
     {
         return $this->belongsTo(Property::class);
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function offer()

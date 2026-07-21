@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,7 +12,7 @@ use App\Models\SysReceipt;
 
 class SysPayment extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSaasAccount;
 
     protected $table = 'sys_payments';
     protected $guarded = [];

@@ -52,6 +52,12 @@ use App\Http\Controllers\Backend\Accounting\BankReconciliationController;
 use App\Http\Controllers\Backend\Accounting\FixedAssetController;
 use App\Http\Controllers\Backend\Accounting\UnchargedRepairWorkOrderController;
 use App\Http\Controllers\Backend\AuthenticateController;
+use App\Http\Controllers\Backend\Saas\AddonCheckoutController;
+use App\Http\Controllers\Backend\Saas\BillingController;
+use App\Http\Controllers\Backend\Saas\BillingPortalController;
+use App\Http\Controllers\Backend\Saas\AccountSwitchController;
+use App\Http\Controllers\Backend\Saas\PortalAccessController;
+use App\Http\Controllers\Backend\Saas\SubscriptionCheckoutController;
 use App\Http\Controllers\Backend\DocumentTypeController;
 use App\Http\Controllers\Backend\EstateChargeController;
 use App\Http\Controllers\Backend\EventSubTypeController;
@@ -97,9 +103,11 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/search-properties', function (Request $request) {
         return searchProperties($request);
-    })->name('properties.search');
+    })->middleware(['current.account', 'account.status'])->name('properties.search');
 
-    Route::get('properties/search-ajax', [PropertyController::class, 'searchAjax'])->name('backend.properties.search-ajax');
+    Route::get('properties/search-ajax', [PropertyController::class, 'searchAjax'])
+        ->middleware(['current.account', 'account.status'])
+        ->name('backend.properties.search-ajax');
 
     // Route::get('/get_users_info_by_property/{propertyId}/users/{categoryId}', function ($propertyId, $categoryId) {
     //     return response()->json(get_users_by_property_and_category($propertyId, $categoryId));
@@ -113,17 +121,46 @@ Route::middleware('auth')->group(function () {
         return response()->json(get_tenants_by_property($propertyId));
     })->name('admin.getTenantsByProperty');
 
+    Route::post('/switch-account', [AccountSwitchController::class, 'switch'])->name('backend.accounts.switch');
+    Route::post('/leave-account-login', [AccountSwitchController::class, 'leave'])->name('backend.accounts.leave-login');
+
     // Dashboard Route
-    Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('backend.dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'dashboard'])
+        ->middleware(['current.account', 'account.status'])
+        ->name('backend.dashboard');
     // Tenant home — blank landing page after login
     Route::get('/home', function () {
         return view('backend.tenant.home');
-    })->name('backend.home');
+    })->middleware('current.account')->name('backend.home');
     // Route::get('/dashboard', [DashboardController::class, 'dashboard'])->middleware('can:view-dashboard')->name('backend.dashboard');
 
-    Route::resource('user-categories', UserCategoryController::class);
+    Route::prefix('saas')->name('backend.saas.')->middleware(['auth', 'role:Super Admin'])->group(function () {
+        Route::resource('plans', \App\Http\Controllers\Backend\Saas\PlanController::class);
+        Route::resource('addons', \App\Http\Controllers\Backend\Saas\AddonController::class);
+        Route::get('accounts', [\App\Http\Controllers\Backend\Saas\AccountController::class, 'index'])->name('accounts.index');
+        Route::get('accounts/{account}', [\App\Http\Controllers\Backend\Saas\AccountController::class, 'show'])->name('accounts.show');
+        Route::post('accounts/{account}/login-as', [AccountSwitchController::class, 'loginAs'])->name('accounts.login-as');
+        Route::get('subscriptions', [\App\Http\Controllers\Backend\Saas\SubscriptionController::class, 'index'])->name('subscriptions.index');
+        Route::get('subscriptions/{subscription}', [\App\Http\Controllers\Backend\Saas\SubscriptionController::class, 'show'])->name('subscriptions.show');
+        Route::post('subscriptions/{subscription}/extend-trial', [\App\Http\Controllers\Backend\Saas\SubscriptionController::class, 'extendTrial'])->name('subscriptions.extend-trial');
+    });
 
-    Route::name('admin.')->group(function () {
+    Route::middleware('current.account')->group(function () {
+        Route::get('/billing', [BillingController::class, 'index'])->name('backend.billing.index');
+        Route::get('/billing/success', [BillingController::class, 'success'])->name('backend.billing.success');
+        Route::get('/billing/cancel', [BillingController::class, 'cancel'])->name('backend.billing.cancel');
+        Route::post('/billing/addons/{addon}/checkout', [AddonCheckoutController::class, 'checkout'])->name('backend.billing.addons.checkout');
+        Route::post('/billing/portal', [BillingPortalController::class, 'create'])->name('backend.billing.portal');
+        Route::post('/saas/subscription/checkout', [SubscriptionCheckoutController::class, 'checkout'])->name('backend.saas.subscription.checkout');
+    });
+
+    Route::resource('user-categories', UserCategoryController::class)
+        ->middleware(['current.account', 'account.status', 'not.portal']);
+
+    Route::middleware(['current.account', 'account.status'])->name('admin.')->group(function () {
+        Route::get('/portal-access', [PortalAccessController::class, 'index'])
+            ->name('portal-access.index');
+
         // Property
         Route::prefix('properties')->name('properties.')->controller(PropertyController::class)->group(function () {
             Route::get('/', 'index')->name('index');
@@ -149,12 +186,12 @@ Route::middleware('auth')->group(function () {
             Route::get('/{property}/brochure', 'brochure')->name('brochure');
         });
 
-        Route::prefix('companies')->name('companies.')->controller(CompanyController::class)->group(function () {
+        Route::prefix('companies')->name('companies.')->middleware('not.portal')->controller(CompanyController::class)->group(function () {
             Route::post('/{company}/transfer-owner', 'transferOwner')->name('transfer-owner');
         });
 
         // Designation
-        Route::prefix('designations')->name('designations.')->controller(DesignationController::class)->group(function () {
+        Route::prefix('designations')->name('designations.')->middleware('not.portal')->controller(DesignationController::class)->group(function () {
             Route::get('/', 'index')->name('index');  // List all designations
             Route::get('/create', 'create')->name('create');  // Show create form
             Route::post('/store', 'store')->name('store');  // Store new designation
@@ -164,7 +201,7 @@ Route::middleware('auth')->group(function () {
         });
 
         // Branch
-        Route::prefix('branches')->name('branches.')->controller(BranchController::class)->group(function () {
+        Route::prefix('branches')->name('branches.')->middleware('not.portal')->controller(BranchController::class)->group(function () {
             Route::get('/', 'index')->name('index');  // List all branches
             Route::get('/create', 'create')->name('create');  // Show create form
             Route::post('/store', 'store')->name('store');  // Store new branch
@@ -197,22 +234,22 @@ Route::middleware('auth')->group(function () {
 
         // Users
         Route::prefix('users')->name('users.')->controller(UserController::class)->group(function () {
-            Route::get('/', 'index')->name('index');  // List all users
-            Route::get('/create', 'create')->name('create');  // Show create form
-            Route::get('/user_step/{step}', 'getQuickStepView')->name('user_step');  // Get quick step view
-            Route::post('/store', 'userStore')->name('store');  // Store user
-            Route::post('/quick-store-user', 'quicklyStoreUser')->name('quick_user_store');  // Quick store user
-            Route::get('/properties/search', 'searchProperties')->name('properties.search');  // Search properties
-            Route::get('/show/{id}', 'show')->name('show');  // Show individual user
-            Route::get('/edit/{id}', 'edit')->name('edit');  // Show edit form
-            Route::post('/update/{id}', 'update')->name('update');  // Update user
-            Route::post('/delete/{id}', 'delete')->name('delete');  // Delete user
+            Route::get('/', 'index')->middleware('not.portal')->name('index');  // List all users
+            Route::get('/create', 'create')->middleware('not.portal')->name('create');  // Show create form
+            Route::get('/user_step/{step}', 'getQuickStepView')->middleware('not.portal')->name('user_step');  // Get quick step view
+            Route::post('/store', 'userStore')->middleware('not.portal')->name('store');  // Store user
+            Route::post('/quick-store-user', 'quicklyStoreUser')->middleware('not.portal')->name('quick_user_store');  // Quick store user
+            Route::get('/properties/search', 'searchProperties')->middleware('not.portal')->name('properties.search');  // Search properties
+            Route::get('/show/{id}', 'show')->middleware('not.portal')->name('show');  // Show individual user
+            Route::get('/edit/{id}', 'edit')->middleware('not.portal')->name('edit');  // Show edit form
+            Route::post('/update/{id}', 'update')->middleware('not.portal')->name('update');  // Update user
+            Route::post('/delete/{id}', 'delete')->middleware('not.portal')->name('delete');  // Delete user
             
-            Route::get('/load-form', 'loadForm')->name('loadForm');
-            Route::post('/save-form', 'saveForm')->name('saveForm');
+            Route::get('/load-form', 'loadForm')->middleware('not.portal')->name('loadForm');
+            Route::post('/save-form', 'saveForm')->middleware('not.portal')->name('saveForm');
 
-            Route::get('/ajax', 'ajaxList')->name('ajax');  // AJAX endpoint to list users for a select dropdown
-            Route::get('/staff-ajax', 'staffAjaxList')->name('staffAjax');  // AJAX endpoint to search staff users
+            Route::get('/ajax', 'ajaxList')->middleware('not.portal')->name('ajax');  // AJAX endpoint to list users for a select dropdown
+            Route::get('/staff-ajax', 'staffAjaxList')->middleware('not.portal')->name('staffAjax');  // AJAX endpoint to search staff users
             Route::get('/profile', 'profile')->name('profile.show');  // Show user profile
             Route::get('/profile/edit', 'profileEdit')->name('profile.edit');  // Show user profile edit form
             Route::post('/profile/update', 'profileUpdate')->name('profile.update');  // Update user profile
@@ -429,7 +466,7 @@ Route::middleware('auth')->group(function () {
         });
     });*/
 
-    Route::group(['prefix' => 'calendar', 'as' => 'backend.events.'], function () {
+    Route::group(['prefix' => 'calendar', 'as' => 'backend.events.', 'middleware' => ['current.account', 'account.status']], function () {
         Route::controller(EventController::class)->group(function () {
             
             // Fetch all instances in a given date range for FullCalendar.
@@ -496,7 +533,7 @@ Route::middleware('auth')->group(function () {
                 'destroy' => 'account_headers.destroy',
             ]);
 
-        Route::prefix('accounting')->name('accounting.')->group(function () {
+        Route::prefix('accounting')->name('accounting.')->middleware(['current.account', 'account.status'])->group(function () {
             Route::resource('masters/banks', BankController::class)
                 ->except(['show'])
                 ->names('masters.banks');
@@ -657,7 +694,7 @@ Route::middleware('auth')->group(function () {
 
 
     // website setting
-    Route::group(['prefix' => 'website', 'as' => 'website.'], function () {
+    Route::group(['prefix' => 'website', 'as' => 'website.', 'middleware' => ['current.account', 'account.status', 'not.portal']], function () {
         Route::controller(WebsiteController::class)->group(function () {
             Route::get('/footer', 'footer')->name('footer');
             Route::get('/header', 'header')->name('header');
@@ -666,7 +703,7 @@ Route::middleware('auth')->group(function () {
     });
 
     // Business Settings
-    Route::controller(BusinessSettingsController::class)->group(function () {
+    Route::controller(BusinessSettingsController::class)->middleware(['current.account', 'account.status', 'not.portal'])->group(function () {
         Route::post('/business-settings/update', 'update')->name('business_settings.update');
         Route::get('/smtp-settings', 'smtp_settings')->name('smtp_settings.index');
         Route::post('/env_key_update', 'env_key_update')->name('env_key_update.update');
@@ -674,8 +711,10 @@ Route::middleware('auth')->group(function () {
 
     
     // Staff Roles
-    Route::resource('roles', RoleController::class);
-    Route::controller(RoleController::class)->group(function () {
+    Route::resource('roles', RoleController::class)
+        ->except(['show', 'edit', 'destroy'])
+        ->middleware(['current.account', 'account.status', 'not.portal']);
+    Route::controller(RoleController::class)->middleware(['current.account', 'account.status', 'not.portal'])->group(function () {
         Route::get('/roles/edit/{id}', 'edit')->name('roles.edit');
         Route::get('/roles/destroy/{id}', 'destroy')->name('roles.destroy');
 
@@ -684,11 +723,17 @@ Route::middleware('auth')->group(function () {
     });
 
     // Staff
-    Route::resource('staffs', StaffController::class);
-    Route::get('/staffs/destroy/{id}', [StaffController::class, 'destroy'])->name('staffs.destroy');
+    Route::resource('staffs', StaffController::class)
+        ->except(['show', 'destroy'])
+        ->middleware(['current.account', 'account.status', 'not.portal']);
+    Route::get('/staffs/destroy/{id}', [StaffController::class, 'destroy'])
+        ->middleware(['current.account', 'account.status', 'not.portal'])
+        ->name('staffs.destroy');
 
     // Registrations (public sign-up approvals)
-    Route::prefix('registrations')->name('admin.registrations.')->controller(\App\Http\Controllers\Backend\RegistrationController::class)->group(function () {
+    Route::prefix('registrations')->name('admin.registrations.')
+        ->middleware(['role:Super Admin', 'permission:manage registrations'])
+        ->controller(\App\Http\Controllers\Backend\RegistrationController::class)->group(function () {
         Route::get('/',                    'index')->name('index');
         Route::get('/{id}',                'show')->name('show');
         Route::post('/{id}/approve',       'approve')->name('approve');
@@ -703,10 +748,10 @@ Route::middleware('auth')->group(function () {
             return response()->json(['url' => asset('storage/' . $upload->file_name)]);
         }
         return response()->json(['error' => 'No file uploaded'], 400);
-    })->name('notes.upload_image');
+    })->middleware(['current.account', 'account.status'])->name('notes.upload_image');
     
     // Email Template
-    Route::resource('email-templates', EmailTemplateController::class);
+    Route::resource('email-templates', EmailTemplateController::class)->except(['index']);
     Route::controller(EmailTemplateController::class)->group(function () {
         Route::get('/email-template/{id}', 'index')->name('email-templates.index');
         Route::post('/email-template/update-status', 'updateStatus')->name('email-template.update-status');

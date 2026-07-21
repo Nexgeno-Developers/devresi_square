@@ -10,6 +10,7 @@ class RepairIssuePropertyManager extends Model
     use HasFactory;
 
     protected $fillable = [
+        'account_id',
         'repair_issue_id',
         'property_manager_id',
         'assigned_at',

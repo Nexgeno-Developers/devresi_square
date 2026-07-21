@@ -14,6 +14,7 @@ use App\Models\RepairIssueContractorAssignment;
 use App\Models\RepairIssuePropertyManager;
 use App\Models\RepairPhoto;
 use App\Models\PropertyManagerTenancy;
+use App\Models\Property;
 use App\Models\TaxRates;
 use App\Models\Tenancy;
 use App\Models\TenantMember;
@@ -21,6 +22,7 @@ use App\Models\UserCategory;
 use App\Models\WorkOrder;
 use App\Jobs\SendFinalContractorAssignedEmail;
 use App\Jobs\SendRepairQuoteRequestEmail;
+use App\Services\Saas\PortalAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
@@ -145,6 +147,7 @@ class PropertyRepairController
             'workOrder',
             'invoice',
         ]);
+        $this->scopeRepairQuery($query);
         $categories = RepairCategory::all();
         $maxLevel = RepairCategory::max('level');
         // $propertyManagers = User::whereHas('category', callback: function ($query) {
@@ -179,6 +182,7 @@ class PropertyRepairController
             $tenantPropertyIds = TenantMember::where('user_id', auth()->id())
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
                 ->where('tenancies.status', 'Active')
+                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->where('tenancies.account_id', current_account_id()))
                 ->pluck('tenancies.property_id')
                 ->unique();
             $query->whereIn('property_id', $tenantPropertyIds);
@@ -248,6 +252,7 @@ class PropertyRepairController
             'workOrder.jobType',
             'workOrder.jobSubType',
         ]);
+        $this->scopeRepairQuery($query);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -268,6 +273,7 @@ class PropertyRepairController
             $tenantPropertyIds = TenantMember::where('user_id', auth()->id())
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
                 ->where('tenancies.status', 'Active')
+                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->where('tenancies.account_id', current_account_id()))
                 ->pluck('tenancies.property_id')
                 ->unique();
             $query->whereIn('property_id', $tenantPropertyIds);
@@ -470,6 +476,8 @@ class PropertyRepairController
 
     public function sendQuoteRequests(Request $request, RepairIssue $repairIssue)
     {
+        ensureModelBelongsToCurrentAccount($repairIssue);
+
         $validated = $request->validate([
             'contractor_ids' => 'nullable|array',
             'contractor_ids.*' => 'integer|exists:users,id',
@@ -533,6 +541,8 @@ class PropertyRepairController
 
     public function finalizeContractor(Request $request, RepairIssue $repairIssue, RepairIssueContractorAssignment $assignment)
     {
+        ensureModelBelongsToCurrentAccount($repairIssue);
+
         if ((int) $assignment->repair_issue_id !== (int) $repairIssue->id) {
             abort(404);
         }
@@ -550,6 +560,8 @@ class PropertyRepairController
 
     public function scopeOfWorkPdf(RepairIssue $repairIssue)
     {
+        ensureModelBelongsToCurrentAccount($repairIssue);
+
         $startedAt = microtime(true);
 
         try {
@@ -626,6 +638,9 @@ class PropertyRepairController
             'property',  // Eager load the related property
             'invoice',
         ])->findOrFail($id);
+        ensureModelBelongsToCurrentAccount($repairIssue);
+        $this->ensurePortalCanAccessRepair($repairIssue);
+
         $categories = RepairCategory::all();
         $maxLevel = RepairCategory::max('level');
         // $propertyManagers = User::whereHas('category', callback: function ($query) {
@@ -699,6 +714,8 @@ class PropertyRepairController
             'workOrder'
             // 'workOrders'
         ])->findOrFail($id);
+        ensureModelBelongsToCurrentAccount($repairIssue);
+        $this->ensurePortalCanAccessRepair($repairIssue, 'edit');
 
         // Load additional data for the form:
         $categories = RepairCategory::all();  // or get only the top-level categories for step2
@@ -810,6 +827,8 @@ class PropertyRepairController
 
         // Retrieve the repair issue record.
         $repairIssue = RepairIssue::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($repairIssue);
+        $this->ensurePortalCanAccessRepair($repairIssue, 'edit');
 
         // Process property_id: If it's a JSON-encoded array, decode it first.
         $propertyId = $validated['property_id'];
@@ -825,6 +844,8 @@ class PropertyRepairController
         } else {
             $propertyId = (int) $propertyId;
         }
+        $property = Property::findOrFail($propertyId);
+        ensureModelBelongsToCurrentAccount($property);
 
         // Assuming there's a pivot table for many-to-many relationship
         if ($request->has('repair_photos')) {
@@ -862,6 +883,7 @@ class PropertyRepairController
         // Update the main repair issue record.
         $repairIssue->update([
             'property_id' => $propertyId,
+            'account_id' => $property->account_id ?: $repairIssue->account_id ?: current_account_id(),
             'repair_navigation' => $repairNavigation,  // using new value if provided or original value
             'repair_category_id' => $repairCategoryId,  // using new value if provided or original value
             'description' => $validated['description'],
@@ -975,6 +997,8 @@ class PropertyRepairController
     public function destroy($id)
     {
         $repairIssue = RepairIssue::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($repairIssue);
+        $this->ensurePortalCanAccessRepair($repairIssue, 'edit');
         $repairIssue->delete();
 
         flash('Repair issue deleted successfully')->success();
@@ -1012,6 +1036,9 @@ class PropertyRepairController
 
         // Ensure it's a valid integer
         $propertyId = (int) $propertyId;
+        $property = Property::findOrFail($propertyId);
+        ensureModelBelongsToCurrentAccount($property);
+        $this->ensurePortalCanAccessPropertyForRepair($property);
 
         // dd([
         //     'original_property_id' => $request->property_id,
@@ -1024,6 +1051,7 @@ class PropertyRepairController
 
         // Store repair request
         $repair = RepairIssue::create([
+            'account_id' => $property->account_id ?: current_account_id(),
             'property_id' => $propertyId,
             'repair_navigation' => json_encode($categories),
             'repair_category_id' => $request->repair_category_id,
@@ -1059,8 +1087,11 @@ class PropertyRepairController
 
     public function assignRepair(Request $request, $repairIssueId)
     {
+        $repairIssue = RepairIssue::findOrFail($repairIssueId);
+        ensureModelBelongsToCurrentAccount($repairIssue);
+
         $repairAssignment = new RepairAssignment();
-        $repairAssignment->repair_issue_id = $repairIssueId;
+        $repairAssignment->repair_issue_id = $repairIssue->id;
         $repairAssignment->assigned_to = $request->assigned_to;
         $repairAssignment->assigned_at = now();
         $repairAssignment->status = 'assigned';
@@ -1071,8 +1102,11 @@ class PropertyRepairController
 
     public function createHistory($repairIssueId, $action)
     {
+        $repairIssue = RepairIssue::findOrFail($repairIssueId);
+        ensureModelBelongsToCurrentAccount($repairIssue);
+
         RepairHistory::create([
-            'repair_issue_id' => $repairIssueId,
+            'repair_issue_id' => $repairIssue->id,
             'action' => $action,
             'previous_status' => 'pending',  // Example
             'new_status' => 'in-progress',  // Example
@@ -1092,13 +1126,18 @@ class PropertyRepairController
             $propertyId = (int) $propertyId;
         }
 
+        $property = Property::findOrFail($propertyId);
+        ensureModelBelongsToCurrentAccount($property);
+
         // Retrieve tenancy IDs for the given property.
         $tenancyIds = Tenancy::where('property_id', $propertyId)
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->pluck('id')
             ->toArray();
 
         // Retrieve tenant members associated with those tenancies, with their user details.
         $tenantMembers = TenantMember::whereIn('tenancy_id', $tenancyIds)
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->with('user')
             ->get();
 
@@ -1145,6 +1184,7 @@ class PropertyRepairController
     {
         // Fetch the repair details
         $repairIssue = RepairIssue::findOrFail($repairId);
+        ensureModelBelongsToCurrentAccount($repairIssue);
 
         // Fetch work order
         $workorder = WorkOrder::where('repair_issue_id', $repairIssue->id)->first();
@@ -1186,6 +1226,13 @@ class PropertyRepairController
             'workOrder',
             'invoice'
         ])->find($request->repair_id);
+
+        if (!$repairIssue) {
+            return response()->json(['error' => 'Repair issue not found'], 404);
+        }
+
+        ensureModelBelongsToCurrentAccount($repairIssue);
+
         // Load additional data for the form:
         $categories = RepairCategory::all();  // or get only the top-level categories for step2
         // Get the maximum level in the table
@@ -1224,6 +1271,8 @@ class PropertyRepairController
             return response()->json(['error' => 'repair not found'], 404);
         }
 
+        ensureModelBelongsToCurrentAccount($repairIssue);
+
         $extraData = [];  // <-- This prevents undefined variable errors
         $previousPropertyId = (int) $repairIssue->property_id;
         $syncManagersFromPropertyId = null;
@@ -1247,8 +1296,12 @@ class PropertyRepairController
                     $propertyId = (int) $propertyId;
                 }
 
+                $property = Property::findOrFail($propertyId);
+                ensureModelBelongsToCurrentAccount($property);
+
                 $data = [
                     'property_id' => $propertyId,
+                    'account_id' => $property->account_id ?: current_account_id(),
                 ];
                 if ($previousPropertyId !== (int) $propertyId) {
                     $syncManagersFromPropertyId = (int) $propertyId;
@@ -1301,6 +1354,9 @@ class PropertyRepairController
                     $propertyId = (int) $propertyInput;
                 }
 
+                $property = Property::findOrFail($propertyId);
+                ensureModelBelongsToCurrentAccount($property);
+
                 $priority = $canEditRepairAdminFields ? $request->input('priority', $repairIssue->priority) : $repairIssue->priority;
                 $status = $canEditRepairAdminFields ? $request->input('status', $repairIssue->status) : $repairIssue->status;
                 $subStatus = $canEditRepairAdminFields ? $request->input('sub_status', $repairIssue->sub_status) : $repairIssue->sub_status;
@@ -1310,6 +1366,7 @@ class PropertyRepairController
 
                 $data = [
                     'property_id' => $propertyId,
+                    'account_id' => $property->account_id ?: $repairIssue->account_id ?: current_account_id(),
                     'repair_navigation' => $repairNavigation,
                     'repair_category_id' => $repairCategoryId,
                     'description' => $request->input('description'),
@@ -1552,6 +1609,7 @@ class PropertyRepairController
         $term = $request->input('q');
 
         $query = RepairIssue::query();
+        $this->scopeRepairQuery($query);
 
         if ($term) {
             $query->where(function ($q) use ($term) {
@@ -1576,5 +1634,76 @@ class PropertyRepairController
         });
 
         return response()->json(['results' => $results]);
+    }
+
+    private function scopeRepairQuery($query)
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user?->hasRole('Super Admin')) {
+            $query->forAccount(current_account_id());
+        }
+
+        if ($user && $accountId) {
+            $portalAccessService = app(PortalAccessService::class);
+
+            if ($portalAccessService->isPortalUser($user, $accountId)) {
+                $propertyIds = $portalAccessService->accessiblePropertyIds($user, $accountId);
+
+                $query->where(function ($repairQuery) use ($propertyIds, $user) {
+                    $repairQuery->whereIn('property_id', $propertyIds);
+
+                    if ($user->hasRole('Contractor')) {
+                        $repairQuery->orWhere('final_contractor_id', $user->id)
+                            ->orWhereHas('repairIssueContractorAssignments', function ($assignmentQuery) use ($user) {
+                                $assignmentQuery->where('contractor_id', $user->id);
+                            });
+                    }
+                });
+            }
+        }
+
+        return $query;
+    }
+
+    private function ensurePortalCanAccessRepair(RepairIssue $repairIssue, string $permission = 'view'): void
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user || ! $accountId) {
+            return;
+        }
+
+        $portalAccessService = app(PortalAccessService::class);
+
+        if (! $portalAccessService->isPortalUser($user, $accountId)) {
+            return;
+        }
+
+        if ($permission === 'view' && (int) $repairIssue->final_contractor_id === (int) $user->id) {
+            return;
+        }
+
+        $property = $repairIssue->property ?: Property::find($repairIssue->property_id);
+
+        abort_unless($property && $portalAccessService->canAccessProperty($user, $property, $permission), 403, 'You do not have access to this repair.');
+    }
+
+    private function ensurePortalCanAccessPropertyForRepair(Property $property): void
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user || ! $accountId) {
+            return;
+        }
+
+        $portalAccessService = app(PortalAccessService::class);
+
+        if ($portalAccessService->isPortalUser($user, $accountId)) {
+            abort_unless($portalAccessService->canAccessProperty($user, $property), 403, 'You do not have access to this property.');
+        }
     }
 }

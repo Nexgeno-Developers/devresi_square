@@ -2,15 +2,19 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use App\Traits\TracksUser;
 
 class RepairIssue extends Model
 {
-    use HasFactory, TracksUser;
+    use HasFactory, TracksUser, BelongsToSaasAccount;
 
     protected $fillable = [
+        'account_id',
+        'company_id',
+        'branch_id',
         'repair_category_id',
         'repair_navigation',
         'description',
@@ -45,6 +49,16 @@ class RepairIssue extends Model
     public function property()
     {
         return $this->belongsTo(Property::class);
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
 

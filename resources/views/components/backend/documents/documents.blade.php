@@ -1,10 +1,12 @@
-@props(['documentableType', 'documentableId', 'documentTypes', 'initialDocuments' => null])
+@props(['documentableType', 'documentableId', 'documentTypes', 'initialDocuments' => null, 'canUploadDocuments' => true])
 <div class="documents-component" data-documentable-type="{{ $documentableType }}" data-documentable-id="{{ $documentableId }}">
 
     {{-- ADD NEW --}}
+    @if($canUploadDocuments)
     <div class="mb-3">
         <button type="button" class="btn btn-outline-primary documents-add">Add New Document</button>
     </div>
+    @endif
     {{-- FILTER FORM --}}
     <form class="documents-filter-form row g-2 mb-3">
         <div class="col-md-3">

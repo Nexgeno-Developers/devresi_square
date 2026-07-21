@@ -159,51 +159,66 @@
         })
 
 
-        let debounceTimer;
-        $("#menu-search").on("input", function () {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                menuSearch();
-            }, 300); // adjust delay as needed
-        });
+        $(function () {
+            const $sidebar = $('#menu');
+            const $search = $('#menu-search');
+            const $reset = $('#reset-search');
+            const $menuItems = $sidebar.find('ul.nav.flex-column li');
+            const $collapses = $sidebar.find('.collapse');
+            let debounceTimer;
 
-        $("#reset-search").on("click", function () {
-            $("#menu-search").val('');
-            menuSearch();
-        });
+            // Remember the open menu state so clearing a search restores it.
+            $collapses.each(function () {
+                $(this).data('menu-search-was-open', $(this).hasClass('show'));
+            });
 
-        function menuSearch() {
-            var filter = $("#menu-search").val().trim().toUpperCase();
-
-            if (filter === '') {
-                // If input is empty, show everything
-                $(".sidebar-list-item, .sidebar-sub-list-item, .sidebar-sub-sub-list-item").show();
-                $(".collapse").removeClass("show");
-                return;
+            function restoreMenu() {
+                $menuItems.show();
+                $collapses.each(function () {
+                    $(this).toggleClass('show', Boolean($(this).data('menu-search-was-open')));
+                });
             }
 
-            // Hide all first
-            $(".sidebar-list-item, .sidebar-sub-list-item, .sidebar-sub-sub-list-item").hide();
-            $(".collapse").removeClass("show");
+            function menuSearch() {
+                const filter = $search.val().trim().toLocaleLowerCase();
 
-            // Search all anchor tags
-            $(".sidebar-list-item a, .sidebar-sub-list-item a, .sidebar-sub-sub-list-item a").each(function() {
-                var $link = $(this);
-                var text = $link.text().trim().toUpperCase();
-
-                if (text.includes(filter)) {
-                    // Show the current item
-                    $link.closest("li").show();
-
-                    // Expand parent menus and show them
-                    $link.parents(".sidebar-sub-list-item").show();
-                    $link.parents(".sidebar-list-item").show();
-
-                    // Open all ancestor collapsible menus
-                    $link.parents(".collapse").addClass("show");
+                if (!filter) {
+                    restoreMenu();
+                    return;
                 }
+
+                $menuItems.hide();
+                $collapses.removeClass('show');
+
+                $sidebar.find('ul.nav.flex-column a').each(function () {
+                    const $link = $(this);
+                    const linkText = $link.clone().find('i, .badge').remove().end().text().trim().toLocaleLowerCase();
+
+                    if (!linkText.includes(filter)) {
+                        return;
+                    }
+
+                    const $item = $link.closest('li');
+                    $item.show();
+                    $item.parentsUntil($sidebar, 'li').show();
+                    $item.parentsUntil($sidebar, '.collapse').addClass('show');
+
+                    // When a parent menu itself matches, expose its available children.
+                    $item.children('ul').addClass('show').find('li').show();
+                });
+            }
+
+            $search.on('input', function () {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(menuSearch, 150);
             });
-        }
+
+            $reset.on('click', function () {
+                clearTimeout(debounceTimer);
+                $search.val('').trigger('focus');
+                restoreMenu();
+            });
+        });
     </script>
     <!-- Modal HTML (Bootstrap 5.3) -->
     <div class="modal fade" id="aizUploaderDelete" tabindex="-1" aria-labelledby="aizUploaderDeleteLabel"

@@ -28,7 +28,7 @@
                         <label class="control-label" for="tenancies-status">Status</label>
                         <select required id="tenancies-status" class="form-control" name="status" aria-required="true">
                             <option value="Active" {{ old('status') == 'Active' ? 'selected' : '' }}>Active</option>
-                            <option value="Archive" {{ old('status') == 'Archive' ? 'selected' : '' }}>Archive</option>
+                            <option value="Archived" {{ in_array(old('status'), ['Archived', 'Archive'], true) ? 'selected' : '' }}>Archived</option>
                         </select>
                         @error('status')
                             <div class="text-danger small mt-1">{{ $message }}</div>

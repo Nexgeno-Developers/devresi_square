@@ -111,6 +111,96 @@
             </div>
         </div>
 
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0 h6">Selected SaaS Plan</h5>
+            </div>
+            <div class="card-body p-0">
+                @php
+                    $provisionedAccount = $registration->account;
+                    $provisionedSubscription = $provisionedAccount?->currentSubscription;
+                @endphp
+                <table class="table table-sm table-borderless mb-0">
+                    @if($registration->plan)
+                        <tr>
+                            <th class="text-muted ps-3" width="42%">Plan</th>
+                            <td>{{ $registration->plan->name }}</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted ps-3">Billing cycle</th>
+                            <td>{{ ucfirst($registration->billing_cycle) }}</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted ps-3">Account type</th>
+                            <td>{{ Str::headline(str_replace('_', ' ', $registration->account_type)) }}</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted ps-3">Trial days</th>
+                            <td>{{ $registration->plan->trial_days }}</td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted ps-3">Price</th>
+                            <td>
+                                @if($provisionedSubscription?->price_at_signup_minor !== null)
+                                    {{ $provisionedSubscription->formattedSignupPrice() }}
+                                    /{{ $provisionedSubscription->billing_cycle === 'annual' ? 'year' : 'month' }}
+                                    <span class="text-muted">(signup snapshot)</span>
+                                @else
+                                    {{ $registration->billing_cycle === 'annual' ? $registration->plan->formattedAnnualPrice() . '/year' : $registration->plan->formattedMonthlyPrice() . '/month' }}
+                                @endif
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted ps-3">Limits</th>
+                            <td>
+                                Properties: {{ $registration->plan->property_limit }},
+                                Branches: {{ $registration->plan->branch_limit }},
+                                Staff: {{ $registration->plan->staff_limit }},
+                                Property managers: {{ $registration->plan->property_manager_limit }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="text-muted ps-3">Feature flags</th>
+                            <td>
+                                Company profile: {{ $registration->plan->allow_company_profile ? 'Yes' : 'No' }}<br>
+                                Invoice branding: {{ $registration->plan->allow_invoice_branding ? 'Yes' : 'No' }}<br>
+                                Roles/permissions: {{ $registration->plan->allow_roles_permissions ? 'Yes' : 'No' }}<br>
+                                Contact login: {{ $registration->plan->allow_contact_login ? 'Yes' : 'No' }}
+                            </td>
+                        </tr>
+                        @if($provisionedAccount)
+                            <tr>
+                                <th class="text-muted ps-3">Created account</th>
+                                <td>
+                                    <a href="{{ route('backend.saas.accounts.show', $provisionedAccount) }}">
+                                        #{{ $provisionedAccount->id }} - {{ $provisionedAccount->account_name }}
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted ps-3">Subscription status</th>
+                                <td>{{ $provisionedSubscription ? Str::headline($provisionedSubscription->status) : 'No subscription found' }}</td>
+                            </tr>
+                            <tr>
+                                <th class="text-muted ps-3">Trial ends</th>
+                                <td>{{ $provisionedSubscription?->trial_ends_at ? $provisionedSubscription->trial_ends_at->format('d/m/Y H:i') : 'No trial' }}</td>
+                            </tr>
+                            @if($provisionedAccount->company)
+                                <tr>
+                                    <th class="text-muted ps-3">Company profile</th>
+                                    <td>{{ $provisionedAccount->company->name }}</td>
+                                </tr>
+                            @endif
+                        @endif
+                    @else
+                        <tr>
+                            <td class="text-muted ps-3 py-3">No SaaS plan was selected for this registration.</td>
+                        </tr>
+                    @endif
+                </table>
+            </div>
+        </div>
+
         {{-- Approve form (with role picker) --}}
         @if(!in_array($registration->status, ['approved','rejected']))
             <div class="card mb-3 border-success">

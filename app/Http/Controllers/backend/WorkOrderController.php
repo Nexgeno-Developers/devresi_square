@@ -8,11 +8,13 @@ use App\Models\RepairIssueContractorAssignment;
 use App\Models\Upload;
 use App\Models\TaxRates;
 use App\Models\WorkOrder;
+use App\Models\RepairIssue;
 use Illuminate\Http\Request;
 use App\Models\WorkOrderItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
+use App\Services\Saas\PortalAccessService;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 class WorkOrderController
@@ -54,6 +56,9 @@ class WorkOrderController
             'final_contractor_assignment_id.exists' => 'Selected final contractor is not valid for this repair issue.',
         ]);
 
+        $repairIssue = RepairIssue::findOrFail($validatedData['repair_issue_id']);
+        ensureModelBelongsToCurrentAccount($repairIssue);
+
         // Check if we're updating an existing Work Order
         if (!empty($request->work_order_id)) {
             $workOrder = WorkOrder::find($request->work_order_id);
@@ -64,8 +69,10 @@ class WorkOrderController
                     'error' => true
                 ], 404);
             }
+            ensureModelBelongsToCurrentAccount($workOrder);
         
             $workOrder->update([
+                'account_id' => $repairIssue->account_id ?: $workOrder->account_id ?: current_account_id(),
                 'repair_issue_id' => $request->repair_issue_id,
                 'job_type_id' => $request->job_type_id,
                 'job_sub_type_id' => $request->job_sub_type_id,
@@ -83,6 +90,7 @@ class WorkOrderController
             // Creating a new Work Order
             $workOrderNumber = generateReferenceNumber(WorkOrder::class, 'works_order_no', 'RESISQREWO');
             $workOrder = WorkOrder::create([
+                'account_id' => $repairIssue->account_id ?: current_account_id(),
                 'works_order_no' => $workOrderNumber,
                 'repair_issue_id' => $request->repair_issue_id,
                 'job_type_id' => $request->job_type_id,
@@ -257,7 +265,12 @@ class WorkOrderController
 
     public function getWorkOrder($repairIssueId)
     {
-        $workOrder = WorkOrder::where('repair_issue_id', $repairIssueId)->first();
+        $repairIssue = RepairIssue::findOrFail($repairIssueId);
+        ensureModelBelongsToCurrentAccount($repairIssue);
+
+        $workOrder = WorkOrder::where('repair_issue_id', $repairIssueId)
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->first();
 
         return response()->json([
             'work_order' => $workOrder
@@ -322,7 +335,7 @@ class WorkOrderController
 
     private function workOrderForPdf(int $id): WorkOrder
     {
-        return WorkOrder::with([
+        $workorder = WorkOrder::with([
             'items',
             'jobType',
             'jobSubType',
@@ -331,6 +344,31 @@ class WorkOrderController
             'repairIssue.repairCategory',
             'repairIssue.tenant',
         ])->findOrFail($id);
+
+        ensureModelBelongsToCurrentAccount($workorder);
+        $this->ensurePortalCanAccessWorkOrder($workorder);
+
+        return $workorder;
+    }
+
+    private function ensurePortalCanAccessWorkOrder(WorkOrder $workorder): void
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user || ! $accountId) {
+            return;
+        }
+
+        $portalAccess = app(PortalAccessService::class);
+
+        if (! $portalAccess->isPortalUser($user, $accountId)) {
+            return;
+        }
+
+        $property = $workorder->repairIssue?->property;
+
+        abort_unless($property && $portalAccess->canAccessProperty($user, $property), 403, 'You do not have access to this work order.');
     }
 
     private function buildWorkOrderPdf(WorkOrder $workorder)

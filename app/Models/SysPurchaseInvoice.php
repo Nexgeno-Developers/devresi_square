@@ -32,6 +32,16 @@ class SysPurchaseInvoice extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
     public function activeJournal(): ?GlJournal
     {
         $journal = GlJournal::activeFor('purchase_invoice_issue', $this->id);

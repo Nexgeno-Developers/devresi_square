@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use OwenIt\Auditing\Contracts\Auditable;
@@ -10,6 +11,7 @@ class Event extends Model implements Auditable
 {
     /** @use HasFactory<\Database\Factories\EventFactory> */
     use HasFactory;
+    use BelongsToSaasAccount;
     use \OwenIt\Auditing\Auditable;
 
     // Audit only these fields
@@ -31,6 +33,9 @@ class Event extends Model implements Auditable
     ];
 
     protected $fillable = [
+        'account_id',
+        'company_id',
+        'branch_id',
         'title',
         'parent_id',      // foreign key
         'type_id',       // foreign key
@@ -60,6 +65,16 @@ class Event extends Model implements Auditable
     public function type()
     {
         return $this->belongsTo(EventType::class, 'type_id');
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     // public function subType()

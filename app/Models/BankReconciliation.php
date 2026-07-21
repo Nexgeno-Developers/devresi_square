@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class BankReconciliation extends Model
 {
     protected $fillable = [
-        'sys_bank_account_id', 'statement_date', 'statement_balance',
+        'account_id', 'sys_bank_account_id', 'statement_date', 'statement_balance',
         'gl_balance', 'difference', 'status', 'reconciled_by',
         'reconciled_at', 'notes',
     ];

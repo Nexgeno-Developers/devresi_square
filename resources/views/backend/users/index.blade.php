@@ -19,7 +19,7 @@
                                     id='contactSearch'
                                 />
                             </div>
-                            @can('Create Contacts')
+                            @can('create contacts')
                             <div class="pv_btn">
                                 <a href="{{ route('admin.users.create') }}" class="btn mt-2 btn-sm btn-outline-danger">
                                     Add Contact

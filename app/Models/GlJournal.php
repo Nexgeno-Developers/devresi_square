@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use App\Models\GlAuditLog;
 
 class GlJournal extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSaasAccount;
 
     protected $guarded = [];
 
@@ -90,6 +91,16 @@ class GlJournal extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(GlJournalLine::class, 'gl_journal_id');
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     public function reversal(): HasMany

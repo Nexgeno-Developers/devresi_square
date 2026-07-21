@@ -12,6 +12,7 @@ class RepairIssueContractorAssignment extends Model
     use HasFactory;
 
     protected $fillable = [
+        'account_id',
         'repair_issue_id',
         'contractor_id',
         'assigned_by',

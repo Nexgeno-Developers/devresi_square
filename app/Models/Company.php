@@ -1,13 +1,18 @@
 <?php
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Model;
 
 class Company extends Model
 {
+    use BelongsToSaasAccount;
+
     protected $fillable = [
+        'account_id',
         'owner_user_id',
         'name',
+        'company_type',
         'registration_number',
         'registered_address',
         'communication_address',
@@ -19,6 +24,7 @@ class Company extends Model
         'website',
         'social_media',
         'services',
+        'status',
         'created_by',
         'updated_by',
     ];

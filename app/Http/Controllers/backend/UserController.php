@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Backend;
 
+use App\Http\Controllers\Backend\Concerns\EnforcesSaasPlanLimits;
 use App\Mail\MailManager;
 use App\Models\Company;
 use App\Models\Country;
@@ -11,10 +12,14 @@ use App\Models\EmailTemplate;
 use App\Models\Nationality;
 use App\Models\NoteType;
 // use App\Models\UserCategory;
+use App\Models\AccountUser;
+use App\Models\PropertyParticipant;
 use App\Models\Property;
 use App\Models\User;
 use App\Models\UserCategory;
 use App\Services\Accounting\StatementService;
+use App\Services\Saas\AccountLimitService;
+use App\Services\Saas\PortalAccessService;
 // use App\Http\Controllers\Backend\NotesController;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -28,6 +33,8 @@ use Spatie\Permission\Models\Role;
 
 class UserController
 {
+    use EnforcesSaasPlanLimits;
+
     public function profile()
     {
         $authUser = auth()->user()->load([
@@ -57,15 +64,31 @@ class UserController
         $user = User::with('country', 'details', 'ownedCompany')->find(auth()->id());
         // $categories = UserCategory::all();
         $countries = Country::allCached();
-        $company = $this->canManageCompanyProfile($user) ? $this->ownedCompanyFor($user) : null;
+        $canUseCompanyProfile = $this->canManageCompanyProfile($user);
+        $canUseInvoiceBranding = $this->canUseInvoiceBrandingFeature();
+        $company = $canUseCompanyProfile ? $this->ownedCompanyFor($user) : null;
 
-        return view('backend.users.profile.edit', compact('user', 'countries', 'company'));
+        return view('backend.users.profile.edit', compact('user', 'countries', 'company', 'canUseCompanyProfile', 'canUseInvoiceBranding'));
         // return view('backend.users.profile.edit', compact('user', 'categories', 'countries'));
     }
 
     public function profileUpdate(Request $request)
     {
         $user = auth()->user();
+        $canUseCompanyProfile = $this->canManageCompanyProfile($user);
+        $canUseInvoiceBranding = $this->canUseInvoiceBrandingFeature();
+
+        if (! $canUseCompanyProfile && $this->requestHasCompanyProfileInput($request)) {
+            flash('Your current plan does not include estate agency company profile access.')->error();
+
+            return back()->withInput();
+        }
+
+        if (! $canUseInvoiceBranding && ($request->hasFile('company_logo') || $request->hasFile('company_stamp'))) {
+            flash('Your current plan does not include invoice branding.')->error();
+
+            return back()->withInput();
+        }
 
         $rules = [
             'title' => 'required|string|max:10',
@@ -89,7 +112,7 @@ class UserController
             // 'role' => 'required|exists:roles,name',
         ];
 
-        if ($this->canManageCompanyProfile($user)) {
+        if ($canUseCompanyProfile) {
             $rules = array_merge($rules, [
                 'company.name' => 'nullable|string|max:255',
                 'company.registration_number' => 'nullable|string|max:255',
@@ -105,9 +128,14 @@ class UserController
                 'company.social_media.*' => 'nullable|url|max:255',
                 'company.services' => 'nullable|array',
                 'company.services.*' => 'nullable|in:lettings,sales,property_management',
-                'company_logo' => 'nullable|image|max:4096',
-                'company_stamp' => 'nullable|image|max:4096',
             ]);
+
+            if ($canUseInvoiceBranding) {
+                $rules = array_merge($rules, [
+                    'company_logo' => 'nullable|image|max:4096',
+                    'company_stamp' => 'nullable|image|max:4096',
+                ]);
+            }
         }
 
         $validatedData = $request->validate($rules);
@@ -146,7 +174,7 @@ class UserController
 
         $fullName = trim($request->input('first_name').' '.$request->input('middle_name').' '.$request->input('last_name'));
 
-        DB::transaction(function () use ($request, $user, $validatedData, $fullName, $contactEmails, $contactPhones) {
+        DB::transaction(function () use ($request, $user, $validatedData, $fullName, $contactEmails, $contactPhones, $canUseCompanyProfile) {
             $user->update([
                 'title' => $validatedData['title'],
                 'first_name' => $validatedData['first_name'],
@@ -176,7 +204,7 @@ class UserController
                 ]
             );
 
-            if ($this->canManageCompanyProfile($user)) {
+            if ($canUseCompanyProfile) {
                 $this->syncOwnedCompany($request, $user);
             }
         });
@@ -190,6 +218,10 @@ class UserController
 
     private function canManageCompanyProfile(User $user): bool
     {
+        if (! $this->bypassesSaasPlanLimits() && $this->saasLimitError('company_profile') !== null) {
+            return false;
+        }
+
         $manageOwnCompanyPermissionExists = \Spatie\Permission\Models\Permission::where('name', 'manage own company')
             ->where('guard_name', 'web')
             ->exists();
@@ -205,6 +237,7 @@ class UserController
         return $user->ownedCompany()->firstOrCreate(
             ['owner_user_id' => $user->id],
             [
+                'account_id' => current_account_id(),
                 'name' => $user->company?->name ?: ($user->name ? $user->name . ' Company' : 'My Company'),
                 'created_by' => $user->id,
             ]
@@ -215,15 +248,16 @@ class UserController
     {
         $company = $this->ownedCompanyFor($user);
         $companyInput = $request->input('company', []);
+        $canUseInvoiceBranding = $this->canUseInvoiceBrandingFeature();
 
-        if ($request->hasFile('company_logo')) {
+        if ($request->hasFile('company_logo') && $canUseInvoiceBranding) {
             if ($company->logo_path && Storage::disk('public')->exists($company->logo_path)) {
                 Storage::disk('public')->delete($company->logo_path);
             }
             $companyInput['logo_path'] = $request->file('company_logo')->store('company_logos', 'public');
         }
 
-        if ($request->hasFile('company_stamp')) {
+        if ($request->hasFile('company_stamp') && $canUseInvoiceBranding) {
             if ($company->stamp_path && Storage::disk('public')->exists($company->stamp_path)) {
                 Storage::disk('public')->delete($company->stamp_path);
             }
@@ -231,6 +265,7 @@ class UserController
         }
 
         $company->update([
+            'account_id' => $company->account_id ?: current_account_id(),
             'name' => $companyInput['name'] ?? $company->name,
             'registration_number' => $companyInput['registration_number'] ?? null,
             'registered_address' => $companyInput['registered_address'] ?? null,
@@ -300,6 +335,7 @@ class UserController
             'tenantMembers',
             'documents',
         ]);
+        $this->scopeUsersToCurrentAccount($usersQuery);
 
         // Apply search filter
         if ($request->filled('search')) {
@@ -364,6 +400,7 @@ class UserController
                     ->whereDoesntHave('roles', function ($q) {
                         $q->whereIn('name', ['Staff', 'Super Admin']);
                     });
+                $this->scopeUsersToCurrentAccount($positionQuery);
 
                 if ($request->filled('search')) {
                     $search = $request->search;
@@ -430,6 +467,8 @@ class UserController
             ]));
         }
 
+        $this->ensureUserAccessible($user);
+
         // Define your tab list
         $tabs = [
             ['name' => 'Contact'],
@@ -487,7 +526,10 @@ class UserController
                 }
 
                 $properties = ! empty($propertyIds)
-                    ? Property::whereIn('id', $propertyIds)->get()
+                    ? Property::query()
+                        ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                        ->whereIn('id', $propertyIds)
+                        ->get()
                     : collect(); // empty collection if no IDs
 
                 return view('backend.users.tabs.linked', compact('userId', 'user', 'properties'))->render();
@@ -514,21 +556,31 @@ class UserController
                 // load all nationalities keyed by id→name
                 $nationalities = Nationality::orderBy('name')->pluck('name', 'id');
                 // load all users for the “checked by” dropdown
-                $users = User::orderBy('name')->pluck('name', 'id');
+                $usersQuery = User::orderBy('name');
+                $this->scopeUsersToCurrentAccount($usersQuery);
+                $users = $usersQuery->pluck('name', 'id');
                 // eager-load the staff member who did the check
                 $user->load('details.userCheckedBy');
 
                 return view('backend.users.tabs.compliance', compact('userId', 'user', 'users', 'nationalities'))->render();
 
             case 'documents':
-                $documents = $user->documents()->with('documentType')->orderByDesc('updated_at')->paginate(5);
+                $documents = $user->documents()
+                    ->with('documentType')
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->orderByDesc('updated_at')
+                    ->paginate(5);
                 $documentTypes = DocumentType::all();
 
                 return view('backend.users.tabs.documents', compact('userId', 'user', 'documents', 'documentTypes'))->render();
 
             case 'notes':
                 // Fetch the notes related to the specific user by user ID
-                $notes = $user->notes()->with('noteType')->orderByDesc('updated_at')->paginate(5);
+                $notes = $user->notes()
+                    ->with('noteType')
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->orderByDesc('updated_at')
+                    ->paginate(5);
                 $noteTypes = NoteType::all();
 
                 return view('backend.users.tabs.notes', compact('userId', 'user', 'notes', 'noteTypes'))->render();
@@ -555,6 +607,8 @@ class UserController
      */
     public function create(User $user)
     {
+        abort_unless(auth()->user()?->can('create contacts'), 403);
+
         $roles = Role::whereNotIn('name', ['Staff', 'Super Admin'])->get();
 
         return view('backend.users.create', compact('user', 'roles'));
@@ -565,6 +619,8 @@ class UserController
 
     public function userStore(Request $request)
     {
+        abort_unless($request->user()?->can('create contacts'), 403);
+
         // Validate data based on the current step
         if ($request->has('step')) {
 
@@ -612,6 +668,7 @@ class UserController
                     $validatedData['quick_step'] = $request->step;
                     Log::info('Creating new user', $validatedData);
                     $user = User::create(array_merge($validatedData, ['added_by' => Auth::id()]));
+                    $this->syncCurrentAccountMembership($user, $request->input('role_ids', []));
                 }
             }
 
@@ -622,6 +679,10 @@ class UserController
 
                 // Sync the user’s roles (removes any roles not in this array)
                 $user->syncRoles($roles);
+            }
+
+            if (isset($user)) {
+                $this->syncCurrentAccountMembership($user, $request->input('role_ids', []), $request);
             }
 
             // Get total number of steps
@@ -718,18 +779,24 @@ class UserController
 
         // If IDs are provided, fetch properties by IDs
         if ($ids) {
-            $properties = Property::whereIn('id', $ids)
+            $properties = Property::query()
+                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                ->whereIn('id', $ids)
                 ->get(['id', 'prop_ref_no', 'prop_name', 'line_1', 'line_2', 'city', 'country', 'postcode', 'specific_property_type', 'available_from']);  // Return only necessary fields
         } else {
             // If no IDs are passed, search properties based on the query (default behavior)
             $query = $request->input('query');
-            $properties = Property::where('prop_ref_no', 'LIKE', '%'.$query.'%')
-                ->orWhere('prop_name', 'LIKE', '%'.$query.'%')
-                ->orWhere('line_1', 'LIKE', '%'.$query.'%')
-                ->orWhere('line_2', 'LIKE', '%'.$query.'%')
-                ->orWhere('city', 'LIKE', '%'.$query.'%')
-                ->orWhere('country', 'LIKE', '%'.$query.'%')
-                ->orWhere('postcode', 'LIKE', '%'.$query.'%')
+            $properties = Property::query()
+                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
+                ->where(function ($propertyQuery) use ($query) {
+                    $propertyQuery->where('prop_ref_no', 'LIKE', '%'.$query.'%')
+                        ->orWhere('prop_name', 'LIKE', '%'.$query.'%')
+                        ->orWhere('line_1', 'LIKE', '%'.$query.'%')
+                        ->orWhere('line_2', 'LIKE', '%'.$query.'%')
+                        ->orWhere('city', 'LIKE', '%'.$query.'%')
+                        ->orWhere('country', 'LIKE', '%'.$query.'%')
+                        ->orWhere('postcode', 'LIKE', '%'.$query.'%');
+                })
                 ->limit(10)
                 ->get(['id', 'prop_ref_no', 'prop_name', 'line_1', 'line_2', 'city', 'country', 'postcode', 'specific_property_type', 'available_from']);
         }
@@ -772,6 +839,8 @@ class UserController
 
     public function getQuickStepView($step, Request $request)
     {
+        abort_unless($request->user()?->can('create contacts'), 403);
+
         // Get user_id from the session or request
         $user_id = $request->user_id;
         $user = User::find($user_id);
@@ -794,6 +863,8 @@ class UserController
 
     public function quicklyStoreUser(Request $request)
     {
+        abort_unless($request->user()?->can('create contacts'), 403);
+
         // Validate incoming request
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -815,6 +886,7 @@ class UserController
         // Assign default role if not provided
         $role = $request->input('role', 'User'); // Use a sensible fallback
         $user->assignRole($role);
+        $this->syncCurrentAccountMembership($user, [$role]);
 
         // Return the user data as a JSON response
         return response()->json([
@@ -874,6 +946,7 @@ class UserController
             // Sync the user’s roles (removes any roles not in this array)
             $user->syncRoles($roles);
         }
+        $this->syncCurrentAccountMembership($user, $request->input('role_ids', []));
         // Redirect or return a response
         flash('User Added Successfully!')->success();
 
@@ -896,6 +969,8 @@ class UserController
     public function edit($id)
     {
         $user = User::findOrFail($id); // Fetch the user by ID
+        $this->ensureUserAccessible($user);
+
         $roles = Role::whereNotIn('name', ['Staff', 'Super Admin'])->get(); // Fetch roles excluding Staff and Super Admin
         //  $categories = UserCategory::all(); // Fetch all categories
         $selectedProperties = json_decode($user->selected_properties, true);
@@ -924,6 +999,7 @@ class UserController
 
         // Find the user to be updated
         $user = User::findOrFail($id);
+        $this->ensureUserAccessible($user);
 
         // Concatenate first, middle, and last names to create name
         $fullName = trim($request->first_name.' '.$request->middle_name.' '.$request->last_name);
@@ -969,6 +1045,7 @@ class UserController
     {
         // Find the user to be deleted
         $user = User::findOrFail($id);
+        $this->ensureUserAccessible($user);
 
         // Delete the user
         $user->delete();
@@ -1239,6 +1316,7 @@ class UserController
         $term = $request->input('q');
 
         $query = User::query();
+        $this->scopeUsersToCurrentAccount($query);
 
         if ($term) {
             $query->where(function ($q) use ($term) {
@@ -1274,6 +1352,7 @@ class UserController
         $query = User::whereHas('roles', function ($q) {
             $q->whereIn('name', ['Staff', 'Super Admin', 'Property Manager']);
         });
+        $this->scopeUsersToCurrentAccount($query);
 
         if (strlen($term) >= 2) {
             $query->where(function ($q) use ($term) {
@@ -1442,5 +1521,204 @@ class UserController
             }
             fclose($out);
         }, 'contact-statement.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    private function scopeUsersToCurrentAccount($query)
+    {
+        if (! auth()->user()?->hasRole('Super Admin')) {
+            $query->whereHas('accountUsers', function ($accountUserQuery) {
+                $accountUserQuery->where('account_id', current_account_id())
+                    ->where('status', 'active');
+            });
+        }
+
+        return $query;
+    }
+
+    private function ensureUserAccessible(User $user): void
+    {
+        if (auth()->user()?->hasRole('Super Admin') || (int) $user->id === (int) auth()->id()) {
+            return;
+        }
+
+        $allowed = $user->accountUsers()
+            ->where('account_id', current_account_id())
+            ->where('status', 'active')
+            ->exists();
+
+        // TODO: Tenant/contact portal access should also honour property_participants.
+        abort_unless($allowed, 403);
+    }
+
+    private function syncCurrentAccountMembership(User $user, array $roles = [], ?Request $request = null): void
+    {
+        $accountId = current_account_id();
+
+        if (! $accountId || auth()->user()?->hasRole('Super Admin')) {
+            return;
+        }
+
+        $roleNames = Role::whereIn('id', collect($roles)->filter(fn ($role) => is_numeric($role))->all())
+            ->pluck('name')
+            ->merge(collect($roles)->filter(fn ($role) => is_string($role)))
+            ->map(fn ($role) => strtolower((string) $role));
+
+        if ($roleNames->isEmpty()) {
+            $roleNames = $user->getRoleNames()->map(fn ($role) => strtolower((string) $role));
+        }
+
+        [$memberType, $participantType] = $this->portalTypesFromRoles($roleNames);
+        $accessLevel = $request?->input('portal_access_level', $request?->input('access_level', 'view')) ?: 'view';
+        $accessLevel = in_array($accessLevel, ['view', 'edit', 'full'], true) ? $accessLevel : 'view';
+        $wantsLogin = $request?->boolean('can_login', true) ?? true;
+        $canLogin = $wantsLogin;
+        $account = current_account();
+
+        if ($account) {
+            $canLogin = $wantsLogin && app(AccountLimitService::class)->canUseContactLogin($account);
+        }
+
+        AccountUser::updateOrCreate(
+            [
+                'account_id' => $accountId,
+                'user_id' => $user->id,
+            ],
+            [
+                'member_type' => $memberType,
+                'access_level' => 'view',
+                'can_login' => $canLogin,
+                'status' => 'active',
+                'created_by' => auth()->id(),
+            ]
+        );
+
+        $propertyIds = $this->selectedPortalPropertyIds($request, $user);
+
+        if (! $canLogin) {
+            PropertyParticipant::query()
+                ->where('account_id', $accountId)
+                ->where('user_id', $user->id)
+                ->update(['status' => 'inactive']);
+
+            if ($request && $wantsLogin) {
+                flash('Your current plan does not include contact portal login.')->warning();
+            }
+
+            return;
+        }
+
+        if (! $account) {
+            return;
+        }
+
+        if (empty($propertyIds)) {
+            PropertyParticipant::query()
+                ->where('account_id', $accountId)
+                ->where('user_id', $user->id)
+                ->update(['status' => 'inactive']);
+
+            return;
+        }
+
+        $validPropertyIds = Property::query()
+            ->where('account_id', $accountId)
+            ->whereIn('id', $propertyIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        PropertyParticipant::query()
+            ->where('account_id', $accountId)
+            ->where('user_id', $user->id)
+            ->whereNotIn('property_id', $validPropertyIds)
+            ->update(['status' => 'inactive']);
+
+        PropertyParticipant::query()
+            ->where('account_id', $accountId)
+            ->where('user_id', $user->id)
+            ->whereIn('property_id', $validPropertyIds)
+            ->where('participant_type', '!=', $participantType)
+            ->update(['status' => 'inactive']);
+
+        $portalAccessService = app(PortalAccessService::class);
+
+        foreach ($validPropertyIds as $propertyId) {
+            $property = Property::find($propertyId);
+
+            if (! $property) {
+                continue;
+            }
+
+            $portalAccessService->grantPropertyAccess(
+                $account,
+                $property,
+                $user,
+                $participantType,
+                $accessLevel,
+                $request?->boolean('can_view_finance', false) ?? false,
+                $request?->boolean('can_view_documents', false) ?? false,
+                $request?->boolean('can_upload_documents', false) ?? false,
+                auth()->user()
+            );
+        }
+    }
+
+    private function portalTypesFromRoles($roleNames): array
+    {
+        if ($roleNames->contains('tenant')) {
+            return ['tenant', 'tenant'];
+        }
+
+        if ($roleNames->contains('contractor')) {
+            return ['contractor', 'contractor'];
+        }
+
+        if ($roleNames->contains('property manager') || $roleNames->contains('property_manager')) {
+            return ['property_manager', 'property_manager'];
+        }
+
+        if ($roleNames->contains('landlord')) {
+            return ['landlord', 'landlord'];
+        }
+
+        if ($roleNames->contains('owner') || $roleNames->contains('owner contact') || $roleNames->contains('owner_contact')) {
+            return ['owner_contact', 'owner'];
+        }
+
+        return ['contact', 'owner'];
+    }
+
+    private function selectedPortalPropertyIds(?Request $request, User $user): array
+    {
+        $selected = $request?->input('portal_property_ids', $request?->input('selected_properties', $user->selected_properties));
+
+        if (is_string($selected)) {
+            $decoded = json_decode($selected, true);
+            $selected = json_last_error() === JSON_ERROR_NONE ? $decoded : explode(',', $selected);
+        }
+
+        if (! is_array($selected)) {
+            return [];
+        }
+
+        return collect($selected)
+            ->map(fn ($id) => is_array($id) ? ($id['id'] ?? null) : $id)
+            ->filter(fn ($id) => is_numeric($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function canUseInvoiceBrandingFeature(): bool
+    {
+        return $this->saasLimitError('invoice_branding') === null;
+    }
+
+    private function requestHasCompanyProfileInput(Request $request): bool
+    {
+        return $request->has('company')
+            || $request->hasFile('company_logo')
+            || $request->hasFile('company_stamp');
     }
 }

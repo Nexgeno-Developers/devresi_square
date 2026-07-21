@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Models\SysReceipt;
@@ -48,6 +50,7 @@ class User extends Authenticatable
         'can_login',
         'created_by',
         'updated_by',
+        'last_active_account_id',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -108,6 +111,41 @@ class User extends Authenticatable
     public function isSuperAdmin()
     {
         return $this->hasRole('Super Admin');
+    }
+
+    public function accountUsers(): HasMany
+    {
+        return $this->hasMany(AccountUser::class);
+    }
+
+    public function activeAccountUsers(): HasMany
+    {
+        return $this->accountUsers()->where('status', 'active');
+    }
+
+    public function propertyParticipants(): HasMany
+    {
+        return $this->hasMany(PropertyParticipant::class);
+    }
+
+    public function accounts(): BelongsToMany
+    {
+        return $this->belongsToMany(Account::class, 'account_users')
+            ->withPivot([
+                'member_type',
+                'access_level',
+                'can_login',
+                'branch_id',
+                'designation_id',
+                'status',
+                'created_by',
+            ])
+            ->withTimestamps();
+    }
+
+    public function lastActiveAccount(): BelongsTo
+    {
+        return $this->belongsTo(Account::class, 'last_active_account_id');
     }
 
     public function isStaffAccount(): bool

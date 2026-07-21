@@ -15,6 +15,9 @@ use App\Http\Controllers\Frontend\CustomerStatementController;
 use App\Http\Controllers\Frontend\ContractorPortalController;
 use App\Http\Controllers\Frontend\RepairQuoteController;
 
+Route::post('/stripe/webhook', [\App\Http\Controllers\Webhook\StripeWebhookController::class, 'handle'])
+    ->name('stripe.webhook');
+
 // Route::get('/test-pdf', function() {
 //     $pdf = PDF::loadHTML('<h1>Hello World</h1>');
 //     return $pdf->download('test.pdf');
@@ -59,12 +62,12 @@ Route::group(['middleware' => 'web'], function () {
     Route::post('/password/reset/', [PasswordResetController::class, 'reset'])->name('password.reset');
 
     // Customer self-serve statement
-    Route::middleware('auth')->group(function () {
+    Route::middleware(['auth', 'current.account', 'account.status'])->group(function () {
         Route::get('/customer/statements', [CustomerStatementController::class, 'show'])->name('customer.statements');
     });
 
     // Contractor portal — repair listing & detail (auth required)
-    Route::middleware('auth')->prefix('contractor')->name('contractor.')->group(function () {
+    Route::middleware(['auth', 'current.account', 'account.status'])->prefix('contractor')->name('contractor.')->group(function () {
         Route::get('/repairs',       [ContractorPortalController::class, 'index'])->name('repairs.index');
         Route::get('/repairs/{id}',  [ContractorPortalController::class, 'show'])->name('repairs.show');
     });
@@ -89,7 +92,7 @@ Route::get('/admin', function () {
 });
 
 // AIZ Uploader
-Route::controller(AizUploadController::class)->group(function () {
+Route::controller(AizUploadController::class)->middleware(['auth', 'current.account', 'account.status'])->group(function () {
     Route::post('/aiz-uploader', 'show_uploader');
     Route::post('/aiz-uploader/upload', 'upload');
     Route::get('/aiz-uploader/get_uploaded_files', 'get_uploaded_files');
@@ -99,8 +102,10 @@ Route::controller(AizUploadController::class)->group(function () {
 });
 
 // uploaded files
-Route::resource('/uploaded-files', AizUploadController::class);
-Route::controller(AizUploadController::class)->group(function () {
+Route::resource('/uploaded-files', AizUploadController::class)
+    ->except(['destroy'])
+    ->middleware(['auth', 'current.account', 'account.status']);
+Route::controller(AizUploadController::class)->middleware(['auth', 'current.account', 'account.status'])->group(function () {
     Route::any('/uploaded-files/file-info', 'file_info')->name('uploaded-files.info');
     Route::get('/uploaded-files/destroy/{id}', 'destroy')->name('uploaded-files.destroy');
     Route::post('/bulk-uploaded-files-delete', 'bulk_uploaded_files_delete')->name('bulk-uploaded-files-delete');
@@ -113,6 +118,8 @@ Route::get('/helper', function () {
 
 // ── Twilio SMS test (remove after debugging) ──────────────────────────────
 Route::get('/test-sms', function () {
+    abort_unless(auth()->user()?->hasRole('Super Admin'), 403);
+
     $to = request('to', '');
     if (!$to) return 'Pass ?to=9833579014 in the URL';
 
@@ -177,7 +184,7 @@ Route::get('/test-sms', function () {
         'to'         => $toE164,
         'response'   => json_decode($response, true) ?? $response,
     ]);
-});
+})->middleware('auth');
 
 Route::get('/form/{type}', [FormController::class, 'show'])->name('form.show');
 Route::post('/form/{type}', [FormController::class, 'submit'])->name('form.submit');

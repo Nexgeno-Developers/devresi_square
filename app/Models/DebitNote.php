@@ -5,7 +5,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class DebitNote extends Model
 {
-    protected $fillable = ['note_number','note_date','party_id','party_role','total_amount','currency','status','notes','created_by'];
+    protected $fillable = ['account_id','note_number','note_date','party_id','party_role','total_amount','currency','status','notes','created_by'];
 
     public function party() {
         return $this->belongsTo(User::class, 'party_id');

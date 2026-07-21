@@ -25,6 +25,18 @@
                             @endif
                         </p>
 
+                        @if($registration->plan)
+                            <div class="alert alert-info text-start">
+                                <h5 class="mb-2">Selected Plan: {{ $registration->plan->name }}</h5>
+                                <div><strong>Billing:</strong> {{ ucfirst($registration->billing_cycle) }}</div>
+                                <div>
+                                    <strong>Price:</strong>
+                                    {{ $registration->billing_cycle === 'annual' ? $registration->plan->formattedAnnualPrice() . '/year' : $registration->plan->formattedMonthlyPrice() . '/month' }}
+                                </div>
+                                <div><strong>Trial:</strong> {{ $registration->plan->trial_days }} days</div>
+                            </div>
+                        @endif
+
                         @if ($errors->any())
                             <div class="alert alert-danger text-start">
                                 @foreach ($errors->all() as $error)

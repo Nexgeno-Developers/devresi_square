@@ -2,15 +2,21 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Permission\Models\Permission;
 
 class Designation extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSaasAccount;
 
-    protected $fillable = ['title'];  // The fields we want to allow mass assignment
+    protected $fillable = ['account_id', 'company_id', 'title', 'status'];  // The fields we want to allow mass assignment
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
     public function users()
     {

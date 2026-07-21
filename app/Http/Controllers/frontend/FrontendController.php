@@ -1,6 +1,9 @@
 <?php
 
 namespace App\Http\Controllers\Frontend;
+
+use App\Models\Addon;
+use App\Models\Plan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -29,8 +32,17 @@ class FrontendController
 
     public function pricing()
     {
-        
-        return view('frontend.pricing');
+        $plans = Plan::where('is_active', 1)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $addons = Addon::where('is_active', 1)
+            ->orderBy('addon_type')
+            ->orderBy('name')
+            ->get();
+
+        return view('frontend.pricing', compact('plans', 'addons'));
     }
     
 

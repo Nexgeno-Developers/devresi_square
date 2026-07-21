@@ -25,7 +25,11 @@ class TenancyController
     // Display a list of all active tenancies for a specific property
     public function index($propertyId)
     {
+        $property = Property::findOrFail($propertyId);
+        ensureModelBelongsToCurrentAccount($property);
+
         $tenancies = Tenancy::where('property_id', $propertyId)
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->where('status', 'Active')
             ->get();
 
@@ -36,6 +40,7 @@ class TenancyController
     public function all(Request $request)
     {
         $query = Tenancy::with(['property', 'tenantMembers.user', 'tenancySubStatus'])
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->orderByDesc('id');
 
         if ($request->filled('status')) {
@@ -54,6 +59,10 @@ class TenancyController
         $tenancyTypes = TenancyType::all();
         $tenancySubStatuses = TenancySubStatus::all();
         $propertyId = $request->query('property_id');
+        if ($propertyId) {
+            $property = Property::findOrFail($propertyId);
+            ensureModelBelongsToCurrentAccount($property);
+        }
 
         return view('backend.tenancies.create', compact('tenants', 'property_managers', 'tenancyTypes', 'tenancySubStatuses', 'propertyId'));
     }
@@ -66,7 +75,7 @@ class TenancyController
         $validated = $request->validate([
             'property_id' => 'required|exists:properties,id',
             'offer_id' => 'nullable|exists:offers,id',
-            'status' => 'required|in:Active,Archive', // Assuming status is either Active or Archive
+            'status' => 'required|in:Active,Archived,Archive',
             // 'sub_status' => 'nullable|string|max:255',
             'move_in' => 'required|date',
             'move_out' => 'nullable|date',
@@ -97,15 +106,24 @@ class TenancyController
             'property_manager.*' => 'exists:users,id', // Ensure each property manager exists in the users table
         ]);
 
+        if (($validated['status'] ?? null) === 'Archive') {
+            $validated['status'] = 'Archived';
+        }
+
         // Manually convert checkbox field
         // set it to true; if not, set to false
         $validated['periodic'] = $request->has('periodic') ? true : false;
         $validated['rolling_contract'] = $request->has('rolling_contract') ? true : false;
         $validated['renewal_exempt'] = $request->has('renewal_exempt') ? true : false;
 
+        $property = Property::findOrFail($validated['property_id']);
+        ensureModelBelongsToCurrentAccount($property);
+        $validated['account_id'] = $property->account_id ?: current_account_id();
+
         // If the new tenancy is Active, archive any current active tenancy for the same property.
         if ($validated['status'] === 'Active') {
             Tenancy::where('property_id', $validated['property_id'])
+                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
                 ->where('status', 'Active')
                 ->update(['status' => 'Archived']);
         }
@@ -132,6 +150,7 @@ class TenancyController
             // Determine if the user is the main person
             $isMainPerson = $userId == $request->is_main_person;
             TenantMember::create([
+                'account_id' => $validated['account_id'],
                 'tenancy_id' => $tenancy->id,
                 'user_id' => $userId,
                 'is_main_person' => $isMainPerson,
@@ -222,6 +241,8 @@ class TenancyController
             'tenancySubStatus',
             'propertyManagers'
         ])->findOrFail($id);
+        ensureModelBelongsToCurrentAccount($tenancy);
+
         return view('backend.tenancies.show', compact('tenancy'));
     }
 
@@ -234,6 +255,7 @@ class TenancyController
             'tenancySubStatus',
             'propertyManagers',
         ])->findOrFail($id);
+        ensureModelBelongsToCurrentAccount($tenancy);
 
         $tenantUserIds = $tenancy->tenantMembers
             ->pluck('user_id')
@@ -252,6 +274,7 @@ class TenancyController
                 'chargeTo',
                 'user',
             ])
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->where(function ($query) use ($tenancy, $tenantUserIds) {
                 $query->where(function ($direct) use ($tenancy) {
                     $direct->where('link_to_type', 'Tenancy')
@@ -332,6 +355,7 @@ class TenancyController
     {
         // Find the tenancy by its ID
         $tenancy = Tenancy::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($tenancy);
 
         // Fetch related data needed for the edit form
 
@@ -383,7 +407,7 @@ class TenancyController
         $validated = $request->validate([
             'property_id' => 'required|exists:properties,id',
             'offer_id' => 'nullable|exists:offers,id',
-            'status' => 'required|in:Active,Archive', // Assuming status is either Active or Archive
+            'status' => 'required|in:Active,Archived,Archive',
             'move_in' => 'required|date',
             'move_out' => 'nullable|date',
             'tenancy_renewal_confirm_date' => 'nullable|date', // Assuming it's a date format
@@ -410,6 +434,10 @@ class TenancyController
             'property_manager.*' => 'exists:users,id', // Ensure each property manager exists in the users table
         ]);
 
+        if (($validated['status'] ?? null) === 'Archive') {
+            $validated['status'] = 'Archived';
+        }
+
         // Manually convert checkbox field
         $validated['periodic'] = $request->has('periodic') ? true : false;
         $validated['rolling_contract'] = $request->has('rolling_contract') ? true : false;
@@ -417,6 +445,11 @@ class TenancyController
 
         // Find the existing tenancy record
         $tenancy = Tenancy::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($tenancy);
+
+        $property = Property::findOrFail($validated['property_id']);
+        ensureModelBelongsToCurrentAccount($property);
+        $validated['account_id'] = $property->account_id ?: $tenancy->account_id ?: current_account_id();
 
         // Update the tenancy record
         $tenancy->update($validated);
@@ -446,6 +479,7 @@ class TenancyController
             // Determine if the user is the main person
             $isMainPerson = $userId == $request->is_main_person;
             TenantMember::create([
+                'account_id' => $validated['account_id'],
                 'tenancy_id' => $tenancy->id,
                 'user_id' => $userId,
                 'is_main_person' => $isMainPerson,
@@ -462,6 +496,7 @@ class TenancyController
     public function destroy($id)
     {
         $tenancy = Tenancy::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($tenancy);
         $propertyId = $tenancy->property_id;
         $tenancy->delete();
 

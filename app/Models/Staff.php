@@ -2,15 +2,20 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Model;
 
 class Staff extends Model
 {
+    use BelongsToSaasAccount;
+
     protected $fillable = [
+        'account_id',
         'user_id',
         'parent_id',
         'branch_id',
         'permissions_customized',
+        'status',
     ];
 
     protected $casts = [

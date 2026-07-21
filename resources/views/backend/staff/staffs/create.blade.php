@@ -126,56 +126,63 @@
                     </div>
 
                     @php
+                        $canCustomizePermissions = $canCustomizePermissions ?? true;
                         $oldPermissionIds = collect(old('custom_permissions', []))->map(fn($id) => (int) $id)->toArray();
                         $hasOldPermissions = old('custom_permissions_submitted') !== null;
                     @endphp
 
-                    <div class="form-group row">
-                        <label class="col-sm-3 col-from-label pt-2">Custom Permission</label>
-                        <div class="col-sm-9">
-                            <span class="staff-permission-count-badge">
-                                <span id="selected-permission-count">{{ count($oldPermissionIds) }}</span> selected
-                                / {{ $permissions->count() }} available
-                            </span>
+                    @if($canCustomizePermissions)
+                        <div class="form-group row">
+                            <label class="col-sm-3 col-from-label pt-2">Custom Permission</label>
+                            <div class="col-sm-9">
+                                <span class="staff-permission-count-badge">
+                                    <span id="selected-permission-count">{{ count($oldPermissionIds) }}</span> selected
+                                    / {{ $permissions->count() }} available
+                                </span>
+                            </div>
                         </div>
-                    </div>
 
-                    <div id="custom-permissions-wrapper">
-                        <input type="hidden" name="custom_permissions_submitted" value="1">
-                        @foreach($permissions->groupBy(fn($permission) => $permission->section ?? 'general') as $section => $permissionGroup)
-                            <ul class="list-group mb-4 staff-permission-section">
-                                <li class="list-group-item bg-light fw-semibold staff-permission-section-header">
-                                    <div>
-                                        <span>{{ Str::headline($section) }}</span>
-                                        <small>{{ $permissionGroup->count() }} {{ Str::plural('permission', $permissionGroup->count()) }}</small>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-outline-primary staff-permission-section-toggle">
-                                        Enable all
-                                    </button>
-                                </li>
-                                <li class="list-group-item">
-                                    <div class="row">
-                                        @foreach($permissionGroup as $permission)
-                                            <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6 permission-item"
-                                                 data-permission-id="{{ $permission->id }}">
-                                                <div class="p-2 border mt-1 mb-2">
-                                                    <label class="control-label d-flex small">{{ Str::headline($permission->name) }}</label>
-                                                    <label class="aiz-switch aiz-switch-success">
-                                                        <input type="checkbox"
-                                                               name="custom_permissions[]"
-                                                               class="form-control custom-permission-checkbox"
-                                                               value="{{ $permission->id }}"
-                                                               {{ $hasOldPermissions && in_array($permission->id, $oldPermissionIds) ? 'checked' : '' }}>
-                                                        <span class="slider round"></span>
-                                                    </label>
+                        <div id="custom-permissions-wrapper">
+                            <input type="hidden" name="custom_permissions_submitted" value="1">
+                            @foreach($permissions->groupBy(fn($permission) => $permission->section ?? 'general') as $section => $permissionGroup)
+                                <ul class="list-group mb-4 staff-permission-section">
+                                    <li class="list-group-item bg-light fw-semibold staff-permission-section-header">
+                                        <div>
+                                            <span>{{ Str::headline($section) }}</span>
+                                            <small>{{ $permissionGroup->count() }} {{ Str::plural('permission', $permissionGroup->count()) }}</small>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary staff-permission-section-toggle">
+                                            Enable all
+                                        </button>
+                                    </li>
+                                    <li class="list-group-item">
+                                        <div class="row">
+                                            @foreach($permissionGroup as $permission)
+                                                <div class="col-lg-2 col-md-3 col-sm-4 col-xs-6 permission-item"
+                                                     data-permission-id="{{ $permission->id }}">
+                                                    <div class="p-2 border mt-1 mb-2">
+                                                        <label class="control-label d-flex small">{{ Str::headline($permission->name) }}</label>
+                                                        <label class="aiz-switch aiz-switch-success">
+                                                            <input type="checkbox"
+                                                                   name="custom_permissions[]"
+                                                                   class="form-control custom-permission-checkbox"
+                                                                   value="{{ $permission->id }}"
+                                                                   {{ $hasOldPermissions && in_array($permission->id, $oldPermissionIds) ? 'checked' : '' }}>
+                                                            <span class="slider round"></span>
+                                                        </label>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                        @endforeach
-                                    </div>
-                                </li>
-                            </ul>
-                        @endforeach
-                    </div>
+                                            @endforeach
+                                        </div>
+                                    </li>
+                                </ul>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="alert alert-secondary">
+                            Your current plan does not include staff roles and permissions.
+                        </div>
+                    @endif
 
                     <div class="form-group mb-0 text-right">
                         <button type="submit" class="btn btn-primary px-4 float-end">
@@ -193,9 +200,9 @@
 @section('page.scripts')
 <script>
     const designationPermissionsMap = @json(
-        $designations->mapWithKeys(fn($designation) => [
+        $canCustomizePermissions ? $designations->mapWithKeys(fn($designation) => [
             $designation->id => $designation->permissions->pluck('id')->values()
-        ])
+        ]) : []
     );
     const hasOldPermissionInput = @json($hasOldPermissions);
 
@@ -251,4 +258,6 @@
 </script>
 @endsection
 
-@include('backend.staff.staffs.partials.permission-tools')
+@if($canCustomizePermissions)
+    @include('backend.staff.staffs.partials.permission-tools')
+@endif

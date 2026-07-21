@@ -62,8 +62,8 @@
                         <select id="tenancies-status" class="form-control" name="status" aria-required="true">
                             <option value="Active" {{ isset($status) && $status == 'Active' ? 'selected' : '' }}>Active
                             </option>
-                            <option value="Archive" {{ isset($status) && $status == 'Archive' ? 'selected' : '' }}>
-                                Archive</option>
+                            <option value="Archived" {{ isset($status) && in_array($status, ['Archived', 'Archive'], true) ? 'selected' : '' }}>
+                                Archived</option>
                         </select>
                     </div>
                 </div>

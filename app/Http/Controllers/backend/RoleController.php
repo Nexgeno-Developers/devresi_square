@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Backend;
 
+use App\Http\Controllers\Backend\Concerns\EnforcesSaasPlanLimits;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
@@ -9,6 +10,8 @@ use Illuminate\Routing\Controller;
 
 class RoleController extends Controller
 {
+    use EnforcesSaasPlanLimits;
+
     public function __construct()
     {
         // Staff Permission Check
@@ -21,6 +24,8 @@ class RoleController extends Controller
 
     public function index()
     {
+        $this->abortIfSaasLimitDenied('roles_permissions');
+
         $roles = Role::where('id', '!=', 1)->paginate(10);
         return view('backend.staff.staff_roles.index', compact('roles'));
 
@@ -31,6 +36,8 @@ class RoleController extends Controller
 
     public function create()
     {
+        $this->abortIfSaasLimitDenied('roles_permissions');
+
         $permissions = Permission::all();
         return view('backend.staff.staff_roles.create', compact('permissions'));
     }
@@ -43,6 +50,8 @@ class RoleController extends Controller
      */
     public function store(Request $request)
 {
+    $this->abortIfSaasLimitDenied('roles_permissions');
+
     $request->validate([
         'name'          => 'required|string|unique:roles,name',
         'permissions'   => 'required|array',
@@ -84,6 +93,8 @@ class RoleController extends Controller
      */
     public function edit($id)
     {
+        $this->abortIfSaasLimitDenied('roles_permissions');
+
         $role        = Role::findOrFail($id);
         $permissions = Permission::all();
         $rolePerms   = $role->permissions->pluck('id')->toArray();
@@ -100,6 +111,8 @@ class RoleController extends Controller
      */
     public function update(Request $request, $id)
 {
+    $this->abortIfSaasLimitDenied('roles_permissions');
+
     $request->validate([
         'name'          => "required|string|unique:roles,name,{$id}",
         'permissions'   => 'required|array',
@@ -127,6 +140,8 @@ class RoleController extends Controller
      */
     public function destroy($id)
     {
+        $this->abortIfSaasLimitDenied('roles_permissions');
+
         if(env('DEMO_MODE') == 'On'){
             flash('Data can not change in demo mode.')->info();
             return back();
@@ -139,6 +154,8 @@ class RoleController extends Controller
 
     public function add_permission(Request $request)
     {
+        $this->abortIfSaasLimitDenied('roles_permissions');
+
         $permission = Permission::create(['name' => $request->name]);
         return redirect()->route('roles.index');
     }

@@ -4,20 +4,83 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Mail\MailManager;
+use App\Models\Plan;
 use App\Models\Registration;
+use App\Models\User;
+use App\Services\Saas\AccountProvisioningService;
+use App\Services\Saas\CurrentAccountService;
+use App\Services\Saas\StripeCheckoutService;
 use App\Utility\SmsUtility;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
 
 class RegistrationController extends Controller
 {
+    private const ACCOUNT_TYPES = [
+        'landlord',
+        'estate_agent_freelance',
+        'estate_agent_company',
+    ];
+
+    private const BILLING_CYCLES = [
+        'monthly',
+        'annual',
+    ];
+
+    private const ACCOUNT_TYPE_TO_REGISTRATION_TYPE = [
+        'landlord' => 'landlord',
+        'estate_agent_freelance' => 'estate_agent',
+        'estate_agent_company' => 'estate_agent',
+    ];
+
     // ─── Step 1: Show registration form ──────────────────────────────────────
-    public function showForm()
+    public function showForm(Request $request)
     {
-        return view('frontend.register');
+        $selectedPlan = null;
+        $selectedBillingCycle = null;
+        $selectedAccountType = null;
+        $suggestedRegistrationType = null;
+
+        if (! $request->filled('plan_id')) {
+            return redirect()
+                ->route('pricing')
+                ->with('info', 'Choose a plan to create your account.');
+        }
+
+        if ($request->filled('plan_id')) {
+            $selectedPlan = Plan::query()
+                ->where('is_active', 1)
+                ->find($request->plan_id);
+
+            $selectedBillingCycle = $request->input('billing_cycle');
+            $selectedAccountType = $request->input('account_type');
+
+            if (
+                ! $selectedPlan
+                || ! in_array($selectedBillingCycle, self::BILLING_CYCLES, true)
+                || $selectedAccountType !== $selectedPlan->target_account_type
+            ) {
+                return redirect()
+                    ->route('pricing')
+                    ->with('error', 'Selected plan is not available.');
+            }
+
+            $suggestedRegistrationType = self::ACCOUNT_TYPE_TO_REGISTRATION_TYPE[$selectedAccountType] ?? null;
+        }
+
+        return view('frontend.register', compact(
+            'selectedPlan',
+            'selectedBillingCycle',
+            'selectedAccountType',
+            'suggestedRegistrationType'
+        ));
     }
 
     // ─── Step 2: Submit form → save, send OTP, return JSON for AJAX ──────────
@@ -42,6 +105,10 @@ class RegistrationController extends Controller
             ],
             'type'       => 'required|in:landlord,owner,estate_agent,contractor',
             'verify_via' => 'required|in:email,phone',
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'plan_id' => ['required', 'integer'],
+            'billing_cycle' => ['required', Rule::in(self::BILLING_CYCLES)],
+            'account_type' => ['required', Rule::in(self::ACCOUNT_TYPES)],
         ], [
             'email.email'           => 'Please enter a valid email address.',
             'email.unique'          => 'This email is already registered.',
@@ -50,10 +117,38 @@ class RegistrationController extends Controller
             'verify_via.required'   => 'Please choose how to verify your identity.',
         ]);
 
+        $selectedPlan = null;
+
         // Extra: phone required when verify_via = phone
-        $validator->after(function ($v) use ($request) {
+        $validator->after(function ($v) use ($request, &$selectedPlan) {
             if ($request->verify_via === 'phone' && empty(trim($request->phone ?? ''))) {
                 $v->errors()->add('phone', 'Phone number is required when verifying via phone.');
+            }
+
+            if (! $request->filled('plan_id')) {
+                return;
+            }
+
+            $selectedPlan = Plan::query()
+                ->where('is_active', 1)
+                ->find($request->plan_id);
+
+            if (! $selectedPlan) {
+                $v->errors()->add('plan_id', 'Selected plan is not available.');
+                return;
+            }
+
+            if (! in_array($request->billing_cycle, self::BILLING_CYCLES, true)) {
+                $v->errors()->add('billing_cycle', 'Please choose monthly or annual billing.');
+            }
+
+            if ($request->account_type !== $selectedPlan->target_account_type) {
+                $v->errors()->add('account_type', 'Selected account type does not match the selected plan.');
+            }
+
+            $expectedType = self::ACCOUNT_TYPE_TO_REGISTRATION_TYPE[$selectedPlan->target_account_type] ?? null;
+            if ($expectedType && $request->type !== $expectedType) {
+                $v->errors()->add('type', 'Please choose the registration type that matches the selected plan.');
             }
         });
 
@@ -73,11 +168,15 @@ class RegistrationController extends Controller
             'phone'          => $request->phone,
             'type'           => $request->type,
             'verify_via'     => $request->verify_via,
+            'password_hash'  => Hash::make($request->password),
             'otp_code'       => $otp,
             'otp_expires_at' => now()->addMinutes(2), // 2-minute expiry
             'status'         => 'pending',
             'ip'             => $request->ip(),
             'ref_url'        => $request->headers->get('referer'),
+            'plan_id'        => $selectedPlan?->id,
+            'billing_cycle'  => $selectedPlan ? $request->billing_cycle : null,
+            'account_type'   => $selectedPlan?->target_account_type,
         ]);
 
         // Send OTP
@@ -105,7 +204,7 @@ class RegistrationController extends Controller
             return redirect()->route('register');
         }
 
-        $registration = Registration::findOrFail($regId);
+        $registration = Registration::with('plan')->findOrFail($regId);
 
         if ($registration->isVerified()) {
             return view('frontend.register-pending-approval');
@@ -115,7 +214,12 @@ class RegistrationController extends Controller
     }
 
     // ─── Step 4: Verify OTP ───────────────────────────────────────────────────
-    public function verifyOtp(Request $request)
+    public function verifyOtp(
+        Request $request,
+        AccountProvisioningService $accountProvisioningService,
+        StripeCheckoutService $stripeCheckoutService,
+        CurrentAccountService $currentAccountService
+    )
     {
         $request->validate([
             'otp' => 'required|digits:6',
@@ -126,10 +230,13 @@ class RegistrationController extends Controller
             return redirect()->route('register');
         }
 
-        $registration = Registration::findOrFail($regId);
+        $registration = Registration::with(['plan', 'account', 'user'])->findOrFail($regId);
 
-        if ($registration->isVerified()) {
-            return view('frontend.register-pending-approval');
+        if ($registration->status === 'approved' && $registration->user && $registration->account) {
+            Auth::login($registration->user);
+            $currentAccountService->setCurrentAccount($registration->user, $registration->account->id);
+
+            return redirect()->route('backend.billing.index');
         }
 
         // Check expiry
@@ -142,20 +249,79 @@ class RegistrationController extends Controller
             return back()->withErrors(['otp' => 'Invalid OTP. Please try again.']);
         }
 
-        // Mark verified
         $now = now();
-        $registration->update([
-            'otp_verified_at' => $now,
-            'otp_code'        => null,
-            // also stamp the specific channel verified_at for record-keeping
-            'email_verified_at' => $registration->verify_via === 'email' ? $now : $registration->email_verified_at,
-            'phone_verified_at' => $registration->verify_via === 'phone' ? $now : $registration->phone_verified_at,
-            'status'            => 'verified',
-        ]);
+        DB::beginTransaction();
+
+        try {
+            $registration->update([
+                'otp_verified_at' => $now,
+                'otp_code' => null,
+                'email_verified_at' => $registration->verify_via === 'email' ? $now : $registration->email_verified_at,
+                'phone_verified_at' => $registration->verify_via === 'phone' ? $now : $registration->phone_verified_at,
+                'status' => 'verified',
+            ]);
+
+            $user = User::create([
+                'first_name' => $registration->first_name,
+                'last_name' => $registration->last_name,
+                'email' => $registration->email,
+                'phone' => $registration->phone,
+                'user_type' => $registration->type,
+                'status' => 1,
+                'can_login' => 1,
+                'password' => $registration->password_hash,
+                'email_verified_at' => $registration->email_verified_at,
+            ]);
+
+            $roleName = $registration->account_type === 'landlord' ? 'Landlord' : 'Estate Agent';
+            $role = Role::findByName($roleName);
+            $user->assignRole($role);
+
+            $account = $accountProvisioningService->provisionFromRegistration($registration, $user, $user);
+
+            // Access remains restricted until Stripe confirms the subscription via webhook.
+            $account->forceFill(['status' => 'suspended'])->save();
+
+            $registration->update([
+                'status' => 'approved',
+                'approved_at' => $now,
+                'user_id' => $user->id,
+                'password_hash' => null,
+            ]);
+
+            DB::commit();
+        } catch (\Throwable $exception) {
+            DB::rollBack();
+            Log::error('Self-service registration provisioning failed', [
+                'registration_id' => $registration->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return back()->withErrors(['otp' => 'We could not create your account. Please try again or contact support.']);
+        }
 
         session()->forget('reg_id');
+        Auth::login($user);
+        $currentAccountService->setCurrentAccount($user, $account->id);
 
-        return view('frontend.register-pending-approval');
+        try {
+            $checkoutUrl = $stripeCheckoutService->createPlanCheckoutSession(
+                $account,
+                $account->currentSubscription()->with('plan')->firstOrFail()
+            );
+
+            return redirect()->away($checkoutUrl);
+        } catch (\Throwable $exception) {
+            Log::error('Self-service Stripe checkout creation failed', [
+                'registration_id' => $registration->id,
+                'account_id' => $account->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return redirect()
+                ->route('backend.billing.index')
+                ->with('error', 'Your account was created, but checkout could not start. Please retry from Billing & Plan.');
+        }
     }
 
     // ─── Resend OTP ───────────────────────────────────────────────────────────

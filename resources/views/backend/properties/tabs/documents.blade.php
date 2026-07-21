@@ -7,4 +7,5 @@ var_dump($documents);
     :documentable-id="$property->id"
     :document-types="$documentTypes"
     :initial-documents="$documents"
+    :can-upload-documents="$canUploadDocuments ?? true"
 />

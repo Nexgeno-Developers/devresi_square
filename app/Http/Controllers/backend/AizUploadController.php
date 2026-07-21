@@ -17,6 +17,7 @@ class AizUploadController
         $user = current_user();
 
         $all_uploads = ($user->user_type == 'seller') ? Upload::where('user_id', $user->id) : Upload::query();
+        $this->scopeUploadQuery($all_uploads);
         $search = null;
         $sort_by = null;
 
@@ -106,6 +107,7 @@ class AizUploadController
 
         if ($request->hasFile('aiz_file')) {
             $upload = new Upload;
+            $upload->account_id = current_account_id();
             $extension = strtolower($request->file('aiz_file')->getClientOriginalExtension());
 
             if (
@@ -188,6 +190,7 @@ class AizUploadController
     {
         $user = Auth::user();
         $uploads = ($user && $user->user_type != 'super_admin') ? Upload::where('user_id', $user->id) : Upload::query();
+        $this->scopeUploadQuery($uploads);
         // $uploads = Upload::where('user_id', Auth::user()->id);
         if ($request->search != null) {
             $uploads->where('file_original_name', 'like', '%' . $request->search . '%');
@@ -217,6 +220,7 @@ class AizUploadController
     /*public function destroy($id)
     {
         $upload = Upload::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($upload);
         $user = current_user();
         if ($user->user_type == 'seller' && $upload->user_id != $user->id) {
             flash("You don't have permission for deleting this!")->error();
@@ -297,7 +301,9 @@ class AizUploadController
     public function get_preview_files(Request $request)
     {
         $ids = explode(',', $request->ids);
-        $files = Upload::whereIn('id', $ids)->get();
+        $filesQuery = Upload::whereIn('id', $ids);
+        $this->scopeUploadQuery($filesQuery);
+        $files = $filesQuery->get();
         // Reorder the files based on the original IDs array
         $files = $files->sortBy(function($file) use ($ids) {
             return array_search($file->id, $ids); // Find the index of the file id in the original ids array
@@ -317,6 +323,8 @@ class AizUploadController
 
     public function all_file()
     {
+        abort_unless(auth()->user()?->hasRole('Super Admin'), 403);
+
         $uploads = Upload::all();
         foreach ($uploads as $upload) {
             try {
@@ -345,6 +353,8 @@ class AizUploadController
     public function attachment_download($id)
     {
         $project_attachment = Upload::find($id);
+        abort_unless($project_attachment, 404);
+        ensureModelBelongsToCurrentAccount($project_attachment);
         try {
             $file_path = public_path($project_attachment->file_name);
             return Response::download($file_path);
@@ -357,9 +367,19 @@ class AizUploadController
     public function file_info(Request $request)
     {
         $file = Upload::findOrFail($request['id']);
+        ensureModelBelongsToCurrentAccount($file);
         $user = current_user();
         return ($user->user_type == 'seller')
             ? view('seller.uploads.info', compact('file'))
             : view('backend.uploaded_files.info', compact('file'));
+    }
+
+    private function scopeUploadQuery($query)
+    {
+        if (! auth()->user()?->hasRole('Super Admin')) {
+            $query->forAccount(current_account_id());
+        }
+
+        return $query;
     }
 }

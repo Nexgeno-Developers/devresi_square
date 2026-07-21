@@ -36,7 +36,11 @@ return [
     ],
 
     'stripe' => [
-        // Test/sandbox keys
+        'key' => env('STRIPE_KEY', env('STRIPE_PUBLISHABLE_TEST')),
+        'secret' => env('STRIPE_SECRET', env('STRIPE_TEST_SECRET')),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+
+        // Kept for the existing accounting invoice test checkout flow.
         'test_key' => env('STRIPE_PUBLISHABLE_TEST'),
         'test_secret' => env('STRIPE_TEST_SECRET'),
     ],

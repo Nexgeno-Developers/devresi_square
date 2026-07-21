@@ -25,6 +25,9 @@ use App\Models\NotificationLog;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\SaleInvoiceLifecycleService;
 use App\Services\Accounting\SaleInvoicePenaltyService;
+use App\Services\Saas\AccountScopedQueryService;
+use App\Services\Saas\PortalAccessService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -56,6 +59,11 @@ class SaleInvoiceController extends BaseCrudController
         ['key' => 'status', 'label' => 'Status'],
     ];
 
+    protected function query(): Builder
+    {
+        return app(AccountScopedQueryService::class)->apply(parent::query());
+    }
+
     public function create()
     {
         $defaults = array_merge($this->defaults, [
@@ -75,6 +83,7 @@ class SaleInvoiceController extends BaseCrudController
     public function edit(int $id)
     {
         $item = $this->query()->findOrFail($id);
+        $this->ensurePortalCanViewInvoice($item);
 
         return view($this->viewPath . '.edit', [
             'title' => $this->title,
@@ -177,7 +186,7 @@ class SaleInvoiceController extends BaseCrudController
         $taxes = SysTax::orderBy('name')->get(['id', 'name', 'rate']);
 
         return [
-            'user_id' => User::query()->orderBy('name')->pluck('name', 'id')->toArray(),
+            'user_id' => $this->scopeUserQuery(User::query())->orderBy('name')->pluck('name', 'id')->toArray(),
             'link_to_type' => collect(SysSaleInvoice::LINK_TO_TYPES)->mapWithKeys(fn (string $type) => [$type => $type])->toArray(),
             'charge_to_type' => collect(SysSaleInvoice::CHARGE_TO_TYPES)->mapWithKeys(fn (string $type) => [$type => $type])->toArray(),
             'link_to_property' => $this->propertyOptions(),
@@ -298,6 +307,7 @@ class SaleInvoiceController extends BaseCrudController
 
         // Remove UI-only fields so persistItems won't try to write them to DB columns.
         unset($data['recurring'], $data['repeat_every_custom'], $data['repeat_type_custom']);
+        $data['account_id'] = $data['account_id'] ?? current_account_id();
 
         $invoice = $this->persistItems($data, null);
 
@@ -314,7 +324,8 @@ class SaleInvoiceController extends BaseCrudController
 
     public function update(Request $request, int $id)
     {
-        $invoice = SysSaleInvoice::findOrFail($id);
+        $invoice = $this->query()->findOrFail($id);
+        $this->ensurePortalCanViewInvoice($invoice);
 
         $isChildRecurring = !empty($invoice->recurring_master_invoice_id);
         if ($isChildRecurring) {
@@ -467,6 +478,7 @@ class SaleInvoiceController extends BaseCrudController
 
         // Remove UI-only fields so persistItems won't try to write them to DB columns.
         unset($data['recurring'], $data['repeat_every_custom'], $data['repeat_type_custom']);
+        $data['account_id'] = $invoice->account_id ?: current_account_id();
 
         $invoice = $this->persistItems($data, $invoice);
 
@@ -511,7 +523,9 @@ class SaleInvoiceController extends BaseCrudController
             'payments.bankAccount',
             'payments.paymentMethod',
             'receipts'
-        ])->findOrFail($id);
+        ])->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->findOrFail($id);
+        $this->ensurePortalCanViewInvoice($invoice);
         $customer = User::find($invoice->user_id);
 
         $subtotal = 0;
@@ -852,7 +866,9 @@ class SaleInvoiceController extends BaseCrudController
             'invoiceHeader',
             'payments.bankAccount',
             'payments.paymentMethod',
-        ])->findOrFail($id);
+        ])->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->findOrFail($id);
+        $this->ensurePortalCanViewInvoice($invoice);
 
         $customer = User::find($invoice->user_id);
 
@@ -882,7 +898,8 @@ class SaleInvoiceController extends BaseCrudController
      */
     public function pay(Request $request, int $id)
     {
-        $invoice = SysSaleInvoice::findOrFail($id);
+        $invoice = $this->query()->findOrFail($id);
+        $this->ensurePortalCanViewInvoice($invoice);
 
         if (($invoice->balance_amount ?? 0) <= 0) {
             return back()->with('error', 'Invoice is already fully paid.');
@@ -978,7 +995,9 @@ class SaleInvoiceController extends BaseCrudController
             abort(403);
         }
 
-        $invoice = SysSaleInvoice::with('payments')->findOrFail($id);
+        $invoice = SysSaleInvoice::with('payments')
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->findOrFail($id);
 
         $amount = (float) $request->query('amount', $invoice->balance_amount ?? 0);
         $statusAfter = 'paid';
@@ -998,6 +1017,7 @@ class SaleInvoiceController extends BaseCrudController
                         'payment_type' => 'income',
                         'reference_type' => 'sale_invoice',
                         'reference_id' => $invoice->id,
+                        'account_id' => $invoice->account_id ?: current_account_id(),
                         'payment_date' => now()->toDateString(),
                         'amount' => $amount,
                         'notes' => 'Stripe test payment auto-recorded',
@@ -1042,6 +1062,7 @@ class SaleInvoiceController extends BaseCrudController
         try {
             DB::transaction(function () use ($data, $receiptNo) {
                 $receipt = SysReceipt::create([
+                    'account_id' => current_account_id(),
                     'company_id' => optional(Auth::user())->company_id ?? 1,
                     'user_id' => $data['user_id'],
                     'receiptable_type' => 'user',
@@ -1073,7 +1094,10 @@ class SaleInvoiceController extends BaseCrudController
 
     public function applyCredit(Request $request, int $id)
     {
-        $invoice = SysSaleInvoice::with('user')->findOrFail($id);
+        $invoice = SysSaleInvoice::with('user')
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->findOrFail($id);
+        $this->ensurePortalCanViewInvoice($invoice);
 
         $data = $request->validate([
             'credits' => ['required', 'array', 'min:1'],
@@ -1116,6 +1140,7 @@ class SaleInvoiceController extends BaseCrudController
             DB::transaction(function () use ($invoice, $lines, $bankId, $methodId, &$newBalance) {
                 foreach ($lines as $row) {
                     $receipt = SysReceipt::where('id', $row['receipt_id'])
+                        ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
                         ->where('receiptable_type', 'user')
                         ->where('receiptable_id', $invoice->user_id)
                         ->whereIn('status', ['unapplied', 'partially_applied'])
@@ -1147,6 +1172,7 @@ class SaleInvoiceController extends BaseCrudController
                         'payment_type' => 'income',
                         'reference_type' => 'sale_invoice',
                         'reference_id' => $invoice->id,
+                        'account_id' => $invoice->account_id ?: current_account_id(),
                         'payment_date' => now()->toDateString(),
                         'amount' => $amount,
                         'notes' => $paymentNotes,
@@ -1207,6 +1233,9 @@ class SaleInvoiceController extends BaseCrudController
             })
             ->selectRaw('COALESCE(sys_sale_invoices.balance_amount, sys_sale_invoices.total_amount - COALESCE(SUM(sys_payments.amount), 0), sys_sale_invoices.total_amount, 0) as outstanding')
             ->groupBy('sys_sale_invoices.id', 'sys_sale_invoices.invoice_no', 'sys_sale_invoices.user_id', 'sys_sale_invoices.total_amount', 'sys_sale_invoices.balance_amount', 'users.name');
+        if (! auth()->user()?->hasRole('Super Admin')) {
+            $query->where('sys_sale_invoices.account_id', current_account_id());
+        }
 
         if (!is_null($q) && $q !== '') {
             $query->where(function ($w) use ($q) {
@@ -1242,6 +1271,8 @@ class SaleInvoiceController extends BaseCrudController
      */
     public function ajaxGetForReceipts(SysSaleInvoice $invoice)
     {
+        ensureModelBelongsToCurrentAccount($invoice);
+
         // Reuse the mapper to guarantee identical shape
         $item = $this->mapInvoiceForSelect($invoice, true);
         return response()->json($item);
@@ -1256,6 +1287,7 @@ class SaleInvoiceController extends BaseCrudController
 
         if ($type === 'Property') {
             $builder = Property::query()->orderByDesc('id')->limit($limit);
+            $this->scopePropertyQuery($builder);
             if ($q !== '') {
                 $builder->where(function ($w) use ($q) {
                     $w->where('prop_ref_no', 'like', "%{$q}%")
@@ -1281,6 +1313,7 @@ class SaleInvoiceController extends BaseCrudController
                 ->with('property:id,prop_ref_no,prop_name,line_1,city')
                 ->orderByDesc('id')
                 ->limit($limit);
+            $this->scopeTenancyQuery($builder);
             if ($q !== '') {
                 $builder->where(function ($w) use ($q) {
                     $w->where('id', 'like', "%{$q}%")
@@ -1302,6 +1335,7 @@ class SaleInvoiceController extends BaseCrudController
 
         } elseif ($type === 'Contractor') {
             $builder = User::role('Contractor')->orderByDesc('id')->limit($limit);
+            $this->scopeUserQuery($builder);
             if ($q !== '') {
                 $builder->where(function ($w) use ($q) {
                     $w->where('name',  'like', "%{$q}%")
@@ -1324,6 +1358,9 @@ class SaleInvoiceController extends BaseCrudController
 
     public function propertyContext(Property $property)
     {
+        ensureModelBelongsToCurrentAccount($property);
+        $this->ensurePortalCanViewFinance($property);
+
         $property->loadMissing('countryRelation');
 
         $owners = OwnerGroup::query()
@@ -1352,6 +1389,7 @@ class SaleInvoiceController extends BaseCrudController
 
         $tenants = Tenancy::query()
             ->with(['tenantMembers.user:id,name,email,phone'])
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->where('property_id', $property->id)
             ->whereNotIn('status', ['Archive', 'Archived'])
             ->get()
@@ -1393,11 +1431,15 @@ class SaleInvoiceController extends BaseCrudController
 
     public function tenancyContext(Property $property, User $tenant)
     {
+        ensureModelBelongsToCurrentAccount($property);
+        $this->ensurePortalCanViewFinance($property);
+
         $today = \Carbon\Carbon::now()->startOfDay();
         $todayString = $today->toDateString();
 
         $baseQuery = Tenancy::query()
             ->with(['tenantMembers.user:id,name,email,phone'])
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->where('property_id', $property->id)
             ->where('status', 'Active')
             ->whereHas('tenantMembers', function ($q) use ($tenant) {
@@ -1499,7 +1541,7 @@ class SaleInvoiceController extends BaseCrudController
 
     private function propertyOptions(): array
     {
-        return Property::query()
+        return $this->scopePropertyQuery(Property::query())
             ->orderBy('prop_name')
             ->orderBy('line_1')
             ->get(['id', 'prop_ref_no', 'prop_name', 'line_1'])
@@ -1516,7 +1558,7 @@ class SaleInvoiceController extends BaseCrudController
 
     private function tenancyOptions(): array
     {
-        return Tenancy::query()
+        return $this->scopeTenancyQuery(Tenancy::query())
             ->with(['property:id,prop_ref_no,prop_name,line_1', 'tenantMembers.user:id,name'])
             ->orderByDesc('id')
             ->get()
@@ -1548,7 +1590,7 @@ class SaleInvoiceController extends BaseCrudController
 
     private function roleUserOptions(array $roleNames): array
     {
-        return User::query()
+        return $this->scopeUserQuery(User::query())
             ->whereHas('roles', function ($query) use ($roleNames) {
                 $query->where(function ($roleQuery) use ($roleNames) {
                     foreach ($roleNames as $roleName) {
@@ -1559,6 +1601,107 @@ class SaleInvoiceController extends BaseCrudController
             ->orderBy('name')
             ->pluck('name', 'id')
             ->toArray();
+    }
+
+    private function scopePropertyQuery($query)
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user?->hasRole('Super Admin')) {
+            $query->forAccount($accountId);
+        }
+
+        if ($user && $accountId) {
+            $portalAccessService = app(PortalAccessService::class);
+
+            if ($portalAccessService->isPortalUser($user, $accountId)) {
+                $query->whereIn('id', $portalAccessService->accessiblePropertyIds($user, $accountId));
+            }
+        }
+
+        return $query;
+    }
+
+    private function ensurePortalCanViewFinance(Property $property): void
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user || ! $accountId) {
+            return;
+        }
+
+        $portalAccessService = app(PortalAccessService::class);
+
+        if ($portalAccessService->isPortalUser($user, $accountId)) {
+            abort_unless($portalAccessService->canViewFinance($user, $property), 403, 'You do not have access to property finance.');
+        }
+    }
+
+    private function ensurePortalCanViewInvoice(SysSaleInvoice $invoice): void
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user || ! $accountId) {
+            return;
+        }
+
+        $portalAccessService = app(PortalAccessService::class);
+
+        if (! $portalAccessService->isPortalUser($user, $accountId)) {
+            return;
+        }
+
+        $property = $this->invoiceProperty($invoice);
+
+        abort_unless($property && $portalAccessService->canViewFinance($user, $property), 403, 'You do not have access to this invoice.');
+    }
+
+    private function invoiceProperty(SysSaleInvoice $invoice): ?Property
+    {
+        if (in_array($invoice->link_to_type, ['Property', Property::class], true) && $invoice->link_to_id) {
+            return Property::find($invoice->link_to_id);
+        }
+
+        if (in_array($invoice->link_to_type, ['Tenancy', Tenancy::class], true) && $invoice->link_to_id) {
+            return Tenancy::query()->find($invoice->link_to_id)?->property;
+        }
+
+        return null;
+    }
+
+    private function scopeTenancyQuery($query)
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user?->hasRole('Super Admin')) {
+            $query->forAccount($accountId);
+        }
+
+        if ($user && $accountId) {
+            $portalAccessService = app(PortalAccessService::class);
+
+            if ($portalAccessService->isPortalUser($user, $accountId)) {
+                $query->whereIn('property_id', $portalAccessService->accessiblePropertyIds($user, $accountId));
+            }
+        }
+
+        return $query;
+    }
+
+    private function scopeUserQuery($query)
+    {
+        if (! auth()->user()?->hasRole('Super Admin')) {
+            $query->whereHas('accountUsers', function ($accountUserQuery) {
+                $accountUserQuery->where('account_id', current_account_id())
+                    ->where('status', 'active');
+            });
+        }
+
+        return $query;
     }
 
     private function bankAccountOptions(): array
@@ -1628,8 +1771,11 @@ class SaleInvoiceController extends BaseCrudController
      */
     public function undoCredit(Request $request, int $invoiceId, int $paymentId, PostingService $posting)
     {
-        $invoice = SysSaleInvoice::findOrFail($invoiceId);
+        $invoice = $this->query()->findOrFail($invoiceId);
+        $this->ensurePortalCanViewInvoice($invoice);
+
         $payment = SysPayment::where('id', $paymentId)
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->where('reference_type', 'sale_invoice')
             ->where('reference_id', $invoiceId)
             ->firstOrFail();
@@ -1641,7 +1787,9 @@ class SaleInvoiceController extends BaseCrudController
             return back()->with('error', 'Only payments sourced from credits can be undone.');
         }
 
-        $receipt = SysReceipt::findOrFail($payment->source_receipt_id);
+        $receipt = SysReceipt::query()
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->findOrFail($payment->source_receipt_id);
 
         // customer consistency guard
         if (($payment->user_id && $payment->user_id !== $invoice->user_id) || $receipt->user_id !== $invoice->user_id) {

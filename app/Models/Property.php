@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use App\Models\Notes;
-use Illuminate\Support\Facades\Auth;
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes; // Import SoftDeletes
@@ -11,10 +11,13 @@ use App\Traits\TracksUser;
 
 class Property extends Model
 {
-    use HasFactory, SoftDeletes, TracksUser;
+    use HasFactory, SoftDeletes, TracksUser, BelongsToSaasAccount;
 
     // Define the fillable properties
     protected $fillable = [
+        'account_id',
+        'company_id',
+        'branch_id',
         "prop_ref_no",
         'prop_name',
         'line_1',
@@ -90,6 +93,8 @@ class Property extends Model
         // 'commission_amount',
         'step',
         'quick_step',
+        'property_identity_hash',
+        'uprn',
         'created_by',
         'deleted_by',
     ];
@@ -101,16 +106,88 @@ class Property extends Model
         // 'video_url' => 'array',
     ];
 
-    // protected static function booted()
-    // {
-    //     static::creating(function ($property) {
-    //         $property->added_by = Auth::id(); // Automatically set the added_by field
-    //     });
-    // }
+    protected static function booted(): void
+    {
+        static::saving(function (Property $property) {
+            if (! $property->account_id) {
+                return;
+            }
+
+            $identityColumns = [
+                'uprn',
+                'flat',
+                'flat_number',
+                'unit',
+                'building',
+                'building_name',
+                'line_1',
+                'address_line_1',
+                'postcode',
+                'country',
+            ];
+
+            if (! $property->property_identity_hash || $property->isDirty($identityColumns)) {
+                $property->property_identity_hash = self::makeIdentityHash($property->getAttributes());
+            }
+        });
+    }
+
+    public static function makeIdentityHash(array $attributes): ?string
+    {
+        $uprn = self::normaliseIdentityPart($attributes['uprn'] ?? null);
+
+        if ($uprn !== '') {
+            return hash('sha256', 'uprn:' . $uprn);
+        }
+
+        $parts = [
+            $attributes['flat'] ?? null,
+            $attributes['flat_number'] ?? null,
+            $attributes['unit'] ?? null,
+            $attributes['building'] ?? null,
+            $attributes['building_name'] ?? null,
+            $attributes['line_1'] ?? $attributes['address_line_1'] ?? null,
+            $attributes['postcode'] ?? null,
+            $attributes['country'] ?? null,
+        ];
+
+        $normalised = implode('|', array_filter(array_map(
+            fn ($part) => self::normaliseIdentityPart($part),
+            $parts
+        )));
+
+        return $normalised === '' ? null : hash('sha256', 'address:' . $normalised);
+    }
+
+    private static function normaliseIdentityPart(mixed $value): string
+    {
+        if ($value === null) {
+            return '';
+        }
+
+        $value = strtolower(trim((string) $value));
+
+        return preg_replace('/\s+/', ' ', $value) ?: '';
+    }
 
     public function responsibilities()
     {
         return $this->hasMany(PropertyResponsibility::class, 'property_id');
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function propertyParticipants()
+    {
+        return $this->hasMany(PropertyParticipant::class);
     }
 
     public function creator()

@@ -42,6 +42,7 @@ class RoleAndPermissionSeeder extends Seeder
             'view own profile',
             'view office profiles',
             'view all profiles',
+            'manage registrations',
 
             // Properties
             'view properties',

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -12,7 +13,7 @@ use App\Models\GlJournal;
 
 class SysReceipt extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToSaasAccount;
 
     protected $table = 'sys_receipts';
     protected $guarded = [];

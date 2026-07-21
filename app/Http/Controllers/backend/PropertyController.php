@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Backend;
 
+use App\Http\Controllers\Backend\Concerns\EnforcesSaasPlanLimits;
+use App\Models\AccountUser;
 use App\Models\DocumentType;
 use App\Models\User;
 use App\Models\Notes;
@@ -18,18 +20,22 @@ use App\Models\Designation;
 use App\Models\StationName;
 // use App\Models\EstateCharge;
 use App\Models\EstateCharge;
+use App\Services\Saas\PortalAccessService;
 use Dom\Document;
 use Illuminate\Http\Request;
 use App\Models\ComplianceType;
 use App\Models\LocalAuthority;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use App\Models\PropertyResponsibility;
 use Illuminate\Support\Facades\Validator;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 class PropertyController
 {
+    use EnforcesSaasPlanLimits;
+
     public function index(Request $request)
     {
         // Fetch all properties
@@ -39,9 +45,13 @@ class PropertyController
 
         // Get logged-in user
         $user = auth()->user();
+        $portalAccessService = app(PortalAccessService::class);
+        $accountId = current_account_id();
+        $isPortalUser = $accountId && $portalAccessService->isPortalUser($user, $accountId);
 
         // Build base query
         $propertiesQuery = Property::query();
+        $this->scopePropertyQuery($propertiesQuery);
 
         // Apply search filter
         if ($request->filled('search')) {
@@ -58,7 +68,11 @@ class PropertyController
         }
 
         // Fetch properties based on role
-        if ($user->hasRole('Property Manager') || $user->hasRole('Super Admin')) {
+        if ($isPortalUser) {
+            $properties = $propertiesQuery->whereIn('id', $portalAccessService->accessiblePropertyIds($user, $accountId))
+                ->orderBy('id', 'desc')
+                ->paginate(15);
+        } elseif ($user->hasRole('Property Manager') || $user->hasRole('Super Admin')) {
             // Property managers see all properties
             $properties = $propertiesQuery->orderBy('id', 'desc')->paginate(15);
         } elseif ($user->hasRole('Tenant')) {
@@ -96,6 +110,7 @@ class PropertyController
 
                 // Rebuild a fresh query with the same role-based filters to find the position
                 $positionQuery = Property::query();
+                $this->scopePropertyQuery($positionQuery);
                 if ($request->filled('search')) {
                     $search = $request->search;
                     $positionQuery->where(function ($q) use ($search) {
@@ -108,7 +123,9 @@ class PropertyController
                           ->orWhere('property_type', 'like', "%{$search}%");
                     });
                 }
-                if ($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')) {
+                if ($isPortalUser) {
+                    $positionQuery->whereIn('id', $portalAccessService->accessiblePropertyIds($user, $accountId));
+                } elseif ($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')) {
                     $positionQuery->where('created_by', $user->id);
                 } elseif ($user->hasRole('Estate Agent')) {
                     $createdUserIds = User::where('created_by', $user->id)->pluck('id');
@@ -129,7 +146,7 @@ class PropertyController
         
         // Redirect to 'quick' if there are no properties
         if ($properties->isEmpty()) {
-            if ($user->hasRole('Tenant')) {
+            if ($isPortalUser || $user->hasRole('Tenant')) {
                 // Show properties page with empty state — no redirect
                 $tabs = $this->buildPermissionTabs($user);
                 $content = '<div class="alert alert-info m-3">You don\'t have any active tenancy properties linked to your account. Please contact your property manager.</div>';
@@ -174,6 +191,10 @@ class PropertyController
 
         $property = Property::find($propertyId);
 
+        if ($property) {
+            ensureModelBelongsToCurrentAccount($property);
+        }
+
         /*if (!$property) {
             // Get the first property that is NOT soft-deleted
             $firstProperty = Property::withoutTrashed()->orderBy('id', 'desc')->first();
@@ -194,19 +215,23 @@ class PropertyController
             // Check if user can access this property
             $user = auth()->user();
 
-            $isAuthorized = $user->hasRole('Super Admin') || 
-                $user->hasRole('Property Manager') || 
-                ($user->hasRole('Landlord') && $property->created_by === $user->id) || 
-                ($user->hasRole('Estate Agent') && ($property->created_by === $user->id || $user->createdUsers()->pluck('id')->contains($property->created_by))) ||
-                ($user->hasRole('Staff') || $user->hasRole('Test') && $property->created_by === $user->id) ||
-                ($user->hasRole('Tenant') && \App\Models\TenantMember::where('user_id', $user->id)
-                    ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
-                    ->where('tenancies.status', 'Active')
-                    ->where('tenancies.property_id', $property->id)
-                    ->exists());
+            if ($isPortalUser) {
+                $isAuthorized = $portalAccessService->canAccessProperty($user, $property);
+            } else {
+                $isAuthorized = $user->hasRole('Super Admin') || 
+                    $user->hasRole('Property Manager') || 
+                    ($user->hasRole('Landlord') && $property->created_by === $user->id) || 
+                    ($user->hasRole('Estate Agent') && ($property->created_by === $user->id || $user->createdUsers()->pluck('id')->contains($property->created_by))) ||
+                    (($user->hasRole('Staff') || $user->hasRole('Test')) && $property->created_by === $user->id) ||
+                    ($user->hasRole('Tenant') && \App\Models\TenantMember::where('user_id', $user->id)
+                        ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+                        ->where('tenancies.status', 'Active')
+                        ->where('tenancies.property_id', $property->id)
+                        ->exists());
+            }
 
             if (! $isAuthorized) {
-                abort(403, 'Unauthorized to view this property.');
+                abort(403, 'You do not have access to this property.');
             }
         } else {
             // property_id missing, invalid, or deleted — redirect to first property on page 1
@@ -244,6 +269,31 @@ class PropertyController
 
         if ($user->can('view property teams')) {
             $tabs[] = ['name' => 'Responsibility'];
+        }
+
+        if ($isPortalUser) {
+            $participant = $portalAccessService->getParticipant($user, $property);
+            $portalTabs = [
+                ['name' => 'Property'],
+            ];
+
+            if ($participant && in_array($participant->participant_type, ['tenant', 'landlord', 'owner', 'property_manager'], true)) {
+                $portalTabs[] = ['name' => 'Tenancy'];
+            }
+
+            if ($portalAccessService->canViewDocuments($user, $property)) {
+                $portalTabs[] = ['name' => 'Documents'];
+            }
+
+            if ($participant?->participant_type === 'property_manager') {
+                $portalTabs[] = ['name' => 'Notes'];
+            }
+
+            if ($portalAccessService->canViewFinance($user, $property)) {
+                $portalTabs[] = ['name' => 'Statement'];
+            }
+
+            $tabs = $portalTabs;
         }
 
         // Get tabs for properties (you can customize the tabs as per your needs)
@@ -308,6 +358,14 @@ class PropertyController
 
     private function getTabContent($tabname, $propertyId, $property)
     {
+        $user = auth()->user();
+        $portalAccessService = app(PortalAccessService::class);
+        $isPortalUser = current_account_id() && $portalAccessService->isPortalUser($user, current_account_id());
+
+        if ($isPortalUser) {
+            abort_unless($portalAccessService->canAccessProperty($user, $property), 403, 'You do not have access to this property.');
+        }
+
         switch (strtolower($tabname)) {
             case 'property':
 
@@ -406,6 +464,9 @@ class PropertyController
 
                 return view('backend.properties.tabs.responsibility', compact('propertyId', 'property', 'responsibilities'))->render();
             case 'documents':
+                if ($isPortalUser) {
+                    abort_unless($portalAccessService->canViewDocuments($user, $property), 403, 'You do not have access to property documents.');
+                }
 
                 $documents = $property->documents()->with('documentType')->orderByDesc('updated_at')->paginate(5);
 
@@ -414,15 +475,25 @@ class PropertyController
                     $documents = collect();  // Make sure it's an empty collection, not null
                 }
                 $documentTypes = DocumentType::all();
-                return view('backend.properties.tabs.documents', compact('propertyId', 'property', 'documentTypes', 'documents'))->render();
+                $canUploadDocuments = ! $isPortalUser || $portalAccessService->canUploadDocuments($user, $property);
+                return view('backend.properties.tabs.documents', compact('propertyId', 'property', 'documentTypes', 'documents', 'canUploadDocuments'))->render();
             // case 'contractor':
             //     return view('backend.properties.tabs.contractor', compact('propertyId'))->render();
             // case 'work offer':
             //     return view('backend.properties.tabs.work_offer', compact('propertyId'))->render();
             case 'notes':
+                if ($isPortalUser) {
+                    abort_unless($portalAccessService->canAccessProperty($user, $property), 403, 'You do not have access to property notes.');
+                }
                 // Fetch the notes related to the specific property by property ID
                 // $notes = Notes::where('property_id', $propertyId)->orderBy('updated_at', 'desc')->get();
-                $notes = $property->notes()->with('noteType')->orderByDesc('updated_at')->paginate(5);
+                $notesQuery = $property->notes()->with('noteType')->orderByDesc('updated_at');
+
+                if ($isPortalUser && Schema::hasColumn('notes', 'visibility')) {
+                    $notesQuery->where('visibility', 'portal');
+                }
+
+                $notes = $notesQuery->paginate(5);
 
                 // Ensure it's an empty collection if no notes are found
                 if ($notes->isEmpty()) {
@@ -467,6 +538,10 @@ class PropertyController
                 return view('backend.properties.tabs.appointments', compact('propertyId', 'property', 'events'))->render();
 
             case 'statement':
+                if ($isPortalUser) {
+                    abort_unless($portalAccessService->canViewFinance($user, $property), 403, 'You do not have access to property finance.');
+                }
+
                 $filters = $this->statementFilters(request());
                 $statement = app(\App\Services\Accounting\StatementService::class)
                     ->propertyStatement($property->id, $property->company_id ?? null, $filters['date_from'], $filters['date_to']);
@@ -485,12 +560,20 @@ class PropertyController
     // Show the form for creating a new property.
     public function create()
     {
+        if ($response = $this->redirectIfSaasLimitDenied('property', 'admin.properties.index')) {
+            return $response;
+        }
+
         return view('backend.properties.create'); // Return the create property view
     }
 
     // show quick form
     public function quick()
     {
+        if ($response = $this->redirectIfSaasLimitDenied('property', 'admin.properties.index')) {
+            return $response;
+        }
+
         $countries = Country::orderBy('name')->get();
         return view('backend.properties.quick', compact('countries')); // Return the create property view
     }
@@ -519,6 +602,10 @@ class PropertyController
 
             // Get property_id from the session or request
             $property_id = $request->property_id;
+            if ($property_id) {
+                $existingProperty = Property::findOrFail($property_id);
+                ensureModelBelongsToCurrentAccount($existingProperty);
+            }
 
             // Collect responsibility data from the form
             $propertyResponsibilityIds = $request->input('PropertyResponsibility_id', []);
@@ -533,6 +620,7 @@ class PropertyController
             // Iterate through the responsibilities and update or create them
             foreach ($user_ids as $index => $user_id) {
                 $data = [
+                    'account_id' => current_account_id(),
                     'property_id' => $property_id,
                     'user_id' => $user_id,
                     'designation_id' => $designation_ids[$index] ?? null,
@@ -572,6 +660,9 @@ class PropertyController
             // Check if property_id is provided in the request
             if ($property_id) {
                 $property = Property::find($property_id);
+                if ($property) {
+                    ensureModelBelongsToCurrentAccount($property);
+                }
 
                 $allstations = StationName::select('id', 'name')->get();  // Fetch all station names
                 $allschools = SchoolName::select('id', 'name')->get();    // Fetch all school names
@@ -622,6 +713,10 @@ class PropertyController
             } else {
                 // Create new property only on the first step
                 if ($request->step == 1) {
+                    if ($response = $this->backIfSaasLimitDenied('property')) {
+                        return $response;
+                    }
+
                     // Log the data before creation
                     // Generate Property Reference Number
                     $PropertyRefNumber = generateReferenceNumber(Property::class, 'prop_ref_no', 'RESISQP');
@@ -629,7 +724,11 @@ class PropertyController
                     // $validatedData['prop_ref_no'] = $this->generatePropertyRefNumber();
                     Log::info('Creating new pref', $validatedData['prop_ref_no']);
                     Log::info('Creating new property', $validatedData);
-                    $property = Property::create(array_merge($validatedData, ['added_by' => Auth::id(), 'step' => $request->step]));
+                    $property = Property::create(array_merge($validatedData, [
+                        'account_id' => current_account_id(),
+                        'added_by' => Auth::id(),
+                        'step' => $request->step,
+                    ]));
                     // session()->forget('current_step');
                     // $property = Property::create(array_merge($validatedData, ['added_by' => $userId]));
                 }
@@ -676,11 +775,16 @@ class PropertyController
 
             // Get property_id from the request
             $property_id = $request->property_id;
+            if ($property_id) {
+                $existingProperty = Property::findOrFail($property_id);
+                ensureModelBelongsToCurrentAccount($existingProperty);
+            }
 
             // Check if property_id is provided in the request
             if ($property_id) {
                 $property = Property::find($property_id);
                 if ($property) {
+                    ensureModelBelongsToCurrentAccount($property);
                     // Log the data before updating
                     Log::info('Updating property with ID ' . $property_id, $validatedData);
                     //update step
@@ -691,6 +795,10 @@ class PropertyController
             } else {
                 // Create new property only empty property id
                 if (empty($property_id)) {
+                    if ($response = $this->backIfSaasLimitDenied('property')) {
+                        return $response;
+                    }
+
                     $PropertyRefNumber = generateReferenceNumber(Property::class, 'prop_ref_no', 'RESISQP');
 
                     $validatedData['quick_step'] = $request->step;
@@ -698,7 +806,10 @@ class PropertyController
                     $validatedData['prop_ref_no'] = $PropertyRefNumber;
                     // Log::info('Creating new pref', $validatedData['prop_ref_no']);
                     Log::info('Creating new property', $validatedData);
-                    $property = Property::create(array_merge($validatedData, ['added_by' => Auth::id()]));
+                    $property = Property::create(array_merge($validatedData, [
+                        'account_id' => current_account_id(),
+                        'added_by' => Auth::id(),
+                    ]));
                     // $request->session()->put('property_id', $property->id);
                     // session()->forget('property_id');
                 }
@@ -733,6 +844,9 @@ class PropertyController
         // Get property_id from the session or request
         $property_id = $request->session()->get('property_id', $request->property_id);
         $property = Property::find($property_id);
+        if ($property) {
+            ensureModelBelongsToCurrentAccount($property);
+        }
 
         // Get the total number of steps dynamically
         $totalSteps = $this->getTotalSteps();
@@ -761,6 +875,9 @@ class PropertyController
         // Get property_id from the session or request
         $property_id = $request->property_id;
         $property = Property::find($property_id);
+        if ($property) {
+            ensureModelBelongsToCurrentAccount($property);
+        }
 
         // Get the total number of steps dynamically
         $totalSteps = $this->getTotalQuickSteps();
@@ -823,6 +940,8 @@ class PropertyController
     public function edit($id)
     {
         $property = Property::findOrFail($id); // Fetch property by ID
+        ensureModelBelongsToCurrentAccount($property);
+        $this->authorizePortalPropertyEdit($property);
 
         // Check if the request step is 6
         // if ($property->step == 5) {
@@ -863,6 +982,7 @@ class PropertyController
     public function view($id)
     {
         $property = Property::findOrFail($id); // Fetch property by ID
+        ensureModelBelongsToCurrentAccount($property);
         return view('backend.properties.view', compact('property'));
     }
 
@@ -891,6 +1011,8 @@ class PropertyController
         ]);
 
         $property = Property::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($property);
+        $this->authorizePortalPropertyEdit($property);
         $property->update($validatedData); // Update the property
 
         return redirect()->route('admin.properties.index')->with('success', 'Property updated successfully.');
@@ -901,13 +1023,17 @@ class PropertyController
         $query = $request->input('query');
 
         // Search for properties based on multiple criteria
-        $properties = Property::where('prop_ref_no', 'LIKE', '%' . $query . '%')
-            ->orWhere('prop_name', 'LIKE', '%' . $query . '%')
-            ->orWhere('line_1', 'LIKE', '%' . $query . '%')
-            ->orWhere('line_2', 'LIKE', '%' . $query . '%')
-            ->orWhere('city', 'LIKE', '%' . $query . '%')
-            ->orWhere('country', 'LIKE', '%' . $query . '%')
-            ->orWhere('postcode', 'LIKE', '%' . $query . '%')
+        $properties = Property::query()
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
+            ->where(function ($propertyQuery) use ($query) {
+                $propertyQuery->where('prop_ref_no', 'LIKE', '%' . $query . '%')
+                    ->orWhere('prop_name', 'LIKE', '%' . $query . '%')
+                    ->orWhere('line_1', 'LIKE', '%' . $query . '%')
+                    ->orWhere('line_2', 'LIKE', '%' . $query . '%')
+                    ->orWhere('city', 'LIKE', '%' . $query . '%')
+                    ->orWhere('country', 'LIKE', '%' . $query . '%')
+                    ->orWhere('postcode', 'LIKE', '%' . $query . '%');
+            })
             ->limit(10)  // Limit the results to 10
             ->get(['id', 'prop_ref_no', 'prop_name', 'city']);  // Return only necessary fields
 
@@ -921,6 +1047,7 @@ class PropertyController
 
         $properties = Property::query()
             ->with('countryRelation:id,name') // eager load country
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
             ->where(function ($q) use ($query) {
                 $q->where('prop_ref_no', 'LIKE', '%' . $query . '%')
                 ->orWhere('prop_name', 'LIKE', '%' . $query . '%')
@@ -956,6 +1083,7 @@ class PropertyController
     public function destroy($id)
     {
         $property = Property::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($property);
         // Optionally, check if the property is already deleted
         if ($property->trashed()) {
             return redirect()->route('admin.properties.index')->with('error', 'This property is already deleted.');
@@ -975,7 +1103,9 @@ class PropertyController
 
     public function showSoftDeletedProperties()
     {
-        $properties = Property::onlyTrashed()->get(); // Fetch only soft-deleted properties
+        $properties = Property::onlyTrashed()
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->get(); // Fetch only soft-deleted properties
         // flash("You don't have permission for deleting this!")->error();
         return view('backend.properties.deleted', compact('properties'));
     }
@@ -984,6 +1114,7 @@ class PropertyController
     public function restore($id)
     {
         $property = Property::withTrashed()->findOrFail($id);
+        ensureModelBelongsToCurrentAccount($property);
         $property->restore();
 
         // $response = [
@@ -1001,7 +1132,10 @@ class PropertyController
     public function bulkRestore(Request $request)
     {
         $propertyIds = explode(',', $request->input('property_ids')); // Convert the string to an array
-        Property::withTrashed()->whereIn('id', $propertyIds)->restore();
+        Property::withTrashed()
+            ->whereIn('id', $propertyIds)
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->restore();
 
         return redirect()->route('admin.properties.index')->with('success', 'Selected properties restored successfully.');
     }
@@ -1014,6 +1148,8 @@ class PropertyController
         if (!$property) {
             return response()->json(['error' => 'Property not found'], 404);
         }
+
+        ensureModelBelongsToCurrentAccount($property);
 
         $viewPath = "backend.properties.popup_forms.$formType";
 
@@ -1055,6 +1191,8 @@ class PropertyController
         if (!$property) {
             return response()->json(['error' => 'Property not found'], 404);
         }
+
+        ensureModelBelongsToCurrentAccount($property);
 
         $extraData = []; // <-- This prevents undefined variable errors
 
@@ -1234,14 +1372,20 @@ class PropertyController
                         continue;
                     }
 
+                    if ($type === 'property_manager') {
+                        $this->ensurePropertyManagerCanBeAssigned((int) $userId);
+                    }
+
                     PropertyResponsibility::updateOrCreate(
                         [
                             'property_id' => $property->id,
                             'responsibility_type' => $type,
                         ],
                         [
+                            'account_id' => $property->account_id ?: current_account_id(),
                             'property_id' => $property->id,
                             'user_id' => $userId,
+                            'status' => 'active',
                             'added_by' => Auth::id(),
                         ]
                     );
@@ -1360,6 +1504,12 @@ class PropertyController
                     ->orWhereHas('roles', fn($roleQuery) => $roleQuery->where('name', 'Staff'))
                     ->orWhereHas('staff');
             })
+                ->when(! auth()->user()?->hasRole('Super Admin'), function ($query) {
+                    $query->whereHas('accountUsers', function ($accountUserQuery) {
+                        $accountUserQuery->where('account_id', current_account_id())
+                            ->where('status', 'active');
+                    });
+                })
                 ->orderBy('name')
                 ->get(['id', 'name', 'email']);
             $responsibilities = PropertyResponsibility::with('user')
@@ -1858,6 +2008,7 @@ class PropertyController
         $term = $request->input('q');
 
         $query = Property::query();
+        $this->scopePropertyQuery($query);
 
         if ($term) {
             $query->where(function ($q) use ($term) {
@@ -1881,6 +2032,84 @@ class PropertyController
         });
 
         return response()->json(['results' => $results]);
+    }
+
+    private function scopePropertyQuery($query)
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user?->hasRole('Super Admin')) {
+            $query->forAccount($accountId);
+        }
+
+        if ($user && $accountId) {
+            $portalAccessService = app(PortalAccessService::class);
+
+            if ($portalAccessService->isPortalUser($user, $accountId)) {
+                $query->whereIn('id', $portalAccessService->accessiblePropertyIds($user, $accountId));
+            }
+        }
+
+        return $query;
+    }
+
+    private function authorizePortalPropertyEdit(Property $property): void
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user || ! $accountId) {
+            return;
+        }
+
+        $portalAccessService = app(PortalAccessService::class);
+
+        if (! $portalAccessService->isPortalUser($user, $accountId)) {
+            return;
+        }
+
+        $participant = $portalAccessService->getParticipant($user, $property);
+
+        abort_unless($participant, 403, 'You do not have access to this property.');
+        abort_if(in_array($participant->participant_type, ['tenant', 'contractor'], true), 403, 'You cannot edit this property.');
+        abort_unless($portalAccessService->canAccessProperty($user, $property, 'full'), 403, 'You cannot edit this property.');
+    }
+
+    private function ensurePropertyManagerCanBeAssigned(int $userId): void
+    {
+        if (! $userId || $this->bypassesSaasPlanLimits()) {
+            return;
+        }
+
+        $account = current_account();
+
+        abort_unless($account, 403, 'No active SaaS subscription was found for this account.');
+
+        $alreadyIncluded = AccountUser::query()
+            ->where('account_id', $account->id)
+            ->where('user_id', $userId)
+            ->where('member_type', 'property_manager')
+            ->where('status', 'active')
+            ->exists();
+
+        if (! $alreadyIncluded) {
+            $this->abortIfSaasLimitDenied('property_manager');
+        }
+
+        AccountUser::updateOrCreate(
+            [
+                'account_id' => $account->id,
+                'user_id' => $userId,
+            ],
+            [
+                'member_type' => 'property_manager',
+                'access_level' => 'edit',
+                'can_login' => true,
+                'status' => 'active',
+                'created_by' => auth()->id(),
+            ]
+        );
     }
 
     private function statementFilters(Request $request): array
