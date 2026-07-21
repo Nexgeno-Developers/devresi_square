@@ -1,4 +1,8 @@
 @php
+    // Keep the dashboard available during rolling deployments where the updated
+    // view may briefly run with an older controller payload.
+    $activeTenanciesCount = $activeTenanciesCount ?? 0;
+
     $roleUi = [
         'landlord' => [
             'eyebrow' => 'Landlord workspace', 'title' => 'Your property portfolio',

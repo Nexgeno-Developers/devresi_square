@@ -1,19 +1,20 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Artisan;
-use niklasravnsborg\LaravelPdf\Facades\Pdf;
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\Auth\RegistrationController;
-use App\Http\Controllers\Frontend\FormController;
-use App\Http\Controllers\Backend\AizUploadController;
-use App\Http\Controllers\Backend\DashboardController;
-use App\Http\Controllers\Frontend\FrontendController;
 use App\Http\Controllers\Auth\PasswordResetController;
+use App\Http\Controllers\Auth\RegistrationController;
+use App\Http\Controllers\Backend\AizUploadController;
 use App\Http\Controllers\Backend\AuthenticateController;
-use App\Http\Controllers\Frontend\CustomerStatementController;
+use App\Http\Controllers\Backend\DashboardController;
+use App\Http\Controllers\CommandController;
 use App\Http\Controllers\Frontend\ContractorPortalController;
+use App\Http\Controllers\Frontend\CustomerStatementController;
+use App\Http\Controllers\Frontend\FormController;
+use App\Http\Controllers\Frontend\FrontendController;
 use App\Http\Controllers\Frontend\RepairQuoteController;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Route;
+use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 Route::post('/stripe/webhook', [\App\Http\Controllers\Webhook\StripeWebhookController::class, 'handle'])
     ->name('stripe.webhook');
@@ -29,6 +30,26 @@ Route::get('/storage-link', function () {
         return 'Storage link created successfully.';
     }
     return 'Storage link already exists.';
+});
+
+//Command Routes
+Route::prefix('command')->group(function () {
+    // Route::get('cache-clear', [CommandController::class, 'cacheClear']);
+    // Route::get('config-clear', [CommandController::class, 'configClear']);
+    // Route::get('config-cache', [CommandController::class, 'configCache']);
+    // Route::get('route-cache', [CommandController::class, 'routeCache']);
+    // Route::get('route-clear', [CommandController::class, 'routeClear']);
+    // Route::get('view-clear', [CommandController::class, 'viewClear']);
+    // Route::get('view-cache', [CommandController::class, 'viewCache']);
+    // Route::get('storage-link', [CommandController::class, 'storageLink']);
+    // Route::get('key-generate', [CommandController::class, 'keyGenerate']);
+    Route::get('optimize-clear', [CommandController::class, 'optimizeClear']);
+    // Route::get('queue-work', [CommandController::class, 'queueWork']);
+    // Route::get('queue-retry/{id?}', [CommandController::class, 'queueRetry']); // optional id
+    // Route::get('queue-failed', [CommandController::class, 'queueFailed']);
+    // Route::get('queue-forget/{id}', [CommandController::class, 'queueForget']);
+    // Route::get('queue-flush', [CommandController::class, 'queueFlush']);
+    // Route::get('update-currency-rates', [CommandController::class, 'updateCurrencyRates']);
 });
 
 // Group for web routes
