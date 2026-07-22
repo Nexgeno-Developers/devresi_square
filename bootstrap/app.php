@@ -25,15 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Append global middleware
         $middleware->append(EnsureTokenIsValid::class);
 
-        // Define middleware for the web group
-        $middleware->appendToGroup('web', [
-            \App\Http\Middleware\EncryptCookies::class,
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \Illuminate\Session\Middleware\StartSession::class,
-            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \App\Http\Middleware\VerifyCsrfToken::class,
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            // Other middleware for the web group can be added here
+        // Laravel 11 already registers the standard web middleware group. Configure
+        // its CSRF middleware directly so third-party webhooks can post safely.
+        $middleware->validateCsrfTokens(except: [
+            'backend/trumbowyg/upload',
+            'stripe/webhook',
         ]);
 
         // Define middleware for the API group

@@ -50,7 +50,12 @@ class BillingController extends Controller
     )
     {
         $account = $this->billingAccount($request);
-        $sessionId = (string) $request->query('session_id', '');
+        // Avoid the conventional `session_id` parameter name: some ModSecurity
+        // rules mistake it for an attempt to set a PHP session identifier.
+        $sessionId = (string) $request->query(
+            'checkout_ref',
+            $request->query('session_id', '')
+        );
 
         if ($sessionId !== '') {
             try {
