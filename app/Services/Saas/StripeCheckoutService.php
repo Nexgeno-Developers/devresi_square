@@ -42,7 +42,9 @@ class StripeCheckoutService
             'mode' => 'subscription',
             'customer' => $this->ensureStripeCustomer($account),
             'line_items' => [$this->planLineItem($subscription)],
-            'success_url' => url('/admin/billing/success') . '?checkout_ref={CHECKOUT_SESSION_ID}',
+            // Subscription activation is webhook-driven. Keeping the return URL
+            // query-free also avoids false positives from hosting WAF rules.
+            'success_url' => url('/admin/billing/success'),
             'cancel_url' => url('/admin/billing/cancel'),
             'client_reference_id' => (string) $account->id,
             'metadata' => $metadata,
@@ -109,7 +111,9 @@ class StripeCheckoutService
                     'quantity' => $quantity,
                 ],
             ],
-            'success_url' => url('/admin/billing/success') . '?checkout_ref={CHECKOUT_SESSION_ID}',
+            // Subscription activation is webhook-driven. Keeping the return URL
+            // query-free also avoids false positives from hosting WAF rules.
+            'success_url' => url('/admin/billing/success'),
             'cancel_url' => url('/admin/billing/cancel'),
             'client_reference_id' => (string) $account->id,
             'metadata' => $metadata,

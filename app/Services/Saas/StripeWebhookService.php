@@ -2,17 +2,24 @@
 
 namespace App\Services\Saas;
 
+use App\Mail\MailManager;
 use App\Models\AccountSubscription;
 use App\Models\AccountSubscriptionAddon;
 use App\Models\Addon;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Stripe\Stripe;
 use Stripe\StripeObject;
 use Stripe\Subscription;
 
 class StripeWebhookService
 {
+    public function __construct(
+        private readonly AccountWelcomeEmailService $welcomeEmailService
+    ) {
+    }
+
     public function handle(object $event): void
     {
         $object = $event->data->object ?? null;
@@ -364,6 +371,93 @@ class StripeWebhookService
             }
 
             $subscription->account->forceFill($accountUpdates)->save();
+
+            if (in_array($subscriptionStatus, ['trialing', 'active'], true)) {
+                // This also covers accounts created before welcome-email delivery
+                // was added, and retries a transient registration mail failure.
+                $this->welcomeEmailService->send($subscription->account);
+                $this->sendSubscriptionActivationEmail($subscription);
+            }
+        }
+    }
+
+    private function sendSubscriptionActivationEmail(AccountSubscription $subscription): void
+    {
+        $subscription->loadMissing(['account.owner', 'plan']);
+        $account = $subscription->account;
+
+        if (! $account || $account->subscription_activation_email_sent_at) {
+            return;
+        }
+
+        $recipient = $account->owner?->email ?: $account->billing_email;
+        if (! $recipient) {
+            Log::warning('Stripe subscription activated without a notification email address', [
+                'account_subscription_id' => $subscription->id,
+                'account_id' => $subscription->account_id,
+            ]);
+
+            return;
+        }
+
+        $ownerName = trim((string) ($account->owner?->first_name ?: $account->owner?->name));
+        $greetingName = e($ownerName ?: 'there');
+        $appName = e((string) config('app.name'));
+        $planName = e((string) ($subscription->plan?->name ?: $subscription->plan_name_at_signup ?: 'subscription'));
+        $billingCycle = e(ucfirst((string) $subscription->billing_cycle));
+        $billingUrl = e(url('/admin/billing'));
+        $statusMessage = $subscription->status === 'trialing'
+            ? 'Your trial is now active.'
+            : 'Your subscription is now active.';
+        $trialMessage = $subscription->status === 'trialing' && $subscription->trial_ends_at
+            ? '<p>Your trial is scheduled to end on <strong>'.e($subscription->trial_ends_at->format('j F Y')).'</strong>.</p>'
+            : '';
+
+        $content = "
+            <p>Hi {$greetingName},</p>
+            <p>{$statusMessage} You can now use your {$appName} account.</p>
+            <table style='border-collapse:collapse; margin:16px 0;'>
+                <tr>
+                    <td style='padding:6px 12px; font-weight:bold; background:#f8f9fa; border:1px solid #dee2e6;'>Plan</td>
+                    <td style='padding:6px 12px; border:1px solid #dee2e6;'>{$planName}</td>
+                </tr>
+                <tr>
+                    <td style='padding:6px 12px; font-weight:bold; background:#f8f9fa; border:1px solid #dee2e6;'>Billing cycle</td>
+                    <td style='padding:6px 12px; border:1px solid #dee2e6;'>{$billingCycle}</td>
+                </tr>
+            </table>
+            {$trialMessage}
+            <p style='text-align:center; margin:24px 0;'>
+                <a href='{$billingUrl}' style='background:#0b60bd; color:#fff; padding:12px 28px; border-radius:4px; text-decoration:none; font-size:15px;'>
+                    Open Billing &amp; Plan
+                </a>
+            </p>
+            <p>&mdash; The {$appName} Team</p>
+        ";
+
+        try {
+            Mail::to($recipient)->send(new MailManager([
+                'subject' => 'Your '.config('app.name').' subscription is ready',
+                'content' => $content,
+                'attachments' => [],
+            ]));
+
+            $account->forceFill([
+                'subscription_activation_email_sent_at' => now(),
+            ])->save();
+
+            Log::info('Stripe subscription activation email sent', [
+                'account_subscription_id' => $subscription->id,
+                'account_id' => $subscription->account_id,
+                'recipient' => $recipient,
+            ]);
+        } catch (\Throwable $exception) {
+            Log::error('Stripe subscription activation email failed', [
+                'account_subscription_id' => $subscription->id,
+                'account_id' => $subscription->account_id,
+                'recipient' => $recipient,
+                'error' => $exception->getMessage(),
+            ]);
         }
     }
 

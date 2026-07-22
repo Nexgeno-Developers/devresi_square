@@ -8,6 +8,7 @@ use App\Models\Plan;
 use App\Models\Registration;
 use App\Models\User;
 use App\Services\Saas\AccountProvisioningService;
+use App\Services\Saas\AccountWelcomeEmailService;
 use App\Services\Saas\CurrentAccountService;
 use App\Services\Saas\StripeCheckoutService;
 use App\Utility\SmsUtility;
@@ -217,6 +218,7 @@ class RegistrationController extends Controller
     public function verifyOtp(
         Request $request,
         AccountProvisioningService $accountProvisioningService,
+        AccountWelcomeEmailService $welcomeEmailService,
         StripeCheckoutService $stripeCheckoutService,
         CurrentAccountService $currentAccountService
     )
@@ -235,6 +237,7 @@ class RegistrationController extends Controller
         if ($registration->status === 'approved' && $registration->user && $registration->account) {
             Auth::login($registration->user);
             $currentAccountService->setCurrentAccount($registration->user, $registration->account->id);
+            $welcomeEmailService->send($registration->account);
 
             return redirect()->route('backend.billing.index');
         }
@@ -303,6 +306,7 @@ class RegistrationController extends Controller
         session()->forget('reg_id');
         Auth::login($user);
         $currentAccountService->setCurrentAccount($user, $account->id);
+        $welcomeEmailService->send($account);
 
         try {
             $checkoutUrl = $stripeCheckoutService->createPlanCheckoutSession(
