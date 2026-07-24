@@ -20,6 +20,7 @@ use App\Http\Controllers\Backend\TenancyController;
 use App\Http\Controllers\Backend\WebsiteController;
 use App\Http\Controllers\Backend\NoteTypeController;
 use App\Http\Controllers\Backend\PropertyController;
+use App\Http\Controllers\Backend\PropertyAddressLookupController;
 use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\DocumentsController;
 use App\Http\Controllers\Backend\EventTypeController;
@@ -164,6 +165,12 @@ Route::middleware('auth')->group(function () {
         // Property
         Route::prefix('properties')->name('properties.')->controller(PropertyController::class)->group(function () {
             Route::get('/', 'index')->name('index');
+            Route::get('/address-lookup/search', [PropertyAddressLookupController::class, 'search'])
+                ->middleware('throttle:30,1')
+                ->name('address_lookup.search');
+            Route::get('/address-lookup/resolve', [PropertyAddressLookupController::class, 'resolve'])
+                ->middleware('throttle:30,1')
+                ->name('address_lookup.resolve');
             Route::get('/create', 'create')->name('create');
             Route::post('/store', 'store')->name('store');
             Route::get('/view/{id}', 'view')->name('view');

@@ -1675,6 +1675,7 @@ class PropertyController
                     'county' => 'nullable|string|max:50',
                     'currency' => 'nullable|string|max:50',
                     'postcode' => 'nullable|string|max:20',
+                    'uprn' => 'nullable|string|max:32',
                 ];
             case 2:
                 return [
@@ -1820,6 +1821,7 @@ class PropertyController
                     'city' => 'required|string|max:100',
                     'country' => 'required|string|max:100',
                     'postcode' => 'required|string|max:20',
+                    'uprn' => 'nullable|string|max:32',
                 ];
             case 2:
                 return [

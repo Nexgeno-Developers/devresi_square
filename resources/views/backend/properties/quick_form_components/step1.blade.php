@@ -29,6 +29,8 @@
                 <div class="right_content_wrapper w-100">
                     <div class="row">
                         <div class="col-lg-7 col-12">
+                            @include('backend.properties.partials.address-search')
+                            <div class="address-manual-fields {{ (isset($property) && $property->line_1) || old('line_1') ? '' : 'd-none' }}">
                             <div class="row">
                                 <div class="form-group col-12">
                                     <label for="line_1">Address Line 1</label>
@@ -56,7 +58,7 @@
                                     <select required name="country" id="country" class="form-control select2">
                                         <option value="">Select a country</option>
                                         @foreach ($countries as $country)
-                                        <option value="{{ $country->id }}"
+                                        <option value="{{ $country->id }}" data-country-code="{{ strtoupper($country->code) }}"
                                             @if(isset($property) && $property->country == $country->id)
                                                 selected
                                             @elseif((!isset($property) || empty($property->country)) && $country->code == 'GB')
@@ -111,6 +113,7 @@
                             </div>
                             <button type="button" class="btn btn_secondary btn-sm next-step mt-4 w-100" data-next-step="{{$currentStep+1}}"
                     data-current-step="{{$currentStep}}">Next</button>
+                            </div>
                         </div>
                     </div>
                 </div>

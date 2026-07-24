@@ -1,6 +1,14 @@
 <!-- resources/views/backend/properties/form_components/form.blade.php -->
 @extends('backend.layout.app')
 
+@push('styles')
+    <link href="{{ asset('asset/backend/css/property-address-lookup.css') }}" rel="stylesheet">
+@endpush
+
+@push('scripts')
+    <script src="{{ asset('asset/backend/js/property-address-lookup.js') }}"></script>
+@endpush
+
 @section('content')
 @php
     $stepNames = [

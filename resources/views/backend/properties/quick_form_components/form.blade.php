@@ -30,6 +30,14 @@ return $breadcrumb[$step] ?? 'Unknown Step';
     $currentStep = isset($property->quick_step) ? $property->quick_step+1 : 1;
 @endphp
 
+@push('styles')
+    <link href="{{ asset('asset/backend/css/property-address-lookup.css') }}" rel="stylesheet">
+@endpush
+
+@push('scripts')
+    <script src="{{ asset('asset/backend/js/property-address-lookup.js') }}"></script>
+@endpush
+
 
     <h4 class="mb-4">Quick Add Property</h4>
     <div class="qap_breadcrumb">

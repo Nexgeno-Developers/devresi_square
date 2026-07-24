@@ -1,0 +1,95 @@
+.property-address-lookup {
+    position: relative;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+}
+
+.property-address-lookup .address-lookup-heading h3 {
+    color: #111827;
+    font-size: 1.65rem;
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+}
+
+.property-address-lookup .address-lookup-heading p {
+    color: #667085;
+    margin-bottom: 1.25rem;
+}
+
+.property-address-lookup .input-group > .form-control {
+    min-height: 54px;
+}
+
+.property-address-lookup .input-group > .btn {
+    min-width: 122px;
+}
+
+.property-address-lookup .address-lookup-results {
+    max-height: 360px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.12);
+}
+
+.property-address-lookup .address-lookup-result {
+    background: #fff;
+    border: 0;
+    border-bottom: 1px solid #edf0f2;
+    color: #343a40;
+    cursor: pointer;
+    padding: 0.8rem 1rem;
+    text-align: left;
+    white-space: normal;
+}
+
+.property-address-lookup .address-lookup-result::before {
+    color: #98a2b3;
+    content: "\F3E8";
+    display: inline-block;
+    font-family: "bootstrap-icons";
+    margin-right: 0.65rem;
+    vertical-align: -0.08em;
+}
+
+.property-address-lookup .address-lookup-result:last-child {
+    border-bottom: 0;
+}
+
+.property-address-lookup .address-lookup-result:hover,
+.property-address-lookup .address-lookup-result:focus,
+.property-address-lookup .address-lookup-result.is-active {
+    background: #f1f5f9;
+    color: #111827;
+    outline: 0;
+}
+
+.property-address-lookup .address-lookup-status.is-error {
+    color: #b42318;
+}
+
+.property-address-lookup .address-lookup-status.is-success {
+    color: #067647;
+}
+
+@media (max-width: 575.98px) {
+    .property-address-lookup {
+        padding: 1rem;
+    }
+
+    .property-address-lookup .input-group {
+        display: block;
+    }
+
+    .property-address-lookup .input-group > .form-control,
+    .property-address-lookup .input-group > .btn {
+        border-radius: 0.375rem;
+        width: 100%;
+    }
+
+    .property-address-lookup .input-group > .btn {
+        margin-top: 0.5rem;
+    }
+}

@@ -82,7 +82,9 @@
         <div class="col-lg-6 mb-4">
             <h5>Plan details</h5>
             @if($currentSubscription?->plan)
-                @php($plan = $currentSubscription->plan)
+                @php
+                    $plan = $currentSubscription->plan;
+                @endphp
                 <table class="table table-bordered">
                     <tr><th width="35%">Name</th><td>{{ $plan->name }}</td></tr>
                     <tr><th>Code</th><td><code>{{ $plan->code }}</code></td></tr>
