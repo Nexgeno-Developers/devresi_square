@@ -184,6 +184,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/deleted', 'showSoftDeletedProperties')->name('soft_deleted');
             Route::post('/restore/{id}', 'restore')->name('restore');
             Route::post('/bulk-restore', 'bulkRestore')->name('bulk-restore');
+            Route::delete('/force-delete/{id}', 'forceDelete')->name('force-delete');
+            Route::delete('/bulk-force-delete', 'bulkForceDelete')->name('bulk-force-delete');
             // Route::get('/{property_id}/{tabname}',  'showTabContent')->name('tabcontent');
 
             Route::get('/load-form', 'loadForm')->name('loadForm');

@@ -9,7 +9,8 @@
                 suggestions: [],
                 activeIndex: -1,
                 autoSearchTimer: null,
-                fullAddress: wrapper.classList.contains('supports-full-address')
+                fullAddress: wrapper.classList.contains('supports-full-address'),
+                applyingAddress: false
             });
         }
 
@@ -152,13 +153,21 @@
             return;
         }
 
-        setField(form, 'line_1', address.line_1 || '');
-        setField(form, 'line_2', address.line_2 || '');
-        setField(form, 'city', address.city || '');
-        setField(form, 'county', address.county || '');
-        setField(form, 'postcode', address.postcode || '');
-        setField(form, 'uprn', address.uprn || '');
-        setCountry(form, address);
+        const state = stateFor(wrapper);
+        state.applyingAddress = true;
+
+        try {
+            setField(form, 'line_1', address.line_1 || '');
+            setField(form, 'line_2', address.line_2 || '');
+            setField(form, 'city', address.city || '');
+            setField(form, 'county', address.county || '');
+            setField(form, 'postcode', address.postcode || '');
+            setField(form, 'uprn', address.uprn || '');
+            setCountry(form, address);
+        } finally {
+            state.applyingAddress = false;
+        }
+
         form.querySelector('.address-manual-fields')?.classList.remove('d-none');
         hideResults(wrapper);
 
@@ -171,6 +180,27 @@
         }
 
         setStatus(wrapper, 'Address selected. Please check the populated fields.', 'success');
+    }
+
+    function clearLookupIdentityAfterManualEdit(event) {
+        if (!event.target.matches(
+            '[name="line_1"], [name="line_2"], [name="city"], [name="county"], [name="postcode"], [name="country"]'
+        )) {
+            return;
+        }
+
+        const form = event.target.closest('form');
+        const wrapper = form?.querySelector('.property-address-lookup');
+
+        if (!wrapper || stateFor(wrapper).applyingAddress) {
+            return;
+        }
+
+        const uprn = form.querySelector('[name="uprn"]');
+
+        if (uprn) {
+            uprn.value = '';
+        }
     }
 
     async function jsonRequest(url) {
@@ -349,6 +379,8 @@
     });
 
     document.addEventListener('input', function (event) {
+        clearLookupIdentityAfterManualEdit(event);
+
         if (!event.target.matches('.js-address-lookup-query')) {
             return;
         }
@@ -368,4 +400,6 @@
             search(wrapper);
         }, 450);
     });
+
+    document.addEventListener('change', clearLookupIdentityAfterManualEdit);
 }());

@@ -114,14 +114,8 @@ class Property extends Model
             }
 
             $identityColumns = [
-                'uprn',
-                'flat',
-                'flat_number',
-                'unit',
-                'building',
-                'building_name',
                 'line_1',
-                'address_line_1',
+                'line_2',
                 'postcode',
                 'country',
             ];
@@ -134,32 +128,34 @@ class Property extends Model
 
     public static function makeIdentityHash(array $attributes): ?string
     {
-        $uprn = self::normaliseIdentityPart($attributes['uprn'] ?? null);
-
-        if ($uprn !== '') {
-            return hash('sha256', 'uprn:' . $uprn);
-        }
-
-        $parts = [
-            $attributes['flat'] ?? null,
-            $attributes['flat_number'] ?? null,
-            $attributes['unit'] ?? null,
-            $attributes['building'] ?? null,
-            $attributes['building_name'] ?? null,
-            $attributes['line_1'] ?? $attributes['address_line_1'] ?? null,
-            $attributes['postcode'] ?? null,
-            $attributes['country'] ?? null,
+        $normalisedParts = [
+            self::normaliseAddressLines(
+                $attributes['line_1'] ?? null,
+                $attributes['line_2'] ?? null
+            ),
+            self::normaliseIdentityPart($attributes['postcode'] ?? null, true),
+            self::normaliseIdentityPart($attributes['country'] ?? null),
         ];
 
-        $normalised = implode('|', array_filter(array_map(
-            fn ($part) => self::normaliseIdentityPart($part),
-            $parts
-        )));
+        if (count(array_filter($normalisedParts, fn ($part) => $part !== '')) === 0) {
+            return null;
+        }
 
-        return $normalised === '' ? null : hash('sha256', 'address:' . $normalised);
+        return hash('sha256', 'address:v2:' . implode('|', $normalisedParts));
     }
 
-    private static function normaliseIdentityPart(mixed $value): string
+    private static function normaliseAddressLines(mixed $lineOne, mixed $lineTwo): string
+    {
+        $value = strtolower(trim(implode(' ', array_filter([
+            $lineOne,
+            $lineTwo,
+        ], fn ($part) => $part !== null && trim((string) $part) !== ''))));
+        $value = preg_replace('/[^\pL\pN]+/u', ' ', $value);
+
+        return preg_replace('/\s+/', ' ', trim($value ?: '')) ?: '';
+    }
+
+    private static function normaliseIdentityPart(mixed $value, bool $removeWhitespace = false): string
     {
         if ($value === null) {
             return '';
@@ -167,7 +163,9 @@ class Property extends Model
 
         $value = strtolower(trim((string) $value));
 
-        return preg_replace('/\s+/', ' ', $value) ?: '';
+        $value = preg_replace('/\s+/', $removeWhitespace ? '' : ' ', $value);
+
+        return $value ?: '';
     }
 
     public function responsibilities()

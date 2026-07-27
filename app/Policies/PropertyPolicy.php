@@ -4,7 +4,6 @@ namespace App\Policies;
 
 use App\Models\Property;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
 
 class PropertyPolicy
 {
@@ -15,7 +14,7 @@ class PropertyPolicy
     {
         // Super Admin & Property Manager see all,
         // Landlord sees only their own properties
-        return $user->hasAnyRole(['Super Admin','Property Manager','Landlord']);
+        return $user->hasAnyRole(['Super Admin', 'Property Manager', 'Landlord']);
     }
 
     /**
@@ -23,9 +22,10 @@ class PropertyPolicy
      */
     public function view(User $user, Property $property): bool
     {
-        if ($user->hasAnyRole(['Super Admin','Property Manager'])) {
+        if ($user->hasAnyRole(['Super Admin', 'Property Manager'])) {
             return true;
         }
+
         // Landlord can view only properties they created
         return $user->hasRole('Landlord') && $property->created_by === $user->id;
     }
@@ -36,7 +36,7 @@ class PropertyPolicy
     public function create(User $user): bool
     {
         // Only Super Admin & Property Manager can create new
-        return $user->hasAnyRole(['Super Admin','Property Manager']);
+        return $user->hasAnyRole(['Super Admin', 'Property Manager']);
     }
 
     /**
@@ -45,7 +45,7 @@ class PropertyPolicy
     public function update(User $user, Property $property): bool
     {
         // Only Super Admin & Property Manager
-        return $user->hasAnyRole(['Super Admin','Property Manager']);
+        return $user->hasAnyRole(['Super Admin', 'Property Manager']);
     }
 
     /**
@@ -62,7 +62,7 @@ class PropertyPolicy
      */
     public function restore(User $user, Property $property): bool
     {
-        return false;
+        return $user->can('delete properties');
     }
 
     /**
@@ -70,6 +70,6 @@ class PropertyPolicy
      */
     public function forceDelete(User $user, Property $property): bool
     {
-        return false;
+        return $user->can('delete properties');
     }
 }

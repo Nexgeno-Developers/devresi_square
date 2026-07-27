@@ -29,7 +29,12 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
 use App\Models\PropertyResponsibility;
+use App\Rules\UniquePropertyIdentity;
+use Illuminate\Database\QueryException;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 class PropertyController
@@ -588,7 +593,7 @@ class PropertyController
         // Validate data based on the current step
         if ($request->has('step')) {
             // Validate the request data
-            $validatedData = $request->validate($this->getValidationRules($request->step));
+            $validatedData = $request->validate($this->getValidationRules($request->step, $request));
 
             // Convert market_on to JSON if it's an array
             // if ($request->has('market_on') && is_array($request->market_on)) {
@@ -706,7 +711,9 @@ class PropertyController
                         $validatedData['step'] = $request->step; // Update step only if it's not the last step
                     }
                     // $validatedData['step'] = $request->step;
-                    $property->update($validatedData);
+                    $this->persistProperty(function () use ($property, $validatedData) {
+                        return $property->update($validatedData);
+                    });
                     // session()->forget('property_id');
                     // session()->forget('current_step');
                 }
@@ -724,11 +731,13 @@ class PropertyController
                     // $validatedData['prop_ref_no'] = $this->generatePropertyRefNumber();
                     Log::info('Creating new pref', $validatedData['prop_ref_no']);
                     Log::info('Creating new property', $validatedData);
-                    $property = Property::create(array_merge($validatedData, [
-                        'account_id' => current_account_id(),
-                        'added_by' => Auth::id(),
-                        'step' => $request->step,
-                    ]));
+                    $property = $this->persistProperty(function () use ($validatedData, $request) {
+                        return Property::create(array_merge($validatedData, [
+                            'account_id' => current_account_id(),
+                            'added_by' => Auth::id(),
+                            'step' => $request->step,
+                        ]));
+                    });
                     // session()->forget('current_step');
                     // $property = Property::create(array_merge($validatedData, ['added_by' => $userId]));
                 }
@@ -771,7 +780,7 @@ class PropertyController
         // Validate data based on the current step
         if ($request->has('step')) {
             // Validate the request data
-            $validatedData = $request->validate($this->getValidationRulesQuick($request->step));
+            $validatedData = $request->validate($this->getValidationRulesQuick($request->step, $request));
 
             // Get property_id from the request
             $property_id = $request->property_id;
@@ -789,7 +798,9 @@ class PropertyController
                     Log::info('Updating property with ID ' . $property_id, $validatedData);
                     //update step
                     $validatedData['quick_step'] = $request->step;
-                    $property->update($validatedData);
+                    $this->persistProperty(function () use ($property, $validatedData) {
+                        return $property->update($validatedData);
+                    });
                     // session()->forget('property_id');
                 }
             } else {
@@ -806,10 +817,12 @@ class PropertyController
                     $validatedData['prop_ref_no'] = $PropertyRefNumber;
                     // Log::info('Creating new pref', $validatedData['prop_ref_no']);
                     Log::info('Creating new property', $validatedData);
-                    $property = Property::create(array_merge($validatedData, [
-                        'account_id' => current_account_id(),
-                        'added_by' => Auth::id(),
-                    ]));
+                    $property = $this->persistProperty(function () use ($validatedData) {
+                        return Property::create(array_merge($validatedData, [
+                            'account_id' => current_account_id(),
+                            'added_by' => Auth::id(),
+                        ]));
+                    });
                     // $request->session()->put('property_id', $property->id);
                     // session()->forget('property_id');
                 }
@@ -1103,25 +1116,24 @@ class PropertyController
 
     public function showSoftDeletedProperties()
     {
-        $properties = Property::onlyTrashed()
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
-            ->get(); // Fetch only soft-deleted properties
-        // flash("You don't have permission for deleting this!")->error();
+        $properties = $this->trashedPropertiesQuery()
+            ->orderByDesc('deleted_at')
+            ->get();
+
         return view('backend.properties.deleted', compact('properties'));
     }
 
 
     public function restore($id)
     {
-        $property = Property::withTrashed()->findOrFail($id);
-        ensureModelBelongsToCurrentAccount($property);
-        $property->restore();
+        $property = $this->trashedPropertiesQuery()->findOrFail($id);
+        $this->persistProperty(fn () => $property->restore());
 
         // $response = [
         //     'status' => true,
         //     'message' => 'Property restored successfully!',
         // ];
-        flash("Restored successfully")->success();
+        flash('Property restored successfully.')->success();
         return back();
         // return back()->with('success', $response['message']);
         //return redirect()->route('admin.properties.index')->with('success', $response['message']);
@@ -1131,13 +1143,109 @@ class PropertyController
 
     public function bulkRestore(Request $request)
     {
-        $propertyIds = explode(',', $request->input('property_ids')); // Convert the string to an array
-        Property::withTrashed()
-            ->whereIn('id', $propertyIds)
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
-            ->restore();
+        $validated = $request->validate([
+            'property_ids' => ['required', 'array', 'min:1'],
+            'property_ids.*' => ['required', 'integer', 'distinct'],
+        ]);
 
-        return redirect()->route('admin.properties.index')->with('success', 'Selected properties restored successfully.');
+        $propertyIds = collect($validated['property_ids'])->map(fn ($id) => (int) $id)->unique()->values();
+        $properties = $this->trashedPropertiesQuery()
+            ->whereKey($propertyIds)
+            ->get();
+
+        abort_unless($properties->count() === $propertyIds->count(), 404);
+
+        DB::transaction(function () use ($properties) {
+            foreach ($properties as $property) {
+                $this->persistProperty(fn () => $property->restore());
+            }
+        });
+
+        flash($properties->count() . ' properties restored successfully.')->success();
+
+        return back();
+    }
+
+    public function forceDelete(Request $request, $id)
+    {
+        $this->authorizePermanentPropertyDeletion();
+
+        $request->validate([
+            'confirmation' => ['required', 'in:DELETE'],
+        ]);
+
+        $property = $this->trashedPropertiesQuery()->findOrFail($id);
+
+        try {
+            DB::transaction(fn () => $property->forceDelete());
+        } catch (QueryException $exception) {
+            Log::warning('Permanent property deletion blocked by linked records.', [
+                'property_id' => $property->id,
+                'account_id' => $property->account_id,
+                'error_code' => $exception->getCode(),
+            ]);
+
+            flash('This property cannot be permanently deleted because linked tenancy, repair, accounting, or compliance records still exist. Restore it or remove those dependencies first.')->error();
+
+            return back();
+        }
+
+        flash('Property permanently deleted. This action cannot be undone.')->success();
+
+        return back();
+    }
+
+    public function bulkForceDelete(Request $request)
+    {
+        $this->authorizePermanentPropertyDeletion();
+
+        $validated = $request->validate([
+            'property_ids' => ['required', 'array', 'min:1'],
+            'property_ids.*' => ['required', 'integer', 'distinct'],
+            'confirmation' => ['required', 'in:DELETE'],
+        ]);
+
+        $propertyIds = collect($validated['property_ids'])->map(fn ($id) => (int) $id)->unique()->values();
+        $properties = $this->trashedPropertiesQuery()
+            ->whereKey($propertyIds)
+            ->get();
+
+        abort_unless($properties->count() === $propertyIds->count(), 404);
+
+        try {
+            DB::transaction(function () use ($properties) {
+                foreach ($properties as $property) {
+                    $property->forceDelete();
+                }
+            });
+        } catch (QueryException $exception) {
+            Log::warning('Bulk permanent property deletion blocked by linked records.', [
+                'property_ids' => $properties->modelKeys(),
+                'error_code' => $exception->getCode(),
+            ]);
+
+            flash('No properties were permanently deleted. At least one selected property still has linked tenancy, repair, accounting, or compliance records.')->error();
+
+            return back();
+        }
+
+        flash($properties->count() . ' properties permanently deleted. This action cannot be undone.')->success();
+
+        return back();
+    }
+
+    private function trashedPropertiesQuery()
+    {
+        return Property::onlyTrashed()
+            ->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($query) => $query->forAccount(current_account_id())
+            );
+    }
+
+    private function authorizePermanentPropertyDeletion(): void
+    {
+        abort_unless(auth()->user()?->can('delete properties'), 403);
     }
 
     public function loadForm(Request $request)
@@ -1661,13 +1769,47 @@ class PropertyController
     //     return view($view, $data);
     // }
 
-    private function getValidationRulesQuick($step)
+    private function persistProperty(callable $operation): mixed
+    {
+        try {
+            return $operation();
+        } catch (UniqueConstraintViolationException $exception) {
+            $message = strtolower($exception->getMessage());
+            $isPropertyIdentityViolation =
+                str_contains($message, 'properties_account_identity_unique')
+                || str_contains($message, 'properties_account_identity_huniq')
+                || (
+                    str_contains($message, 'properties.account_id')
+                    && str_contains($message, 'properties.property_identity_hash')
+                );
+
+            if (! $isPropertyIdentityViolation) {
+                throw $exception;
+            }
+
+            throw ValidationException::withMessages([
+                'line_1' => 'This property address already exists in your account.',
+            ]);
+        }
+    }
+
+    private function getValidationRulesQuick($step, Request $request)
     {
         switch ($step) {
             case 1:
                 return [
                     // 'prop_name' => 'required|string|max:255',
-                    'line_1' => 'required|string|max:255',
+                    'line_1' => [
+                        'bail',
+                        'required',
+                        'string',
+                        'max:255',
+                        new UniquePropertyIdentity(
+                            $request->all(),
+                            current_account_id(),
+                            $request->input('property_id')
+                        ),
+                    ],
                     'line_2' => 'nullable|string|max:255',
                     'city' => 'required|string|max:100',
                     // 'country' => 'required|string|max:100',
@@ -1810,13 +1952,23 @@ class PropertyController
         return false;
     }
 
-    private function getValidationRules($step)
+    private function getValidationRules($step, Request $request)
     {
         switch ($step) {
             case 1:
                 return [
                     'prop_name' => 'required|string|max:255',
-                    'line_1' => 'required|string|max:255',
+                    'line_1' => [
+                        'bail',
+                        'required',
+                        'string',
+                        'max:255',
+                        new UniquePropertyIdentity(
+                            $request->all(),
+                            current_account_id(),
+                            $request->input('property_id')
+                        ),
+                    ],
                     'line_2' => 'nullable|string|max:255',
                     'city' => 'required|string|max:100',
                     'country' => 'required|string|max:100',
