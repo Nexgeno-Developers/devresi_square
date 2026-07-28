@@ -1,5 +1,7 @@
 @php
-    $propertyType = $property->property_type ?? '';
+    $propertyType = strtolower(trim((string) ($property->property_type ?? '')));
+    $showSalesFields = in_array($propertyType, ['sales', 'both'], true);
+    $showLettingFields = in_array($propertyType, ['lettings', 'both'], true);
     $availableFrom = formatDate($property->available_from) ?? '';
     $salePrice = $property->price ?? '';
     $lettingPrice = $property->letting_price ?? '';
@@ -23,7 +25,7 @@
             <span class="right_item">{{ $availableFrom }}</strong></span>
         </div>
 
-        @if ($propertyType == 'sales' || $propertyType == 'both')
+        @if ($showSalesFields)
             <div class="row mb-2">
                 <div class="col"><span class="left_item">Length of Lease : </span>
                 <span class="right_item">{{ $lengthOfLease }}</span>
@@ -72,7 +74,7 @@
             <p class="accordion_inner_heading">Price</p>
 
             <div class="row mb-2">
-                @if ($propertyType == 'sales' || $propertyType == 'both')
+                @if ($showSalesFields)
                     <div class="col-4">
                         <span class="left_item">Estate Charges : </span>
                         <span class="right_item">{{ $estateCharge ?  getPoundSymbol() : '' }} {{ $estateCharge }}</span>
@@ -84,7 +86,7 @@
                 </div>
             </div>
 
-            @if ($propertyType == 'sales' || $propertyType == 'both')
+            @if ($showSalesFields)
                 <div class="row mb-2">
                     <div class="col-4">
                         <span class="left_item">Ground Rent : </span>
@@ -98,14 +100,18 @@
             @endif
 
             <div class="row mb-2">
-                <div class="col-4">
-                    <span class="left_item">Sales Price : </span>
-                    <span class="right_item">{{ $salePrice ? getPoundSymbol() : '' }} {{ $salePrice }}</span>
-                </div>
-                <div class="col-6">
-                    <span class="left_item">Letting Price : </span>
-                    <span class="right_item">{{  $lettingPrice ? getPoundSymbol() : '' }} {{ $lettingPrice }}</span>
-                </div>
+                @if($showSalesFields)
+                    <div class="col-6">
+                        <span class="left_item">Sales Price : </span>
+                        <span class="right_item">{{ $salePrice ? getPoundSymbol() : '' }} {{ $salePrice }}</span>
+                    </div>
+                @endif
+                @if($showLettingFields)
+                    <div class="col-6">
+                        <span class="left_item">Letting Price : </span>
+                        <span class="right_item">{{ $lettingPrice ? getPoundSymbol() : '' }} {{ $lettingPrice }}</span>
+                    </div>
+                @endif
             </div>
         </div>
 
@@ -202,7 +208,7 @@
                         Freehold</option>
                     </select>
                 </div>
-                @if ($propertyType == 'sales' || $propertyType == 'both')
+                @if ($showSalesFields)
                     <div class="form-group">
                         <label for="length_of_lease">Length of Lease (in year)</label>
                         <input type="text" name="length_of_lease" id="length_of_lease" class="form-control"
@@ -252,7 +258,7 @@
                             value="{{ $miscellaneousCharge }}">
                     </div>
                 </div>
-                @if ($propertyType == 'sales' || $propertyType == 'both')
+                @if ($showSalesFields)
                     <div class="form-group">
                         <label for="lprice">Listing Sale Price</label>
                         <div class="price_input_wrapper">
@@ -263,7 +269,7 @@
                     </div>
                 @endif
                 <!-- Letting Price Input (Show only if type is letting or both) -->
-                @if ($propertyType == 'lettings' || $propertyType == 'both')
+                @if ($showLettingFields)
                     <div class="form-group">
                         <label for="letting_price">Letting Price</label>
                         <div class="price_input_wrapper">

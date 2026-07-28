@@ -1,24 +1,29 @@
 @php
+    $propertyType = strtolower(trim((string) ($property->property_type ?? '')));
+    $showSalesFields = in_array($propertyType, ['sales', 'both'], true);
+    $showLettingFields = in_array($propertyType, ['lettings', 'both'], true);
     $salesStatusDescription = $property->sales_status_description ?? '';
     $lettingStatusDescription = $property->letting_status_description ?? '';
+    $hasVisibleDescription = ($showSalesFields && filled($salesStatusDescription))
+        || ($showLettingFields && filled($lettingStatusDescription));
 @endphp
 
 @if(!isset($editMode) || !$editMode)
-    @if($salesStatusDescription)
+    @if($showSalesFields && $salesStatusDescription)
         <div class="mb-2">
             <strong>Sales:</strong>
             <x-toggle-description :text="$salesStatusDescription" :limit="180" />
         </div>
     @endif
 
-    @if($lettingStatusDescription)
+    @if($showLettingFields && $lettingStatusDescription)
         <div>
             <strong>Lettings:</strong>
             <x-toggle-description :text="$lettingStatusDescription" :limit="180" />
         </div>
     @endif
 
-    @if(!$salesStatusDescription && !$lettingStatusDescription)
+    @if(!$hasVisibleDescription)
         <span class="text-muted">No description added.</span>
     @endif
 @else
@@ -27,15 +32,19 @@
         <input type="hidden" name="property_id" value="{{ $property->id }}">
         <input type="hidden" name="form_type" value="property_description">
 
-        <div class="form-group">
-            <label for="sales_status_description">Sales Description</label>
-            <textarea name="sales_status_description" id="sales_status_description" rows="6" class="form-control">{{ $salesStatusDescription }}</textarea>
-        </div>
+        @if($showSalesFields)
+            <div class="form-group">
+                <label for="sales_status_description">Sales Description</label>
+                <textarea name="sales_status_description" id="sales_status_description" rows="6" class="form-control">{{ $salesStatusDescription }}</textarea>
+            </div>
+        @endif
 
-        <div class="form-group">
-            <label for="letting_status_description">Letting Description</label>
-            <textarea name="letting_status_description" id="letting_status_description" rows="6" class="form-control">{{ $lettingStatusDescription }}</textarea>
-        </div>
+        @if($showLettingFields)
+            <div class="form-group">
+                <label for="letting_status_description">Letting Description</label>
+                <textarea name="letting_status_description" id="letting_status_description" rows="6" class="form-control">{{ $lettingStatusDescription }}</textarea>
+            </div>
+        @endif
 
         <button type="submit" class="btn btn_secondary mt-3 float-end">Save Changes</button>
     </form>

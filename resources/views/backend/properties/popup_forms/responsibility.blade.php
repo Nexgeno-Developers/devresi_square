@@ -1,11 +1,21 @@
 @php
-    $responsibilityTypes = [
-        'property_manager' => 'Property Manager',
-        'sales_consultant' => 'Sales Consultant',
-        'lettings_consultant' => 'Lettings Consultant',
-        'sales_manager' => 'Sales Manager',
-        'lettings_manager' => 'Lettings Manager',
-    ];
+    $propertyType = strtolower(trim((string) ($property->property_type ?? '')));
+    $responsibilityTypes = ['property_manager' => 'Property Manager'];
+
+    if (in_array($propertyType, ['sales', 'both'], true)) {
+        $responsibilityTypes += [
+            'sales_consultant' => 'Sales Consultant',
+            'sales_manager' => 'Sales Manager',
+        ];
+    }
+
+    if (in_array($propertyType, ['lettings', 'both'], true)) {
+        $responsibilityTypes += [
+            'lettings_consultant' => 'Lettings Consultant',
+            'lettings_manager' => 'Lettings Manager',
+        ];
+    }
+
     $mappedStaff = $responsibilities->keyBy('responsibility_type');
 @endphp
 

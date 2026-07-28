@@ -261,6 +261,123 @@ button.close {
     background-color: var(--dark);
 }
 
+/* Backend shell: keep the header, sidebar and content inside the viewport.
+   The sidebar menu and the main content deliberately own separate scrollbars. */
+:root {
+    --backend-sidebar-width: 254px;
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 100%;
+    overflow: hidden;
+}
+
+body > main,
+.main_wrapper {
+    min-width: 0;
+    min-height: 0;
+}
+
+body > main {
+    overflow: hidden;
+}
+
+.main_wrapper {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+body #menu.sidebar {
+    display: block;
+    flex: 0 0 var(--backend-sidebar-width);
+    width: var(--backend-sidebar-width);
+    max-width: var(--backend-sidebar-width);
+    height: 100%;
+    min-height: 0;
+    margin-left: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    transition: margin-left 0.3s ease;
+}
+
+body #menu.sidebar > .nav {
+    overflow: visible;
+}
+
+#wrapper.main_content {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+}
+
+body.hide-sidebar:not(.show-sidebar) #menu,
+body.page-small #menu {
+    margin-left: calc(-1 * var(--backend-sidebar-width));
+}
+
+body.show-sidebar #menu {
+    margin-left: 0;
+}
+
+.main_wrapper > .backdrop {
+    display: none;
+}
+
+@media (max-width: 766px) {
+    :root {
+        --backend-sidebar-width: min(86vw, 320px);
+    }
+
+    #menu.sidebar {
+        position: absolute !important;
+        inset: 0 auto 0 0;
+        z-index: 1000;
+        width: var(--backend-sidebar-width);
+        max-width: var(--backend-sidebar-width);
+        margin-left: 0 !important;
+        transform: translateX(0);
+        transition: transform 0.3s ease;
+    }
+
+    body.hide-sidebar:not(.show-sidebar) #menu {
+        transform: translateX(-100%);
+    }
+
+    #wrapper.main_content {
+        width: 100%;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    body.show-sidebar .main_wrapper > .backdrop {
+        position: absolute;
+        inset: 0;
+        z-index: 999;
+        display: block;
+        background: var(--backdrop);
+    }
+}
+
 .aiz-switch-blue input:checked~span:after {
     background-color: var(--blue);
 }

@@ -1,4 +1,5 @@
 @php
+    $propertyType = strtolower(trim((string) ($property->property_type ?? '')));
     $responsibilityLabels = [
         'property_manager' => 'Property Manager',
         'sales_consultant' => 'Sales Consultant',
@@ -6,6 +7,17 @@
         'sales_manager' => 'Sales Manager',
         'lettings_manager' => 'Lettings Manager',
     ];
+    $visibleResponsibilityTypes = ['property_manager'];
+
+    if (in_array($propertyType, ['sales', 'both'], true)) {
+        $visibleResponsibilityTypes = array_merge($visibleResponsibilityTypes, ['sales_consultant', 'sales_manager']);
+    }
+
+    if (in_array($propertyType, ['lettings', 'both'], true)) {
+        $visibleResponsibilityTypes = array_merge($visibleResponsibilityTypes, ['lettings_consultant', 'lettings_manager']);
+    }
+
+    $visibleResponsibilities = $responsibilities->whereIn('responsibility_type', $visibleResponsibilityTypes);
 @endphp
 
 <div class="property-tab-section" id="section-responsibility-{{ $propertyId }}">
@@ -29,7 +41,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($responsibilities as $responsibility)
+                @forelse($visibleResponsibilities as $responsibility)
                     <tr>
                         <td>{{ $responsibilityLabels[$responsibility->responsibility_type] ?? 'N/A' }}</td>
                         <td>{{ $responsibility->user_id }}</td>

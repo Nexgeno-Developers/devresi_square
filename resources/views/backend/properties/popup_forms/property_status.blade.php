@@ -1,4 +1,7 @@
 @php
+    $propertyType = strtolower(trim((string) ($property->property_type ?? '')));
+    $showSalesFields = in_array($propertyType, ['sales', 'both'], true);
+    $showLettingFields = in_array($propertyType, ['lettings', 'both'], true);
     $lettingCurrentStatus = $property->letting_current_status ?? '';
     $salesCurrentStatus = $property->sales_current_status ?? '';
 
@@ -21,16 +24,18 @@
         <div class="mt-md-4 mt-3"> --}}
             <div class="accordion_inner_heading mb-2">Status </div>
 
-            <div class="row mb-3">
-                <div class="col-12">
-                    <div class="left_item">Sales Status:</div>
-                    <div class="right_item">
-                        <span class="badge {{ getBadgeClass($salesCurrentStatus) }}">{{ $salesCurrentStatus }}</span>
+            @if($showSalesFields)
+                <div class="row mb-3">
+                    <div class="col-12">
+                        <div class="left_item">Sales Status:</div>
+                        <div class="right_item">
+                            <span class="badge {{ getBadgeClass($salesCurrentStatus) }}">{{ $salesCurrentStatus }}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
+            @endif
             
-            @if(isset($property) && ($property->property_type == 'lettings' || $property->property_type == 'both'))
+            @if($showLettingFields)
                 <div class="row mb-3">
                     <div class="col-12">
                         <div class="left_item">Letting Status:</div>
@@ -56,7 +61,7 @@
 
         <div class="row">
             <div class="col-12">
-                @if(isset($property) && ($property->property_type == 'sales' || $property->property_type == 'both'))
+                @if($showSalesFields)
                     <div class="form-group">
                         <label for="sales_current_status">Sales Status</label>
                         <select name="sales_current_status" id="sales_current_status" class="form-control" required>
@@ -77,7 +82,7 @@
                     </div>
                 @endif
 
-                @if(isset($property) && ($property->property_type == 'lettings' || $property->property_type == 'both'))
+                @if($showLettingFields)
                     <div class="form-group">
                         <label for="letting_current_status">Letting Status</label>
                         <select name="letting_current_status" id="letting_current_status" class="form-control" required>

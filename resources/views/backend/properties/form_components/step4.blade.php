@@ -1,4 +1,9 @@
-@php $currentStep = 4 ; @endphp
+@php
+    $currentStep = 4;
+    $propertyType = strtolower(trim((string) ($property->property_type ?? '')));
+    $showSalesFields = in_array($propertyType, ['sales', 'both'], true);
+    $showLettingFields = in_array($propertyType, ['lettings', 'both'], true);
+@endphp
 <!-- resources/views/backend/properties/form_components/step4.blade.php -->
 <form id="property-form-step-{{ $currentStep }}" class="rs_steps" method="POST" action="{{ route('admin.properties.store') }}">
     @csrf
@@ -14,7 +19,7 @@
     <div class="steps_wrapper">
         <div class="row h_100_vh">
             <div class="col-lg-5 col-12">
-                @if(isset($property) && ($property->property_type == 'sales' || $property->property_type == 'both'))
+                @if($showSalesFields)
                     <div class="form-group">
                         <label for="sales_current_status">Sales Status</label>
                         <select name="sales_current_status" id="sales_current_status" class="form-control" required>
@@ -35,7 +40,7 @@
                     </div>
                 @endif
 
-                @if(isset($property) && ($property->property_type == 'lettings' || $property->property_type == 'both'))
+                @if($showLettingFields)
                     <div class="form-group">
                         <label for="letting_current_status">Letting Status</label>
                         <select name="letting_current_status" id="letting_current_status" class="form-control" required>
@@ -51,15 +56,19 @@
                     </div>
                 @endif
 
-                <div class="form-group">
-                    <label for="sales_status_description">Sales Description</label>
-                    <textarea name="sales_status_description" id="sales_status_description" rows="6" class="form-control">{{ isset($property) && $property->sales_status_description ? $property->sales_status_description : '' }}</textarea>
-                </div>
+                @if($showSalesFields)
+                    <div class="form-group">
+                        <label for="sales_status_description">Sales Description</label>
+                        <textarea name="sales_status_description" id="sales_status_description" rows="6" class="form-control">{{ isset($property) && $property->sales_status_description ? $property->sales_status_description : '' }}</textarea>
+                    </div>
+                @endif
 
-                <div class="form-group">
-                    <label for="letting_status_description">Letting Description</label>
-                    <textarea name="letting_status_description" id="letting_status_description" rows="6" class="form-control">{{ isset($property) && $property->letting_status_description ? $property->letting_status_description : '' }}</textarea>
-                </div>
+                @if($showLettingFields)
+                    <div class="form-group">
+                        <label for="letting_status_description">Letting Description</label>
+                        <textarea name="letting_status_description" id="letting_status_description" rows="6" class="form-control">{{ isset($property) && $property->letting_status_description ? $property->letting_status_description : '' }}</textarea>
+                    </div>
+                @endif
 
                 <div class="form-group">
                     <label for="available_from">Date of Availability</label>
@@ -70,7 +79,7 @@
                     @enderror
                 </div>
 
-                @if(isset($property) && $property->property_type == 'lettings' || $property->property_type == 'both')
+                @if($showLettingFields)
                     <div class="form-group">
                         <input type="checkbox" name="pets_allow" id="pets_allow" style="width: 5%;" value="{{ isset($property) && $property->pets_allow == 1 ? 1 : 0 }}" {{ isset($property) && $property->pets_allow == 1 ? 'checked' : '' }} />
                         <label for="pets_allow">Pets Allowed</label>

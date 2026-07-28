@@ -1,6 +1,8 @@
 @php
     $frunishingType = $property->frunishing_type ?? '';
-    $propertyType = $property->property_type ?? '';
+    $propertyType = strtolower(trim((string) ($property->property_type ?? '')));
+    $showSalesFields = in_array($propertyType, ['sales', 'both'], true);
+    $showLettingFields = in_array($propertyType, ['lettings', 'both'], true);
     $transactionType = $property->transaction_type ?? '';
     $specificPropertyType = $property->specific_property_type ?? '';
 
@@ -26,13 +28,13 @@
         <span class="left_item">Specific Property Type:</span> 
         <span class="right_item capitalize">{{ $specificPropertyType }} </span>
     </div>
-    @if(isset($property) && ($property->property_type == 'sales' || $property->property_type == 'both'))
+    @if($showSalesFields)
     <div class="accordion_property_info_item">
         <span class="left_item">Sales Status Description:</span> 
         <span class="right_item capitalize"><x-toggle-description :text="$salesStatusDescription" :limit="120" /></span>
     </div>
     @endif
-    @if(isset($property) && ($property->property_type == 'lettings' || $property->property_type == 'both'))
+    @if($showLettingFields)
     <div class="accordion_property_info_item">
         <span class="left_item">Letting Status Description:</span> 
         <span class="right_item capitalize"><x-toggle-description :text="$lettingStatusDescription" :limit="120" /></span>
@@ -115,14 +117,14 @@
                 </div>
             </div>
             {{-- @if(isset($property) && ($property->property_type == 'sales' || $property->property_type == 'both')) --}}
-            <div class="form-group sales_description">
+            <div class="form-group sales_description" @style(['display: none' => !$showSalesFields])>
                 <label for="sales_status_description">Sales Description</label>
                 <textarea name="sales_status_description" id="sales_status_description" rows="6"
                     class="form-control">{{ isset($property) && $property->sales_status_description ? $property->sales_status_description : '' }}</textarea>
             </div>
             {{-- @endif --}}
             {{-- @if(isset($property) && ($property->property_type == 'lettings' || $property->property_type == 'both')) --}}
-            <div class="form-group lettings_description">
+            <div class="form-group lettings_description" @style(['display: none' => !$showLettingFields])>
                 <label for="letting_status_description">Letting Description</label>
                 <textarea name="letting_status_description" id="letting_status_description" rows="6"
                     class="form-control">{{ isset($property) && $property->letting_status_description ? $property->letting_status_description : '' }}</textarea>

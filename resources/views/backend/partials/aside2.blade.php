@@ -886,6 +886,18 @@
         </li>
         @endcanany
 
+        {{-- Super Admin role and permission management --}}
+        @if(auth()->user()->hasRole('Super Admin'))
+            <li class="nav-item">
+                <a href="{{ route('roles.index') }}"
+                    class="nav-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+                    <span class="icon_wrapper">
+                        <i class="fa-solid fa-user-shield"></i>Roles &amp; Permissions
+                    </span>
+                </a>
+            </li>
+        @endif
+
         <!-- Staffs -->
         @canany(['view all staffs', 'manage designations'])
              <li class="nav-item">
