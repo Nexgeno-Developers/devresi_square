@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Backend;
 use App\Models\Notes;
 use App\Models\NoteType;
 use App\Models\Property;
+use App\Models\User;
 use App\Services\Saas\PortalAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 class NotesController 
 {   
@@ -21,12 +23,12 @@ class NotesController
         $noteableType = $request->noteable_type;
         $noteableId = $request->noteable_id;
 
-        if (!class_exists($noteableType)) {
+        if (! $this->isSupportedNoteableType($noteableType)) {
             return response('Invalid noteable type.', 404);
         }
 
         $noteable = $noteableType::findOrFail($noteableId);
-        ensureModelBelongsToCurrentAccount($noteable);
+        $this->ensureNoteableIsAccessible($noteable);
         $this->authorizeNoteableWrite($noteable);
         $noteTypes = NoteType::all();
 
@@ -38,7 +40,7 @@ class NotesController
         ensureModelBelongsToCurrentAccount($note);
 
         $noteable = $note->noteable;
-        ensureModelBelongsToCurrentAccount($noteable);
+        $this->ensureNoteableIsAccessible($noteable);
         $this->authorizeNoteableWrite($noteable);
         $noteTypes = NoteType::all();
 
@@ -61,6 +63,7 @@ class NotesController
                         ->where('noteable_id', $data['noteable_id'])
                         ->findOrFail($data['note_id']);
             ensureModelBelongsToCurrentAccount($note);
+            $this->ensureNoteableIsAccessible($note->noteable);
             $this->authorizeNoteableWrite($note->noteable);
             $note->update([
                 'note_type_id' => $data['note_type_id'],
@@ -69,7 +72,7 @@ class NotesController
             ]);
         } else {
             $noteable = $data['noteable_type']::findOrFail($data['noteable_id']);
-            ensureModelBelongsToCurrentAccount($noteable);
+            $this->ensureNoteableIsAccessible($noteable);
             $this->authorizeNoteableWrite($noteable);
 
             $note = Notes::create([
@@ -79,6 +82,7 @@ class NotesController
                 'note_type_id'  => $data['note_type_id'],
                 'content'       => $data['content'],
                 'visibility'    => $data['visibility'] ?? 'private',
+                'created_by'    => auth()->id(),
             ]);
         }
         return $note;
@@ -88,7 +92,7 @@ class NotesController
     public function storeOrUpdate(Request $request)
     {
         $data = $request->validate([
-            'noteable_type' => 'required|string',
+            'noteable_type' => ['required', 'string', Rule::in($this->supportedNoteableTypes())],
             'noteable_id'   => 'required|integer',
             'note_type_id'   => 'required|exists:note_types,id',
             'content'       => 'required|string',
@@ -114,7 +118,7 @@ class NotesController
     public function listNotes(Request $request)
     {
         $data = $request->validate([
-            'noteable_type' => 'required|string',
+            'noteable_type' => ['required', 'string', Rule::in($this->supportedNoteableTypes())],
             'noteable_id'   => 'required|integer',
             'note_id'       => 'nullable|integer|exists:notes,id',
             'note_type_id'  => 'nullable|integer',
@@ -129,14 +133,12 @@ class NotesController
             ->where('noteable_type', $data['noteable_type'])
             ->where('noteable_id', $data['noteable_id']);
 
-        if (class_exists($data['noteable_type'])) {
-            $noteable = $data['noteable_type']::findOrFail($data['noteable_id']);
-            ensureModelBelongsToCurrentAccount($noteable);
-            $this->authorizeNoteableView($noteable);
+        $noteable = $data['noteable_type']::findOrFail($data['noteable_id']);
+        $this->ensureNoteableIsAccessible($noteable);
+        $this->authorizeNoteableView($noteable);
 
-            if ($this->isPortalPropertyViewer($noteable) && Schema::hasColumn('notes', 'visibility')) {
-                $q->where('visibility', 'portal');
-            }
+        if ($this->isPortalPropertyViewer($noteable) && Schema::hasColumn('notes', 'visibility')) {
+            $q->where('visibility', 'portal');
         }
 
         if (isset($data['note_type_id'] ) && $data['note_type_id']) {
@@ -175,6 +177,7 @@ class NotesController
     {
         $note = Notes::with('noteType')->findOrFail($id);
         ensureModelBelongsToCurrentAccount($note);
+        $this->ensureNoteableIsAccessible($note->noteable);
         $this->authorizeNoteableView($note->noteable);
 
         if ($this->isPortalPropertyViewer($note->noteable)) {
@@ -194,6 +197,7 @@ class NotesController
     {
         $note = Notes::findOrFail($id);
         ensureModelBelongsToCurrentAccount($note);
+        $this->ensureNoteableIsAccessible($note->noteable);
         $this->authorizeNoteableWrite($note->noteable);
         $note->delete();
 
@@ -220,6 +224,29 @@ class NotesController
 
         if ($portalAccessService->isPortalUser($user, $accountId)) {
             abort_unless($portalAccessService->canAccessProperty($user, $noteable), 403, 'You do not have access to property notes.');
+        }
+    }
+
+    private function supportedNoteableTypes(): array
+    {
+        return [Property::class, User::class];
+    }
+
+    private function isSupportedNoteableType(string $type): bool
+    {
+        return in_array($type, $this->supportedNoteableTypes(), true);
+    }
+
+    private function ensureNoteableIsAccessible($noteable): void
+    {
+        ensureModelBelongsToCurrentAccount($noteable);
+
+        if (
+            $noteable instanceof User
+            && ! auth()->user()?->hasRole('Super Admin')
+            && ! User::forAccount(current_account_id())->whereKey($noteable->id)->exists()
+        ) {
+            abort(403, 'This user does not belong to your subscriber account.');
         }
     }
 

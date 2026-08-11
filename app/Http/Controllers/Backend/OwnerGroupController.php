@@ -9,7 +9,8 @@ use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class OwnerGroupController
 {
@@ -18,7 +19,10 @@ class OwnerGroupController
      */
     public function index()
     {
-        $ownerGroups = OwnerGroup::with( 'property')->get();
+        $ownerGroups = $this->ownerGroupsForCurrentAccount()
+            ->with('property')
+            ->get();
+
         return view('backend.owner_groups.index', compact('ownerGroups'));
     }
 
@@ -31,10 +35,10 @@ class OwnerGroupController
         // Fetch users where category_id is 1
         // $users = User::where('category_id', 1)->get();
 
-        // Get all owners (users with role 'owner')
-        $users = User::role('Owner')->get();
+        // Only show owners belonging to the current subscriber account.
+        $users = $this->ownersForCurrentAccount()->get();
 
-        $properties = Property::all();
+        $properties = $this->propertiesForCurrentAccount()->get();
         return view('backend.owner_groups.create', compact('users', 'properties'));
     }
 
@@ -43,8 +47,8 @@ class OwnerGroupController
         // $users = User::all();
         // Fetch users where category_id is 1
         // $users = User::where('category_id', 1)->get();
-        $users = User::role('Owner')->get();
-        $properties = Property::all();
+        $users = $this->ownersForCurrentAccount()->get();
+        $properties = $this->propertiesForCurrentAccount()->get();
         return view('backend.owner_groups.create-group', compact('users', 'properties'));
     }
 
@@ -62,6 +66,9 @@ class OwnerGroupController
             'status' => 'required|string|max:255',
         ]);
 
+        $this->ensurePropertyIsAccessible((int) $validatedData['property_id']);
+        $this->ensureOwnersAreAccessible([(int) $validatedData['user_id']]);
+
         OwnerGroup::create($validatedData);
         flash("Owner Group created successfully!")->success();
         return back();
@@ -74,12 +81,20 @@ class OwnerGroupController
             'property_id' => 'required|exists:properties,id',
             'user_id' => 'required|array|min:1', // Ensure at least one user is selected
             'user_id.*' => 'exists:users,id', // Validate each user ID exists
-            'is_main' => 'required', // Ensure main user is one of the selected users
+            'is_main' => [
+                'required',
+                'integer',
+                'exists:users,id',
+                Rule::in($request->input('user_id', [])),
+            ], // Ensure the main user is one of the selected users
             'purchased_date' => 'required|date',
             'sold_date' => 'nullable|date|after_or_equal:purchased_date', // Optional, must be after purchased date
             'archived_date' => 'nullable|date|after_or_equal:purchased_date', // Optional, must be after purchased date
             'status' => 'required|in:active,inactive,archived',
         ]);
+
+        $this->ensurePropertyIsAccessible((int) $validated['property_id']);
+        $this->ensureOwnersAreAccessible($validated['user_id']);
 
         if ($validated['status'] === 'active' && $request->filled('archived_date')) {
             return response()->json([
@@ -118,7 +133,7 @@ class OwnerGroupController
         }
 
         // Get the current logged-in user
-        $userId = Auth::id();
+        $actorId = Auth::id();
 
         // Create a new OwnerGroup record
         $ownerGroup = OwnerGroup::create([
@@ -127,23 +142,23 @@ class OwnerGroupController
             'sold_date' => $request->sold_date, // Optional field
             'archived_date' => $request->archived_date, // Optional field
             'status' => $validated['status'],
-            'added_by' => $userId,
+            'added_by' => $actorId,
         ]);
 
         // Loop through selected users and create OwnerGroupUser records
-        foreach ($validated['user_id'] as $userId) {
+        foreach ($validated['user_id'] as $ownerId) {
             // Debugging the user ID and is_main value
             // dd($userId, $validated['is_main']); // This will help confirm the values you're comparing
 
             // Ensure type matching by casting to integer
-            $isMain = (intval($userId) === intval($validated['is_main'])) ? 1 : 0; // Set `is_main` for the selected main user
+            $isMain = (intval($ownerId) === intval($validated['is_main'])) ? 1 : 0; // Set `is_main` for the selected main user
             // dd($isMain);
 
             OwnerGroupUser::create([
                 'owner_group_id' => $ownerGroup->id,
-                'user_id' => $userId,
+                'user_id' => $ownerId,
                 'is_main' => $isMain, // Assign 1 if it's the main user, 0 otherwise
-                'added_by' => $userId,
+                'added_by' => $actorId,
             ]);
         }
 
@@ -164,7 +179,10 @@ class OwnerGroupController
      */
     public function show($id)
     {
-        $ownerGroup = OwnerGroup::with('user', 'property', 'estateCharges')->findOrFail($id);
+        $ownerGroup = $this->ownerGroupsForCurrentAccount()
+            ->with('property', 'estateCharges')
+            ->findOrFail($id);
+
         return view('backend.owner_groups.show', compact('ownerGroup'));
     }
 
@@ -173,8 +191,10 @@ class OwnerGroupController
      */
     public function edit($id)
     {
-        $ownerGroup = OwnerGroup::with('ownerGroupUsers.user')->findOrFail($id);
-        $users = User::all(); // Retrieve all users for the dropdown
+        $ownerGroup = $this->ownerGroupsForCurrentAccount()
+            ->with('ownerGroupUsers.user')
+            ->findOrFail($id);
+        $users = $this->ownersForCurrentAccount()->get();
         $selectedUsers = $ownerGroup->ownerGroupUsers->pluck('user_id')->toArray(); // Get the selected user IDs
 
         return view('backend.owner_groups.edit-group',compact('ownerGroup', 'users', 'selectedUsers'));
@@ -200,7 +220,11 @@ class OwnerGroupController
             'property_id' => 'required|exists:properties,id',
             'user_id' => 'required|array|min:1', // Ensure at least one user is selected
             'user_id.*' => 'exists:users,id', // Validate each user ID exists
-            'is_main' => 'required', // Ensure main user is one of the selected users
+            'is_main' => [
+                'required',
+                'integer',
+                Rule::in($request->input('user_id', [])),
+            ], // Ensure the main user is one of the selected users
             'purchased_date' => 'required|date',
             'sold_date' => 'nullable|date|after_or_equal:purchased_date', // Optional, must be after purchased date
             'archived_date' => 'nullable|date', // Optional, must be after purchased date
@@ -215,6 +239,9 @@ class OwnerGroupController
                 'errors' => $validator->errors(),
             ]);
         }
+
+        $this->ensurePropertyIsAccessible((int) $request->property_id);
+        $this->ensureOwnersAreAccessible($request->input('user_id', []));
         
         // Add custom logic
         $validator->after(function ($validator) use ($request) {
@@ -251,7 +278,8 @@ class OwnerGroupController
         $userId = Auth::id();
 
         // Find the existing OwnerGroup record by ID
-        $ownerGroup = OwnerGroup::findOrFail($request->id); // Using request's id to locate the OwnerGroup
+        $ownerGroup = $this->ownerGroupsForCurrentAccount()
+            ->findOrFail($request->route('id'));
 
         // Get validated data
         $validated = $validator->validated();
@@ -453,7 +481,7 @@ class OwnerGroupController
         $userId = Auth::id();
 
         // Find the OwnerGroup record by ID or fail if not found
-        $ownerGroup = OwnerGroup::findOrFail($id);
+        $ownerGroup = $this->ownerGroupsForCurrentAccount()->findOrFail($id);
 
         // Soft delete the related OwnerGroupUser records (soft delete instead of permanent delete)
         foreach ($ownerGroup->ownerGroupUsers as $user) {
@@ -481,12 +509,12 @@ class OwnerGroupController
     {
         // Validate the incoming request
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id', // Ensure the user ID exists in the users table
-            'owner_group_id' => 'required|exists:owner_group,id', // Validate that the owner_group_id exists
+            'user_id' => 'required|integer',
+            'owner_group_id' => 'required|integer',
         ]);
 
         // Find the OwnerGroup based on the provided ID (use $id from the route)
-        $ownerGroup = OwnerGroup::find($id);
+        $ownerGroup = $this->ownerGroupsForCurrentAccount()->find($id);
 
         if (!$ownerGroup) {
             return response()->json([
@@ -495,14 +523,9 @@ class OwnerGroupController
             ]);
         }
 
-        // Get the current logged-in user
-        $userId = Auth::id();
-
-        // Get the user ID from the validated data
-        $userId = $validated['user_id'];
-
-        // Get the owner_group_id from the request (this can be useful for logging or extra validation)
-        $ownerGroupId = $validated['owner_group_id'];
+        $actorId = Auth::id();
+        $selectedOwnerId = (int) $validated['user_id'];
+        $ownerGroupId = (int) $validated['owner_group_id'];
 
         // Check if the owner_group_id from the form matches the one in the URL (for additional safety)
         if ($ownerGroupId != $ownerGroup->id) {
@@ -512,11 +535,22 @@ class OwnerGroupController
             ]);
         }
 
+        $selectedOwnerExists = OwnerGroupUser::where('owner_group_id', $ownerGroup->id)
+            ->where('user_id', $selectedOwnerId)
+            ->exists();
+
+        if (! $selectedOwnerExists) {
+            return response()->json([
+                'status' => false,
+                'notification' => 'The selected owner does not belong to this owner group.',
+            ], 422);
+        }
+
         // Reset all other users in this owner group to not be main
         $updateMain = OwnerGroupUser::where('owner_group_id', $ownerGroup->id)
             ->update([
                 'is_main' => 0,
-                'updated_by' => $userId,
+                'updated_by' => $actorId,
             ]);
 
         if ($updateMain === false) {
@@ -528,8 +562,11 @@ class OwnerGroupController
 
         // Set the selected user as the main user
         $userUpdated = OwnerGroupUser::where('owner_group_id', $ownerGroup->id)
-            ->where('id', $userId)
-            ->update(['is_main' => 1]);
+            ->where('user_id', $selectedOwnerId)
+            ->update([
+                'is_main' => 1,
+                'updated_by' => $actorId,
+            ]);
 
         // Check if the user was successfully updated
         if ($userUpdated) {
@@ -541,6 +578,68 @@ class OwnerGroupController
             return response()->json([
                 'status' => false,
                 'notification' => 'Failed to update the main user!',
+            ]);
+        }
+    }
+
+    private function ownersForCurrentAccount()
+    {
+        return User::role('Owner')
+            ->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($query) => $query->forAccount(current_account_id())
+            )
+            ->orderBy('name');
+    }
+
+    private function propertiesForCurrentAccount()
+    {
+        return Property::query()
+            ->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($query) => $query->forAccount(current_account_id())
+            );
+    }
+
+    private function ownerGroupsForCurrentAccount()
+    {
+        return OwnerGroup::query()
+            ->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($query) => $query->whereHas(
+                    'property',
+                    fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id())
+                )
+            );
+    }
+
+    private function ensurePropertyIsAccessible(int $propertyId): Property
+    {
+        $property = Property::findOrFail($propertyId);
+        ensureModelBelongsToCurrentAccount($property);
+
+        return $property;
+    }
+
+    private function ensureOwnersAreAccessible(array $ownerIds): void
+    {
+        if (auth()->user()?->hasRole('Super Admin')) {
+            return;
+        }
+
+        $ownerIds = collect($ownerIds)
+            ->map(fn ($ownerId) => (int) $ownerId)
+            ->unique()
+            ->values();
+
+        $accessibleOwnerIds = $this->ownersForCurrentAccount()
+            ->whereKey($ownerIds)
+            ->pluck('users.id')
+            ->map(fn ($ownerId) => (int) $ownerId);
+
+        if ($ownerIds->diff($accessibleOwnerIds)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'user_id' => ['One or more selected owners do not belong to your subscriber account.'],
             ]);
         }
     }

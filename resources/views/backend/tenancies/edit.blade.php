@@ -329,8 +329,6 @@
         if (rent > 0 && weeks > 0) {
             const deposit = (rent * 12 / 52 * weeks).toFixed(2);
             $('#tenancies-deposit').val(deposit);
-        } else {
-            $('#tenancies-deposit').val('');
         }
     }
     $('#tenancies-rent, #depositNumber').on('input change', calcDeposit);

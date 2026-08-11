@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Backend;
 use App\Models\Document;
 use App\Models\DocumentType;
 use App\Models\Property;
+use App\Models\Upload;
+use App\Models\User;
 use App\Services\Saas\PortalAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class DocumentsController 
 {   
@@ -24,12 +27,12 @@ class DocumentsController
         $documentableType = $request->documentable_type;
         $documentableId   = $request->documentable_id;
 
-        if (! class_exists($documentableType)) {
+        if (! $this->isSupportedDocumentableType($documentableType)) {
             return response('Invalid documentable type.', 404);
         }
 
         $documentable = $documentableType::findOrFail($documentableId);
-        ensureModelBelongsToCurrentAccount($documentable);
+        $this->ensureDocumentableIsAccessible($documentable);
         $this->authorizeDocumentableUpload($documentable);
         $documentTypes = DocumentType::all();
 
@@ -45,7 +48,7 @@ class DocumentsController
         ensureModelBelongsToCurrentAccount($document);
 
         $documentable  = $document->documentable;
-        ensureModelBelongsToCurrentAccount($documentable);
+        $this->ensureDocumentableIsAccessible($documentable);
         $this->authorizeDocumentableUpload($documentable);
         $documentTypes = DocumentType::all();
 
@@ -69,6 +72,7 @@ class DocumentsController
                                 ->where('documentable_id', $data['documentable_id'])
                                 ->findOrFail($data['document_id']);
             ensureModelBelongsToCurrentAccount($document);
+            $this->ensureDocumentableIsAccessible($document->documentable);
             $this->authorizeDocumentableUpload($document->documentable);
             $document->update([
                 'upload_ids'       => $data['upload_ids'],
@@ -76,7 +80,7 @@ class DocumentsController
             ]);
         } else {
             $documentable = $data['documentable_type']::findOrFail($data['documentable_id']);
-            ensureModelBelongsToCurrentAccount($documentable);
+            $this->ensureDocumentableIsAccessible($documentable);
             $this->authorizeDocumentableUpload($documentable);
 
             // Create new
@@ -86,6 +90,7 @@ class DocumentsController
                 'documentable_id'     => $data['documentable_id'],
                 'upload_ids'          => $data['upload_ids'],
                 'document_type_id'    => $data['document_type_id'] ?? null,
+                'created_by'          => auth()->id(),
             ]);
         }
         return $document;
@@ -97,12 +102,13 @@ class DocumentsController
     public function storeOrUpdate(Request $request)
     {
         $data = $request->validate([
-            'documentable_type'   => ['required', 'string'],
+            'documentable_type'   => ['required', 'string', Rule::in($this->supportedDocumentableTypes())],
             'documentable_id'     => ['required', 'integer'],
             'upload_ids'          => ['required', 'string'], // comma-separated IDs
             'document_type_id'    => ['nullable', 'integer', Rule::exists('document_types', 'id')],
             'document_id'         => ['nullable', 'integer', Rule::exists('documents', 'id')],
         ]);
+        $this->ensureUploadsAreAccessible($data['upload_ids']);
 
         $document = $this->saveDocumentData($data);
 
@@ -119,7 +125,7 @@ class DocumentsController
     public function listDocuments(Request $request)
     {
         $data = $request->validate([
-            'documentable_type' => 'required|string',
+            'documentable_type' => ['required', 'string', Rule::in($this->supportedDocumentableTypes())],
             'documentable_id'   => 'required|integer',
             'document_id'       => 'nullable|integer|exists:documents,id',
             'document_type_id'  => 'nullable|integer',
@@ -134,11 +140,9 @@ class DocumentsController
             ->where('documentable_type', $data['documentable_type'])
             ->where('documentable_id',   $data['documentable_id']);
 
-        if (class_exists($data['documentable_type'])) {
-            $documentable = $data['documentable_type']::findOrFail($data['documentable_id']);
-            ensureModelBelongsToCurrentAccount($documentable);
-            $this->authorizeDocumentableView($documentable);
-        }
+        $documentable = $data['documentable_type']::findOrFail($data['documentable_id']);
+        $this->ensureDocumentableIsAccessible($documentable);
+        $this->authorizeDocumentableView($documentable);
 
         if (! empty($data['document_type_id'])) {
             $q->where('document_type_id', $data['document_type_id']);
@@ -169,6 +173,7 @@ class DocumentsController
     {
         $document = Document::with('documentType')->findOrFail($id);
         ensureModelBelongsToCurrentAccount($document);
+        $this->ensureDocumentableIsAccessible($document->documentable);
         $this->authorizeDocumentableView($document->documentable);
 
         $html = view('components.backend.documents._documents_show', compact('document'))
@@ -184,6 +189,7 @@ class DocumentsController
     {
         $document = Document::findOrFail($id);
         ensureModelBelongsToCurrentAccount($document);
+        $this->ensureDocumentableIsAccessible($document->documentable);
         $this->authorizeDocumentableUpload($document->documentable);
         $document->delete();
 
@@ -210,6 +216,55 @@ class DocumentsController
 
         if ($portalAccessService->isPortalUser($user, $accountId)) {
             abort_unless($portalAccessService->canViewDocuments($user, $documentable), 403, 'You do not have access to property documents.');
+        }
+    }
+
+    private function supportedDocumentableTypes(): array
+    {
+        return [Property::class, User::class];
+    }
+
+    private function isSupportedDocumentableType(string $type): bool
+    {
+        return in_array($type, $this->supportedDocumentableTypes(), true);
+    }
+
+    private function ensureDocumentableIsAccessible($documentable): void
+    {
+        ensureModelBelongsToCurrentAccount($documentable);
+
+        if (
+            $documentable instanceof User
+            && ! auth()->user()?->hasRole('Super Admin')
+            && ! User::forAccount(current_account_id())->whereKey($documentable->id)->exists()
+        ) {
+            abort(403, 'This user does not belong to your subscriber account.');
+        }
+    }
+
+    private function ensureUploadsAreAccessible(string $uploadIds): void
+    {
+        if (auth()->user()?->hasRole('Super Admin')) {
+            return;
+        }
+
+        $tokens = collect(explode(',', $uploadIds))->map(fn ($id) => trim($id))->filter()->values();
+        if ($tokens->contains(fn ($id) => ! ctype_digit($id))) {
+            throw ValidationException::withMessages([
+                'upload_ids' => ['The selected files are invalid.'],
+            ]);
+        }
+
+        $requestedIds = $tokens->map(fn ($id) => (int) $id)->unique()->values();
+        $accessibleIds = Upload::forAccount(current_account_id())
+            ->whereKey($requestedIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($requestedIds->diff($accessibleIds)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'upload_ids' => ['One or more selected files do not belong to your subscriber account.'],
+            ]);
         }
     }
 

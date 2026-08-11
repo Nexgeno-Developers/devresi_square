@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -53,5 +54,16 @@ class OwnerGroup extends Model
     public function ownerGroupUsers(): HasMany
     {
         return $this->hasMany(OwnerGroupUser::class);
+    }
+
+    /**
+     * Limit owner groups to active assignments containing the given user.
+     */
+    public function scopeActiveForUser(Builder $query, int $userId): Builder
+    {
+        return $query
+            ->where('status', 'active')
+            ->whereHas('ownerGroupUsers', fn (Builder $membershipQuery) => $membershipQuery
+                ->where('user_id', $userId));
     }
 }

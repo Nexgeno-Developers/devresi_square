@@ -6,12 +6,14 @@ use Carbon\Carbon;
 use App\Models\Event;
 use App\Models\Property;
 use App\Models\RepairIssue;
+use App\Models\User;
 use App\Models\EventInstance;
 use App\Models\EventInstanceChange;
 use GrahamCampbell\ResultType\Success;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use RRule\RRule;
 
 class EventController
@@ -112,8 +114,8 @@ class EventController
             'sub_type_id' => 'required|exists:event_sub_types,id',
             'office' => 'nullable|string|max:100',
             'status' => 'nullable|in:Confirmed,Pending,Cancelled,Rescheduled,Scheduled',
-            'diary_owner' => 'nullable|string|max:255',
-            'on_behalf_of' => 'nullable|string|max:255',
+            'diary_owner' => 'nullable|integer|exists:users,id',
+            'on_behalf_of' => 'nullable|integer|exists:users,id',
             'location' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'start_datetime' => 'required|date',
@@ -131,6 +133,7 @@ class EventController
             // 'user_ids' => 'nullable|array',
             // 'user_ids.*' => 'exists:users,id',
         ]);
+        $this->ensureEventRelationsAreAccessible($validated);
 
         \DB::beginTransaction();
         try {
@@ -309,8 +312,8 @@ class EventController
             'sub_type_id' => 'required|exists:event_sub_types,id',
             'office' => 'nullable|string|max:100',
             'status' => 'nullable|in:Confirmed,Pending,Cancelled,Rescheduled,Scheduled',
-            'diary_owner' => 'nullable|string|max:255',
-            'on_behalf_of' => 'nullable|string|max:255',
+            'diary_owner' => 'nullable|integer|exists:users,id',
+            'on_behalf_of' => 'nullable|integer|exists:users,id',
             'location' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'reminder' => ['nullable', 'string', 'regex:/^\d+(\s?(minutes|hours|days))?$/'],
@@ -331,6 +334,7 @@ class EventController
             // 'user_ids' => 'nullable|array',
             // 'user_ids.*' => 'exists:users,id',
         ]);
+        $this->ensureEventRelationsAreAccessible($validated);
 
         \DB::beginTransaction();
 
@@ -1015,6 +1019,53 @@ class EventController
         $event->properties()->sync($propertyIds);
         $event->repairIssues()->sync($repairIds);
         // $event->users()->sync($validated['user_ids'] ?? []);
+    }
+
+    private function ensureEventRelationsAreAccessible(array $validated): void
+    {
+        if (auth()->user()?->hasRole('Super Admin')) {
+            return;
+        }
+
+        $this->ensureIdsAreAccessible(
+            $validated['property_ids'] ?? [],
+            Property::forAccount(current_account_id()),
+            'property_ids',
+            'properties'
+        );
+        $this->ensureIdsAreAccessible(
+            $validated['repair_ids'] ?? [],
+            RepairIssue::forAccount(current_account_id()),
+            'repair_ids',
+            'repair issues'
+        );
+        $this->ensureIdsAreAccessible(
+            array_filter([
+                $validated['diary_owner'] ?? null,
+                $validated['on_behalf_of'] ?? null,
+            ]),
+            User::forAccount(current_account_id()),
+            'diary_owner',
+            'users'
+        );
+    }
+
+    private function ensureIdsAreAccessible(array $ids, $query, string $field, string $label): void
+    {
+        if (empty($ids)) {
+            return;
+        }
+
+        $requestedIds = collect($ids)->map(fn ($id) => (int) $id)->unique()->values();
+        $accessibleIds = $query->whereKey($requestedIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($requestedIds->diff($accessibleIds)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                $field => ["One or more selected {$label} do not belong to your subscriber account."],
+            ]);
+        }
     }
 
 }

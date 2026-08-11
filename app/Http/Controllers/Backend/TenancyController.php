@@ -17,6 +17,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class TenancyController
 {
@@ -54,8 +56,8 @@ class TenancyController
     // Show the form for creating a new tenancy
     public function create(Request $request)
     {
-        $tenants = User::role('Tenant')->get();
-        $property_managers = User::role('Property Manager')->get();
+        $tenants = $this->usersWithRoleForCurrentAccount('Tenant')->get();
+        $property_managers = $this->usersWithRoleForCurrentAccount('Property Manager')->get();
         $tenancyTypes = TenancyType::all();
         $tenancySubStatuses = TenancySubStatus::all();
         $propertyId = $request->query('property_id');
@@ -101,7 +103,11 @@ class TenancyController
             'user_id' => 'required|array', // Validate that the user_id is an array
             'user_id.*' => 'exists:users,id', // Ensure each user_id exists in the users table
 
-            'is_main_person' => 'required|exists:users,id', // Ensure main person is a valid user ID
+            'is_main_person' => [
+                'required',
+                'integer',
+                Rule::in($request->input('user_id', [])),
+            ],
             'property_manager' => 'nullable|array', // Ensure property_manager is an array (nullable)
             'property_manager.*' => 'exists:users,id', // Ensure each property manager exists in the users table
         ]);
@@ -119,6 +125,9 @@ class TenancyController
         $property = Property::findOrFail($validated['property_id']);
         ensureModelBelongsToCurrentAccount($property);
         $validated['account_id'] = $property->account_id ?: current_account_id();
+        $this->ensureRoleUsersAreAccessible($validated['user_id'], 'Tenant', 'user_id');
+        $this->ensureRoleUsersAreAccessible($validated['property_manager'] ?? [], 'Property Manager', 'property_manager');
+        $this->ensureOfferMatchesProperty($validated['offer_id'] ?? null, $property);
 
         // If the new tenancy is Active, archive any current active tenancy for the same property.
         if ($validated['status'] === 'Active') {
@@ -236,10 +245,16 @@ class TenancyController
         $tenancy = Tenancy::with([
             'property',
             'offer',
-            'tenantMembers.user', // eager load tenant details
+            'tenantMembers' => fn ($query) => $query->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($memberQuery) => $memberQuery->forAccount(current_account_id())
+            )->with('user'),
             'tenancyType',
             'tenancySubStatus',
-            'propertyManagers'
+            'propertyManagers' => fn ($query) => $query->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($userQuery) => $userQuery->forAccount(current_account_id())
+            ),
         ])->findOrFail($id);
         ensureModelBelongsToCurrentAccount($tenancy);
 
@@ -250,10 +265,16 @@ class TenancyController
     {
         $tenancy = Tenancy::with([
             'property',
-            'tenantMembers.user',
+            'tenantMembers' => fn ($query) => $query->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($memberQuery) => $memberQuery->forAccount(current_account_id())
+            )->with('user'),
             'tenancyType',
             'tenancySubStatus',
-            'propertyManagers',
+            'propertyManagers' => fn ($query) => $query->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($userQuery) => $userQuery->forAccount(current_account_id())
+            ),
         ])->findOrFail($id);
         ensureModelBelongsToCurrentAccount($tenancy);
 
@@ -366,10 +387,10 @@ class TenancyController
         // $property_managers = User::where('category_id', 2)->get();
 
         // Get all tenants (users with role 'tenant')
-        $tenants = User::role('Tenant')->get();
+        $tenants = $this->usersWithRoleForCurrentAccount('Tenant')->get();
 
         // Get all property managers (users with role 'property_manager')
-        $property_managers = User::role('Property Manager')->get();
+        $property_managers = $this->usersWithRoleForCurrentAccount('Property Manager')->get();
 
         // Fetch all tenancy types
         $tenancyTypes = TenancyType::all();
@@ -378,10 +399,15 @@ class TenancyController
         $tenancySubStatuses = TenancySubStatus::all();
 
         // Fetch the tenancy's current property managers
-        $currentPropertyManagers = PropertyManagerTenancy::where('tenancy_id', $id)->pluck('property_manager_id')->toArray();
+        $currentPropertyManagers = PropertyManagerTenancy::where('tenancy_id', $id)
+            ->whereIn('property_manager_id', $property_managers->pluck('id'))
+            ->pluck('property_manager_id')
+            ->toArray();
 
         // Fetch the tenancy's current tenant members
-        $tenantMembers = TenantMember::where('tenancy_id', $id)->get();
+        $tenantMembers = TenantMember::where('tenancy_id', $id)
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->get();
 
         // Find the main person from the tenant members
         $mainPersonId = $tenantMembers->where('is_main_person', true)->pluck('user_id')->first();
@@ -429,7 +455,11 @@ class TenancyController
             'user_id' => 'required|array', // Validate that the user_id is an array
             'user_id.*' => 'exists:users,id', // Ensure each user_id exists in the users table
 
-            'is_main_person' => 'required|exists:users,id', // Ensure main person is a valid user ID
+            'is_main_person' => [
+                'required',
+                'integer',
+                Rule::in($request->input('user_id', [])),
+            ],
             'property_manager' => 'nullable|array', // Ensure property_manager is an array (nullable)
             'property_manager.*' => 'exists:users,id', // Ensure each property manager exists in the users table
         ]);
@@ -450,6 +480,9 @@ class TenancyController
         $property = Property::findOrFail($validated['property_id']);
         ensureModelBelongsToCurrentAccount($property);
         $validated['account_id'] = $property->account_id ?: $tenancy->account_id ?: current_account_id();
+        $this->ensureRoleUsersAreAccessible($validated['user_id'], 'Tenant', 'user_id');
+        $this->ensureRoleUsersAreAccessible($validated['property_manager'] ?? [], 'Property Manager', 'property_manager');
+        $this->ensureOfferMatchesProperty($validated['offer_id'] ?? null, $property);
 
         // Update the tenancy record
         $tenancy->update($validated);
@@ -506,5 +539,51 @@ class TenancyController
 
         return redirect()->route('admin.properties.index', ['property_id' => $propertyId, 'tabname' => 'tenancy'])
             ->with('success', 'Tenancy deleted successfully!');
+    }
+
+    private function usersWithRoleForCurrentAccount(string $role)
+    {
+        return User::role($role)
+            ->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($query) => $query->forAccount(current_account_id())
+            )
+            ->orderBy('name');
+    }
+
+    private function ensureRoleUsersAreAccessible(array $userIds, string $role, string $field): void
+    {
+        if (auth()->user()?->hasRole('Super Admin') || empty($userIds)) {
+            return;
+        }
+
+        $requestedIds = collect($userIds)->map(fn ($id) => (int) $id)->unique()->values();
+        $accessibleIds = $this->usersWithRoleForCurrentAccount($role)
+            ->whereKey($requestedIds)
+            ->pluck('users.id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($requestedIds->diff($accessibleIds)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                $field => ["One or more selected {$role} users do not belong to your subscriber account."],
+            ]);
+        }
+    }
+
+    private function ensureOfferMatchesProperty(int|string|null $offerId, Property $property): void
+    {
+        if (! $offerId) {
+            return;
+        }
+
+        $offerExists = Offer::whereKey($offerId)
+            ->where('property_id', $property->id)
+            ->exists();
+
+        if (! $offerExists) {
+            throw ValidationException::withMessages([
+                'offer_id' => ['The selected offer does not belong to this property.'],
+            ]);
+        }
     }
 }

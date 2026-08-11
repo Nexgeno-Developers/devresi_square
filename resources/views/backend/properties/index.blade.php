@@ -879,9 +879,18 @@ var_dump($propertyId);
 
                 e.preventDefault(); // Prevent default form submission
 
-                btn.html('<i class="ri-refresh-line"></i>');
-                btn.css("opacity", "0.7");
-                btn.css("pointer-events", "none");
+                if (!form.find('input[name="property_id"]').val()) {
+                    AIZ.plugins.notify('danger', 'Unable to determine the property. Please close the form and try again.');
+                    return;
+                }
+
+                if (form.find('input[name="is_main"]:checked').length === 0) {
+                    AIZ.plugins.notify('danger', 'Please select a main user.');
+                    return;
+                }
+
+                btn.prop('disabled', true);
+                btn.text('Saving...');
 
                 $.ajax({
                     type: 'POST',
@@ -889,8 +898,7 @@ var_dump($propertyId);
                     data: form.serialize(),
                     success: function(response) {
                         btn.html(btn_text);
-                        btn.css("opacity", "1");
-                        btn.css("pointer-events", "inherit");
+                        btn.prop('disabled', false);
 
                         if (response.status) {
                             AIZ.plugins.notify('success', response.notification);
@@ -935,8 +943,7 @@ var_dump($propertyId);
                     },
                     error: function(xhr, status, error) {
                         btn.html(btn_text);
-                        btn.css("opacity", "1");
-                        btn.css("pointer-events", "inherit");
+                        btn.prop('disabled', false);
 
                         let defaultMessage = "There was an error with the form submission. Please try again.";
 
@@ -978,43 +985,54 @@ var_dump($propertyId);
                 var propertyId = document.getElementById('hidden-property-id').getAttribute(
                     'data-property-id') ?? ''; // Fetch the property_id
 
-                // Open the modal (assuming smallModal is a function that handles modal rendering)
-                smallModal(url, header);
+                // Initialize fields only after the AJAX response has been inserted into the modal.
+                smallModal(url, header, function(modal) {
+                    const form = modal.find('#owner-group-form');
+                    const userSelect = form.find('#user_id');
+                    const userOptionsContainer = form.find('#user-options');
 
-                // Ensure modal content is loaded and set the property_id in the hidden field inside the modal form
-                $('#smallModal').on('shown.bs.modal', function() {
-                    // Set the property_id in the hidden input field inside the modal form
-                    $("input[name='property_id']").val(propertyId);
-                    initSelect2('.select2');
+                    form.find("input[name='property_id']").val(propertyId);
 
-                    const userSelect = $('#user_id');
-                    const userOptionsContainer = $('#user-options');
-
-                    // Listen for changes in the user dropdown
-                    userSelect.on('change', function() {
+                    function renderMainOwnerOptions() {
                         const selectedUsers = userSelect.val() || [];
+                        const selectedMainUser = userOptionsContainer
+                            .find('input[name="is_main"]:checked')
+                            .val();
+
                         userOptionsContainer.empty();
 
-                        if (selectedUsers.length > 0) {
-                            // Add default label
-                            userOptionsContainer.append(`
-                            <label class="mb-2">Select Main User</label>
-                        `);
-
-                            // Add radio buttons for each selected user
-                            selectedUsers.forEach(userId => {
-                                const userName = userSelect.find(
-                                        `option[value="${userId}"]`)
-                                    .text(); // Get the name from the option
-                                userOptionsContainer.append(`
-                                <div class="form-check">
-                                    <input type="radio" name="is_main" value="${userId}" id="is_main_${userId}" class="form-check-input">
-                                    <label for="is_main_${userId}" class="form-check-label">${userName}</label>
-                                </div>
-                            `);
-                            });
+                        if (selectedUsers.length === 0) {
+                            return;
                         }
-                    });
+
+                        userOptionsContainer.append(
+                            '<label class="mb-2">Select Main User <span class="text-danger">*</span></label>'
+                        );
+
+                        selectedUsers.forEach(function(userId) {
+                            const userName = userSelect
+                                .find('option[value="' + userId + '"]')
+                                .text();
+                            const isChecked = selectedMainUser == userId ||
+                                (selectedUsers.length === 1 && !selectedMainUser);
+
+                            userOptionsContainer.append(
+                                '<div class="form-check">' +
+                                    '<input type="radio" name="is_main" value="' + userId +
+                                        '" id="is_main_' + userId +
+                                        '" class="form-check-input" ' +
+                                        (isChecked ? 'checked' : '') + '>' +
+                                    '<label for="is_main_' + userId +
+                                        '" class="form-check-label">' + userName + '</label>' +
+                                '</div>'
+                            );
+                        });
+                    }
+
+                    userSelect
+                        .off('change.ownerGroupCreate')
+                        .on('change.ownerGroupCreate', renderMainOwnerOptions);
+                    renderMainOwnerOptions();
                 });
             });
 

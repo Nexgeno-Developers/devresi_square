@@ -44,7 +44,7 @@ function largeModal(url, header) {
     });
 }
 
-function smallModal(url, header) {
+function smallModal(url, header, onLoaded) {
     $("#smallModal .modal-body").html("Loading...");
     $("#smallModal .modal-title").html("Loading...");
 
@@ -54,6 +54,10 @@ function smallModal(url, header) {
         success: function (response) {
             $("#smallModal .modal-body").html(response);
             $("#smallModal .modal-title").html(header);
+
+            if (typeof onLoaded === "function") {
+                onLoaded($("#smallModal"));
+            }
         },
     });
 }
@@ -354,4 +358,3 @@ $(document).on('change', 'input[name="epc_required"]', function() {
 //   });
 
 // //can use in anywhere initPlaces('#places-wrapper', '#add-place-btn');
-  

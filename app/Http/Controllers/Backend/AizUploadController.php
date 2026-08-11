@@ -247,6 +247,8 @@ class AizUploadController
     public function destroy($id)
     {
         $upload = Upload::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($upload);
+
         // 1) Check if the Upload model uses SoftDeletes
         $usesSoftDeletes = in_array(
             SoftDeletes::class,

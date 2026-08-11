@@ -109,6 +109,8 @@ class TransactionController extends Controller
         $transaction = DB::transaction(function () use ($validated, $amount) {
             $payload = $validated;
             $payload['amount'] = $amount;
+            $payload['tax_amount'] = 0;
+            $payload['total_amount'] = $amount;
             if (empty($payload['transaction_date'])) {
                 $payload['transaction_date'] = $payload['date'] ?? now()->toDateString();
             }

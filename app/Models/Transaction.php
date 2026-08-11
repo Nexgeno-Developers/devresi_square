@@ -25,8 +25,8 @@ class Transaction extends Model
         // 'balance',
         'transaction_date',
         'amount',
-        // 'tax_amount',
-        // 'total_amount',
+        'tax_amount',
+        'total_amount',
         'transaction_reference',
         'status',
         'notes',
@@ -69,6 +69,14 @@ class Transaction extends Model
 
     protected static function booted()
     {
+        static::saving(function (Transaction $transaction) {
+            if ($transaction->amount !== null) {
+                // Transactions currently have no tax input, so the payable total is the amount.
+                $transaction->tax_amount = 0;
+                $transaction->total_amount = $transaction->amount;
+            }
+        });
+
         static::created(fn ($transaction) => $transaction->updateInvoiceStatus());
         static::updated(fn ($transaction) => $transaction->updateInvoiceStatus());
         static::deleted(fn ($transaction) => $transaction->updateInvoiceStatus());

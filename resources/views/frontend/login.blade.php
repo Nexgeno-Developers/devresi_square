@@ -15,12 +15,18 @@
                         <h2 class="fw-bold mb-2 text-uppercase">Login</h2>
                         <p class=" mb-5">Please enter your login and password!</p>
 
+                        @include('auth.partials.login-errors')
+
                         <div class="form-outline form-white mb-4">
-                            <input type="email" class="form-control form-control-lg" id="email" name="email" placeholder="Email" required />
+                            <input type="email" class="form-control form-control-lg @error('email') is-invalid @enderror"
+                                id="email" name="email" value="{{ old('email') }}" placeholder="Email"
+                                autocomplete="email" required autofocus />
                         </div>
 
                         <div class="form-outline form-white mb-4">
-                            <input type="password" class="form-control form-control-lg" id="password" name="password" placeholder="Password" required />
+                            <input type="password" class="form-control form-control-lg @error('password') is-invalid @enderror"
+                                id="password" name="password" placeholder="Password"
+                                autocomplete="current-password" required />
                         </div>
 
                         <div class="form-outline form-white mb-4">

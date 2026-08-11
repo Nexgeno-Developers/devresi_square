@@ -1,12 +1,5 @@
 {{-- Hidden div for property ID --}}
-<div id="hidden-property-id" class="d-none" data-property-id="{{ $propertyId }}">
-    @php
-        // Debugging the propertyId
-        echo '<pre>';
-        var_dump($propertyId);
-        echo '</pre>';
-    @endphp
-</div>
+<div id="hidden-property-id" class="d-none" data-property-id="{{ $propertyId }}"></div>
 
 <div class="accordion" id="offersAccordion">
     @if(isset($offers))
@@ -16,11 +9,8 @@
         // Check if tenant_details is already an array or string
         $tenantDetails = is_string($offer->tenant_details) ? json_decode($offer->tenant_details, true) : $offer->tenant_details;
 
-        // Collect the user IDs
-        $userIds = array_keys($tenantDetails);  // This gives an array of user IDs (e.g., [12, 15, 18])
-
-        // Retrieve the users from the database using the user IDs
-        $users = \App\Models\User::whereIn('id', $userIds)->get();
+        // Tenant users are account-scoped and eager-loaded by the controller.
+        $users = $offer->getRelation('tenantUsers');
 
         // Find the main tenant (the user with main_person flag set to true)
         $mainPersonId = null;

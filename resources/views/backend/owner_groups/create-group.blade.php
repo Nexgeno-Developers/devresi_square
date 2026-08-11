@@ -84,13 +84,4 @@
 <script>
 
     initSelect2('.select2');
-
-    // Form submission validation
-    $('#mainForm form').on('submit', function(e) {
-        if ($('input[name="is_main"]:checked').length === 0) {
-            e.preventDefault(); // Prevent form submission
-            alert('Please select a main user.'); // Show alert message
-        }
-    });
 </script>
-

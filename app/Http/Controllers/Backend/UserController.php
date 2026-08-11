@@ -13,6 +13,7 @@ use App\Models\Nationality;
 use App\Models\NoteType;
 // use App\Models\UserCategory;
 use App\Models\AccountUser;
+use App\Models\OwnerGroup;
 use App\Models\PropertyParticipant;
 use App\Models\Property;
 use App\Models\User;
@@ -335,7 +336,7 @@ class UserController
             'tenantMembers',
             'documents',
         ]);
-        $this->scopeUsersToCurrentAccount($usersQuery);
+        $this->scopeContactsToCurrentUser($usersQuery);
 
         // Apply search filter
         if ($request->filled('search')) {
@@ -400,7 +401,7 @@ class UserController
                     ->whereDoesntHave('roles', function ($q) {
                         $q->whereIn('name', ['Staff', 'Super Admin']);
                     });
-                $this->scopeUsersToCurrentAccount($positionQuery);
+                $this->scopeContactsToCurrentUser($positionQuery);
 
                 if ($request->filled('search')) {
                     $search = $request->search;
@@ -467,6 +468,16 @@ class UserController
             ]));
         }
 
+        if (auth()->user()->hasRole('Landlord') && (int) $user->created_by !== (int) auth()->id()) {
+            $firstUser = $users->first();
+
+            return redirect()->route('admin.users.index', array_filter([
+                'user_id' => $firstUser->id,
+                'tabname' => $tabName,
+                'role' => $role,
+            ]));
+        }
+
         $this->ensureUserAccessible($user);
 
         // Define your tab list
@@ -525,9 +536,20 @@ class UserController
                     }
                 }
 
+                $activeOwnerPropertyIds = OwnerGroup::query()
+                    ->activeForUser((int) $user->id)
+                    ->pluck('property_id')
+                    ->all();
+
+                $propertyIds = array_values(array_unique(array_merge(
+                    $propertyIds,
+                    $activeOwnerPropertyIds
+                )));
+
                 $properties = ! empty($propertyIds)
                     ? Property::query()
                         ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                        ->with('countryRelation:id,name')
                         ->whereIn('id', $propertyIds)
                         ->get()
                     : collect(); // empty collection if no IDs
@@ -1530,6 +1552,17 @@ class UserController
                 $accountUserQuery->where('account_id', current_account_id())
                     ->where('status', 'active');
             });
+        }
+
+        return $query;
+    }
+
+    private function scopeContactsToCurrentUser($query)
+    {
+        $this->scopeUsersToCurrentAccount($query);
+
+        if (auth()->user()?->hasRole('Landlord')) {
+            $query->where('users.created_by', auth()->id());
         }
 
         return $query;

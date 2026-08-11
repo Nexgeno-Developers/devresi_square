@@ -6,8 +6,11 @@ use Illuminate\Http\Request;
 use App\Models\ComplianceType;
 use App\Models\ComplianceRecord;
 use App\Models\ComplianceDetail;
+use App\Models\Property;
+use App\Models\Upload;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class ComplianceController
 {
@@ -71,7 +74,10 @@ class ComplianceController
     {
         $complianceType = ComplianceType::findOrFail($complianceTypeId);
         $complianceRecord = $complianceRecordId
-        ? ComplianceRecord::with('complianceType', 'complianceDetails')->findOrFail($complianceRecordId)
+        ? $this->complianceRecordsForCurrentAccount()
+            ->with('complianceType', 'complianceDetails')
+            ->where('compliance_type_id', $complianceType->id)
+            ->findOrFail($complianceRecordId)
         : null;
 
         // Pass the complianceDetails data to the view to pre-fill form fields
@@ -95,6 +101,8 @@ class ComplianceController
             'expiry_date' => 'required|date',
             'photos' => 'nullable|string', // Validate as a string (e.g., "1,2")
         ]);
+        $this->findAccessibleProperty((int) $validated['property_id']);
+        $this->ensureUploadsAreAccessible($validated['photos'] ?? null);
 
         // Handle the photos field (either uploaded photos or a comma-separated string of photo IDs)
         $photos = $validated['photos'] ? explode(',', $validated['photos']) : [];
@@ -146,7 +154,10 @@ class ComplianceController
 
         // Find the existing compliance record by ID
         $complianceRecordId = $validated['record_id'];
-        $complianceRecord = ComplianceRecord::findOrFail($complianceRecordId);
+        $this->findAccessibleProperty((int) $validated['property_id']);
+        $this->ensureUploadsAreAccessible($validated['photos'] ?? null);
+        $complianceRecord = $this->complianceRecordsForCurrentAccount()
+            ->findOrFail($complianceRecordId);
 
         // Handle the photos field (either uploaded photos or a comma-separated string of photo IDs)
         $photos = $validated['photos'] ? implode(',', explode(',', $validated['photos'])) : $complianceRecord->photos;
@@ -198,11 +209,55 @@ class ComplianceController
     public function deleteCompliance($id)
     {
         try {
-            $complianceRecord = ComplianceRecord::findOrFail($id);
+            $complianceRecord = $this->complianceRecordsForCurrentAccount()->findOrFail($id);
             $complianceRecord->delete(); // Delete the compliance record
             return response()->json(['success' => true, 'message' => 'Compliance record deleted successfully.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error deleting compliance record.']);
+        }
+    }
+
+    private function complianceRecordsForCurrentAccount()
+    {
+        return ComplianceRecord::query()
+            ->whereHas('property', function ($propertyQuery) {
+                if (! auth()->user()?->hasRole('Super Admin')) {
+                    $propertyQuery->forAccount(current_account_id());
+                }
+            });
+    }
+
+    private function findAccessibleProperty(int $propertyId): Property
+    {
+        return Property::query()
+            ->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($query) => $query->forAccount(current_account_id())
+            )
+            ->findOrFail($propertyId);
+    }
+
+    private function ensureUploadsAreAccessible(?string $uploadIds): void
+    {
+        if (auth()->user()?->hasRole('Super Admin') || blank($uploadIds)) {
+            return;
+        }
+
+        $requestedIds = collect(explode(',', $uploadIds))
+            ->map(fn ($id) => trim($id))
+            ->filter(fn ($id) => ctype_digit($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+        $accessibleIds = Upload::forAccount(current_account_id())
+            ->whereKey($requestedIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($requestedIds->diff($accessibleIds)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'photos' => ['One or more selected files do not belong to your subscriber account.'],
+            ]);
         }
     }
 

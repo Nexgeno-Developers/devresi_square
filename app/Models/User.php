@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Models\SysReceipt;
 
@@ -121,6 +122,19 @@ class User extends Authenticatable
     public function activeAccountUsers(): HasMany
     {
         return $this->accountUsers()->where('status', 'active');
+    }
+
+    public function scopeForAccount(Builder $query, int|string|null $accountId): Builder
+    {
+        if ($accountId === null || $accountId === '') {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->whereHas('accountUsers', function (Builder $accountUserQuery) use ($accountId) {
+            $accountUserQuery
+                ->where('account_id', $accountId)
+                ->where('status', 'active');
+        });
     }
 
     public function propertyParticipants(): HasMany

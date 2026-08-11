@@ -8,22 +8,24 @@ use App\Models\Tenancy;
 use App\Models\Property;
 use App\Models\UserDetail;
 use App\Models\TenantMember;
+use App\Models\AccountUser;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 
 class OfferController
 {
     public function index()
     {
-        $offers = Offer::with('property')->get();
+        $offers = $this->offersForCurrentAccount()->with('property')->get();
         return view('backend.offers.index', compact('offers'));
     }
 
     public function create()
     {
-        $properties = Property::all();
+        $properties = $this->propertiesForCurrentAccount()->get();
         return view('backend.offers.create', compact('properties'));
     }
 
@@ -54,6 +56,7 @@ class OfferController
                 'term' => 'required|string|max:255',                 // Validate the term as a string
                 'moveInDate' => 'required|date',                    // Validate move-in date
             ]);
+            $property = $this->findAccessibleProperty((int) $request->input('property_id'));
 
             // Collect tenant details from the request
             $tenantDetails = [];
@@ -72,6 +75,19 @@ class OfferController
                 ]);
 
                 safeAssignRoles($user, ['Tenant', 'User']);
+                AccountUser::updateOrCreate(
+                    [
+                        'account_id' => $property->account_id ?: current_account_id(),
+                        'user_id' => $user->id,
+                    ],
+                    [
+                        'member_type' => 'tenant',
+                        'access_level' => 'view',
+                        'can_login' => false,
+                        'status' => 'active',
+                        'created_by' => Auth::id(),
+                    ]
+                );
 
                 // Create corresponding user details (tenancy related information)
                 UserDetail::create([
@@ -132,8 +148,8 @@ class OfferController
 
     public function edit($id)
     {
-        $offer = Offer::findOrFail($id);
-        $properties = Property::all();
+        $offer = $this->offersForCurrentAccount()->findOrFail($id);
+        $properties = $this->propertiesForCurrentAccount()->get();
         return view('backend.offers.edit', compact('offer', 'properties'));
     }
 
@@ -147,14 +163,15 @@ class OfferController
             'move_in_date' => 'required|date',
         ]);
 
-        $offer = Offer::findOrFail($id);
+        $property = $this->findAccessibleProperty((int) $request->property_id);
+        $offer = $this->offersForCurrentAccount()->findOrFail($id);
         $offer->update($request->all());
         return redirect()->route('offers.index')->with('success', 'Offer updated successfully.');
     }
 
     public function destroy($id)
     {
-        $offer = Offer::findOrFail($id);
+        $offer = $this->offersForCurrentAccount()->findOrFail($id);
         $offer->delete();
         return redirect()->route('offers.index')->with('success', 'Offer deleted successfully.');
     }
@@ -162,7 +179,7 @@ class OfferController
     public function setMainPerson(Request $request, $id)
     {
         // Retrieve the offer by ID
-        $offer = Offer::findOrFail($id);
+        $offer = $this->offersForCurrentAccount()->findOrFail($id);
 
         // Decode tenant details stored as JSON in the 'tenant_details' field
         $tenantDetails = collect(json_decode($offer->tenant_details, true));
@@ -246,7 +263,7 @@ class OfferController
     public function updateStatus(Request $request, $id)
     {
         // Retrieve the offer by ID
-        $offer = Offer::findOrFail($id);
+        $offer = $this->offersForCurrentAccount()->findOrFail($id);
         $offer->status = $request->status;
 
         // Check if the status is 'Accepted'
@@ -257,27 +274,34 @@ class OfferController
 
             // Decode tenant details from JSON
             $tenantDetails = json_decode($offer->tenant_details, true);
+            $this->ensureTenantsAreAccessible(array_keys($tenantDetails ?: []));
 
             // Check if there is any active tenancy for the same property
             $existingTenancy = Tenancy::where('property_id', $offer->property_id)
+                                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
                                     ->where('status', 'Active')
                                     ->first();
 
             // If there's an active tenancy for the same property, set this new tenancy's status to 'Inactive'
             $status = $existingTenancy ? 'Inactive' : 'Active';
+            $termMonths = $this->offerTermInMonths($offer->term);
 
             // Check if the tenancy record already exists
-            $tenancy = Tenancy::where('offer_id', $offer->id)->first();
+            $tenancy = Tenancy::where('offer_id', $offer->id)
+                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                ->first();
 
             if (!$tenancy) {
                 // If the tenancy doesn't exist, create a new one
                 $tenancy = Tenancy::create([
+                    'account_id' => $offer->property->account_id ?: current_account_id(),
                     'offer_id' => $offer->id,  // Link the tenancy to the offer
                     'property_id' => $offer->property_id,  // Store property_id if needed
                     'move_in' => $offer->move_in_date,  // Move-in date from offer
                     'move_out' => null,
                     'rent' => $offer->price,  // Price from offer
                     'deposit' => $offer->deposit,  // Deposit from offer
+                    'term_months' => $termMonths,
                     'frequency' => $tenantDetails['frequency'] ?? 'Monthly',  // Default to 'Monthly'
                     'status' => $status,  // Default status for the tenancy
                 ]);
@@ -286,6 +310,7 @@ class OfferController
                 $tenancy->move_in = $offer->move_in_date;
                 $tenancy->rent = $offer->price;
                 $tenancy->deposit = $offer->deposit;
+                $tenancy->term_months = $termMonths;
                 $tenancy->frequency = $tenantDetails['frequency'] ?? 'Monthly';
                 $tenancy->status = $status;
                 $tenancy->save();
@@ -307,6 +332,7 @@ class OfferController
                 if (!$tenantMember) {
                     // If the tenant member doesn't exist, create a new one
                     TenantMember::create([
+                        'account_id' => $tenancy->account_id ?: current_account_id(),
                         'tenancy_id' => $tenancy->id,  // Link the tenant to the created tenancy
                         'user_id' => $user->id,  // Link to the correct User model
                         'is_main_person' => $isMainPerson ? 1 : 0,  // Set the main person flag (1 for true, 0 for false)
@@ -328,6 +354,77 @@ class OfferController
         }
 
         return response()->json(['status' => true, 'message' => 'Offer status updated successfully.']);
+    }
+
+    private function offerTermInMonths(?string $term): ?int
+    {
+        $term = trim((string) $term);
+
+        if ($term === '') {
+            return null;
+        }
+
+        $months = 0;
+        $matchedUnit = false;
+
+        if (preg_match_all('/(\d+)\s*(years?|yrs?|months?|mos?)/i', $term, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $value = (int) $match[1];
+                $unit = strtolower($match[2]);
+                $months += str_starts_with($unit, 'y') ? $value * 12 : $value;
+                $matchedUnit = true;
+            }
+        }
+
+        if ($matchedUnit) {
+            return $months;
+        }
+
+        return preg_match('/\d+/', $term, $match) ? (int) $match[0] : null;
+    }
+
+    private function propertiesForCurrentAccount()
+    {
+        return Property::query()
+            ->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($query) => $query->forAccount(current_account_id())
+            );
+    }
+
+    private function offersForCurrentAccount()
+    {
+        return Offer::query()
+            ->whereHas('property', function ($propertyQuery) {
+                if (! auth()->user()?->hasRole('Super Admin')) {
+                    $propertyQuery->forAccount(current_account_id());
+                }
+            });
+    }
+
+    private function findAccessibleProperty(int $propertyId): Property
+    {
+        return $this->propertiesForCurrentAccount()->findOrFail($propertyId);
+    }
+
+    private function ensureTenantsAreAccessible(array $userIds): void
+    {
+        if (auth()->user()?->hasRole('Super Admin') || empty($userIds)) {
+            return;
+        }
+
+        $requestedIds = collect($userIds)->map(fn ($id) => (int) $id)->unique()->values();
+        $accessibleIds = User::role('Tenant')
+            ->forAccount(current_account_id())
+            ->whereKey($requestedIds)
+            ->pluck('users.id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($requestedIds->diff($accessibleIds)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'tenant_details' => ['One or more offer tenants do not belong to your subscriber account.'],
+            ]);
+        }
     }
 
 

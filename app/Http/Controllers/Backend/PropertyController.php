@@ -84,6 +84,8 @@ class PropertyController
             // Tenants see only properties where they have an active tenancy
             $propertyIds = \App\Models\TenantMember::where('user_id', $user->id)
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+                ->where('tenant_members.account_id', $accountId)
+                ->where('tenancies.account_id', $accountId)
                 ->where('tenancies.status', 'Active')
                 ->pluck('tenancies.property_id')
                 ->unique();
@@ -230,6 +232,8 @@ class PropertyController
                     (($user->hasRole('Staff') || $user->hasRole('Test')) && $property->created_by === $user->id) ||
                     ($user->hasRole('Tenant') && \App\Models\TenantMember::where('user_id', $user->id)
                         ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+                        ->where('tenant_members.account_id', $accountId)
+                        ->where('tenancies.account_id', $accountId)
                         ->where('tenancies.status', 'Active')
                         ->where('tenancies.property_id', $property->id)
                         ->exists());
@@ -300,6 +304,11 @@ class PropertyController
 
             $tabs = $portalTabs;
         }
+
+        $requestedTabIsAllowed = collect($tabs)->contains(
+            fn (array $tab) => strtolower($tab['name']) === strtolower($tabName)
+        );
+        abort_unless($requestedTabIsAllowed, 403, 'You do not have access to this property tab.');
 
         // Get tabs for properties (you can customize the tabs as per your needs)
         // $tabs = [
@@ -395,7 +404,20 @@ class PropertyController
                 // ->get();
 
                 // Fetch the owner groups for the given propertyId, along with related users and properties.
-                $ownerGroups = OwnerGroup::with(['ownerGroupUsers.user', 'property'])
+                $ownerGroups = OwnerGroup::with([
+                    'ownerGroupUsers' => function ($ownerUserQuery) {
+                        $ownerUserQuery
+                            ->when(
+                                ! auth()->user()?->hasRole('Super Admin'),
+                                fn ($query) => $query->whereHas(
+                                    'user',
+                                    fn ($userQuery) => $userQuery->forAccount(current_account_id())
+                                )
+                            )
+                            ->with('user');
+                    },
+                    'property',
+                ])
                     ->where('property_id', $propertyId)
                     ->get();
 
@@ -408,6 +430,27 @@ class PropertyController
                 // Decode tenant details for each offer
                 foreach ($offers as $offer) {
                     $offer->tenant_details = json_decode($offer->tenant_details, true);
+                }
+                $tenantIds = $offers
+                    ->flatMap(fn ($offer) => array_keys($offer->tenant_details ?: []))
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values();
+                $tenantUsers = User::query()
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->whereIn('id', $tenantIds)
+                    ->with('details')
+                    ->get()
+                    ->keyBy('id');
+
+                foreach ($offers as $offer) {
+                    $offer->setRelation(
+                        'tenantUsers',
+                        collect(array_keys($offer->tenant_details ?: []))
+                            ->map(fn ($id) => $tenantUsers->get((int) $id))
+                            ->filter()
+                            ->values()
+                    );
                 }
 
                 return view('backend.properties.tabs.offers', compact('propertyId', 'offers'))->render();
@@ -428,6 +471,7 @@ class PropertyController
             case 'tenancy':
                 // Fetch tenancies for all statuses
                 $tenancies = Tenancy::where('property_id', $propertyId)
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
                     ->with(['tenantMembers.user', 'tenancySubStatus'])
                     ->get(); // Fetch all tenancies for the property
 
@@ -465,6 +509,7 @@ class PropertyController
             case 'responsibility':
                 $responsibilities = PropertyResponsibility::with('user')
                     ->where('property_id', $propertyId)
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
                     ->get();
 
                 return view('backend.properties.tabs.responsibility', compact('propertyId', 'property', 'responsibilities'))->render();
@@ -473,7 +518,11 @@ class PropertyController
                     abort_unless($portalAccessService->canViewDocuments($user, $property), 403, 'You do not have access to property documents.');
                 }
 
-                $documents = $property->documents()->with('documentType')->orderByDesc('updated_at')->paginate(5);
+                $documents = $property->documents()
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->with('documentType')
+                    ->orderByDesc('updated_at')
+                    ->paginate(5);
 
                 // Ensure it's an empty collection if no documents are found
                 if ($documents->isEmpty()) {
@@ -492,7 +541,10 @@ class PropertyController
                 }
                 // Fetch the notes related to the specific property by property ID
                 // $notes = Notes::where('property_id', $propertyId)->orderBy('updated_at', 'desc')->get();
-                $notesQuery = $property->notes()->with('noteType')->orderByDesc('updated_at');
+                $notesQuery = $property->notes()
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->with('noteType')
+                    ->orderByDesc('updated_at');
 
                 if ($isPortalUser && Schema::hasColumn('notes', 'visibility')) {
                     $notesQuery->where('visibility', 'portal');
@@ -509,7 +561,10 @@ class PropertyController
                 return view('backend.properties.tabs.notes', compact('propertyId', 'property', 'notes', 'noteTypes'))->render();
 
             case 'appointments':
-                $query = $property->events()->with(['diaryOwner', 'onBehalfOf'])->orderBy('start_datetime', 'desc');
+                $query = $property->events()
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($eventQuery) => $eventQuery->forAccount(current_account_id()))
+                    ->with(['diaryOwner', 'onBehalfOf'])
+                    ->orderBy('start_datetime', 'desc');
 
                 if ($request = request()) {
                     if ($search = $request->query('search')) {
@@ -549,7 +604,13 @@ class PropertyController
 
                 $filters = $this->statementFilters(request());
                 $statement = app(\App\Services\Accounting\StatementService::class)
-                    ->propertyStatement($property->id, $property->company_id ?? null, $filters['date_from'], $filters['date_to']);
+                    ->propertyStatement(
+                        $property->id,
+                        (int) ($property->account_id ?: current_account_id()),
+                        $property->company_id ?? null,
+                        $filters['date_from'],
+                        $filters['date_to']
+                    );
                 $statement['summary']['balance_due'] = $statement['closing'];
                 return view('backend.properties.tabs.statement', [
                     'property' => $property,
@@ -620,6 +681,18 @@ class PropertyController
             $commission_percentages = $request->input('commission_percentage', []);
             $commission_amounts = $request->input('commission_amount', []);
 
+            if ((int) $request->step === 9) {
+                $this->ensureUploadsAreAccessible($validatedData['photos'] ?? null);
+                $this->ensureUploadsAreAccessible($validatedData['floor_plan'] ?? null);
+                $this->ensureUploadsAreAccessible($validatedData['view_360'] ?? null);
+            }
+
+            if (! empty($user_ids)) {
+                $this->ensureAccountIdsAreAccessible($user_ids, User::query(), 'user_id', 'users');
+                $this->ensureAccountIdsAreAccessible($designation_ids, Designation::query(), 'designation_id', 'designations');
+                $this->ensureAccountIdsAreAccessible($branch_ids, Branch::query(), 'branch_id', 'branches');
+            }
+
             $submitted_ids = []; // Track IDs of processed responsibilities
 
             // Iterate through the responsibilities and update or create them
@@ -640,11 +713,16 @@ class PropertyController
                     $data['added_by'] = Auth::id(); // Only set 'added_by' for new records
                 }
 
-                // Update or create the responsibility
-                $responsibility = PropertyResponsibility::updateOrCreate(
-                    ['id' => $propertyResponsibilityIds[$index] ?? null], // Match by ID if provided
-                    $data
-                );
+                $responsibilityId = $propertyResponsibilityIds[$index] ?? null;
+                if ($responsibilityId) {
+                    $responsibility = PropertyResponsibility::query()
+                        ->where('property_id', $property_id)
+                        ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                        ->findOrFail($responsibilityId);
+                    $responsibility->update($data);
+                } else {
+                    $responsibility = PropertyResponsibility::create($data);
+                }
 
                 $submitted_ids[] = $responsibility->id; // Track the ID of the responsibility
             }
@@ -652,12 +730,14 @@ class PropertyController
             // Remove responsibilities that are not in the submitted IDs
             if (!empty($submitted_ids)) {
                 PropertyResponsibility::where('property_id', $property_id)
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
                     ->whereNotIn('id', $submitted_ids)
                     ->whereNull('deleted_at')  // Ensure we're only soft-deleting active records
                     ->update(['deleted_by' => Auth::id()]); // Set 'deleted_by' to the authenticated user
 
                 // Soft delete the records
                 PropertyResponsibility::where('property_id', $property_id)
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
                     ->whereNotIn('id', $submitted_ids)
                     ->delete();
             }
@@ -681,11 +761,22 @@ class PropertyController
                 $schools = SchoolName::whereIn('id', $schoolIds)->pluck('name', 'id');
 
                 // Fetch required data for dropdowns
-                $users = User::select('id', 'name')->get(); // Fetch all users
-                $designations = Designation::select('id', 'title')->get(); // Fetch all designations
-                $branches = Branch::select('id', 'name')->get(); // Fetch all branches
+                $users = User::query()
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->select('id', 'name')
+                    ->get();
+                $designations = Designation::query()
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->select('id', 'title')
+                    ->get();
+                $branches = Branch::query()
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->select('id', 'name')
+                    ->get();
 
-                $PropertyResponsibility = PropertyResponsibility::where('property_id', $property_id)->get();
+                $PropertyResponsibility = PropertyResponsibility::where('property_id', $property_id)
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->get();
 
                 if ($property) {
 
@@ -876,6 +967,31 @@ class PropertyController
                 return view('backend.properties.form_components.step' . $step, compact('property', 'allstations', 'allschools'));
             }
 
+            if ($step == 10) {
+                abort_unless($property, 404);
+
+                $users = User::query()
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->select('id', 'name')
+                    ->get();
+                $designations = Designation::query()
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->select('id', 'title')
+                    ->get();
+                $branches = Branch::query()
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->select('id', 'name')
+                    ->get();
+                $PropertyResponsibility = PropertyResponsibility::where('property_id', $property->id)
+                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->get();
+
+                return view(
+                    'backend.properties.form_components.step' . $step,
+                    compact('property', 'users', 'designations', 'branches', 'PropertyResponsibility')
+                );
+            }
+
             return view('backend.properties.form_components.step' . $step, compact('property')); // Return the corresponding Blade view
         } else {
             // Return a view with an error message if the step is invalid
@@ -971,16 +1087,27 @@ class PropertyController
         $schools = SchoolName::whereIn('id', $schoolIds)->pluck('name', 'id');
 
         // Fetch required data for dropdowns
-        $users = User::select('id', 'name')->get(); // Fetch all users
-        $designations = Designation::select('id', 'title')->get(); // Fetch all designations
-        $branches = Branch::select('id', 'name')->get(); // Fetch all branches
+        $users = User::query()
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->select('id', 'name')
+            ->get();
+        $designations = Designation::query()
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->select('id', 'title')
+            ->get();
+        $branches = Branch::query()
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->select('id', 'name')
+            ->get();
 
         // Fetch PropertyResponsibility related to the current property
         // $PropertyResponsibility = PropertyResponsibility::where('property_id', $property->id)
         // ->select('id', 'responsibility')
         // ->get();
 
-        $PropertyResponsibility = PropertyResponsibility::where('property_id', $property->id)->get();
+        $PropertyResponsibility = PropertyResponsibility::where('property_id', $property->id)
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->get();
         $propertyResponsibilityIds = $PropertyResponsibility->pluck('id')->implode(',');
         // Return the edit view with the property data, stations, and schools
         return view('backend.properties.edit', compact('property', 'allstations', 'allschools', 'stations', 'schools', 'users', 'designations', 'branches', 'PropertyResponsibility', 'propertyResponsibilityIds'));
@@ -1404,14 +1531,16 @@ class PropertyController
                 ]);
                 break;
             case 'property_media':
-                $data = $request->only([
-                    'photos',
-                    'floor_plan',
-                    'view_360',
-                    'video_url',
-                    'instagram_url',
-                    'youtube_url'
+                $data = $request->validate([
+                    'photos' => 'nullable|string',
+                    'floor_plan' => 'nullable|string',
+                    'view_360' => 'nullable|url|max:2048',
+                    'video_url' => 'nullable|url|max:2048',
+                    'instagram_url' => 'nullable|url|max:2048',
+                    'youtube_url' => 'nullable|url|max:2048',
                 ]);
+                $this->ensureUploadsAreAccessible($data['photos'] ?? null);
+                $this->ensureUploadsAreAccessible($data['floor_plan'] ?? null);
                 break;
             case 'property_features':
                 $data = $request->only([
@@ -1456,6 +1585,9 @@ class PropertyController
                     'responsibility_staff.sales_manager' => 'nullable|exists:users,id',
                     'responsibility_staff.lettings_manager' => 'nullable|exists:users,id',
                 ]);
+                $this->ensureStaffUsersAreAccessible(array_values(array_filter(
+                    $validated['responsibility_staff'] ?? []
+                )));
 
                 $responsibilityTypes = [
                     'property_manager',
@@ -1607,21 +1739,12 @@ class PropertyController
             ])->orderBy('name')->get();
             return compact('groups');
         } elseif ($formType === 'responsibility') {
-            $users = User::where(function ($query) {
-                $query->where('user_type', 'staff')
-                    ->orWhereHas('roles', fn($roleQuery) => $roleQuery->where('name', 'Staff'))
-                    ->orWhereHas('staff');
-            })
-                ->when(! auth()->user()?->hasRole('Super Admin'), function ($query) {
-                    $query->whereHas('accountUsers', function ($accountUserQuery) {
-                        $accountUserQuery->where('account_id', current_account_id())
-                            ->where('status', 'active');
-                    });
-                })
+            $users = $this->staffUsersForCurrentAccount()
                 ->orderBy('name')
                 ->get(['id', 'name', 'email']);
             $responsibilities = PropertyResponsibility::with('user')
                 ->where('property_id', $property->id)
+                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
                 ->get();
 
             return compact('users', 'responsibilities');
@@ -1640,6 +1763,86 @@ class PropertyController
         } */
 
         return [];
+    }
+
+    private function staffUsersForCurrentAccount()
+    {
+        return User::where(function ($query) {
+            $query->where('user_type', 'staff')
+                ->orWhereHas('roles', fn ($roleQuery) => $roleQuery->where('name', 'Staff'))
+                ->orWhereHas('staff');
+        })->when(
+            ! auth()->user()?->hasRole('Super Admin'),
+            fn ($query) => $query->forAccount(current_account_id())
+        );
+    }
+
+    private function ensureStaffUsersAreAccessible(array $userIds): void
+    {
+        if (auth()->user()?->hasRole('Super Admin') || empty($userIds)) {
+            return;
+        }
+
+        $requestedIds = collect($userIds)->map(fn ($id) => (int) $id)->unique()->values();
+        $accessibleIds = $this->staffUsersForCurrentAccount()
+            ->whereKey($requestedIds)
+            ->pluck('users.id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($requestedIds->diff($accessibleIds)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'responsibility_staff' => ['One or more selected staff members do not belong to your subscriber account.'],
+            ]);
+        }
+    }
+
+    private function ensureUploadsAreAccessible(?string $uploadIds): void
+    {
+        if (auth()->user()?->hasRole('Super Admin') || blank($uploadIds)) {
+            return;
+        }
+
+        $requestedIds = collect(explode(',', $uploadIds))
+            ->map(fn ($id) => trim($id))
+            ->filter(fn ($id) => ctype_digit($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $accessibleIds = Upload::forAccount(current_account_id())
+            ->whereKey($requestedIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($requestedIds->diff($accessibleIds)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'uploads' => ['One or more selected files do not belong to your subscriber account.'],
+            ]);
+        }
+    }
+
+    private function ensureAccountIdsAreAccessible(array $ids, $query, string $field, string $label): void
+    {
+        if (auth()->user()?->hasRole('Super Admin')) {
+            return;
+        }
+
+        $requestedIds = collect($ids)
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+        $accessibleIds = $query
+            ->forAccount(current_account_id())
+            ->whereKey($requestedIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($requestedIds->diff($accessibleIds)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                $field => ["One or more selected {$label} do not belong to your subscriber account."],
+            ]);
+        }
     }
 
     // // Method to load the tab content for a specific property and tab
@@ -1896,6 +2099,7 @@ class PropertyController
             ->take(4)
             ->values();
         $photoPaths = Upload::whereIn('id', $photoIds)
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount($property->account_id ?: current_account_id()))
             ->get()
             ->sortBy(fn($upload) => $photoIds->search((string) $upload->id))
             ->map(function ($upload) {
@@ -1928,7 +2132,15 @@ class PropertyController
             return false;
         }
 
-        if ($user->hasRole('Super Admin') || $user->hasRole('Property Manager')) {
+        if ($user->hasRole('Super Admin')) {
+            return true;
+        }
+
+        if ((int) $property->account_id !== (int) current_account_id()) {
+            return false;
+        }
+
+        if ($user->hasRole('Property Manager')) {
             return true;
         }
 
@@ -1944,6 +2156,8 @@ class PropertyController
         if ($user->hasRole('Tenant')) {
             return \App\Models\TenantMember::where('user_id', $user->id)
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+                ->where('tenant_members.account_id', current_account_id())
+                ->where('tenancies.account_id', current_account_id())
                 ->where('tenancies.status', 'Active')
                 ->where('tenancies.property_id', $property->id)
                 ->exists();

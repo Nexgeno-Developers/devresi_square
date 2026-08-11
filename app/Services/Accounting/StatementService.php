@@ -128,15 +128,17 @@ class StatementService
     /**
      * Property statement (shows transactions for tenants + property-linked transactions)
      */
-    public function propertyStatement(int $propertyId, ?int $companyId, ?string $from, ?string $to): array
+    public function propertyStatement(int $propertyId, int $accountId, ?int $companyId, ?string $from, ?string $to): array
     {
         [$fromDate, $toDate] = $this->normalizeDates($from, $to);
-        $accounts = $this->contactAccounts();
+        $accounts = $this->contactAccounts($accountId);
 
         // Get all user IDs associated with this property through tenancies and tenant_members
         $tenantUserIds = \App\Models\TenantMember::query()
             ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
             ->where('tenancies.property_id', $propertyId)
+            ->where('tenancies.account_id', $accountId)
+            ->where('tenant_members.account_id', $accountId)
             ->whereNotNull('tenant_members.user_id')
             ->pluck('tenant_members.user_id')
             ->unique()
@@ -145,6 +147,7 @@ class StatementService
 
         // Get user IDs from sale invoices directly linked to this property
         $propertyLinkedUserIds = \DB::table('sys_sale_invoices')
+            ->where('account_id', $accountId)
             ->where('link_to_type', 'Property')
             ->where('link_to_id', $propertyId)
             ->pluck('user_id')
@@ -177,11 +180,11 @@ class StatementService
             ];
         }
 
-        $opening = $this->sumNetByPropertyUsers($userIds, $companyId, $fromDate, $accounts);
-        $rawLines = $this->linesByPropertyUsers($userIds, $companyId, $fromDate, $toDate, $accounts);
+        $opening = $this->sumNetByPropertyUsers($userIds, $accountId, $companyId, $fromDate, $accounts);
+        $rawLines = $this->linesByPropertyUsers($userIds, $accountId, $companyId, $fromDate, $toDate, $accounts);
         [$lines, $closing] = $this->attachRunning($rawLines, $opening, null, $accounts);
 
-        $summary = $this->propertyArSummary($userIds, $companyId, $fromDate, $toDate, $accounts);
+        $summary = $this->propertyArSummary($userIds, $accountId, $companyId, $fromDate, $toDate, $accounts);
         $summary['totals']['balance_due'] = $closing;
 
         return [
@@ -195,7 +198,7 @@ class StatementService
         ];
     }
 
-    private function linesByPropertyUsers(array $userIds, ?int $companyId, string $from, ?string $to, array $accounts = []): Collection
+    private function linesByPropertyUsers(array $userIds, int $accountId, ?int $companyId, string $from, ?string $to, array $accounts = []): Collection
     {
         $accountIds = collect($accounts['ar_ids'] ?? [])
             ->merge($accounts['adv_ids'] ?? [])
@@ -217,6 +220,7 @@ class StatementService
             ])
             ->join('gl_journals', 'gl_journal_lines.gl_journal_id', '=', 'gl_journals.id')
             ->join('gl_accounts', 'gl_journal_lines.gl_account_id', '=', 'gl_accounts.id')
+            ->where('gl_journal_lines.account_id', $accountId)
             ->where('gl_journals.date', '>=', $from)
             ->whereIn('gl_journal_lines.user_id', $userIds);
 
@@ -237,11 +241,12 @@ class StatementService
             ->map(fn ($row) => $this->mapLine($row));
     }
 
-    private function sumNetByPropertyUsers(array $userIds, ?int $companyId, string $before, array $accounts = []): float
+    private function sumNetByPropertyUsers(array $userIds, int $accountId, ?int $companyId, string $before, array $accounts = []): float
     {
         $q = GlJournalLine::query()
             ->join('gl_journals', 'gl_journal_lines.gl_journal_id', '=', 'gl_journals.id')
             ->join('gl_accounts', 'gl_journal_lines.gl_account_id', '=', 'gl_accounts.id')
+            ->where('gl_journal_lines.account_id', $accountId)
             ->where('gl_journals.date', '<', $before)
             ->whereIn('gl_journal_lines.user_id', $userIds);
 
@@ -273,7 +278,7 @@ class StatementService
         });
     }
 
-    private function propertyArSummary(array $userIds, ?int $companyId, string $from, ?string $to, array $accounts): array
+    private function propertyArSummary(array $userIds, int $accountId, ?int $companyId, string $from, ?string $to, array $accounts): array
     {
         $warnings = [];
         $arIds = $accounts['ar_ids'] ?? [];
@@ -288,6 +293,7 @@ class StatementService
         if (!empty($arIds)) {
             $q = GlJournalLine::query()
                 ->join('gl_journals', 'gl_journal_lines.gl_journal_id', '=', 'gl_journals.id')
+                ->where('gl_journal_lines.account_id', $accountId)
                 ->whereIn('gl_journal_lines.gl_account_id', $arIds)
                 ->where('gl_journals.date', '>=', $from)
                 ->whereIn('gl_journal_lines.user_id', $userIds);
@@ -307,6 +313,7 @@ class StatementService
         if (!empty($advIds)) {
             $qAdv = GlJournalLine::query()
                 ->join('gl_journals', 'gl_journal_lines.gl_journal_id', '=', 'gl_journals.id')
+                ->where('gl_journal_lines.account_id', $accountId)
                 ->whereIn('gl_journal_lines.gl_account_id', $advIds)
                 ->where('gl_journals.date', '>=', $from)
                 ->whereIn('gl_journal_lines.user_id', $userIds);
@@ -598,7 +605,7 @@ class StatementService
         return null;
     }
 
-    private function contactAccounts(): array
+    private function contactAccounts(?int $accountId = null): array
     {
         $arIds = [];
         $fromSetting = BusinessSetting::where('type', 'default_ar_account_id')->value('value');
@@ -606,14 +613,18 @@ class StatementService
             $arIds[] = (int) $fromSetting;
         }
         foreach (['1100', '1200'] as $code) {
-            $id = GlAccount::where('code', $code)->value('id');
+            $id = GlAccount::where('code', $code)
+                ->when($accountId, fn ($query) => $query->where('account_id', $accountId))
+                ->value('id');
             if ($id) {
                 $arIds[] = (int) $id;
             }
         }
         $arIds = array_values(array_unique($arIds));
 
-        $advId = GlAccount::where('code', '2200')->value('id');
+        $advId = GlAccount::where('code', '2200')
+            ->when($accountId, fn ($query) => $query->where('account_id', $accountId))
+            ->value('id');
         $advIds = $advId ? [(int) $advId] : [];
 
         return [
