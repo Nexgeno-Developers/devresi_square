@@ -8,6 +8,7 @@ use App\Models\NotificationLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use App\Models\User;
 
 class NotificationService
 {
@@ -24,9 +25,18 @@ class NotificationService
 
     public function triggerNotification(string $identifier, Model $notifiable, array $data = []): void
     {
+        if (isset(config('crm_notifications.events', [])[$identifier])) {
+            app(CrmNotificationService::class)->dispatch($identifier, $notifiable, array_merge($data, [
+                'recipients' => $data['recipients'] ?? ($notifiable instanceof User ? [$notifiable] : null),
+            ]));
+            return;
+        }
+
+        $accountId = (int) ($data['account_id'] ?? $notifiable->account_id ?? current_account_id());
         $templates = [];
 
         $emailTemplates = EmailTemplate::query()
+            ->forAccount($accountId)
             ->where('identifier', $identifier)
             ->where('status', 1)
             ->get();
@@ -105,6 +115,7 @@ class NotificationService
             }
 
             $log = NotificationLog::create([
+                'account_id' => $accountId ?: null,
                 'identifier' => $identifier,
                 'notifiable_type' => $notifiable->getMorphClass(),
                 'notifiable_id' => $notifiable->getKey(),
@@ -122,4 +133,3 @@ class NotificationService
         }
     }
 }
-

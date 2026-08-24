@@ -317,6 +317,7 @@ body #menu.sidebar > .nav {
 }
 
 #wrapper.main_content {
+    background-color: aliceblue;
     flex: 1 1 auto;
     width: auto;
     max-width: 100%;

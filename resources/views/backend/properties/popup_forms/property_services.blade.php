@@ -14,9 +14,11 @@ $petsAllowed = booleanToYesNo($property->pets_allow) ?? '';
                 <span class="left_item">Parking Location:</span> {{ $property->parking_location }}
                 @endif
             </div>
-            <div>
-                <span class="left_item">Service:</span> {{ $property->service ?? 'N/A' }}
-            </div>
+            @if(in_array($property->property_type, ['lettings', 'both'], true))
+                <div>
+                    <span class="left_item">Service:</span> {{ $property->service ?? 'N/A' }}
+                </div>
+            @endif
             <div>
                 @if(isset($property) && $property->property_type == 'lettings' || $property->property_type == 'both')
                 <span class="left_item">Pets Allow?:</span> {{ $petsAllowed }}
@@ -60,6 +62,7 @@ $petsAllowed = booleanToYesNo($property->pets_allow) ?? '';
             </div>
         </div>
 
+        @if(in_array($property->property_type, ['lettings', 'both'], true))
         <div class="form-group">
             <label>Service</label>
             <div class="row">
@@ -79,6 +82,7 @@ $petsAllowed = booleanToYesNo($property->pets_allow) ?? '';
                 </div>
             </div>
         </div>
+        @endif
 
         @if(isset($property) && $property->property_type == 'lettings' || $property->property_type == 'both')
             <div class="form-group">

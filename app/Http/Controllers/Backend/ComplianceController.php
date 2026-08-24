@@ -11,6 +11,8 @@ use App\Models\Upload;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use App\Enums\CrmNotificationEvent;
+use App\Services\Notifications\CrmNotificationService;
 
 class ComplianceController
 {
@@ -85,8 +87,9 @@ class ComplianceController
 
         $heading = $complianceRecord ? 'EDIT ' . convert_to_uppercase(beautify_string($complianceType->alias))
                                      : 'ADD ' . convert_to_uppercase(beautify_string($complianceType->alias));
+        $responsibleUsers = current_account()?->users()->orderBy('name')->get() ?? collect();
 
-        $content = view('backend.compliance.' . $complianceType->alias . '._form', compact('complianceType', 'complianceRecord', 'complianceDetails'))->render();
+        $content = view('backend.compliance.' . $complianceType->alias . '._form', compact('complianceType', 'complianceRecord', 'complianceDetails', 'responsibleUsers'))->render();
 
         return response()->json(['heading' => $heading, 'content' => $content]);
     }
@@ -100,6 +103,9 @@ class ComplianceController
             'property_id' => 'required|exists:properties,id',
             'expiry_date' => 'required|date',
             'photos' => 'nullable|string', // Validate as a string (e.g., "1,2")
+            'responsible_user_id' => 'nullable|exists:users,id',
+            'remediation_due_at' => 'nullable|date',
+            'completed_at' => 'nullable|date',
         ]);
         $this->findAccessibleProperty((int) $validated['property_id']);
         $this->ensureUploadsAreAccessible($validated['photos'] ?? null);
@@ -116,6 +122,9 @@ class ComplianceController
             'property_id' => $validated['property_id'],
             'expiry_date' => $validated['expiry_date'],
             'photos' => $photosString,
+            'responsible_user_id' => $validated['responsible_user_id'] ?? auth()->id(),
+            'remediation_due_at' => $validated['remediation_due_at'] ?? null,
+            'completed_at' => $validated['completed_at'] ?? now(),
         ]);
 
         // Handle dynamic fields (e.g., "rating")
@@ -125,6 +134,9 @@ class ComplianceController
             'property_id',
             'expiry_date',
             'photos',
+            'responsible_user_id',
+            'remediation_due_at',
+            'completed_at',
         ]);
 
         foreach ($dynamicFields as $key => $value) {
@@ -134,6 +146,8 @@ class ComplianceController
                 'value' => $value,
             ]);
         }
+
+        $this->notifyComplianceRenewed($complianceRecord, 'created-'.$complianceRecord->id);
 
         return response()->json([
             'success' => true,
@@ -150,6 +164,9 @@ class ComplianceController
             'property_id' => 'required|exists:properties,id',
             'expiry_date' => 'required|date',
             'photos' => 'nullable|string',
+            'responsible_user_id' => 'nullable|exists:users,id',
+            'remediation_due_at' => 'nullable|date',
+            'completed_at' => 'nullable|date',
         ]);
 
         // Find the existing compliance record by ID
@@ -168,6 +185,9 @@ class ComplianceController
             'property_id' => $validated['property_id'],
             'expiry_date' => $validated['expiry_date'],
             'photos' => $photos,
+            'responsible_user_id' => $validated['responsible_user_id'] ?? $complianceRecord->responsible_user_id,
+            'remediation_due_at' => $validated['remediation_due_at'] ?? $complianceRecord->remediation_due_at,
+            'completed_at' => $validated['completed_at'] ?? now(),
         ]);
 
         // Handle dynamic fields (e.g., "rating")
@@ -178,6 +198,9 @@ class ComplianceController
             'property_id',
             'expiry_date',
             'photos',
+            'responsible_user_id',
+            'remediation_due_at',
+            'completed_at',
         ]);
 
         // Update or create new compliance details for dynamic fields
@@ -199,6 +222,8 @@ class ComplianceController
                 ]);
             }
         }
+
+        $this->notifyComplianceRenewed($complianceRecord->fresh(), 'updated-'.$complianceRecord->updated_at?->timestamp);
 
         return response()->json([
             'success' => true,
@@ -235,6 +260,25 @@ class ComplianceController
                 fn ($query) => $query->forAccount(current_account_id())
             )
             ->findOrFail($propertyId);
+    }
+
+    private function notifyComplianceRenewed(ComplianceRecord $record, string $milestone): void
+    {
+        $record->load('property', 'complianceType', 'responsibleUser');
+        $property = $record->property;
+        app(CrmNotificationService::class)->dispatch(
+            CrmNotificationEvent::ComplianceRenewed,
+            $record,
+            [
+                'account_id' => $property->account_id ?: current_account_id(),
+                'compliance_type' => $record->complianceType?->name ?: 'Compliance record',
+                'property_address' => $property->full_address ?: $property->prop_name,
+                'due_date' => optional($record->expiry_date)->format('d M Y'),
+                'action_url' => route('admin.properties.view', $property->id),
+                'milestone' => $milestone,
+            ],
+            auth()->user(),
+        );
     }
 
     private function ensureUploadsAreAccessible(?string $uploadIds): void

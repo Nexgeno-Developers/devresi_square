@@ -20,8 +20,8 @@ use App\Models\Tenancy;
 use App\Models\TenantMember;
 use App\Models\UserCategory;
 use App\Models\WorkOrder;
-use App\Jobs\SendFinalContractorAssignedEmail;
-use App\Jobs\SendRepairQuoteRequestEmail;
+use App\Enums\CrmNotificationEvent;
+use App\Services\Notifications\CrmNotificationService;
 use App\Services\Saas\PortalAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,6 +30,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\URL;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 use Spatie\Permission\Models\Role;
 
@@ -528,9 +529,26 @@ class PropertyRepairController
             ]);
             $assignment->save();
 
-            SendRepairQuoteRequestEmail::dispatch($repairIssue->id, $assignment->id)
-                ->onConnection('database')
-                ->onQueue('repair-quotes');
+            $quoteUrl = URL::temporarySignedRoute('repair-quotes.show', now()->addDays(14), [
+                'assignment' => $assignment->id,
+                'token' => $assignment->quote_token,
+            ]);
+            app(CrmNotificationService::class)->dispatch(
+                CrmNotificationEvent::RepairQuoteRequested,
+                $repairIssue,
+                [
+                    'account_id' => $repairIssue->account_id,
+                    'recipients' => [$contractor],
+                    'repair_reference' => $repairIssue->reference_number,
+                    'property_address' => $repairIssue->property?->full_address,
+                    'action_url' => $quoteUrl,
+                    'quote_url' => $quoteUrl,
+                    'attachment_type' => 'repair_scope',
+                    'repair_issue_id' => $repairIssue->id,
+                    'milestone' => 'quote-request-'.$assignment->id,
+                ],
+                auth()->user(),
+            );
             $queued++;
         }
 
@@ -553,7 +571,22 @@ class PropertyRepairController
 
         $repairIssue->update(['final_contractor_id' => $assignment->contractor_id]);
         $assignment->update(['status' => 'Finalized']);
-        $this->sendFinalContractorAssignedEmail($repairIssue->fresh(), (int) $assignment->contractor_id);
+        $workOrder = WorkOrder::where('repair_issue_id', $repairIssue->id)->first();
+        app(CrmNotificationService::class)->dispatch(
+            CrmNotificationEvent::RepairContractorAssigned,
+            $repairIssue->fresh(),
+            [
+                'account_id' => $repairIssue->account_id,
+                'recipients' => [$assignment->contractor_id],
+                'repair_reference' => $repairIssue->reference_number,
+                'property_address' => $repairIssue->property?->full_address,
+                'action_url' => route('admin.property_repairs.show', $repairIssue->id),
+                'milestone' => 'contractor-'.$assignment->id,
+                'attachment_type' => $workOrder ? 'work_order' : null,
+                'work_order_id' => $workOrder?->id,
+            ],
+            auth()->user(),
+        );
 
         return response()->json(['message' => 'Final contractor selected successfully.']);
     }
@@ -954,6 +987,9 @@ class PropertyRepairController
         }
 
         if ($oldStatus != $validated['status']) {
+            if (! $repairIssue->acknowledged_at && strtolower((string) $validated['status']) !== 'pending') {
+                $repairIssue->forceFill(['acknowledged_at' => now(), 'acknowledged_by' => Auth::id()])->save();
+            }
             // --- Record a History Entry ---
             RepairHistory::create([
                 'repair_issue_id' => $id,
@@ -961,6 +997,21 @@ class PropertyRepairController
                 'previous_status' => $oldStatus,
                 'new_status' => $validated['status'],
             ]);
+
+            app(CrmNotificationService::class)->dispatch(
+                CrmNotificationEvent::RepairStatusChanged,
+                $repairIssue->fresh(),
+                [
+                    'account_id' => $repairIssue->account_id,
+                    'repair_reference' => $repairIssue->reference_number,
+                    'property_address' => $repairIssue->property?->full_address,
+                    'old_status' => $oldStatus,
+                    'new_status' => $validated['status'],
+                    'action_url' => route('admin.property_repairs.show', $repairIssue->id),
+                    'milestone' => 'status-'.$validated['status'].'-'.$repairIssue->updated_at?->timestamp,
+                ],
+                auth()->user(),
+            );
 
             // // --- Send Notifications ---
             // // Assuming you have a Notification class: App\Notifications\RepairIssueUpdated
@@ -1063,6 +1114,21 @@ class PropertyRepairController
         $this->syncRepairIssuePropertyManagers(
             $repair,
             $this->propertyManagerIdsForProperty($propertyId)
+        );
+
+        app(CrmNotificationService::class)->dispatch(
+            CrmNotificationEvent::RepairReported,
+            $repair,
+            [
+                'account_id' => $repair->account_id,
+                'include_account_admins' => in_array($repair->priority, ['high', 'critical'], true),
+                'repair_reference' => $repair->reference_number,
+                'repair_priority' => $repair->priority ?: 'normal',
+                'property_address' => $property->full_address ?: $property->prop_name,
+                'action_url' => route('admin.property_repairs.show', $repair->id),
+                'milestone' => 'reported-'.$repair->id,
+            ],
+            auth()->user(),
         );
 
         // Store repair photos
@@ -1503,6 +1569,19 @@ class PropertyRepairController
 
         $repairIssue->refresh()->load(['repairIssuePropertyManagers.propertyManager']);
 
+        if ($formType === 'manager_assign' && $repairIssue->repairIssuePropertyManagers->isNotEmpty()) {
+            if (! $repairIssue->acknowledged_at) {
+                $repairIssue->forceFill(['acknowledged_at' => now(), 'acknowledged_by' => Auth::id()])->save();
+            }
+            app(CrmNotificationService::class)->dispatch(CrmNotificationEvent::RepairManagerAssigned, $repairIssue, [
+                'account_id' => $repairIssue->account_id,
+                'repair_reference' => $repairIssue->reference_number,
+                'property_address' => $repairIssue->property?->full_address,
+                'action_url' => route('admin.property_repairs.show', $repairIssue->id),
+                'milestone' => 'manager-'.collect($repairIssue->repairIssuePropertyManagers)->pluck('property_manager_id')->sort()->implode('-'),
+            ], auth()->user());
+        }
+
         // 🛠️ Fix: Re-fetch related data like school/station names
         $extraData = $this->getFormTypeExtras($formType, $repairIssue);
 
@@ -1571,9 +1650,17 @@ class PropertyRepairController
 
     private function sendFinalContractorAssignedEmail(RepairIssue $repairIssue, int $contractorId): void
     {
-        SendFinalContractorAssignedEmail::dispatch($repairIssue->id, $contractorId)
-            ->onConnection('database')
-            ->onQueue('repair-assignments');
+        $workOrder = WorkOrder::where('repair_issue_id', $repairIssue->id)->first();
+        app(CrmNotificationService::class)->dispatch(CrmNotificationEvent::RepairContractorAssigned, $repairIssue, [
+            'account_id' => $repairIssue->account_id,
+            'recipients' => [$contractorId],
+            'repair_reference' => $repairIssue->reference_number,
+            'property_address' => $repairIssue->property?->full_address,
+            'action_url' => route('admin.property_repairs.show', $repairIssue->id),
+            'milestone' => 'final-contractor-'.$contractorId,
+            'attachment_type' => $workOrder ? 'work_order' : null,
+            'work_order_id' => $workOrder?->id,
+        ], auth()->user());
     }
 
     private function propertyManagerIdsForProperty(?int $propertyId): array

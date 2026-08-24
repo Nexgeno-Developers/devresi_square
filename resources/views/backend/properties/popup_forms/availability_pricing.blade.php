@@ -21,7 +21,7 @@
     <div class="accordion_inner">
         <p class="accordion_inner_heading">Marketing Details</p>
         <div class="row mb-2">
-            <div class="col mb-2"><span class="left_item">Move-in Date : </span>
+            <div class="col mb-2"><span class="left_item">Availability : </span>
             <span class="right_item">{{ $availableFrom }}</strong></span>
         </div>
 

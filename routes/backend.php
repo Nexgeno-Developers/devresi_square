@@ -10,6 +10,7 @@ use App\Http\Controllers\Backend\RoleController;
 use App\Http\Controllers\Backend\UserController;
 use App\Http\Controllers\Backend\EventController;
 use App\Http\Controllers\Backend\NotesController;
+use App\Http\Controllers\Backend\NotificationController;
 use App\Http\Controllers\Backend\OfferController;
 use App\Http\Controllers\Backend\StaffController;
 use App\Http\Controllers\Backend\BranchController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Backend\CompanyController;
 use App\Http\Controllers\Backend\InvoiceController;
 use App\Http\Controllers\Backend\JobTypeController;
 use App\Http\Controllers\Backend\TenancyController;
+use App\Http\Controllers\Backend\TenancyNoticeController;
 use App\Http\Controllers\Backend\WebsiteController;
 use App\Http\Controllers\Backend\NoteTypeController;
 use App\Http\Controllers\Backend\PropertyController;
@@ -84,6 +86,28 @@ Route::get('/', function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])
+        ->middleware(['current.account', 'account.status'])
+        ->name('backend.notifications.index');
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
+        ->middleware(['current.account', 'account.status'])
+        ->name('backend.notifications.read');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead'])
+        ->middleware(['current.account', 'account.status'])
+        ->name('backend.notifications.read_all');
+    Route::get('/notification-preferences', [NotificationController::class, 'preferences'])
+        ->middleware(['current.account', 'account.status'])
+        ->name('backend.notifications.preferences');
+    Route::put('/notification-preferences', [NotificationController::class, 'updatePreferences'])
+        ->middleware(['current.account', 'account.status'])
+        ->name('backend.notifications.preferences.update');
+    Route::get('/notification-deliveries', [NotificationController::class, 'deliveries'])
+        ->middleware(['current.account', 'account.status'])
+        ->name('backend.notifications.deliveries');
+    Route::post('/notification-deliveries/{delivery}/retry', [NotificationController::class, 'retry'])
+        ->middleware(['current.account', 'account.status'])
+        ->name('backend.notifications.deliveries.retry');
+
     Route::get('/clear-cache', function () {
         // Clear application cache
         Artisan::call('cache:clear');
@@ -312,7 +336,10 @@ Route::middleware('auth')->group(function () {
             Route::get('/{id}/edit', 'edit')->name('edit');  // Show edit form
             Route::post('/{id}/update', 'update')->name('update');  // Update tenancy
             Route::post('/{id}/delete', 'destroy')->name('delete');  // Delete tenancy
+            Route::put('/{tenancy}/members/{member}/right-to-rent', 'updateRightToRent')->name('right-to-rent.update');
         });
+        Route::post('/tenancies/{tenancy}/notices', [TenancyNoticeController::class, 'store'])
+            ->name('tenancies.notices.store');
 
         // Keeping this route separate since it follows a different URL structure
         Route::get('/properties/{propertyId}/tenancies', [TenancyController::class, 'index'])->name('tenancies.index');
@@ -498,6 +525,7 @@ Route::middleware('auth')->group(function () {
             Route::post('/instances/delete/{id}', 'deleteInstance')->name('deleteInstance');
 
             Route::post('/instances/change-status/{id}', 'changeStatus')->name('changeStatus');
+            Route::get('/events', 'list')->name('list');
 
         });
     });

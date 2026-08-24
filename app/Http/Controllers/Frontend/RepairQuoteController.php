@@ -7,6 +7,8 @@ use App\Models\RepairIssueContractorAssignment;
 use App\Models\Upload;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use App\Enums\CrmNotificationEvent;
+use App\Services\Notifications\CrmNotificationService;
 
 class RepairQuoteController extends Controller
 {
@@ -64,6 +66,21 @@ class RepairQuoteController extends Controller
             'quote_submitted_at' => now(),
             'status' => 'Quoted',
         ]);
+
+        $repairIssue = $assignment->repairIssue()->with('property')->first();
+        if ($repairIssue) {
+            app(CrmNotificationService::class)->dispatch(
+                CrmNotificationEvent::RepairQuoteSubmitted,
+                $repairIssue,
+                [
+                    'account_id' => $repairIssue->account_id,
+                    'repair_reference' => $repairIssue->reference_number,
+                    'property_address' => $repairIssue->property?->full_address,
+                    'action_url' => route('admin.property_repairs.show', $repairIssue->id),
+                    'milestone' => 'quote-submitted-'.$assignment->id.'-'.$assignment->updated_at?->timestamp,
+                ],
+            );
+        }
 
         return redirect()
             ->route('repair-quotes.show', ['assignment' => $assignment->id, 'token' => $token, 'signature' => $request->query('signature'), 'expires' => $request->query('expires')])

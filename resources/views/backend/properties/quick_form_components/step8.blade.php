@@ -135,11 +135,13 @@ $lettingPrice = $property->letting_price ?? '';
                             value="management" {{ (isset($property) && $property->management == 'management') ? 'checked' : '' }} />
                             <label for="management1"> Management </label>
                         </div>
+                        @if ($propertyType !== 'sales')
                         <div class="">
                             <input required type="radio" class="premium-management-radio" name="management" id="management2"
                                 value="premium management" {{ (isset($property) && $property->management == 'premium management') ? 'checked' : '' }} />
                             <label for="management2"> Premium Management </label>
                         </div>
+                    @endif
                     </div>
                 <div class="d-flex gap-3">
                     <button type="submit" class="btn btn_secondary margin-top-5 mt-5 w-100 last-step-submit" data-current-step="{{ $currentStep }}">Submit</button>

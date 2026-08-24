@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 use App\Services\Saas\PortalAccessService;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
+use App\Enums\CrmNotificationEvent;
+use App\Services\Notifications\CrmNotificationService;
 
 class WorkOrderController
 {
@@ -130,6 +132,24 @@ class WorkOrderController
             $this->setFinalContractorFromAssignment(
                 (int) $request->repair_issue_id,
                 (int) $request->final_contractor_assignment_id
+            );
+        }
+
+        if ($workOrder->booked_date || $workOrder->tentative_start_date || $workOrder->date_time) {
+            $workOrder->load('repairIssue.property');
+            $repair = $workOrder->repairIssue;
+            app(CrmNotificationService::class)->dispatch(
+                CrmNotificationEvent::RepairVisitScheduled,
+                $workOrder,
+                [
+                    'account_id' => $workOrder->account_id,
+                    'repair_reference' => $repair->reference_number,
+                    'property_address' => $repair->property?->full_address,
+                    'appointment_at' => Carbon::parse($workOrder->booked_date ?: $workOrder->tentative_start_date ?: $workOrder->date_time)->format('d M Y'),
+                    'action_url' => route('admin.property_repairs.show', $repair->id),
+                    'milestone' => 'visit-'.$workOrder->updated_at?->timestamp,
+                ],
+                auth()->user(),
             );
         }
 
@@ -295,24 +315,21 @@ class WorkOrderController
             return response()->json(['message' => 'Select a final contractor with an email before sending the work order.'], 422);
         }
 
-        $pdf = $this->buildWorkOrderPdf($workorder);
-
-        Mail::to($contractor->email)->send(new MailManager([
-            'subject' => 'Work order - ' . $workorder->works_order_no,
-            'content' => view('emails.repair_work_assigned', [
-                'repairIssue' => $workorder->repairIssue,
-                'contractor' => $contractor,
-                'assignment' => RepairIssueContractorAssignment::where('repair_issue_id', $workorder->repair_issue_id)
-                    ->where('contractor_id', $contractor->id)
-                    ->first(),
-            ])->render(),
-            'attachments' => [[
-                'type' => 'data',
-                'data' => $pdf->output(),
-                'name' => 'work-order-' . $workorder->works_order_no . '.pdf',
-                'options' => ['mime' => 'application/pdf'],
-            ]],
-        ]));
+        app(CrmNotificationService::class)->dispatch(
+            CrmNotificationEvent::RepairContractorAssigned,
+            $workorder,
+            [
+                'account_id' => $workorder->account_id,
+                'recipients' => [$contractor],
+                'repair_reference' => $workorder->repairIssue->reference_number,
+                'property_address' => $workorder->repairIssue->property?->full_address,
+                'action_url' => route('admin.property_repairs.show', $workorder->repairIssue->id),
+                'milestone' => 'work-order-sent-'.$workorder->id,
+                'attachment_type' => 'work_order',
+                'work_order_id' => $workorder->id,
+            ],
+            auth()->user(),
+        );
 
         return response()->json(['message' => 'Work order sent to final contractor successfully.']);
     }

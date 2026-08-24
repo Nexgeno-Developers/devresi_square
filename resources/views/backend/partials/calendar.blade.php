@@ -1,6 +1,5 @@
 {{-- resources/views/partials/calendar.blade.php --}}
 <div id="calendar"></div>
-@include('backend.partials._calendar_modals')
 {{-- Include the partial to push Select2 assets into the stacks --}}
 @include('backend.partials.assets.select2')
 @push('styles')
@@ -659,6 +658,10 @@
                     }
 
                     // If no recurrence → treat as a single
+                    if ((inst.invite_ids || []).length) {
+                        preselectSelect2($('#invite-select'), inst.invite_ids, inst.users);
+                    }
+
                     if (!inst.rrule) {
                         console.log('✏️[eventClick] Editing single instance:', inst.master_id);
                         openEventModal(info, 'single'); // or whatever shows the modal

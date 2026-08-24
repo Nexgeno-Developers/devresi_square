@@ -21,7 +21,7 @@
         <span class="right_item capitalize"> {{ $propertyType }} </span>
     </div>
     <div class="accordion_property_info_item">
-        <span class="left_item">Transaction Type:</span>
+        <span class="left_item">Property Category:</span>
         <span class="right_item capitalize"> {{ $transactionType }}  </span>
     </div>
     <div class="accordion_property_info_item">
@@ -70,7 +70,7 @@
             </div>
 
             <div class="form-group">
-                <div class="accordion_inner_heading mb-2">Transaction Type</div>
+                <div class="accordion_inner_heading mb-2">Property Category</div>
                 <div class="rounded_radio_btn">
                     <div class="rs_radio_btns">
                         <div>

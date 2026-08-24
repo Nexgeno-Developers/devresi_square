@@ -208,11 +208,13 @@
                             <div class="text-danger" data-error-for="sub_type_id"></div>
                         </div>
 
+                        @unless(auth()->user()->hasRole('Landlord'))
                         <div class="col-md-6">
                             <label class="form-label">Office</label>
                             <input type="text" name="office" class="form-control" placeholder="Office name">
                             <div class="text-danger" data-error-for="office"></div>
                         </div>
+                        @endunless
                         <div class="col-md-6">
                             <label class="form-label">Status</label>
                             <select name="status" class="form-select">
@@ -226,16 +228,9 @@
                             <div class="text-danger" data-error-for="status"></div>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">In Diary Of</label>
-                            <select id="user-select" name="diary_owner" class="form-control select-entity" data-entity="diary_owner"
-                                data-mode="single" data-max="1" data-url="{{ route('admin.users.ajax') }}">
-                            </select>
-                            <div class="text-danger" data-error-for="diary_owner"></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Booked By</label>
-                            <select id="user-select2" name="on_behalf_of" class="form-control select-entity" data-entity="on_behalf_of" data-mode="single" data-max="1" data-url="{{ route('admin.users.ajax') }}"></select>
-                            <div class="text-danger" data-error-for="on_behalf_of"></div>
+                            <label class="form-label">Invites</label>
+                            <select id="invite-select" class="form-control select-entity" data-entity="invite" data-mode="multi" data-max="20" data-url="{{ route('admin.users.ajax') }}"></select>
+                            <div class="text-danger" data-error-for="invite_ids"></div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Location</label>
@@ -318,12 +313,8 @@
 <template id="reminderTpl">
     <div class="input-group mb-2 reminder-row">
         <input type="number" name="reminders[][minutes_before]" class="form-control w-25" min="0" value="30">
-        <select name="reminders[][channel]" class="form-select w-25">
-            <option value="email">EMAIL</option>
-            <option value="in_app">IN APP</option>
-            <option value="sms">SMS</option>
-            <option value="push">PUSH</option>
-        </select>
+        <input type="hidden" name="reminders[][channel]" value="email">
+        <span class="input-group-text w-25">EMAIL &amp; IN-APP</span>
         <span class="input-group-text">minutes before</span>
         <button type="button" class="btn btn-outline-danger removeReminderBtn">&times;</button>
     </div>

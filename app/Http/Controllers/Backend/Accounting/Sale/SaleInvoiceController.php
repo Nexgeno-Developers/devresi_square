@@ -36,6 +36,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
+use App\Enums\CrmNotificationEvent;
+use App\Services\Notifications\CrmNotificationService;
 
 class SaleInvoiceController extends BaseCrudController
 {
@@ -325,6 +327,7 @@ class SaleInvoiceController extends BaseCrudController
     public function update(Request $request, int $id)
     {
         $invoice = $this->query()->findOrFail($id);
+        $previousStatus = $invoice->status;
         $this->ensurePortalCanViewInvoice($invoice);
 
         $isChildRecurring = !empty($invoice->recurring_master_invoice_id);
@@ -491,6 +494,20 @@ class SaleInvoiceController extends BaseCrudController
         $invoice->refresh();
 
         $this->postInvoiceIfNeeded($invoice);
+
+        if ($previousStatus !== $invoice->status) {
+            if ($invoice->status === 'issued') {
+                $this->sendInvoiceEmailOnCreation($invoice);
+            } elseif ($invoice->status === 'cancelled') {
+                $invoice->loadMissing('user');
+                app(CrmNotificationService::class)->dispatch(CrmNotificationEvent::FinanceInvoiceVoided, $invoice, [
+                    'account_id' => $invoice->account_id,
+                    'milestone' => 'voided',
+                    'invoice_number' => $invoice->invoice_no ?: (string) $invoice->id,
+                    'action_url' => route('backend.accounting.sale.invoices.show', $invoice->id),
+                ], $request->user());
+            }
+        }
 
         return redirect()->route($this->routeName . '.index')
             ->with('success', $this->title . ' updated successfully.');
@@ -712,72 +729,25 @@ class SaleInvoiceController extends BaseCrudController
     private function sendInvoiceEmailOnCreation(SysSaleInvoice $invoice): void
     {
         $invoice->loadMissing('user');
-
-        $recipient = optional($invoice->user)->email;
-        if (empty($recipient)) {
+        if (in_array($invoice->status, ['draft', 'cancelled'], true) || ! $invoice->user) {
             return;
         }
 
-        $templates = EmailTemplate::query()
-            ->where('identifier', 'sale_invoice_send')
-            ->where('status', 1)
-            ->get();
-        if ($templates->isEmpty()) {
-            return;
-        }
-
-        $existing = NotificationLog::query()
-            ->where('identifier', 'sale_invoice_send')
-            ->where('channel', 'email')
-            ->where('notifiable_type', $invoice->getMorphClass())
-            ->where('notifiable_id', $invoice->getKey())
-            ->first();
-        if ($existing) {
-            return;
-        }
-
-        $data = [
+        app(CrmNotificationService::class)->dispatch(CrmNotificationEvent::FinanceInvoiceIssued, $invoice, [
+            'account_id' => $invoice->account_id,
+            'milestone' => 'issued',
             'invoice_id' => (string) $invoice->id,
-            'invoice_no' => (string) ($invoice->invoice_no ?? $invoice->id),
+            'invoice_number' => (string) ($invoice->invoice_no ?? $invoice->id),
             'invoice_date' => (string) ($invoice->invoice_date ?? ''),
-            'due_date' => (string) ($invoice->due_date ?? ''),
-            'total_amount' => (string) ($invoice->total_amount ?? ''),
-            'balance_amount' => (string) ($invoice->balance_amount ?? ''),
+            'due_date' => $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d/m/Y') : '',
+            'invoice_amount' => '£'.number_format((float) ($invoice->balance_amount ?? $invoice->total_amount), 2),
             'customer_name' => (string) (optional($invoice->user)->name ?? ''),
             'customer_email' => (string) (optional($invoice->user)->email ?? ''),
             'invoice_view_url' => route('backend.accounting.sale.invoices.show', $invoice->id),
             'invoice_pdf_url' => route('backend.accounting.sale.invoices.pdf', $invoice->id),
+            'action_url' => route('backend.accounting.sale.invoices.show', $invoice->id),
             'attach_invoice_pdf' => true,
-        ];
-
-        foreach ($templates as $template) {
-            $subject = $template->subject !== null ? render_template((string) $template->subject, $data) : '';
-            $message = render_template((string) ($template->default_text ?? ''), $data);
-
-            $log = NotificationLog::create([
-                'identifier' => 'sale_invoice_send',
-                'notifiable_type' => $invoice->getMorphClass(),
-                'notifiable_id' => $invoice->getKey(),
-                'channel' => 'email',
-                'recipient' => $recipient,
-                'subject' => $subject,
-                'message' => $message,
-                'payload' => $data,
-                'status' => 'pending',
-                'attempt' => 0,
-                'max_attempts' => (int) config('notification_system.max_attempts', 3),
-            ]);
-
-            try {
-                SendNotificationJob::dispatchSync($log);
-            } catch (\Throwable $e) {
-                Log::warning('Sale invoice email failed during invoice creation.', [
-                    'invoice_id' => $invoice->id,
-                    'notification_log_id' => $log->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
+        ], auth()->user());
     }
 
     private function buildNotificationInfo(SysSaleInvoice $invoice): array
@@ -785,26 +755,32 @@ class SaleInvoiceController extends BaseCrudController
         $morphType = $invoice->getMorphClass();
 
         $sendLog = NotificationLog::query()
-            ->where('identifier', 'sale_invoice_send')
+            ->whereIn('identifier', ['finance.invoice_issued', 'sale_invoice_send'])
             ->where('channel', 'email')
-            ->where('notifiable_type', $morphType)
-            ->where('notifiable_id', $invoice->getKey())
+            ->where(function ($query) use ($morphType, $invoice) {
+                $query->where(fn ($legacy) => $legacy->where('notifiable_type', $morphType)->where('notifiable_id', $invoice->getKey()))
+                    ->orWhere(fn ($current) => $current->where('subject_type', $morphType)->where('subject_id', $invoice->getKey()));
+            })
             ->orderByDesc('id')
             ->first();
 
         $reminderLog = NotificationLog::query()
-            ->where('identifier', 'sale_invoice_due_reminder')
+            ->whereIn('identifier', ['finance.invoice_due', 'sale_invoice_due_reminder'])
             ->where('channel', 'email')
-            ->where('notifiable_type', $morphType)
-            ->where('notifiable_id', $invoice->getKey())
+            ->where(function ($query) use ($morphType, $invoice) {
+                $query->where(fn ($legacy) => $legacy->where('notifiable_type', $morphType)->where('notifiable_id', $invoice->getKey()))
+                    ->orWhere(fn ($current) => $current->where('subject_type', $morphType)->where('subject_id', $invoice->getKey()));
+            })
             ->orderByDesc('id')
             ->first();
 
         $overdueLog = NotificationLog::query()
-            ->where('identifier', 'sale_invoice_overdue_reminder')
+            ->whereIn('identifier', ['finance.invoice_overdue', 'sale_invoice_overdue_reminder'])
             ->where('channel', 'email')
-            ->where('notifiable_type', $morphType)
-            ->where('notifiable_id', $invoice->getKey())
+            ->where(function ($query) use ($morphType, $invoice) {
+                $query->where(fn ($legacy) => $legacy->where('notifiable_type', $morphType)->where('notifiable_id', $invoice->getKey()))
+                    ->orWhere(fn ($current) => $current->where('subject_type', $morphType)->where('subject_id', $invoice->getKey()));
+            })
             ->orderByDesc('id')
             ->first();
 
@@ -1037,6 +1013,15 @@ class SaleInvoiceController extends BaseCrudController
             $statusAfter = $newBalance > 0 ? 'partial' : 'paid';
             $remaining = $newBalance;
         });
+
+        $invoice->refresh()->loadMissing('user');
+        app(CrmNotificationService::class)->dispatch(CrmNotificationEvent::FinancePaymentReceived, $invoice, [
+            'account_id' => $invoice->account_id,
+            'milestone' => 'payment-'.number_format($amount, 2, '.', '').'-'.number_format($remaining, 2, '.', ''),
+            'payment_amount' => '£'.number_format($amount, 2),
+            'invoice_number' => $invoice->invoice_no ?: (string) $invoice->id,
+            'action_url' => route('backend.accounting.sale.invoices.show', $invoice->id),
+        ], $request->user());
 
         $msg = $statusAfter === 'paid'
             ? "Invoice {$invoice->invoice_no} marked as paid."

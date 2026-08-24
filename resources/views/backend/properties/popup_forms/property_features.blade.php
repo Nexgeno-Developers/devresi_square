@@ -115,17 +115,18 @@ $other = jsonDecodeAndPrint($property->other) ?? '';
             <div class="rounded_check_btn">
                     <div class="form-group ">
                         <div class="accordion_inner_heading mb-2">Furniture</div>
-                            @foreach(['Furnished' => 'Furnished', 'Unfurnished' => 'Unfurnished', 'Flexible' => 'Flexible'] as $key => $value)
-                                @php
-                                    // Decode the furniture field if it's a JSON string.
-                                    $furniture = isset($property) && is_string($property->furniture) ? json_decode($property->furniture, true) : [];
-                                @endphp  
-                            @endforeach  
-                            <div class="form-check">
-                                <input class="form-check-input hidden" type="checkbox" name="furniture[]" value="{{ $key }}" id="furniture_{{ $key }}" 
-                                    {{ in_array($key, $furniture) ? 'checked' : '' }}>
-                                <label  class="checkbox_btn" for="furniture_{{ $key }}">{{ $value }}</label>
+                        @php
+                            $storedFurniture = is_string($property->furniture) ? json_decode($property->furniture, true) : $property->furniture;
+                            $storedFurniture = is_array($storedFurniture) ? $storedFurniture : array_filter([(string) $storedFurniture]);
+                            $selectedFurniture = collect($storedFurniture)->first(fn ($value) => in_array($value, ['Furnished', 'Unfurnished'], true));
+                        @endphp
+                        @foreach(['Furnished', 'Unfurnished'] as $value)
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input hidden" type="radio" name="furniture[]" value="{{ $value }}" id="furniture_{{ $value }}"
+                                    {{ $selectedFurniture === $value ? 'checked' : '' }}>
+                                <label class="checkbox_btn" for="furniture_{{ $value }}">{{ $value }}</label>
                             </div>
+                        @endforeach
                     </div> {{-- form-group end --}}
                     <div class="form-group">
                         <div class="accordion_inner_heading mt-4 mb-2">Kitchen</div>

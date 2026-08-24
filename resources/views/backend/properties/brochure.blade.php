@@ -100,14 +100,14 @@
             'Property Ref' => $property->prop_ref_no,
             'Furnishing Type' => $property->frunishing_type,
             'Property Type' => $property->property_type,
-            'Transaction Type' => $property->transaction_type,
+            'Property Category' => $property->transaction_type,
             'Specific Property Type' => $property->specific_property_type,
             'Current Status' => $property->current_status,
             'Sales Status' => $property->sales_current_status,
             'Letting Status' => $property->letting_current_status,
         ];
         $pricingRows = [
-            'Move-in Date' => $date($property->available_from),
+            'Availability' => $date($property->available_from),
             'Market On' => $display($property->market_on),
             'Local Authority' => $property->localAuthority?->display_name,
             'Tenure' => $property->tenure,

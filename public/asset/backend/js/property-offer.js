@@ -9,6 +9,17 @@
     const submitButton = document.getElementById('submitButton');
     const offerStep = document.getElementById('offer-step');
 
+    function hasExistingOfferContacts() {
+        return ($('#existingTenantIds').val() || []).length > 0;
+    }
+
+    function toggleManualTenantRequirements() {
+        const hasExisting = hasExistingOfferContacts();
+        $('#tenant-forms input, #tenant-forms select').each(function () {
+            if (!$(this).is('[type="checkbox"]')) $(this).prop('required', !hasExisting);
+        });
+    }
+
 
     // Function to retrieve query parameter from URL
     function getUrlParameter(name) {
@@ -24,6 +35,28 @@
         // If propertyId exists, set it in the hidden input field
         if (propertyId) {
             $("input[name='property_id']").val(propertyId);
+        }
+
+        const $existing = $('#existingTenantIds');
+        if (!$existing.hasClass('select2-hidden-accessible')) {
+            $existing.select2({
+                dropdownParent: $('#addOfferModal'),
+                width: '100%',
+                placeholder: 'Search existing contacts',
+                ajax: {
+                    url: $existing.data('url'), dataType: 'json', delay: 250,
+                    data: params => ({ q: params.term }),
+                    processResults: data => ({ results: data.results })
+                }
+            });
+            $existing.on('change', function () {
+                const selected = $(this).select2('data');
+                const $main = $('#mainExistingTenantId').empty().append(new Option('Select main applicant', '', false, false));
+                selected.forEach(contact => $main.append(new Option(contact.text, contact.id)));
+                if (selected.length === 1) $main.val(String(selected[0].id));
+                $('#existingMainTenantGroup').toggleClass('d-none', selected.length === 0);
+                toggleManualTenantRequirements();
+            });
         }
     });
 
@@ -224,6 +257,7 @@
 
         // Update hidden input field with the ID of the main person
         document.getElementById('mainPersonId').value = tenantForms[selectedIndex].id;
+        $('#mainExistingTenantId').val('');
 
         // Re-render the tenant forms to reflect the changes
         renderTenantForms();
@@ -245,6 +279,7 @@
 
     // Validate the current tenant form
     function validateTenantForm() {
+        if (hasExistingOfferContacts()) return true;
         const currentForm = document.querySelector(`.tenant-form[data-step='${currentStep}']`);
         const inputs = currentForm.querySelectorAll('input, select');
         for (const input of inputs) {
@@ -306,7 +341,7 @@
         console.log('Submit button clicked');
 
         // Ensure that at least one tenant is selected as the "main person"
-        const mainPersonSelected = tenantForms.some(tenant => tenant.mainPerson);
+        const mainPersonSelected = tenantForms.some(tenant => tenant.mainPerson) || $('#mainExistingTenantId').val();
         console.log('Main person selected:', mainPersonSelected);
 
         if (!mainPersonSelected) {
@@ -377,6 +412,9 @@
         const form = document.getElementById('tenantOfferForm');
         if (form) {
             form.reset();  // This will reset the form inputs
+            $('#existingTenantIds').val(null).trigger('change');
+            $('#mainExistingTenantId').empty();
+            $('#existingMainTenantGroup').addClass('d-none');
             console.log('Form reset');
         } else {
             console.error('Form not found!');

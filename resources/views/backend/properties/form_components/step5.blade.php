@@ -14,15 +14,15 @@
 
             <div class="form-group">
                 <label>Furniture</label>
-                @foreach(['Furnished' => 'Furnished', 'Unfurnished' => 'Unfurnished', 'Flexible' => 'Flexible'] as $key => $value)
-                    @php
-                        // Decode the furniture field if it's a JSON string.
-                        $furniture = isset($property) && is_string($property->furniture) ? json_decode($property->furniture, true) : [];
-                    @endphp    
+                @php
+                    $furniture = isset($property) && is_string($property->furniture) ? json_decode($property->furniture, true) : [];
+                    $furniture = is_array($furniture) ? $furniture : [];
+                @endphp
+                @foreach(['Furnished', 'Unfurnished'] as $value)
                     <div class="form-check">
-                        <input class="form-check-input" type="checkbox" name="furniture[]" value="{{ $key }}" id="furniture_{{ $key }}" 
-                            {{ in_array($key, $furniture) ? 'checked' : '' }}>
-                        <label class="form-check-label" for="furniture_{{ $key }}">{{ $value }}</label>
+                        <input class="form-check-input" type="radio" name="furniture[]" value="{{ $value }}" id="furniture_{{ $value }}"
+                            {{ in_array($value, $furniture) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="furniture_{{ $value }}">{{ $value }}</label>
                     </div>
                 @endforeach
             </div>

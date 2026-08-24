@@ -33,6 +33,10 @@ class MailManager  extends Mailable
                     ->subject($this->array['subject'])
                     ->with(['content' => $this->array['content']]);
 
+        if (! empty($this->array['reply_to'])) {
+            $mail->replyTo($this->array['reply_to'], $this->array['reply_name'] ?? null);
+        }
+
         foreach (($this->array['attachments'] ?? []) as $attachment) {
             if (($attachment['type'] ?? null) === 'data') {
                 $mail->attachData(

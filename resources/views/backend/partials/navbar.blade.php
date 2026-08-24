@@ -5,6 +5,27 @@
     color: #ef486a;
 }
 
+.notification-menu {
+    min-width: 360px;
+    max-width: min(360px, calc(100vw - 24px));
+}
+
+.notification-menu .dropdown-item {
+    white-space: normal;
+}
+
+/* Constrain header height and logo size */
+#header {
+    max-height: 70px;
+    overflow: hidden;
+}
+
+#header .rs_logo img {
+    max-height: 36px;
+    width: auto;
+    object-fit: contain;
+}
+
 </style>
 @endpush
 <!-- resources/views/backend/partials/navbar.blade.php -->
@@ -68,6 +89,52 @@
                     @endif
                 @endif
             @endauth
+            @auth
+                @php
+                    $notificationAccountId = current_account_id();
+                    $appointmentNotificationQuery = auth()->user()->unreadNotifications()
+                        ->when($notificationAccountId, fn ($query) => $query->where('account_id', $notificationAccountId))
+                        ->when(!$notificationAccountId, fn ($query) => $query->whereRaw('1 = 0'));
+                    $appointmentNotificationCount = (clone $appointmentNotificationQuery)->count();
+                    $appointmentNotifications = $appointmentNotificationQuery->latest()->take(5)->get();
+                @endphp
+                <div class="dropdown ms-3">
+                    <button class="btn btn-light position-relative" type="button" data-bs-toggle="dropdown"
+                        aria-expanded="false" aria-label="Notifications">
+                        <i class="bi bi-bell"></i>
+                        @if($appointmentNotificationCount)
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                {{ $appointmentNotificationCount }}
+                            </span>
+                        @endif
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end notification-menu p-0">
+                        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                            <strong>Notifications</strong>
+                            @if($appointmentNotificationCount)
+                                <button type="button" class="btn btn-link btn-sm p-0" id="mark-all-notifications-read">
+                                    Mark all read
+                                </button>
+                            @endif
+                        </div>
+                        @forelse($appointmentNotifications as $notification)
+                            <a class="dropdown-item py-2 border-bottom notification-item"
+                                href="{{ $notification->data['url'] ?? route('backend.events.calendar') }}"
+                                data-notification-id="{{ $notification->id }}">
+                                <div class="fw-semibold">{{ $notification->data['title'] ?? 'Notification' }}</div>
+                                <div class="small text-muted">{{ $notification->data['message'] ?? '' }}</div>
+                                <div class="small text-muted mt-1">{{ $notification->created_at?->diffForHumans() }}</div>
+                            </a>
+                        @empty
+                            <div class="px-3 py-3 text-muted small">No unread notifications.</div>
+                        @endforelse
+                        <div class="px-3 py-2 border-top d-flex justify-content-between">
+                            <a href="{{ route('backend.notifications.index') }}" class="small">View all</a>
+                            <a href="{{ route('backend.notifications.preferences') }}" class="small">Preferences</a>
+                        </div>
+                    </div>
+                </div>
+            @endauth
             <div class="collapse navbar-collapse" id="navbarAdmin">
                 <ul class="navbar-nav ms-auto">               
                     @if (Auth::check())                  
@@ -93,3 +160,25 @@
         </div>
     </div>
 </nav>
+
+@auth
+    @push('scripts')
+        <script>
+            $(document).on('click', '.notification-item', function (event) {
+                event.preventDefault();
+                const destination = this.href;
+                $.post('{{ route('backend.notifications.read', ':notification') }}'.replace(':notification', $(this).data('notification-id')), {
+                    _token: $('meta[name="csrf-token"]').attr('content')
+                }).always(function () { window.location.href = destination; });
+            });
+
+            $(document).on('click', '#mark-all-notifications-read', function () {
+                $.post('{{ route('backend.notifications.read_all') }}', {
+                    _token: $('meta[name="csrf-token"]').attr('content')
+                }).done(function () {
+                    window.location.reload();
+                });
+            });
+        </script>
+    @endpush
+@endauth

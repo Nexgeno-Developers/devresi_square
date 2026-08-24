@@ -10,6 +10,8 @@ use App\Services\Accounting\SaleInvoiceLifecycleService;
 use App\Jobs\SendNotificationJob;
 use App\Models\EmailTemplate;
 use App\Models\NotificationLog;
+use App\Enums\CrmNotificationEvent;
+use App\Services\Notifications\CrmNotificationService;
 
 class GenerateRecurringSaleInvoices extends Command
 {
@@ -398,62 +400,25 @@ class GenerateRecurringSaleInvoices extends Command
 
     private function sendInvoiceEmailOnGeneration(SysSaleInvoice $invoice): void
     {
-        $recipient = optional($invoice->user)->email;
-        if (empty($recipient)) {
+        $invoice->loadMissing('user');
+        if (! $invoice->user || in_array($invoice->status, ['draft', 'cancelled'], true)) {
             return;
         }
 
-        $templates = EmailTemplate::query()
-            ->where('identifier', 'sale_invoice_send')
-            ->where('status', 1)
-            ->get();
-        if ($templates->isEmpty()) {
-            return;
-        }
-
-        $existing = NotificationLog::query()
-            ->where('identifier', 'sale_invoice_send')
-            ->where('channel', 'email')
-            ->where('notifiable_type', $invoice->getMorphClass())
-            ->where('notifiable_id', $invoice->getKey())
-            ->first();
-        if ($existing) {
-            return;
-        }
-
-        $data = [
+        app(CrmNotificationService::class)->dispatch(CrmNotificationEvent::FinanceInvoiceIssued, $invoice, [
+            'account_id' => $invoice->account_id,
+            'milestone' => 'issued',
             'invoice_id' => (string) $invoice->id,
-            'invoice_no' => (string) ($invoice->invoice_no ?? $invoice->id),
+            'invoice_number' => (string) ($invoice->invoice_no ?? $invoice->id),
             'invoice_date' => (string) ($invoice->invoice_date ?? ''),
-            'due_date' => (string) ($invoice->due_date ?? ''),
-            'total_amount' => (string) ($invoice->total_amount ?? ''),
-            'balance_amount' => (string) ($invoice->balance_amount ?? ''),
+            'due_date' => $invoice->due_date ? Carbon::parse($invoice->due_date)->format('d/m/Y') : '',
+            'invoice_amount' => '£'.number_format((float) ($invoice->balance_amount ?? $invoice->total_amount), 2),
             'customer_name' => (string) (optional($invoice->user)->name ?? ''),
             'customer_email' => (string) (optional($invoice->user)->email ?? ''),
             'invoice_view_url' => route('backend.accounting.sale.invoices.show', $invoice->id),
             'invoice_pdf_url' => route('backend.accounting.sale.invoices.pdf', $invoice->id),
+            'action_url' => route('backend.accounting.sale.invoices.show', $invoice->id),
             'attach_invoice_pdf' => true,
-        ];
-
-        foreach ($templates as $template) {
-            $subject = $template->subject !== null ? render_template((string) $template->subject, $data) : '';
-            $message = render_template((string) ($template->default_text ?? ''), $data);
-
-            $log = NotificationLog::create([
-                'identifier' => 'sale_invoice_send',
-                'notifiable_type' => $invoice->getMorphClass(),
-                'notifiable_id' => $invoice->getKey(),
-                'channel' => 'email',
-                'recipient' => $recipient,
-                'subject' => $subject,
-                'message' => $message,
-                'payload' => $data,
-                'status' => 'pending',
-                'attempt' => 0,
-                'max_attempts' => (int) config('notification_system.max_attempts', 3),
-            ]);
-
-            SendNotificationJob::dispatch($log)->afterCommit();
-        }
+        ]);
     }
 }

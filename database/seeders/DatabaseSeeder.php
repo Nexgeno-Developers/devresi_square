@@ -44,6 +44,7 @@ class DatabaseSeeder extends Seeder
             EventTypeSeeder::class,
             GlAccountSeeder::class,
             SysAccountingSeeder::class,
+            CrmNotificationTemplatesSeeder::class,
         ]);
 
         // User::factory()->create([

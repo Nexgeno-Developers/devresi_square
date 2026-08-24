@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use App\Models\SysReceipt;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class User extends Authenticatable
 {
@@ -160,6 +161,11 @@ class User extends Authenticatable
     public function lastActiveAccount(): BelongsTo
     {
         return $this->belongsTo(Account::class, 'last_active_account_id');
+    }
+
+    public function accountNotifications(int $accountId): MorphMany
+    {
+        return $this->notifications()->where('account_id', $accountId);
     }
 
     public function isStaffAccount(): bool

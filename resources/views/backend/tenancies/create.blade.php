@@ -206,6 +206,12 @@
                     <label for="tds_dps_number" class="form-label">TDS / DPS Reference Number</label>
                     <input type="text" class="form-control" id="tds_dps_number" name="tds_dps_number" />
                 </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-3"><label class="form-label">Deposit received</label><input type="datetime-local" class="form-control" name="deposit_received_at" value="{{ old('deposit_received_at') }}"></div>
+                    <div class="col-md-3"><label class="form-label">Deposit protected</label><input type="datetime-local" class="form-control" name="deposit_protected_at" value="{{ old('deposit_protected_at') }}"></div>
+                    <div class="col-md-3"><label class="form-label">Prescribed information sent</label><input type="datetime-local" class="form-control" name="prescribed_information_sent_at" value="{{ old('prescribed_information_sent_at') }}"></div>
+                    <div class="col-md-3"><label class="form-label">Written information sent</label><input type="datetime-local" class="form-control" name="written_terms_sent_at" value="{{ old('written_terms_sent_at') }}"></div>
+                </div>
 
                 <div class="mb-3 d-none" id="referenceNumberSchemeField">
                     <label for="referenceNumber" class="form-label">Reference Number</label>
@@ -270,7 +276,11 @@
 </div>
 <script>
 
-    initSelect3('.select2');
+
+    if (typeof initSelect3 === 'function') {
+        initSelect3('.select2');
+    }
+
 
     // ── Deposit auto-calculation: Rent × 12 ÷ 52 × Weeks ──────────────────
     function calcDeposit() {

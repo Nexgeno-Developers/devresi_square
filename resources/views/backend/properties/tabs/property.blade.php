@@ -208,6 +208,9 @@ $secondHalf = array_slice($allFeatures, $halfCount);
             // ['key' => 'property_status', 'title' => 'Status', 'order' => 7],
             // Add more sections with order values as needed
         ];
+        if (!in_array($property->property_type, ['lettings', 'both'], true)) {
+            $formSections = array_values(array_filter($formSections, fn ($section) => $section['key'] !== 'property_services'));
+        }
     
         // Sort by 'order' key
         usort($formSections, function ($a, $b) {

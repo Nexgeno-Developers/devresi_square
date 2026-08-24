@@ -54,6 +54,7 @@
                                     <th>Price</th>
                                     <th>Deposit</th>
                                     <th>Term</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -65,6 +66,7 @@
                                     <td>{{ $offer->price }}</td>
                                     <td>{{ $offer->deposit }}</td>
                                     <td>{{ $offer->term }}</td>
+                                    <td><a class="btn btn-sm btn-outline-info" href="{{ route('admin.users.show', $mainPerson->id) }}" title="View contact"><i class="bi bi-eye"></i></a></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -85,6 +87,7 @@
                                     <th>Price</th>
                                     <th>Deposit</th>
                                     <th>Term</th>
+                                    <th>View</th>
                                     @if ($offer->status !== 'Accepted' && $offer->status !== 'Rejected')
                                     <th>Action</th>
                                     @endif
@@ -100,9 +103,10 @@
                                     <td>{{ $offer->price }}</td>
                                     <td>{{ $offer->deposit }}</td>
                                     <td>{{ $offer->term }}</td>
+                                    <td><a class="btn btn-sm btn-outline-info" href="{{ route('admin.users.show', $member->id) }}" title="View contact"><i class="bi bi-eye"></i></a></td>
                                     @if ($offer->status !== 'Accepted' && $offer->status !== 'Rejected')
                                     <td>
-                                        <button class="btn btn-primary btn-sm make-main-btn" data-id="{{ $offer->id }}" data-userid="{{ $member->details['user_id'] }}"  data-member="{{ json_encode($member) }}">Set as Main</button>
+                                        <button class="btn btn-primary btn-sm make-main-btn" data-id="{{ $offer->id }}" data-userid="{{ $member->id }}" data-member="{{ json_encode($member) }}">Set as Main</button>
                                     </td>
                                     @endif
                                 </tr>

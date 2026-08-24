@@ -39,6 +39,19 @@ class Tenancy extends Model
         'renewal_exempt',
         'term_months',
         'term_days'
+        ,'deposit_received_at'
+        ,'deposit_protected_at'
+        ,'prescribed_information_sent_at'
+        ,'written_terms_sent_at'
+    ];
+
+    protected $casts = [
+        'move_in' => 'date',
+        'move_out' => 'date',
+        'deposit_received_at' => 'datetime',
+        'deposit_protected_at' => 'datetime',
+        'prescribed_information_sent_at' => 'datetime',
+        'written_terms_sent_at' => 'datetime',
     ];
 
     public function property()
@@ -86,5 +99,10 @@ class Tenancy extends Model
     public function propertyManagers()
     {
         return $this->belongsToMany(User::class, 'property_manager_tenancy', 'tenancy_id', 'property_manager_id');
+    }
+
+    public function notices()
+    {
+        return $this->hasMany(TenancyNotice::class);
     }
 }

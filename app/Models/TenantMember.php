@@ -27,10 +27,16 @@ class TenantMember extends Model
         'can_login',
         'is_main_person',
         'group_id'
+        ,'right_to_rent_required'
+        ,'right_to_rent_checked_at'
+        ,'right_to_rent_follow_up_due_at'
     ];
 
     protected $casts = [
         'can_login' => 'boolean',
+        'right_to_rent_required' => 'boolean',
+        'right_to_rent_checked_at' => 'datetime',
+        'right_to_rent_follow_up_due_at' => 'datetime',
     ];
 
     public function tenancy()

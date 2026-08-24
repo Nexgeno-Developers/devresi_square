@@ -22,6 +22,7 @@ class Account extends Model implements Auditable
         'billing_email',
         'billing_phone',
         'currency',
+        'timezone',
         'status',
         'trial_started_at',
         'trial_ends_at',

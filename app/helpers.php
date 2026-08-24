@@ -944,7 +944,7 @@ if (!function_exists('safeAssignRoles')) {
     if (!function_exists('get_email_template_data')) {
         function get_email_template_data($identifier, $colmn_name = null)
         {
-            $value = EmailTemplate::where('identifier', $identifier)->first()->$colmn_name;
+            $value = optional(EmailTemplate::getByIdentifier($identifier))->{$colmn_name};
             return $value;
         }
     }

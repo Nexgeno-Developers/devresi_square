@@ -28,6 +28,14 @@ use App\Models\Addon;
 use App\Models\Event;
 use App\Models\Plan;
 use App\Models\PropertyParticipant;
+use App\Models\Offer;
+use App\Models\ComplianceRecord;
+use App\Models\RepairIssue;
+use App\Models\WorkOrder;
+use App\Models\TenantMember;
+use App\Models\TenancyNotice;
+use App\Models\NotificationLog;
+use App\Observers\EventObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -44,6 +52,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::observe(EventObserver::class);
         Blade::component('components.frontend.form', 'form-component');
         Blade::component('components.backend.notes.notes', 'backend-notes-component');
         Blade::component('components.backend.documents.documents', 'backend-documents-component');
@@ -104,6 +113,13 @@ class AppServiceProvider extends ServiceProvider
             'App\\Models\\Event'      => Event::class,
             'App\\Models\\Plan'       => Plan::class,
             'App\\Models\\PropertyParticipant' => PropertyParticipant::class,
+            'App\\Models\\Offer'      => Offer::class,
+            'App\\Models\\ComplianceRecord' => ComplianceRecord::class,
+            'App\\Models\\RepairIssue' => RepairIssue::class,
+            'App\\Models\\WorkOrder' => WorkOrder::class,
+            'App\\Models\\TenantMember' => TenantMember::class,
+            'App\\Models\\TenancyNotice' => TenancyNotice::class,
+            'App\\Models\\NotificationLog' => NotificationLog::class,
             'App\\Models\\Property'   => Property::class,
             'App\\Models\\Tenancy'    => Tenancy::class,
             'App\\Models\\Owner'      => Owner::class,

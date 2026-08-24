@@ -19,9 +19,28 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Enums\CrmNotificationEvent;
+use App\Services\Notifications\CrmNotificationService;
 
 class TenancyController
 {
+    public function updateRightToRent(Request $request, Tenancy $tenancy, TenantMember $member)
+    {
+        abort_unless((int) $tenancy->account_id === (int) current_account_id(), 404);
+        abort_unless((int) $member->tenancy_id === (int) $tenancy->id, 404);
+        $validated = $request->validate([
+            'right_to_rent_required' => ['nullable', 'boolean'],
+            'right_to_rent_checked_at' => ['nullable', 'date'],
+            'right_to_rent_follow_up_due_at' => ['nullable', 'date', 'after:right_to_rent_checked_at'],
+        ]);
+        $member->update([
+            'right_to_rent_required' => $request->boolean('right_to_rent_required'),
+            'right_to_rent_checked_at' => $validated['right_to_rent_checked_at'] ?? null,
+            'right_to_rent_follow_up_due_at' => $validated['right_to_rent_follow_up_due_at'] ?? null,
+        ]);
+
+        return back()->with('success', 'Right to rent follow-up record updated.');
+    }
 
 
     // Display a list of all active tenancies for a specific property
@@ -100,6 +119,10 @@ class TenancyController
             // 'renewal_exempt' => 'nullable|boolean', // Assuming it's a boolean field
             'term_months' => 'nullable|integer',
             'term_days' => 'nullable|integer',
+            'deposit_received_at' => 'nullable|date',
+            'deposit_protected_at' => 'nullable|date',
+            'prescribed_information_sent_at' => 'nullable|date',
+            'written_terms_sent_at' => 'nullable|date',
             'user_id' => 'required|array', // Validate that the user_id is an array
             'user_id.*' => 'exists:users,id', // Ensure each user_id exists in the users table
 
@@ -185,7 +208,7 @@ class TenancyController
 
         // ── Feature 2: Send tenancy details email to each tenant ──
         $template = EmailTemplate::getByIdentifier('tenant_welcome');
-        foreach ($request->user_id as $userId) {
+        foreach ([] as $userId) {
             $tenantUser = User::find($userId);
             if (!$tenantUser) continue;
 
@@ -227,6 +250,21 @@ class TenancyController
                 Log::error("Failed to send tenant tenancy email to {$tenantUser->email}: {$e->getMessage()}");
             }
         }
+
+        $tenancy->load('tenantMembers.user', 'propertyManagers', 'property');
+        app(CrmNotificationService::class)->dispatch(
+            CrmNotificationEvent::TenancyActivated,
+            $tenancy,
+            [
+                'account_id' => $tenancy->account_id,
+                'property_address' => $property->full_address ?: $property->prop_name,
+                'move_in_date' => optional($tenancy->move_in)->format('d M Y'),
+                'rent' => '£'.number_format((float) $tenancy->rent, 2),
+                'action_url' => route('admin.tenancies.show', $tenancy->id),
+                'milestone' => 'activated-'.$tenancy->id,
+            ],
+            auth()->user(),
+        );
 
         flash("Tenancy Added successfully!")->success();
         
@@ -452,6 +490,10 @@ class TenancyController
             'deposit_scheme' => 'nullable|string|max:155',
             'term_months' => 'nullable|integer',
             'term_days' => 'nullable|integer',
+            'deposit_received_at' => 'nullable|date',
+            'deposit_protected_at' => 'nullable|date',
+            'prescribed_information_sent_at' => 'nullable|date',
+            'written_terms_sent_at' => 'nullable|date',
             'user_id' => 'required|array', // Validate that the user_id is an array
             'user_id.*' => 'exists:users,id', // Ensure each user_id exists in the users table
 
@@ -519,6 +561,20 @@ class TenancyController
                 'group_id' => $groupId, // Set group_id if necessary
             ]);
         }
+
+        $tenancy->refresh()->load('tenantMembers.user', 'propertyManagers', 'property');
+        app(CrmNotificationService::class)->dispatch(
+            CrmNotificationEvent::TenancyUpdated,
+            $tenancy,
+            [
+                'account_id' => $tenancy->account_id,
+                'property_address' => $property->full_address ?: $property->prop_name,
+                'move_in_date' => optional($tenancy->move_in)->format('d M Y'),
+                'action_url' => route('admin.tenancies.show', $tenancy->id),
+                'milestone' => 'updated-'.$tenancy->updated_at?->timestamp,
+            ],
+            auth()->user(),
+        );
 
         flash("Tenancy updated successfully!")->success();
         return back();

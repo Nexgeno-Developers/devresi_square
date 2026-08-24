@@ -32,6 +32,8 @@ class RepairIssue extends Model
         'reference_number',
         'created_by',
         'updated_by',
+        'acknowledged_at',
+        'acknowledged_by',
     ];
 
     // protected $casts = [
@@ -41,6 +43,7 @@ class RepairIssue extends Model
     // Optionally cast tenant_availability to datetime.
     protected $casts = [
         'tenant_availability' => 'datetime',
+        'acknowledged_at' => 'datetime',
     ];
 
     /**

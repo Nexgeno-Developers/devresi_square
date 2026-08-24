@@ -28,6 +28,7 @@ class SendSaleInvoiceDueReminders extends Command
         }
 
         $templates = EmailTemplate::query()
+            ->whereNull('account_id')
             ->where('identifier', 'sale_invoice_due_reminder')
             ->where('status', 1)
             ->get();

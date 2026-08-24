@@ -38,8 +38,8 @@
                             @foreach ($headers as $header)
                                 <th>{{ ucfirst(str_replace('_', ' ', $header)) }}</th>
                             @endforeach
-                            <th>Expiry Date</th>
-                            <th>Image</th>
+                            <th>{{ $type->alias === 'landlord_registration' ? 'Lease Expiry Date' : 'Expiry Date' }}</th>
+                            <th>Document</th>
                             <th>Actions</th>
                         </tr>
                     </thead>

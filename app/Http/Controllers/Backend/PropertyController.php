@@ -258,7 +258,7 @@ class PropertyController
             'view property media'        => 'Media',
             'view property offers'       => 'Offers',
             'view property tenancy'      => 'Tenancy',
-            'view property aps'          => 'APS',
+            'view property aps'          => 'APD',
             'view property teams'        => 'Teams',
             'view property documents'    => 'Documents',
             // 'view property contractor'    => 'Contractor',
@@ -276,7 +276,7 @@ class PropertyController
             }
         }
 
-        if ($user->can('view property teams')) {
+        if ($user->can('view property teams') && $this->hasPropertyManagerAddon()) {
             $tabs[] = ['name' => 'Responsibility'];
         }
 
@@ -349,7 +349,7 @@ class PropertyController
             'view property media'      => 'Media',
             'view property offers'     => 'Offers',
             'view property tenancy'    => 'Tenancy',
-            'view property aps'        => 'APS',
+            'view property aps'        => 'APD',
             'view property teams'      => 'Teams',
             'view property documents'  => 'Documents',
             'view property notes'      => 'Notes',
@@ -363,11 +363,26 @@ class PropertyController
             }
         }
 
-        if ($user->can('view property teams')) {
+        if ($user->can('view property teams') && $this->hasPropertyManagerAddon()) {
             $tabs[] = ['name' => 'Responsibility'];
         }
 
         return $tabs;
+    }
+
+    private function hasPropertyManagerAddon(): bool
+    {
+        if (auth()->user()?->hasRole('Super Admin')) {
+            return true;
+        }
+
+        return \App\Models\AccountSubscriptionAddon::query()
+            ->where('account_id', current_account_id())
+            ->where('status', 'active')
+            ->whereHas('addon', fn ($query) => $query
+                ->where('addon_type', 'property_manager')
+                ->where('is_active', true))
+            ->exists();
     }
 
     private function getTabContent($tabname, $propertyId, $property)
@@ -500,6 +515,7 @@ class PropertyController
             //     // Pass the data to the tenancy view
             //     return view('backend.properties.tabs.tenancy', compact('tenancies', 'propertyId'))->render();
 
+            case 'apd':
             case 'aps':
                 return view('backend.properties.tabs.aps', compact('propertyId', 'property'))->render();
             case 'media':
@@ -507,6 +523,7 @@ class PropertyController
             case 'teams':
                 return view('backend.properties.tabs.teams', compact('propertyId', 'property'))->render();
             case 'responsibility':
+                abort_unless($this->hasPropertyManagerAddon(), 403, 'The Property Manager add-on is required for responsibility mapping.');
                 $responsibilities = PropertyResponsibility::with('user')
                     ->where('property_id', $propertyId)
                     ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
@@ -563,7 +580,7 @@ class PropertyController
             case 'appointments':
                 $query = $property->events()
                     ->when(! auth()->user()?->hasRole('Super Admin'), fn ($eventQuery) => $eventQuery->forAccount(current_account_id()))
-                    ->with(['diaryOwner', 'onBehalfOf'])
+                    ->with(['diaryOwner', 'onBehalfOf', 'users'])
                     ->orderBy('start_datetime', 'desc');
 
                 if ($request = request()) {
@@ -1386,6 +1403,10 @@ class PropertyController
 
         ensureModelBelongsToCurrentAccount($property);
 
+        if ($formType === 'responsibility') {
+            abort_unless($this->hasPropertyManagerAddon(), 403, 'The Property Manager add-on is required for responsibility mapping.');
+        }
+
         $viewPath = "backend.properties.popup_forms.$formType";
 
         // Check if the form view exists
@@ -1428,6 +1449,10 @@ class PropertyController
         }
 
         ensureModelBelongsToCurrentAccount($property);
+
+        if ($formType === 'responsibility') {
+            abort_unless($this->hasPropertyManagerAddon(), 403, 'The Property Manager add-on is required for responsibility mapping.');
+        }
 
         $extraData = []; // <-- This prevents undefined variable errors
 
@@ -1568,6 +1593,9 @@ class PropertyController
                     'service',
                     'pets_allow'
                 ]);
+                if (! in_array($property->property_type, ['lettings', 'both'], true)) {
+                    unset($data['service'], $data['pets_allow']);
+                }
                 break;
             case 'property_status':
                 $data = $request->only([
@@ -2204,7 +2232,7 @@ class PropertyController
                     'parking_location' => 'nullable',
                     'balcony' => 'required|boolean',
                     'garden' => 'required|boolean',
-                    'service' => 'required|string',
+                    'service' => 'nullable|string',
                     'collecting_rent' => 'required|boolean',
                     'floor' => 'required|string',
                     'square_feet' => 'nullable|numeric|min:1',

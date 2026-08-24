@@ -21,6 +21,7 @@ class SendUnsentSaleInvoiceEmails extends Command
     public function handle(): int
     {
         $templates = EmailTemplate::query()
+            ->whereNull('account_id')
             ->where('identifier', 'sale_invoice_send')
             ->where('status', 1)
             ->get();

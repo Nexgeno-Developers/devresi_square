@@ -360,6 +360,15 @@ class UserController
             $usersQuery->role($request->role); // Spatie's `role()` scope
         }
 
+
+        // Apply status filter if provided
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $usersQuery->where('users.status', 1);
+            } elseif ($request->status === 'inactive') {
+                $usersQuery->where('users.status', 0);
+            }
+        }
         // Tenants only see themselves
         if (auth()->user()->hasRole('Tenant')) {
             $usersQuery->where('id', auth()->id());
@@ -412,6 +421,14 @@ class UserController
                           ->orWhere('email', 'like', "%{$search}%")
                           ->orWhere('phone', 'like', "%{$search}%");
                     });
+                }
+
+                if ($request->filled('status')) {
+                    if ($request->status === 'active') {
+                        $positionQuery->where('users.status', 1);
+                    } elseif ($request->status === 'inactive') {
+                        $positionQuery->where('users.status', 0);
+                    }
                 }
 
                 $position = $positionQuery->pluck('id')->search($highlightId);

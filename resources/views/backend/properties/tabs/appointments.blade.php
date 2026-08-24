@@ -1,4 +1,6 @@
-<button class="btn btn-primary btn-sm w-100" id="btn-add-appointment">Add Appointment</button>
+<button type="button" class="btn btn-primary btn-sm w-100" id="btn-add-appointment"
+    data-property-id="{{ $propertyId }}"
+    data-property-label="{{ $property->display_label }}">Add Appointment</button>
 <form id="appointments-filter-form" class="row g-3 align-items-end mb-4">
     <div class="col-md-3 form-floating">
         <input type="text" name="search" class="form-control" id="search" placeholder="Search title or diary owner">

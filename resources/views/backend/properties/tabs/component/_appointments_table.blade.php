@@ -7,8 +7,7 @@
                 <th>Title</th>
                 <th>Start</th>
                 <th>End</th>
-                <th>Diary Of</th>
-                <th>Booked By</th>
+                <th>Invites</th>
                 <th>Status</th>
                 <th>Actions</th>
             </tr>
@@ -19,8 +18,7 @@
                     <td>{{ $event->title }}</td>
                     <td>{{ formatDateTime($event->start_datetime) }}</td>
                     <td>{{ formatDateTime($event->end_datetime) }}</td>
-                    <td>{{ optional($event->diaryOwner)->name ?? '—' }}</td>
-                    <td>{{ optional($event->onBehalfOf)->name ?? '—' }}</td>
+                    <td>{{ $event->users->pluck('name')->join(', ') ?: '—' }}</td>
                     <td>
                         <div class="dropdown">
                             <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"

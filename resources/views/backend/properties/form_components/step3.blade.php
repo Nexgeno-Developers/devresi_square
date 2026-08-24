@@ -112,6 +112,7 @@
             </div>
         </div>
 
+        @if(in_array($property->property_type ?? '', ['lettings', 'both'], true))
         <div class="form-group">
             <label>Service</label>
             <div class="row">
@@ -130,6 +131,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         <div class="form-group">
             <label>Collecting Rent</label>

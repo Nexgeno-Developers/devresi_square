@@ -27,7 +27,7 @@
     }
 @endphp
 <aside id="menu" class="sidebar">
-   
+    
 
     <div class="pt-3 px-3">
         <div class="input-group mb-2">
@@ -46,15 +46,6 @@
         </li>
         @endunless
 
-        @if($canViewBilling)
-         <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('backend.billing.*') ? 'active' : '' }}"
-                href="{{ route('backend.billing.index') }}">
-                <span class="icon_wrapper"><i class="fa-solid fa-credit-card"></i>Billing &amp; Plan</span>
-            </a>
-        </li>
-        @endif
-
         @can('view calendar')
         {{-- Calendar --}}
          <li class="nav-item">
@@ -66,159 +57,156 @@
         @endcan
         
         @canany(['view properties', 'edit properties', 'create properties'])
-        {{-- Users --}}
+        {{-- Properties --}}
          <li class="nav-item">
-            @if(auth()->user()->hasRole('Tenant'))
-                {{-- Tenant: simple direct link, no dropdown --}}
-                <a data-bs-toggle="collapse" class=" nav-link {{ request()->routeIs('admin.properties.index') ? 'active' : ''  }}"
-                    href="{{ route('admin.properties.index') }}">
-                    <span class="icon_wrapper"><i class="fa-solid fa-building"></i>Properties</span>
-                    <i class="bi bi-chevron-right"></i>
-                </a>
-            @else
-                <a href="#propertiesSubmenu" data-bs-toggle="collapse"
-                    aria-expanded="{{ request()->routeIs('admin.properties.index') || request()->routeIs('admin.properties.soft_deleted') || request()->routeIs('admin.properties.create') ? 'true' : 'false' }} "
-                    class="nav-link collapsed {{ request()->routeIs('admin.properties.index') || request()->routeIs('admin.properties.quick') || request()->routeIs('admin.properties.soft_deleted') || request()->routeIs('admin.properties.create') ? 'active' : '' }}">
-                    <span class="icon_wrapper"><i class="fa-solid fa-building"></i>Properties</span>
-                    <i class="bi bi-chevron-right"></i>
-                </a>
-                <ul class="nav-second-level collapse list-unstyled submenu {{ request()->routeIs('admin.properties.index') || request()->routeIs('admin.properties.quick') || request()->routeIs('admin.properties.soft_deleted') || request()->routeIs('admin.properties.create') ? 'show' : '' }}"
-                    id="propertiesSubmenu">
-                    @can('view properties')
-                    @component('components.backend.common.sidebar-sublink')
-                        @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.properties.index') ? 'active' : '') }} @endslot
-                        @slot('link') {{ route('admin.properties.index') }} @endslot
-                        @slot('link_name') View Properties @endslot
-                    @endcomponent
-                    @endcan
-                    @can('create properties')
-                    @component('components.backend.common.sidebar-sublink')
-                        @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.properties.quick') ? 'active' : '') }} @endslot
-                        @slot('link') {{ route('admin.properties.quick') }} @endslot
-                        @slot('link_name') Add Property @endslot
-                    @endcomponent
-                    @endcan
-                    @can('view deleted properties')
-                    @component('components.backend.common.sidebar-sublink')
-                        @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.properties.soft_deleted') ? 'active' : '') }} @endslot
-                        @slot('link') {{ route('admin.properties.soft_deleted') }} @endslot
-                        @slot('link_name') Deleted Properties @endslot
-                    @endcomponent
-                    @endcan
-                </ul>
-            @endif
-        </li>
-        @endcanany
-
-        @canany(['view contacts', 'create contacts', 'edit contacts', 'delete contacts'])
-         <li class="nav-item">
-            <a href="{{ route('admin.users.index') }}"
-                class="nav-link {{ request()->routeIs('admin.users.index') ? 'active' : ''  }}">
-                <span class="icon_wrapper"><i class="fa-solid fa-address-book"></i>Contacts</span>
+            <a href="#propertiesSubmenu" data-bs-toggle="collapse"
+                aria-expanded="{{ request()->routeIs('admin.properties.*') ? 'true' : 'false' }}"
+                class="nav-link collapsed {{ request()->routeIs('admin.properties.*') ? 'active' : '' }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-building"></i>Properties</span>
+                <i class="bi bi-chevron-right"></i>
             </a>
-        </li>
-        @endcanany
+            <ul class="nav-second-level collapse list-unstyled submenu {{ request()->routeIs('admin.properties.*') ? 'show' : '' }}"
+                id="propertiesSubmenu">
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.properties.index') && !request()->routeIs('admin.properties.soft_deleted') ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.properties.index') }} @endslot
+                    @slot('link_name') View Active Properties @endslot
+                @endcomponent
 
-        {{-- Contacts submenu commented out
-         <li class="nav-item">
-            <a href="#usersSubmenu" data-bs-toggle="collapse"
-                aria-expanded="{{ request()->routeIs('admin.users.index') || request()->routeIs('users.create') ? 'true' : 'false' }}"
-                class="dropdown-toggle {{ request()->routeIs('admin.users.index') || request()->routeIs('users.create') ? 'active' : '' }}">
-                <span class="icon_wrapper"><i class="fa-solid fa-address-book"></i>Contacts</span>
-                <i class="fa fa-angle-down"></i>
-            </a>
-            <ul class="nav-second-level collapse list-unstyled {{ request()->routeIs('admin.users.index') || request()->routeIs('users.create') ? 'show' : '' }}"
-                id="usersSubmenu">
-                @can('view contacts')
+                @can('view deleted properties')
                 @component('components.backend.common.sidebar-sublink')
-                    @slot('class') {{ request()->routeIs('admin.users.index') && !request()->has('role') ? 'active' : '' }} @endslot
-                    @slot('link') {{ route('admin.users.index') }} @endslot
-                    @slot('link_name') All @endslot
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.properties.soft_deleted') ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.properties.soft_deleted') }} @endslot
+                    @slot('link_name') View Deleted Properties @endslot
                 @endcomponent
+                @endcan
+
+                @can('create properties')
                 @component('components.backend.common.sidebar-sublink')
-                    @slot('class') {{ request('role') === 'Owner' ? 'active' : '' }} @endslot
-                    @slot('link') {{ route('admin.users.index', ['role' => 'Owner']) }} @endslot
-                    @slot('link_name') Owners @endslot
-                @endcomponent
-                @component('components.backend.common.sidebar-sublink')
-                    @slot('class') {{ request('role') === 'Property Manager' ? 'active' : '' }} @endslot
-                    @slot('link') {{ route('admin.users.index', ['role' => 'Property Manager']) }} @endslot
-                    @slot('link_name') Property Managers @endslot
-                @endcomponent
-                @component('components.backend.common.sidebar-sublink')
-                    @slot('class') {{ request('role') === 'Tenant' ? 'active' : '' }} @endslot
-                    @slot('link') {{ route('admin.users.index', ['role' => 'Tenant']) }} @endslot
-                    @slot('link_name') Tenants @endslot
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.properties.quick') ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.properties.quick') }} @endslot
+                    @slot('link_name') Add New Property @endslot
                 @endcomponent
                 @endcan
             </ul>
         </li>
-        --}}
+        @endcanany
 
-        {{-- 
+        @can('manage tenancies')
+        {{-- Tenancies --}}
          <li class="nav-item">
-            <a href="#usersSubmenu" data-bs-toggle="collapse"
-                aria-expanded="{{ request()->routeIs('admin.users.index') || request()->routeIs('users.create') ? 'true' : 'false' }}"
-                class="dropdown-toggle {{ request()->routeIs('admin.users.index') || request()->routeIs('users.create') ? 'active' : '' }}">
-                <span class="icon_wrapper"><i class="fa-solid fa-address-book"></i>Users</span>
-                <i class="fa fa-angle-down"></i>
+            <a href="#tenanciesSubmenu" data-bs-toggle="collapse"
+                aria-expanded="{{ request()->routeIs('admin.tenancies.all') || request()->routeIs('admin.tenancies.create') ? 'true' : 'false' }}"
+                class="nav-link collapsed {{ request()->routeIs('admin.tenancies.all') || request()->routeIs('admin.tenancies.create') ? 'active' : '' }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-home"></i>Tenancies</span>
+                <i class="bi bi-chevron-right"></i>
             </a>
-            <ul class="nav-second-level collapse list-unstyled {{ request()->routeIs('admin.users.index') || request()->routeIs('users.create') ? 'show' : '' }}"
-                id="usersSubmenu">
+            <ul class="nav-second-level collapse list-unstyled submenu {{ request()->routeIs('admin.tenancies.all') || request()->routeIs('admin.tenancies.create') ? 'show' : '' }}"
+                id="tenanciesSubmenu">
                 @component('components.backend.common.sidebar-sublink')
-                    @slot('class') {{ request()->routeIs('admin.users.index') && !request()->has('category') ? 'active' : '' }} @endslot
-                    @slot('link') {{ route('admin.users.index') }} @endslot
-                    @slot('link_name') All @endslot
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.tenancies.all') && request('status') === 'Active' ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.tenancies.all', ['status' => 'Active']) }} @endslot
+                    @slot('link_name') View Active Tenancies @endslot
                 @endcomponent
+
                 @component('components.backend.common.sidebar-sublink')
-                    @slot('class') {{ request()->category == 1 ? 'active' : '' }} @endslot
-                    @slot('link') {{ route('admin.users.index', ['category' => 1]) }} @endslot
-                    @slot('link_name') Owners @endslot
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.tenancies.all') && request('status') === 'Archived' ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.tenancies.all', ['status' => 'Archived']) }} @endslot
+                    @slot('link_name') View Archived Tenancies @endslot
                 @endcomponent
+
                 @component('components.backend.common.sidebar-sublink')
-                    @slot('class') {{ request()->category == 2 ? 'active' : '' }} @endslot
-                    @slot('link') {{ route('admin.users.index', ['category' => 2]) }} @endslot
-                    @slot('link_name') Property Managers @endslot
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.tenancies.all') && request('status') === 'Inactive' ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.tenancies.all', ['status' => 'Inactive']) }} @endslot
+                    @slot('link_name') View Inactive Tenancies @endslot
                 @endcomponent
+
                 @component('components.backend.common.sidebar-sublink')
-                    @slot('class') {{ request()->category == 3 ? 'active' : '' }} @endslot
-                    @slot('link') {{ route('admin.users.index', ['category' => 3]) }} @endslot
-                    @slot('link_name') Tenants @endslot
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.tenancies.all') && request('status') === 'Terminated' ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.tenancies.all', ['status' => 'Terminated']) }} @endslot
+                    @slot('link_name') View Terminated Tenancies @endslot
                 @endcomponent
-                               
-                <li class="sidebar-sub-list-item py-0 mb-0">
-                    <a href="{{ route('admin.users.index') }}"
-                        class="{{ request()->routeIs('admin.users.index') && !request()->has('category') ? 'active' : '' }}">
-                        All
-                    </a>
-                </li>
-                <li class="sidebar-sub-list-item py-0 mb-0">
-                    <a href="{{ route('admin.users.index', ['category' => 1]) }}"
-                        class="{{ request()->category == 1 ? 'active' : '' }}">
-                        Owners
-                    </a>
-                </li>
-                <li class="sidebar-sub-list-item py-0 mb-0">
-                    <a href="{{ route('admin.users.index', ['category' => 2]) }}"
-                        class="{{ request()->category == 2 ? 'active' : '' }}">
-                        Property Managers
-                    </a>
-                </li>
-                <li class="sidebar-sub-list-item py-0 mb-0">
-                    <a href="{{ route('admin.users.index', ['category' => 3]) }}"
-                        class="{{ request()->category == 3 ? 'active' : '' }}">
-                        Tenants
-                    </a>
-                </li>
-                <li class="sidebar-sub-list-item py-0 mb-0">
-                    <a href="{{ route('admin.users.index', ['category' => 4]) }}"
-                        class="{{ request()->category == 4 ? 'active' : '' }}">
-                        Landlords
-                    </a>
-                </li>
+
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.tenancies.create') ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.tenancies.create') }} @endslot
+                    @slot('link_name') Add New Tenancy @endslot
+                @endcomponent
             </ul>
-        </li> 
-        --}}
+        </li>
+        @endcan
+
+        @canany(['view properties', 'create properties'])
+        {{-- Sales Offer --}}
+         <li class="nav-item">
+            <a href="#salesOfferSubmenu" data-bs-toggle="collapse"
+                aria-expanded="{{ request()->routeIs('admin.offers.*') ? 'true' : 'false' }}"
+                class="nav-link collapsed {{ request()->routeIs('admin.offers.*') ? 'active' : '' }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-handshake"></i>Sales Offer</span>
+                <i class="bi bi-chevron-right"></i>
+            </a>
+            <ul class="nav-second-level collapse list-unstyled submenu {{ request()->routeIs('admin.offers.*') ? 'show' : '' }}"
+                id="salesOfferSubmenu">
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.offers.index') && request('status') === 'Pending' ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.offers.index', ['status' => 'Pending']) }} @endslot
+                    @slot('link_name') View Active Offers @endslot
+                @endcomponent
+
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.offers.index') && request('status') === 'Accepted' ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.offers.index', ['status' => 'Accepted']) }} @endslot
+                    @slot('link_name') View Archived Offers @endslot
+                @endcomponent
+
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.offers.create') ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.offers.create') }} @endslot
+                    @slot('link_name') Add New Offer @endslot
+                @endcomponent
+            </ul>
+        </li>
+        @endcanany
+
+        @canany(['view contacts', 'create contacts', 'edit contacts', 'delete contacts'])
+        {{-- Contacts --}}
+         <li class="nav-item">
+            <a href="#contactsSubmenu" data-bs-toggle="collapse"
+                aria-expanded="{{ request()->routeIs('admin.users.index') || request()->routeIs('admin.users.create') ? 'true' : 'false' }}"
+                class="nav-link collapsed {{ request()->routeIs('admin.users.index') || request()->routeIs('admin.users.create') ? 'active' : '' }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-address-book"></i>Contacts</span>
+                <i class="bi bi-chevron-right"></i>
+            </a>
+            <ul class="nav-second-level collapse list-unstyled submenu {{ request()->routeIs('admin.users.index') || request()->routeIs('admin.users.create') ? 'show' : '' }}"
+                id="contactsSubmenu">
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.users.index') && request('status') === 'active' ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.users.index', ['status' => 'active']) }} @endslot
+                    @slot('link_name') View Active Contacts @endslot
+                @endcomponent
+
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.users.index') && request('status') === 'inactive' ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.users.index', ['status' => 'inactive']) }} @endslot
+                    @slot('link_name') View Archived Contacts @endslot
+                @endcomponent
+
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.users.create') ? 'active' : '') }} @endslot
+                    @slot('link') {{ route('admin.users.create') }} @endslot
+                    @slot('link_name') Add New Contact @endslot
+                @endcomponent
+            </ul>
+        </li>
+        @endcanany
+        @if($canViewBilling)
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('backend.billing.*') ? 'active' : '' }}"
+                href="{{ route('backend.billing.index') }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-credit-card"></i>Billing &amp; Plan</span>
+            </a>
+        </li>
+        @endif
 
         {{-- Registrations (public sign-up approvals) --}}
         @if(auth()->user()->hasRole('Super Admin') && auth()->user()->can('manage registrations'))
@@ -270,15 +258,6 @@
         </li>
         @endif
 
-        @can('manage tenancies')
-         <li class="nav-item">
-            <a href="{{ route('admin.tenancies.all') }}"
-                class="nav-link {{ request()->routeIs('admin.tenancies.all') ? 'active' : ''  }}">
-                <span class="icon_wrapper"><i class="fa-solid fa-home"></i>Tenancies</span>
-            </a>
-        </li>
-        @endcan
-
         @canany(['view property repair', 'edit property repair', 'create property repair'])
          <li class="nav-item">
             <a href="#repairSubmenu" data-bs-toggle="collapse"
@@ -297,12 +276,6 @@
                     @slot('link_name') Raise Repair Issue @endslot
                 @endcomponent
                 @endcan
-                {{-- <li class="sidebar-sub-list-item py-0 mb-0">
-                    <a class="{{ request()->routeIs('admin.property_repairs.create') || request()->routeIs('admin.property_repairs.edit') ? 'active' : '' }}"
-                        href="{{ route('admin.property_repairs.create') }}">
-                        Raise Repair Issue
-                    </a>
-                </li> --}}
 
                 @can('view property repair')
                 <!-- Repair Issues Section -->
@@ -328,14 +301,6 @@
                             @slot('link_name') Issue List (Tabbed) @endslot
                         @endcomponent
 
-                        {{-- <li class="sidebar-sub-list-item">
-                            <a href="{{ route('admin.property_repairs.index') }}"
-                                class="{{ request()->fullUrl() === route('admin.property_repairs.index') ? 'active' : '' }}">
-                                All
-                            </a>
-                        </li> --}}
-
-
                         @php
                             $statuses = ['Pending', 'Reported', 'Under Process', 'Work Completed', 'Invoice Received', 'Invoice Paid', 'Closed'];
                             $currentStatus = request('status');
@@ -348,12 +313,6 @@
                             @slot('link_name') {{ $status }}
                             @endslot
                         @endcomponent
-                            {{-- <li class="sidebar-sub-sub-list-item">
-                                <a href="{{ route('admin.property_repairs.index', ['status' => $status]) }}"
-                                    class="{{ $currentStatus === $status ? 'active submenu-link' : 'submenu-link' }}">
-                                    {{ $status }}
-                                </a>
-                            </li> --}}
                         @endforeach
                     </ul>
                 </li>
@@ -362,7 +321,7 @@
         </li>
         @endcanany
 
-        {{-- ── Contractor: only sees Repair Issues ── --}}
+        {{-- -- Contractor: only sees Repair Issues -- --}}
         @if(auth()->user()->hasRole('Contractor'))
          <li class="nav-item">
             <a href="#contractorRepairSubmenu" data-bs-toggle="collapse"
@@ -427,12 +386,6 @@
                         @slot('link_name') {{ $status }}
                         @endslot
                     @endcomponent
-                    {{-- <li class="sidebar-sub-sub-list-item">
-                        <a href="{{ route('admin.invoices.index', ['status' => $key]) }}"
-                            class="{{ $currentInvoiceStatus === $key ? 'active' : '' }}">
-                            {{ $status }}
-                        </a>
-                    </li> --}}
                 @endforeach
             </ul>
         </li>
@@ -445,7 +398,7 @@
             </a>
         </li>
         @endcan
-       
+        
         <!-- Transactions -->
         @canany(['view transactions'])
              <li class="nav-item">
@@ -480,7 +433,6 @@
             <a href="#websiteSetupSubmenu" data-bs-toggle="collapse"
                 aria-expanded="{{ areActiveRoutes(['website.footer', 'website.header', 'website.appearance'], 'true') }}"
                 class="nav-link collapsed {{ areActiveRoutes(['website.footer', 'website.header', 'website.appearance']) }}">
-                {{-- <i class="las la-desktop aiz-side-nav-icon"></i> --}}
                 <span class="icon_wrapper pb_25"><i class="fa-solid fa-cog"></i>Website Setup</span>
                 <i class="bi bi-chevron-right"></i>
             </a>
@@ -510,28 +462,9 @@
                     @endslot
                 @endcomponent
                 @endcan
-                {{-- <li class="sidebar-sub-list-item py-0 mb-0">
-                    <a href="{{ route('website.header') }}"
-                        class="aiz-side-nav-link {{ areActiveRoutes(['website.header']) }}">
-                        <span class="aiz-side-nav-text">Header</span>
-                    </a>
-                </li>
-                <li class="sidebar-sub-list-item py-0 mb-0">
-                    <a href="{{ route('website.footer') }}"
-                        class="aiz-side-nav-link {{ areActiveRoutes(['website.footer']) }}">
-                        <span class="aiz-side-nav-text">Footer</span>
-                    </a>
-                </li>
-                <li class="sidebar-sub-list-item py-0 mb-0">
-                    <a href="{{ route('website.appearance') }}"
-                        class="aiz-side-nav-link {{ areActiveRoutes(['website.appearance']) }}">
-                        <span class="aiz-side-nav-text">Appearance</span>
-                    </a>
-                </li> --}}
             </ul>
         </li>
         @endcanany
-
         <!-- Master Manage -->
         @canany([
             'manage categories','manage branches','manage designations',
@@ -599,29 +532,8 @@
                 @endcomponent
                 @endcan
 
-                <!-- Note Types -->
-                @canany(['manage note types'])
-                {{-- <li class="sidebar-sub-sub-list-item submenu_wrapper">
-                    <a class="{{ areActiveRoutes(['user-categories.index']) }}"
-                        href="{{ route('user-categories.index') }}">
-                        Categories
-                    </a>
-                </li>
-
-                <li class="sidebar-sub-sub-list-item submenu_wrapper">
-                    <a class="{{ areActiveRoutes(['admin.branches.index']) }}"
-                        href="{{ route('admin.branches.index') }}">
-                        Branches
-                    </a>
-                </li>
-
-                <li class="sidebar-sub-sub-list-item submenu_wrapper">
-                    <a class="{{ areActiveRoutes(['admin.designations.index']) }}"
-                        href="{{ route('admin.designations.index') }}">
-                        Designation
-                    </a>
-                </li> --}}
                 <!-- Note Types Section -->
+                @canany(['manage note types'])
                 <li class="sidebar-sub-list-item submenu_wrapper nav-item">
                     <a href="#noteTypesSubmenu" data-bs-toggle="collapse"
                         aria-expanded="{{ areActiveRoutes(['admin.note-types.index', 'admin.note-types.create'], 'true') }}"
@@ -644,18 +556,6 @@
                             @slot('link_name') Add
                             @endslot
                         @endcomponent
-                        {{-- <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ areActiveRoutes(['admin.note-types.index']) }}"
-                                href="{{ route('admin.note-types.index') }}">
-                                View All
-                            </a>
-                        </li>
-                        <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ areActiveRoutes(['admin.note-types.create']) }}"
-                                href="{{ route('admin.note-types.create') }}">
-                                Add
-                            </a>
-                        </li> --}}
                     </ul>
                 </li>
                 @endcanany
@@ -684,18 +584,6 @@
                             @slot('link_name') Add
                             @endslot
                         @endcomponent
-                        {{-- <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ areActiveRoutes(['admin.document-types.index']) }}"
-                                href="{{ route('admin.document-types.index') }}">
-                                View All
-                            </a>
-                        </li>
-                        <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ areActiveRoutes(['admin.document-types.create']) }}"
-                                href="{{ route('admin.document-types.create') }}">
-                                Add
-                            </a>
-                        </li> --}}
                     </ul>
                 </li>
                 @endcan
@@ -724,22 +612,9 @@
                             @slot('link_name') Add
                             @endslot
                         @endcomponent
-                        {{-- <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ areActiveRoutes(['admin.tenancy_types.index']) }}"
-                                href="{{ route('admin.tenancy_types.index') }}">
-                                View All
-                            </a>
-                        </li>
-                        <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ areActiveRoutes(['admin.tenancy_types.create']) }}"
-                                href="{{ route('admin.tenancy_types.create') }}">
-                                Add
-                            </a>
-                        </li> --}}
                     </ul>
                 </li>
                 @endcan
-
                 <!-- Tenancy Sub Status Section -->
                 @can('manage tenancy sub status')
                 <li class="sidebar-sub-list-item submenu_wrapper nav-item">
@@ -844,12 +719,6 @@
                             @slot('link_name') View All
                             @endslot
                         @endcomponent
-                        {{-- <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ areActiveRoutes(['admin.job_types.index']) }}"
-                                href="{{ route('admin.job_types.index') }}">
-                                View All
-                            </a>
-                        </li> --}}
                     </ul>
                 </li>
                 @endcan
@@ -959,7 +828,6 @@
                 </ul>
             </li>
         @endcanany
-
         @unless(auth()->user()->hasRole('Tenant') || auth()->user()->hasRole('Contractor'))
          <li class="nav-item">
             <a href="#accountingSubmenu" data-bs-toggle="collapse"
@@ -1004,30 +872,6 @@
                     </ul>
                 </li>
 
-                {{-- <li class="sidebar-sub-list-item submenu_wrapper">
-                    <a href="#accountingGlSubmenu" data-bs-toggle="collapse"
-                        aria-expanded="{{ request()->routeIs('backend.accounting.gl_accounts.*') || request()->routeIs('backend.accounting.gl_account_balances.*') || request()->routeIs('backend.accounting.gl_journals.*') || request()->routeIs('backend.accounting.gl_journal_lines.*') ? 'true' : 'false' }}"
-                        class="dropdown-toggle {{ request()->routeIs('backend.accounting.gl_accounts.*') || request()->routeIs('backend.accounting.gl_account_balances.*') || request()->routeIs('backend.accounting.gl_journals.*') || request()->routeIs('backend.accounting.gl_journal_lines.*') ? 'active' : '' }}">
-                        <span class="icon_wrapper">General Ledger</span>
-                        <i class="fa fa-angle-down"></i>
-                    </a>
-                    <ul class="nav-third-level collapse list-unstyled {{ request()->routeIs('backend.accounting.gl_accounts.*') || request()->routeIs('backend.accounting.gl_account_balances.*') || request()->routeIs('backend.accounting.gl_journals.*') || request()->routeIs('backend.accounting.gl_journal_lines.*') ? 'show' : '' }}"
-                        id="accountingGlSubmenu">
-                        <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ request()->routeIs('backend.accounting.gl_accounts.*') ? 'active' : '' }}" href="{{ route('backend.accounting.gl_accounts.index') }}">GL Accounts</a>
-                        </li>
-                        <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ request()->routeIs('backend.accounting.gl_account_balances.*') ? 'active' : '' }}" href="{{ route('backend.accounting.gl_account_balances.index') }}">GL Account Balances</a>
-                        </li>
-                        <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ request()->routeIs('backend.accounting.gl_journals.*') ? 'active' : '' }}" href="{{ route('backend.accounting.gl_journals.index') }}">GL Journals</a>
-                        </li>
-                        <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ request()->routeIs('backend.accounting.gl_journal_lines.*') ? 'active' : '' }}" href="{{ route('backend.accounting.gl_journal_lines.index') }}">GL Journal Lines</a>
-                        </li>
-                    </ul>
-                </li> --}}
-
                 <li class="sidebar-sub-list-item submenu_wrapper nav-item">
                     <a href="#accountingSaleSubmenu" data-bs-toggle="collapse"
                         aria-expanded="{{ request()->routeIs('backend.accounting.sale.*') ? 'true' : 'false' }}"
@@ -1045,24 +889,6 @@
                         </li>
                     </ul>
                 </li>
-
-                {{-- <li class="sidebar-sub-list-item submenu_wrapper">
-                    <a href="#accountingPurchaseSubmenu" data-bs-toggle="collapse"
-                        aria-expanded="{{ request()->routeIs('backend.accounting.purchase.*') ? 'true' : 'false' }}"
-                        class="nav-link collapsed {{ request()->routeIs('backend.accounting.purchase.*') ? 'active' : '' }}">
-                        <span class="icon_wrapper">Purchase</span>
-                        <i class="fa fa-angle-down"></i>
-                    </a>
-                    <ul class="nav-third-level collapse list-unstyled {{ request()->routeIs('backend.accounting.purchase.*') ? 'show' : '' }}"
-                        id="accountingPurchaseSubmenu">
-                        <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ request()->routeIs('backend.accounting.purchase.invoices.*') ? 'active' : '' }}" href="{{ route('backend.accounting.purchase.invoices.index') }}">Invoice</a>
-                        </li>
-                        <li class="sidebar-sub-sub-list-item">
-                            <a class="{{ request()->routeIs('backend.accounting.purchase.debit_notes.*') ? 'active' : '' }}" href="{{ route('backend.accounting.purchase.debit_notes.index') }}">Debit Notes</a>
-                        </li>
-                    </ul>
-                </li> --}}
 
                 <li class="sidebar-sub-list-item">
                     <a class="{{ request()->routeIs('backend.accounting.receipts.*') || request()->routeIs('backend.accounting.receipts.*') ? 'active submenu-link' : 'submenu-link' }}" href="{{ route('backend.accounting.receipts.index') }}">
@@ -1112,18 +938,6 @@
                     </ul>
                 </li>
 
-                {{-- <li class="sidebar-sub-list-item">
-                    <a class="{{ request()->routeIs('backend.accounting.bank_reconciliation.*') ? 'active' : '' }}" href="{{ route('backend.accounting.bank_reconciliation.index') }}">
-                        <span class="icon_wrapper">Bank Reconciliation</span>
-                    </a>
-                </li>
-
-                <li class="sidebar-sub-list-item">
-                    <a class="{{ request()->routeIs('backend.accounting.fixed_assets.*') ? 'active' : '' }}" href="{{ route('backend.accounting.fixed_assets.index') }}">
-                        <span class="icon_wrapper">Fixed Assets</span>
-                    </a>
-                </li> --}}
-
                 <li class="sidebar-sub-list-item submenu_wrapper nav-item">
                     <a href="#accountingPaymentsSubmenu" data-bs-toggle="collapse"
                         aria-expanded="{{ request()->routeIs('backend.accounting.payments.*') ? 'true' : 'false' }}"
@@ -1150,7 +964,6 @@
             </ul>
         </li>
         @endunless
-
         <!-- marketing -->
         @canany(['manage email templates'])
              <li class="nav-item">
@@ -1246,7 +1059,7 @@
         @endhasanyrole
     </ul>
      <div class="footer_user_profile_menu position-relative">
- 
+    
         <div class="pointer" data-bs-toggle="dropdown" aria-expanded="false">
              @if(auth()->user()->profile_picture)
                 <img src="{{ asset('storage/' . auth()->user()->profile_picture) }}" alt="Profile" class="rounded-circle profile-img" />
@@ -1286,3 +1099,5 @@
     </div>
 </aside>
 <div class="backdrop"></div>
+
+

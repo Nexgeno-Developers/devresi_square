@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Backend;
 
 use Carbon\Carbon;
+use App\Models\EventType;
+use App\Models\EventSubType;
 use App\Models\Event;
 use App\Models\Property;
 use App\Models\RepairIssue;
@@ -13,14 +15,110 @@ use GrahamCampbell\ResultType\Success;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use RRule\RRule;
+use App\Notifications\EventInvitationNotification;
+use App\Enums\CrmNotificationEvent;
+use App\Services\Notifications\CrmNotificationService;
 
 class EventController
 {
 
     public function view(){
-        return view('backend.events.calendar');
+        $filterData = [
+            'eventTypes' => EventType::orderBy('name')->get(),
+            'eventSubTypes' => EventSubType::orderBy('name')->get(),
+            'statuses' => ['Confirmed', 'Pending', 'Cancelled', 'Rescheduled', 'Scheduled'],
+            'offices' => Event::whereNotNull('office')->where('office', '!=', '')->distinct()->orderBy('office')->pluck('office'),
+            'users' => User::forAccount(current_account_id())->orderBy('name')->get(),
+            'properties' => Property::forAccount(current_account_id())->orderBy('prop_name')->get(),
+            'repairIssues' => RepairIssue::forAccount(current_account_id())->orderBy('reference_number')->get(),
+        ];
+        return view('backend.events.calendar', compact('filterData'));
+    }
+
+    public function list(Request $request)
+    {
+        $query = Event::query()
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->with(['type', 'subType', 'diaryOwner', 'properties', 'repairIssues'])
+            ->orderByDesc('start_datetime');
+
+        // Filter by type
+        if ($request->filled('type_id')) {
+            $query->where('type_id', $request->type_id);
+        }
+
+        // Filter by sub_type
+        if ($request->filled('sub_type_id')) {
+            $query->where('sub_type_id', $request->sub_type_id);
+        }
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by diary_owner
+        if ($request->filled('diary_owner')) {
+            $query->where('diary_owner', $request->diary_owner);
+        }
+
+        // Filter by office
+        if ($request->filled('office')) {
+            $query->where('office', $request->office);
+        }
+
+        // Filter by has_reminders
+        if ($request->filled('has_reminders')) {
+            if ($request->has_reminders == '1') {
+                $query->whereHas('reminders');
+            } else {
+                $query->whereDoesntHave('reminders');
+            }
+        }
+
+        // Filter by property
+        if ($request->filled('property_id')) {
+            $query->whereHas('properties', fn($q) => $q->where('properties.id', $request->property_id));
+        }
+
+        // Filter by repair
+        if ($request->filled('repair_id')) {
+            $query->whereHas('repairIssues', fn($q) => $q->where('repair_issues.id', $request->repair_id));
+        }
+
+        // Filter by date range
+        if ($request->filled('date_from')) {
+            $query->where('start_datetime', '>=', Carbon::parse($request->date_from)->startOfDay());
+        }
+        if ($request->filled('date_to')) {
+            $query->where('start_datetime', '<=', Carbon::parse($request->date_to)->endOfDay());
+        }
+
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('location', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        $events = $query->paginate(20)->appends($request->except('page'));
+
+        return response()->json([
+            'events' => $events->items(),
+            'pagination' => [
+                'total' => $events->total(),
+                'per_page' => $events->perPage(),
+                'current_page' => $events->currentPage(),
+                'last_page' => $events->lastPage(),
+            ]
+        ]);
     }
 
     public function index(Request $request)
@@ -66,8 +164,8 @@ class EventController
                     // 'on_behalf_of' => $event->on_behalf_of,
                     'diary_owner' => optional($event->diaryOwner)->id,
                     'on_behalf_of' => optional($event->onBehalfOf)->id,
-                    'users' => collect([$event->diaryOwner, $event->onBehalfOf])
-                        ->filter()
+                    'invite_ids' => $event->users->pluck('id')->all(),
+                    'users' => $event->users
                         ->map(fn($u) => ['id' => $u->id, 'text' => $u->display_label]),
 
                     'location' => $event->location,
@@ -108,6 +206,10 @@ class EventController
 
     public function store(Request $request)
     {
+        $request->merge([
+            'on_behalf_of' => Auth::id(),
+            'office' => auth()->user()?->hasRole('Landlord') ? null : $request->input('office'),
+        ]);
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'type_id' => 'required|exists:event_types,id',
@@ -130,6 +232,8 @@ class EventController
             'property_ids.*' => 'exists:properties,id',
             'repair_ids' => 'nullable|array',
             'repair_ids.*' => 'exists:repair_issues,id',
+            'invite_ids' => 'nullable|array',
+            'invite_ids.*' => 'exists:users,id',
             // 'user_ids' => 'nullable|array',
             // 'user_ids.*' => 'exists:users,id',
         ]);
@@ -228,6 +332,28 @@ class EventController
             }
 
             \DB::commit();
+            \DB::afterCommit(function () use ($master): void {
+                try {
+                    $master->refresh()->load('users');
+                    app(CrmNotificationService::class)->dispatch(
+                        CrmNotificationEvent::AppointmentInvited,
+                        $master,
+                        [
+                            'account_id' => $master->account_id,
+                            'recipients' => $master->users,
+                            'appointment_title' => $master->title,
+                            'appointment_at' => $master->start_datetime->timezone(current_account()?->timezone ?: 'Europe/London')->format('d M Y, H:i'),
+                            'action_url' => route('backend.events.calendar'),
+                        ],
+                        auth()->user(),
+                    );
+                } catch (\Throwable $exception) {
+                    Log::error('Unable to send appointment invitations.', [
+                        'event_id' => $master->id,
+                        'exception' => $exception,
+                    ]);
+                }
+            });
             return response()->json(['success' => true]);
         } catch (\Throwable $th) {
             \DB::rollBack();
@@ -305,6 +431,10 @@ class EventController
     public function updateMaster(Request $request, Event $event)
     {
         ensureModelBelongsToCurrentAccount($event);
+        $request->merge([
+            'on_behalf_of' => Auth::id(),
+            'office' => auth()->user()?->hasRole('Landlord') ? null : $request->input('office'),
+        ]);
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -331,6 +461,8 @@ class EventController
             'property_ids.*' => 'exists:properties,id',
             'repair_ids' => 'nullable|array',
             'repair_ids.*' => 'exists:repair_issues,id',
+            'invite_ids' => 'nullable|array',
+            'invite_ids.*' => 'exists:users,id',
             // 'user_ids' => 'nullable|array',
             // 'user_ids.*' => 'exists:users,id',
         ]);
@@ -840,6 +972,7 @@ class EventController
 
         $event = Event::findOrFail($id);
         ensureModelBelongsToCurrentAccount($event);
+        $event->load('users', 'account');
 
         switch ($choice) {
             case 'single':
@@ -900,6 +1033,20 @@ class EventController
                 return response()->json(['success' => false, 'message' => 'Invalid action.'], 400);
         }
 
+        app(CrmNotificationService::class)->dispatch(
+            CrmNotificationEvent::AppointmentCancelled,
+            $event,
+            [
+                'account_id' => $event->account_id,
+                'recipients' => $event->users()->get(),
+                'appointment_title' => $event->title,
+                'appointment_at' => $event->start_datetime->timezone(current_account()?->timezone ?: 'Europe/London')->format('d M Y, H:i'),
+                'action_url' => route('backend.events.calendar'),
+                'milestone' => 'cancelled-'.$choice,
+            ],
+            auth()->user(),
+        );
+
         return response()->json(['success' => true, 'message' => 'Cancellation successful.']);
     }
 
@@ -918,6 +1065,7 @@ class EventController
 
         $event = Event::findOrFail($id);
         ensureModelBelongsToCurrentAccount($event);
+        $event->load('users', 'account');
 
         switch ($choice) {
             case 'single':
@@ -981,6 +1129,17 @@ class EventController
                 return response()->json(['success' => false, 'message' => 'Invalid action.'], 400);
         }
 
+        if ($event->users->isNotEmpty()) {
+            app(CrmNotificationService::class)->dispatch(CrmNotificationEvent::AppointmentCancelled, $event, [
+                'account_id' => $event->account_id,
+                'recipients' => $event->users,
+                'appointment_title' => $event->title,
+                'appointment_at' => $event->start_datetime->timezone($event->account?->timezone ?: 'Europe/London')->format('d M Y, H:i'),
+                'action_url' => route('backend.events.calendar'),
+                'milestone' => 'deleted-'.$choice.'-'.$event->updated_at?->timestamp,
+            ], auth()->user());
+        }
+
         return response()->json(['success' => true, 'message' => 'Deletion successful.']);
     }
 
@@ -991,8 +1150,24 @@ class EventController
         $event = Event::findOrFail($id);
         ensureModelBelongsToCurrentAccount($event);
 
-        $event->status = $request->status;
+        $oldStatus = $event->status;
+        $event->status = ucfirst($request->status);
         $event->save();
+
+        if (in_array(strtolower($request->status), ['cancelled', 'rescheduled'], true)) {
+            $notificationEvent = strtolower($request->status) === 'cancelled'
+                ? CrmNotificationEvent::AppointmentCancelled
+                : CrmNotificationEvent::AppointmentRescheduled;
+            app(CrmNotificationService::class)->dispatch($notificationEvent, $event, [
+                'account_id' => $event->account_id,
+                'recipients' => $event->users()->get(),
+                'appointment_title' => $event->title,
+                'appointment_at' => $event->start_datetime->timezone(current_account()?->timezone ?: 'Europe/London')->format('d M Y, H:i'),
+                'action_url' => route('backend.events.calendar'),
+                'milestone' => strtolower($request->status).'-'.$event->updated_at?->timestamp,
+                'old_status' => $oldStatus,
+            ], auth()->user());
+        }
 
         return response()->json(['success' => true]);
     }
@@ -1018,7 +1193,7 @@ class EventController
 
         $event->properties()->sync($propertyIds);
         $event->repairIssues()->sync($repairIds);
-        // $event->users()->sync($validated['user_ids'] ?? []);
+        $event->users()->sync($validated['invite_ids'] ?? []);
     }
 
     private function ensureEventRelationsAreAccessible(array $validated): void
@@ -1038,6 +1213,12 @@ class EventController
             RepairIssue::forAccount(current_account_id()),
             'repair_ids',
             'repair issues'
+        );
+        $this->ensureIdsAreAccessible(
+            $validated['invite_ids'] ?? [],
+            User::forAccount(current_account_id()),
+            'invite_ids',
+            'invited users'
         );
         $this->ensureIdsAreAccessible(
             array_filter([
@@ -1069,3 +1250,5 @@ class EventController
     }
 
 }
+
+

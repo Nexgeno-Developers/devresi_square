@@ -13,9 +13,10 @@ class EventReminder extends Model
         'sent',
     ];
 
-    // Each reminder belongs to one EventInstance
-    public function instance()
+    // Each reminder belongs to an event. Events are the active calendar
+    // records; event instances are no longer used for appointment reminders.
+    public function event()
     {
-        return $this->belongsTo(EventInstance::class, 'event_id');
+        return $this->belongsTo(Event::class);
     }
 }

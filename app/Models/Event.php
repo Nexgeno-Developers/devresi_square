@@ -77,10 +77,10 @@ class Event extends Model implements Auditable
         return $this->belongsTo(Branch::class);
     }
 
-    // public function subType()
-    // {
-    //     return $this->belongsTo(EventSubType::class, 'sub_type_id');
-    // }
+    public function subType()
+    {
+        return $this->belongsTo(EventSubType::class, 'sub_type_id');
+    }
 
     public function children()
     {
@@ -166,3 +166,4 @@ class Event extends Model implements Auditable
     }
 
 }
+

@@ -107,6 +107,9 @@
 
                                         <!-- Actions -->
                                         <td>
+                                            <a class="btn btn-sm btn-outline-info me-1" href="{{ route('admin.users.show', $user->user->id) }}" title="View contact">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
                                             @if(!$user->is_main)
                                             <button class="btn btn-sm btn_secondary" onclick="setAsMain({{ $user->id }}, {{ $ownerGroup->id }})">
                                                 Set as Main

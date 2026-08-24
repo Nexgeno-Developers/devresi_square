@@ -6,6 +6,7 @@ use App\Mail\MailManager;
 use App\Models\EmailTemplate;
 use App\Models\User;
 use Mail;
+use Illuminate\Support\Facades\Password;
 
 class EmailUtility
 {
@@ -13,7 +14,7 @@ class EmailUtility
     public static function customer_registration_email($emailIdentifier, $user, $password = null){
         $admin = get_admin();
         $emailSendTo = $emailIdentifier == 'customer_reg_email_to_admin' ? $admin->email : $user->email;
-        $emailTemplate = EmailTemplate::whereIdentifier($emailIdentifier)->first();
+        $emailTemplate = EmailTemplate::getByIdentifier($emailIdentifier);
 
         $emailSubject = $emailTemplate->subject;
         $emailSubject = str_replace('[[customer_name]]', $user->name, $emailSubject);
@@ -25,7 +26,12 @@ class EmailUtility
         $emailBody = str_replace('[[admin_name]]', $admin->name, $emailBody);
         $emailBody = str_replace('[[customer_name]]', $user->name, $emailBody);
         $emailBody = str_replace('[[email]]', $user->email, $emailBody);
-        $emailBody = str_replace('[[password]]', $password, $emailBody);
+        $setPasswordUrl = route('password.reset.form', [
+            'token' => Password::broker()->createToken($user),
+            'email' => $user->email,
+        ]);
+        $emailBody = str_replace('[[password]]', 'Use the secure set-password link: '.$setPasswordUrl, $emailBody);
+        $emailBody = str_replace('[[set_password_url]]', $setPasswordUrl, $emailBody);
         $emailBody = str_replace('[[email/phone]]', $email_or_phone, $emailBody);
         $emailBody = str_replace('[[date]]', date('d-m-Y', strtotime($user->created_at)), $emailBody);
         $emailBody = str_replace('[[admin_email]]', $admin->email, $emailBody);
@@ -46,7 +52,7 @@ class EmailUtility
         $user->verification_code = $verification_code;
         $user->save();
 
-        $emailTemplate = EmailTemplate::whereIdentifier($emailIdentifier)->first();
+        $emailTemplate = EmailTemplate::getByIdentifier($emailIdentifier);
 
         $emailSubject = $emailTemplate->subject;
         $emailSubject = str_replace('[[store_name]]', get_setting('site_name'), $emailSubject);
@@ -75,7 +81,7 @@ class EmailUtility
         $admin = get_admin();
         $shop = $seller->shop;
         foreach($emailIdentifiers as $emailIdentifier){
-            $emailTemplate = EmailTemplate::whereIdentifier($emailIdentifier)->first();
+            $emailTemplate = EmailTemplate::getByIdentifier($emailIdentifier);
             if($emailTemplate != null && $emailTemplate->status == 1){
                 $emailSendTo = $emailTemplate->receiver == 'admin' ? $admin->email : $seller->email;
 

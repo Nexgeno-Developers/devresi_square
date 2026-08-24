@@ -210,6 +210,16 @@
                         <!-- Steps Container -->
                         <div id="steps-container">
                             <input type="hidden" id="mainPersonId" name="mainPersonId">
+                            <div class="mb-3">
+                                <label for="existingTenantIds" class="form-label">Search existing contacts</label>
+                                <select id="existingTenantIds" name="existing_tenant_ids[]" class="form-control" multiple
+                                    data-url="{{ route('admin.users.ajax') }}"></select>
+                                <small class="text-muted">Select existing applicants, or leave empty to add a new contact below.</small>
+                            </div>
+                            <div class="mb-3 d-none" id="existingMainTenantGroup">
+                                <label for="mainExistingTenantId" class="form-label">Main applicant</label>
+                                <select id="mainExistingTenantId" name="main_existing_tenant_id" class="form-control"></select>
+                            </div>
                             <!-- Tenant Forms -->
                             <div id="tenant-forms" class="step"></div>
 
@@ -281,6 +291,7 @@
     <!-- Include the Modal Component -->
     @include('backend.components.modal')
     @include('backend.events.modal')
+    @include('backend.partials._calendar_modals')
     <div class="modal fade" id="importantNoteVisitModal" tabindex="-1" aria-labelledby="importantNoteVisitModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-md">
             <div class="modal-content">
@@ -305,6 +316,11 @@
 @endpush
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.js"></script>
+
+<script type="module">
+    import { RRule } from 'https://cdn.skypack.dev/rrule';
+    window.RRule = RRule;
+</script>
 
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     <script src="{{ asset('/asset/backend/js/property-offer.js') }}"></script>
@@ -1803,6 +1819,327 @@ var_dump($propertyId);
             }
         });
     }
+
+    function initPropertyAppointmentSelect($select, name, multiple) {
+        $select.attr('name', name).prop('multiple', multiple);
+
+        // The appointments tab is loaded over AJAX. Do not prevent the modal
+        // from opening if Select2 has not finished loading on this page.
+        if (!$.fn.select2) return;
+
+        if ($select.hasClass('select2-hidden-accessible')) $select.select2('destroy');
+        $select.select2({
+            dropdownParent: $('#eventModal'),
+            width: '100%',
+            placeholder: multiple ? 'Select contacts' : 'Select a value',
+            ajax: {
+                url: $select.data('url'), dataType: 'json', delay: 250,
+                data: params => ({q: params.term}),
+                processResults: data => ({results: data.results})
+            }
+        });
+    }
+
+    function showPropertyAppointmentModal(selector) {
+        const modal = document.querySelector(selector);
+        if (window.bootstrap?.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modal).show();
+        } else {
+            $(modal).modal('show');
+        }
+    }
+
+    function hidePropertyAppointmentModal(selector) {
+        const modal = document.querySelector(selector);
+        if (window.bootstrap?.Modal) {
+            bootstrap.Modal.getOrCreateInstance(modal).hide();
+        } else {
+            $(modal).modal('hide');
+        }
+    }
+
+    // The recurrence builder opens on top of the appointment form. Bootstrap
+    // gives every modal the same base z-index, so raise this child modal and
+    // its backdrop explicitly rather than leaving it hidden behind the form.
+    $(document).on('show.bs.modal', '#rruleModal', function () {
+        $(this).css('z-index', 1065);
+        setTimeout(function () {
+            $('.modal-backdrop').last().css('z-index', 1060).addClass('appointment-rrule-backdrop');
+        }, 0);
+    });
+
+    $(document).on('hidden.bs.modal', '#rruleModal', function () {
+        $(this).css('z-index', '');
+        $('.appointment-rrule-backdrop').last().remove();
+    });
+
+    function renumberPropertyAppointmentReminders() {
+        $('#reminderList .reminder-row').each(function (index) {
+            $(this).find('input[type="number"]').attr('name', `reminders[${index}][minutes_before]`);
+            $(this).find('input[type="hidden"]').attr('name', `reminders[${index}][channel]`).val('email');
+        });
+    }
+
+    // The calendar page previously owned these handlers, but the appointment
+    // form is rendered in the property page as well. Delegate them here so
+    // they work after an Appointments tab is loaded through AJAX.
+    $(document).on('click', '#eventModal #addReminderBtn', function (event) {
+        event.preventDefault();
+        const template = document.getElementById('reminderTpl');
+        if (!template) return;
+
+        const $row = $(template.content.cloneNode(true)).find('.reminder-row');
+        $row.find('input[type="number"]').val('');
+        $('#reminderList').append($row);
+        renumberPropertyAppointmentReminders();
+    });
+
+    $(document).on('click', '#eventModal .removeReminderBtn', function (event) {
+        event.preventDefault();
+        $(this).closest('.reminder-row').remove();
+        renumberPropertyAppointmentReminders();
+    });
+
+    function updatePropertyAppointmentRecurrenceFrequency() {
+        const frequency = $('#freqSelect').val();
+        const units = {
+            DAILY: 'day(s)',
+            WEEKLY: 'week(s)',
+            MONTHLY: 'month(s)',
+            YEARLY: 'year(s)',
+        };
+
+        $('#intervalLabel').text(units[frequency] || 'day(s)');
+        $('#byDayContainer').toggleClass('d-none', frequency !== 'WEEKLY');
+        $('#byOrdinalContainer').toggleClass('d-none', frequency !== 'MONTHLY');
+    }
+
+    function updatePropertyAppointmentRecurrenceEnd() {
+        const endType = $('#endTypeSelect').val();
+        $('#endAfterContainer').toggleClass('d-none', endType !== 'AFTER');
+        $('#endByDateContainer').toggleClass('d-none', endType !== 'BYDATE');
+    }
+
+    function renderPropertyAppointmentRecurrenceSummary(rule) {
+        $('#rruleSummary').text(rule ? rule.toText() : 'No recurrence');
+    }
+
+    function resetPropertyAppointmentRecurrenceBuilder() {
+        $('#freqSelect').val('DAILY');
+        $('#intervalInput').val(1);
+        $('#endTypeSelect').val('NEVER');
+        $('#endAfterCount').val(1);
+        $('#endByDateInput').val('');
+        $('#byDayContainer input[type="checkbox"]').prop('checked', false);
+        $('#bySetPos').val('1');
+        $('#byDayOrdinal').val('MO');
+        $('#exdateList').empty();
+        updatePropertyAppointmentRecurrenceFrequency();
+        updatePropertyAppointmentRecurrenceEnd();
+    }
+
+    function addPropertyAppointmentExdate(value = '') {
+        $('#exdateList').append(
+            $('<div>', { class: 'input-group mb-2' }).append(
+                $('<input>', { type: 'date', class: 'form-control exdateInput', value }),
+                $('<button>', { type: 'button', class: 'btn btn-outline-danger removeExdateBtn', text: '×' })
+            )
+        );
+    }
+
+    $(document).on('click', '#eventModal #editRRuleBtn', function (event) {
+        event.preventDefault();
+        const RRule = window.RRule;
+        if (!RRule) {
+            AIZ.plugins.notify('danger', 'The recurrence builder is still loading. Please try again in a moment.');
+            return;
+        }
+
+        resetPropertyAppointmentRecurrenceBuilder();
+        const rruleString = $('#rruleInput').val().trim();
+        const exdates = $('#exdatesInput').val().trim();
+
+        if (rruleString) {
+            try {
+                const rule = RRule.fromString(rruleString);
+                const frequencies = {
+                    [RRule.DAILY]: 'DAILY',
+                    [RRule.WEEKLY]: 'WEEKLY',
+                    [RRule.MONTHLY]: 'MONTHLY',
+                    [RRule.YEARLY]: 'YEARLY',
+                };
+                $('#freqSelect').val(frequencies[rule.options.freq] || 'DAILY');
+                $('#intervalInput').val(rule.options.interval || 1);
+
+                if (rule.options.count) {
+                    $('#endTypeSelect').val('AFTER');
+                    $('#endAfterCount').val(rule.options.count);
+                } else if (rule.options.until) {
+                    $('#endTypeSelect').val('BYDATE');
+                    $('#endByDateInput').val(rule.options.until.toISOString().slice(0, 10));
+                }
+
+                if (rule.options.byweekday) {
+                    const days = Array.isArray(rule.options.byweekday) ? rule.options.byweekday : [rule.options.byweekday];
+                    const dayIds = ['chkMO', 'chkTU', 'chkWE', 'chkTH', 'chkFR', 'chkSA', 'chkSU'];
+                    days.forEach(day => {
+                        const weekday = typeof day === 'number' ? day : day.weekday;
+                        if (weekday !== undefined) $(`#${dayIds[weekday]}`).prop('checked', true);
+                    });
+                }
+                updatePropertyAppointmentRecurrenceFrequency();
+                updatePropertyAppointmentRecurrenceEnd();
+            } catch (error) {
+                console.warn('Unable to load recurrence rule.', error);
+            }
+        }
+
+        try {
+            JSON.parse(exdates || '[]').forEach(addPropertyAppointmentExdate);
+        } catch (error) {
+            console.warn('Unable to load recurrence exclusions.', error);
+        }
+
+        showPropertyAppointmentModal('#rruleModal');
+    });
+
+    $(document).on('change', '#rruleModal #freqSelect', updatePropertyAppointmentRecurrenceFrequency);
+    $(document).on('change', '#rruleModal #endTypeSelect', updatePropertyAppointmentRecurrenceEnd);
+
+    $(document).on('click', '#rruleModal #addExdateBtn', function (event) {
+        event.preventDefault();
+        addPropertyAppointmentExdate();
+    });
+
+    $(document).on('click', '#rruleModal .removeExdateBtn', function () {
+        $(this).closest('.input-group').remove();
+    });
+
+    $(document).on('click', '#rruleModal #saveRRuleBtn', function (event) {
+        event.preventDefault();
+        const RRule = window.RRule;
+        if (!RRule) {
+            AIZ.plugins.notify('danger', 'The recurrence builder is unavailable. Please reload the page and try again.');
+            return;
+        }
+
+        const frequency = $('#freqSelect').val();
+        const options = {
+            freq: RRule[frequency],
+            interval: Math.max(1, parseInt($('#intervalInput').val(), 10) || 1),
+        };
+
+        if (frequency === 'WEEKLY') {
+            const days = $('#byDayContainer input:checked').map(function () {
+                return RRule[$(this).val()];
+            }).get();
+            if (days.length) options.byweekday = days;
+        }
+
+        if (frequency === 'MONTHLY') {
+            options.bysetpos = parseInt($('#bySetPos').val(), 10);
+            options.byweekday = [RRule[$('#byDayOrdinal').val()]];
+        }
+
+        if ($('#endTypeSelect').val() === 'AFTER') {
+            options.count = Math.max(1, parseInt($('#endAfterCount').val(), 10) || 1);
+        }
+
+        if ($('#endTypeSelect').val() === 'BYDATE' && $('#endByDateInput').val()) {
+            options.until = new Date(`${$('#endByDateInput').val()}T23:59:59`);
+        }
+
+        try {
+            const rule = new RRule(options);
+            const exdates = $('#exdateList .exdateInput').map(function () {
+                return this.value;
+            }).get().filter(Boolean);
+
+            $('#rruleInput').val(rule.toString());
+            $('#exdatesInput').val(JSON.stringify(exdates));
+            renderPropertyAppointmentRecurrenceSummary(rule);
+            hidePropertyAppointmentModal('#rruleModal');
+        } catch (error) {
+            AIZ.plugins.notify('danger', 'Unable to save this recurrence rule.');
+            console.error(error);
+        }
+    });
+
+    $(document).on('click', '#btn-add-appointment', function () {
+        // Keep the property ID on the dynamically-loaded trigger itself, then
+        // fall back to the tab fields used by older property-tab responses.
+        const propertyId = $(this).data('property-id')
+            || $('#appointments-filter-form input[name="property_id"]').val()
+            || $('#hidden-property-id').data('property-id');
+        const propertyLabel = $(this).data('property-label') || `Property #${propertyId}`;
+        if (!propertyId) {
+            AIZ.plugins.notify('danger', 'Select a property before adding an appointment.');
+            return;
+        }
+        const form = $('#eventForm')[0];
+        if (!form) return;
+        form.reset();
+        $('#eventForm input[name="form_action"]').val('create');
+        $('#eventForm input[name="event_id"], #eventForm input[name="instance_id"], #eventForm input[name="master_id"], #eventForm input[name="choice_action"], #eventForm input[name="original_start"], #eventForm input[name="original_end"]').val('');
+        $('#eventForm [data-error-for]').empty();
+        $('#sub_type_id').html('<option value="">— Select Sub-Type —</option>');
+        $('#reminderList').empty();
+        $('#rruleInput, #exdatesInput').val('');
+        $('#rruleSummary').text('No recurrence');
+
+        // Select2 retains dynamically created options after a form reset. Clear
+        // them before each opening so this appointment starts with exactly one
+        // linked property and no previous invitees or repairs.
+        const $propertySelect = $('#property-select');
+        const $inviteSelect = $('#invite-select');
+        const $repairSelect = $('#repair-select');
+        [$propertySelect, $inviteSelect, $repairSelect].forEach(function ($select) {
+            if ($select.hasClass('select2-hidden-accessible')) $select.select2('destroy');
+            $select.empty();
+        });
+
+        initPropertyAppointmentSelect($propertySelect, 'property_ids[]', true);
+        initPropertyAppointmentSelect($inviteSelect, 'invite_ids[]', true);
+        initPropertyAppointmentSelect($repairSelect, 'repair_ids[]', true);
+        $propertySelect.append(new Option(propertyLabel, propertyId, true, true)).trigger('change');
+        const eventModal = document.getElementById('eventModal');
+        if (window.bootstrap?.Modal) {
+            bootstrap.Modal.getOrCreateInstance(eventModal).show();
+        } else {
+            $(eventModal).modal('show');
+        }
+    });
+
+    $(document).on('change', '#eventModal #type_id', function () {
+        const $subType = $('#eventModal #sub_type_id').html('<option value="">— Select Sub-Type —</option>');
+        if (!this.value) return;
+        $.getJSON('/admin/api/event-sub-types/' + this.value, function (data) {
+            $.each(data, function (id, name) { $subType.append(new Option(name, id)); });
+        });
+    });
+
+    $(document).on('submit', '#eventForm', function (event) {
+        if ($('#eventForm input[name="form_action"]').val() !== 'create') return;
+        event.preventDefault();
+        $.ajax({
+            url: '{{ route('backend.events.store') }}',
+            method: 'POST',
+            data: $(this).serialize(),
+            success: function () {
+                const eventModal = document.getElementById('eventModal');
+                if (window.bootstrap?.Modal) {
+                    bootstrap.Modal.getOrCreateInstance(eventModal).hide();
+                } else {
+                    $(eventModal).modal('hide');
+                }
+                fetchAppointments($('#appointments-filter-form').serialize());
+            },
+            error: function (xhr) {
+                const message = xhr.responseJSON?.message || 'Unable to save appointment.';
+                alert(message);
+            }
+        });
+    });
 
     </script>
 @endsection

@@ -2,59 +2,67 @@
 
 namespace App\Console\Commands;
 
-use Carbon\Carbon;
 use App\Models\EventReminder;
-use Illuminate\Console\Command;
 use App\Notifications\EventReminderNotification;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
+use App\Enums\CrmNotificationEvent;
+use App\Services\Notifications\CrmNotificationService;
 
 class SendEventReminders extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
-    // protected $signature = 'app:send-event-reminders';
     protected $signature = 'events:send-reminders';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    // protected $description = 'Command description';
-    protected $description = 'Send due event reminders';
+    protected $description = 'Send due event reminders to invited users';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle()
+    public function handle(): int
     {
-        $now = Carbon::now();
+        $now = now();
+        $sent = 0;
 
-        // find reminders whose trigger time has come or passed
-        EventReminder::where('sent', false)
-            ->whereHas('instance', function ($q) use ($now) {
-                $q->where('start_datetime', '>=', $now);
+        EventReminder::query()
+            ->where('sent', false)
+            ->whereHas('event', function ($query) use ($now) {
+                $query->where('start_datetime', '>=', $now)
+                    ->where('status', '!=', 'Cancelled');
             })
-            ->with('instance.event')
+            ->with('event.users')
             ->get()
-            ->each(function ($reminder) {
-                $instance = $reminder->instance;
-                $triggerTime = $instance->start_datetime->copy()
-                    ->subMinutes($reminder->minutes_before);
-                if (Carbon::now()->gte($triggerTime)) {
-                    // dispatch notification
-                    $instance->event->user->notify(
-                        new EventReminderNotification($instance, $reminder)
+            ->each(function (EventReminder $reminder) use ($now, &$sent): void {
+                $event = $reminder->event;
+                $triggerTime = $event->start_datetime->copy()->subMinutes($reminder->minutes_before);
+
+                if ($now->lt($triggerTime)) {
+                    return;
+                }
+
+                try {
+                    app(CrmNotificationService::class)->dispatch(
+                        CrmNotificationEvent::AppointmentReminder,
+                        $event,
+                        [
+                            'account_id' => $event->account_id,
+                            'recipients' => $event->users,
+                            'appointment_title' => $event->title,
+                            'appointment_at' => $event->start_datetime->timezone($event->account?->timezone ?: 'Europe/London')->format('d M Y, H:i'),
+                            'action_url' => route('backend.events.calendar'),
+                            'milestone' => 'reminder-'.$reminder->id,
+                        ]
                     );
-                    $reminder->sent = true;
-                    $reminder->save();
+                    $reminder->update(['sent' => true]);
+                    $sent++;
+                } catch (\Throwable $exception) {
+                    Log::error('Unable to send appointment reminder.', [
+                        'event_id' => $event->id,
+                        'reminder_id' => $reminder->id,
+                        'exception' => $exception,
+                    ]);
                 }
             });
+
+        $this->info("Sent {$sent} appointment reminder(s).");
+
+        return self::SUCCESS;
     }
-
-    // command
-    // $schedule->command('events:send-reminders')->everyMinute();
-
 }

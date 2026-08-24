@@ -19,6 +19,16 @@ class ComplianceRecord extends Model
         'expiry_date',
         'photos',
         'status',
+        'responsible_user_id',
+        'remediation_due_at',
+        'completed_at',
+    ];
+
+    protected $casts = [
+        'issued_date' => 'date',
+        'expiry_date' => 'date',
+        'remediation_due_at' => 'datetime',
+        'completed_at' => 'datetime',
     ];
 
     /**
@@ -35,6 +45,11 @@ class ComplianceRecord extends Model
     public function property()
     {
         return $this->belongsTo(Property::class); // Assuming you have a Property model
+    }
+
+    public function responsibleUser()
+    {
+        return $this->belongsTo(User::class, 'responsible_user_id');
     }
 
     /**

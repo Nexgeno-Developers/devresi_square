@@ -32,7 +32,7 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Transaction Type</label>
+                        <label>Property Category</label>
                         <div class="rs_radio_btns">
                             <div>
                                 <input type="radio" name="transaction_type" id="transaction_type_residential" value="residential" {{ (isset($property) && $property->transaction_type == 'residential') ? 'checked' : '' }} required /> 

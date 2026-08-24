@@ -13,13 +13,18 @@ class EmailTemplateController extends Controller
 {
     public function __construct() {
         // Staff Permission Check
-        $this->middleware(['permission:manage_email_templates'])->only('index', 'edit', 'update');
+        $this->middleware(['permission:manage_email_templates'])->only('index', 'edit', 'update', 'store', 'destroy', 'updateStatus');
     }
 
     public function index(Request $request, $emailReceiver)
     {
         $email_template_sort_search = (isset($request->email_template_sort_search) && $request->email_template_sort_search) ? $request->email_template_sort_search : null;
-        $emailTemplates = EmailTemplate::where('receiver', $emailReceiver);
+        $emailTemplates = EmailTemplate::query()->where('receiver', $emailReceiver);
+        if (auth()->user()->isSuperAdmin()) {
+            $emailTemplates->whereNull('account_id');
+        } else {
+            $emailTemplates->forAccount($this->accountId());
+        }
 
         if ($email_template_sort_search != null){
             $notificationTypes = $emailTemplates->where('email_type', 'like', '%' . $email_template_sort_search . '%');
@@ -54,6 +59,7 @@ class EmailTemplateController extends Controller
     public function edit($id)
     {
         $emailTemplate  = EmailTemplate::findOrFail($id);
+        $this->authoriseTemplate($emailTemplate, allowGlobalRead: true);
         return view('backend.setup_configurations.email_templates.edit', compact('emailTemplate'));
     }
 
@@ -61,8 +67,22 @@ class EmailTemplateController extends Controller
     public function update(Request $request, $id)
     {
         $emailTemplate = EmailTemplate::findOrFail($id);
-        $emailTemplate->subject = $request->subject;
-        $emailTemplate->default_text = $request->default_text;
+        $this->authoriseTemplate($emailTemplate, allowGlobalRead: true);
+        $validated = $request->validate(['subject' => ['required', 'string', 'max:255'], 'default_text' => ['required', 'string', 'max:65000']]);
+        $this->validatePlaceholders($emailTemplate->identifier, $validated['subject'].' '.$validated['default_text']);
+
+        if (! auth()->user()->isSuperAdmin() && $emailTemplate->account_id === null) {
+            $emailTemplate = EmailTemplate::firstOrNew([
+                'account_id' => $this->accountId(),
+                'identifier' => $emailTemplate->identifier,
+            ], [
+                'receiver' => $emailTemplate->receiver,
+                'email_type' => $emailTemplate->email_type,
+                'status' => $emailTemplate->status,
+            ]);
+        }
+        $emailTemplate->subject = $validated['subject'];
+        $emailTemplate->default_text = $validated['default_text'];
         $emailTemplate->save();
 
         flash('Email Template has been updated successfully')->success();
@@ -71,6 +91,7 @@ class EmailTemplateController extends Controller
 
     public function updateStatus(Request $request) {
         $emailTemplate = EmailTemplate::findOrFail($request->id);
+        $this->authoriseTemplate($emailTemplate);
         $emailTemplate->status = $request->status;
         $emailTemplate->save();
         return 1;
@@ -79,6 +100,7 @@ class EmailTemplateController extends Controller
     public function destroy($id)
     {
         $emailTemplate = EmailTemplate::findOrFail($id);
+        $this->authoriseTemplate($emailTemplate);
         $emailTemplate->delete();
 
         flash('Email Template has been deleted successfully')->success();
@@ -103,5 +125,30 @@ class EmailTemplateController extends Controller
 
         flash('An email has been sent.')->success();
         return back();
+    }
+
+    private function authoriseTemplate(EmailTemplate $template, bool $allowGlobalRead = false): void
+    {
+        if (auth()->user()->isSuperAdmin()) {
+            abort_unless($template->account_id === null, 403);
+            return;
+        }
+        abort_unless(($allowGlobalRead && $template->account_id === null) || (int) $template->account_id === $this->accountId(), 404);
+    }
+
+    private function accountId(): int
+    {
+        $accountId = (int) current_account_id();
+        abort_if($accountId <= 0, 403, 'Select an account first.');
+        return $accountId;
+    }
+
+    private function validatePlaceholders(string $eventKey, string $template): void
+    {
+        $definition = config('crm_notifications.events', [])[$eventKey] ?? null;
+        if (! $definition) return;
+        preg_match_all('/\[\[([a-zA-Z0-9_]+)\]\]/', $template, $matches);
+        $unknown = array_diff(array_unique($matches[1] ?? []), array_merge($definition['placeholders'] ?? [], ['action_url']));
+        abort_if($unknown, 422, 'Unsupported placeholders: '.implode(', ', $unknown));
     }
 }

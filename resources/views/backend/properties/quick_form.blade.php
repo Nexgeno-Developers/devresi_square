@@ -17,7 +17,7 @@
     </div>
 
     <div>
-        <label>Transaction Type:</label>
+        <label>Property Category:</label>
         <input type="radio" name="transaction_type" value="residential"> Residential
         <input type="radio" name="transaction_type" value="commercial"> Commercial
     </div>

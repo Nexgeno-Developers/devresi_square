@@ -1,14 +1,9 @@
-<div class="row g-3">
+<div class="row g-2">
     @forelse($documents as $document)
         <div class="col-12">
             <div class="document-card card shadow-sm h-100">
-                <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="card-body d-flex flex-wrap align-items-center gap-3 py-2">
                     <span class="badge bg-secondary">{{ $document->documentType->name ?? 'N/A' }}</span>
-                    <span class="d-flex align-items-end">
-                        <small class="text-muted ms-2">Added At: {{ formatDateTime($document->created_at) }}</small>
-                        <small class="text-muted ms-2">Updated At: {{ formatDateTime($document->updated_at) }}</small>
-                    </span>
-                </div>
                 @php
                     // explode the CSV into an array of IDs
                     $uploadIds = $document->upload_ids
@@ -17,8 +12,7 @@
                 @endphp
 
                 @if ($uploadIds)
-                    <div class="card-body">
-                        <div class="d-flex flex-wrap align-items-center mb-3" style="gap:10px;">
+                        <div class="d-flex flex-wrap align-items-center" style="gap:10px;">
                             @foreach ($uploadIds as $uid)
                                 @php
                                     $url     = uploaded_asset($uid);
@@ -26,7 +20,7 @@
                                     $isImage = in_array($ext, ['jpg','jpeg','png','gif','svg','webp']);
                                 @endphp
 
-                                <div class="me-2 text-center">
+                                <div class="d-flex align-items-center gap-1">
                                     <a href="{{ $url }}" target="_blank" class="text-decoration-none d-block mb-1">
                                         @if($isImage)
                                             <i class="fas fa-image fa-2x"></i>
@@ -43,10 +37,10 @@
                                 </div>
                             @endforeach
                         </div>
-                    </div>
                 @endif
-                <div class="card-footer text-end">
-                    <div class="d-flex justify-content-end">
+                    <span class="small text-muted">Added {{ formatDateTime($document->created_at) }}</span>
+                    <span class="small text-muted">Updated {{ formatDateTime($document->updated_at) }}</span>
+                    <div class="ms-auto d-flex gap-1">
                         {{-- <button class="btn btn-sm btn-outline-info documents-view me-1" data-id="{{ $document->id }}"
                             title="View Full document">
                             <i class="bi bi-eye"> View</i>
@@ -62,7 +56,6 @@
                                 data-message="Are you sure you want to delete document #{{ $document->id }}?">
                         <i class="bi bi-trash"></i> Delete
                         </button>
-                    </div>
                 </div>
             </div>
         </div>

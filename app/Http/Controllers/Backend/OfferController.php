@@ -14,12 +14,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
+use App\Enums\CrmNotificationEvent;
+use App\Services\Notifications\CrmNotificationService;
 
 class OfferController
 {
-    public function index()
+    public function index(Request $request)
     {
-        $offers = $this->offersForCurrentAccount()->with('property')->get();
+        $offersQuery = $this->offersForCurrentAccount()->with('property');
+        
+        if ($request->filled('status')) {
+            $offersQuery->where('status', $request->status);
+        }
+        
+        $offers = $offersQuery->get();
         return view('backend.offers.index', compact('offers'));
     }
 
@@ -58,11 +66,33 @@ class OfferController
             ]);
             $property = $this->findAccessibleProperty((int) $request->input('property_id'));
 
-            // Collect tenant details from the request
-            $tenantDetails = [];
+            $existingTenantIds = collect($request->input('existing_tenant_ids', []))
+                ->filter(fn ($id) => is_numeric($id))
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values();
+            $this->ensureExistingTenantsAreAccessible($existingTenantIds->all());
+
+            $userIds = [];
+            $mainExistingTenantId = (int) $request->input('main_existing_tenant_id');
+            foreach ($existingTenantIds as $tenantId) {
+                $userIds[$tenantId] = $tenantId === $mainExistingTenantId;
+            }
+
+            // Collect manually entered tenant details. Existing contacts do not create duplicates.
             $tenantIndex = 1;
 
             while ($request->has("tenantName_{$tenantIndex}")) {
+                if (! $request->filled("tenantName_{$tenantIndex}")) {
+                    $tenantIndex++;
+                    continue;
+                }
+                $request->validate([
+                    "tenantName_{$tenantIndex}" => 'required|string|max:255',
+                    "tenantPhone_{$tenantIndex}" => 'required|string|max:50',
+                    "tenantEmail_{$tenantIndex}" => 'required|email|max:255',
+                    "employmentStatus_{$tenantIndex}" => 'required|string|max:100',
+                ]);
                 // Create a new user for each tenant
                 $user = User::create([
                     // 'category_id' => 3,
@@ -118,6 +148,14 @@ class OfferController
                 $tenantIndex++;
             }
 
+            if (empty($userIds)) {
+                throw ValidationException::withMessages(['existing_tenant_ids' => ['Add at least one offer applicant.']]);
+            }
+
+            if (collect($userIds)->filter()->count() !== 1) {
+                throw ValidationException::withMessages(['main_existing_tenant_id' => ['Select exactly one main applicant.']]);
+            }
+
             // Create the offer in the database
             $offer = Offer::create([
                 'property_id' => $request->input('property_id'),
@@ -135,6 +173,7 @@ class OfferController
                 'message' => 'Offer Added successfully!',
             ];
             DB::commit();  // Commit the transaction if everything is successful
+            $this->notifyOffer(CrmNotificationEvent::OfferSubmitted, $offer, 'submitted-'.$offer->id, true);
             return response()->json($response);
 
             // Redirect back with a success message
@@ -262,12 +301,21 @@ class OfferController
 
     public function updateStatus(Request $request, $id)
     {
+        $request->validate(['status' => 'required|in:Pending,Accepted,Rejected,Withdrawn']);
         // Retrieve the offer by ID
         $offer = $this->offersForCurrentAccount()->findOrFail($id);
+        $oldStatus = $offer->status;
+        $rejectedOffers = collect();
         $offer->status = $request->status;
 
         // Check if the status is 'Accepted'
         if ($offer->status === 'Accepted') {
+
+            $rejectedOffers = $this->offersForCurrentAccount()
+                ->where('property_id', $offer->property_id)
+                ->whereKeyNot($offer->id)
+                ->where('status', '!=', 'Rejected')
+                ->get();
 
             // Call the helper function to reject other offers
             Offer::rejectOtherOffers($offer->property_id, $offer->id);
@@ -353,7 +401,34 @@ class OfferController
             $offer->save();
         }
 
+        if ($oldStatus !== $offer->status) {
+            $event = match ($offer->status) {
+                'Accepted' => CrmNotificationEvent::OfferAccepted,
+                'Rejected' => CrmNotificationEvent::OfferRejected,
+                'Withdrawn' => CrmNotificationEvent::OfferWithdrawn,
+                default => null,
+            };
+            if ($event) $this->notifyOffer($event, $offer->fresh(), strtolower($offer->status).'-'.$offer->updated_at?->timestamp, true);
+            foreach ($rejectedOffers as $rejectedOffer) {
+                $this->notifyOffer(CrmNotificationEvent::OfferRejected, $rejectedOffer->fresh(), 'auto-rejected-by-'.$offer->id);
+            }
+        }
+
         return response()->json(['status' => true, 'message' => 'Offer status updated successfully.']);
+    }
+
+    private function notifyOffer(CrmNotificationEvent $event, Offer $offer, string $milestone, bool $includeAdmins = false): void
+    {
+        $offer->loadMissing('property');
+        $property = $offer->property;
+        app(CrmNotificationService::class)->dispatch($event, $offer, [
+            'account_id' => $property->account_id ?: current_account_id(),
+            'include_account_admins' => $includeAdmins,
+            'property_address' => $property->full_address ?: $property->prop_name,
+            'offer_amount' => '£'.number_format((float) $offer->price, 2),
+            'action_url' => route('admin.offers.index'),
+            'milestone' => $milestone,
+        ], auth()->user());
     }
 
     private function offerTermInMonths(?string $term): ?int
@@ -423,6 +498,25 @@ class OfferController
         if ($requestedIds->diff($accessibleIds)->isNotEmpty()) {
             throw ValidationException::withMessages([
                 'tenant_details' => ['One or more offer tenants do not belong to your subscriber account.'],
+            ]);
+        }
+    }
+
+    private function ensureExistingTenantsAreAccessible(array $userIds): void
+    {
+        if (auth()->user()?->hasRole('Super Admin') || empty($userIds)) {
+            return;
+        }
+
+        $requestedIds = collect($userIds)->map(fn ($id) => (int) $id)->unique()->values();
+        $accessibleIds = User::forAccount(current_account_id())
+            ->whereKey($requestedIds)
+            ->pluck('users.id')
+            ->map(fn ($id) => (int) $id);
+
+        if ($requestedIds->diff($accessibleIds)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'existing_tenant_ids' => ['One or more selected contacts do not belong to your subscriber account.'],
             ]);
         }
     }
@@ -510,3 +604,4 @@ class OfferController
 
 
 }
+
