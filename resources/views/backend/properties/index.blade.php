@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+    <div class="mobile_backdrop" id="mobileBackdrop"></div>
     <div class="row g-0 view_properties">
         <div class="col-lg-5 col-12">
             <div class="property_list_wrapper pt-lg-4 pt-2 ">
@@ -35,6 +36,39 @@
 
                     </div>
                     {{-- pv_header end --}}
+                    {{-- Filter bar --}}
+                    <div class="pv_filter_bar px-2 pb-2">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted mb-1">Property Type</label>
+                                <select name="property_type" id="filterPropertyType" class="form-select form-select-sm">
+                                    <option value="">All Types</option>
+                                    <option value="sales" {{ request('property_type') == 'sales' ? 'selected' : '' }}>Sales</option>
+                                    <option value="lettings" {{ request('property_type') == 'lettings' ? 'selected' : '' }}>Lettings</option>
+                                    <option value="both" {{ request('property_type') == 'both' ? 'selected' : '' }}>Both</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted mb-1">Status</label>
+                                <select name="status" id="filterStatus" class="form-select form-select-sm">
+                                    <option value="">All Statuses</option>
+                                    <option value="for sale" {{ request('status') == 'for sale' ? 'selected' : '' }}>For Sale</option>
+                                    <option value="let agreed" {{ request('status') == 'let agreed' ? 'selected' : '' }}>Let Agreed</option>
+                                    <option value="available" {{ request('status') == 'available' ? 'selected' : '' }}>Available</option>
+                                    <option value="sold" {{ request('status') == 'sold' ? 'selected' : '' }}>Sold</option>
+                                    <option value="not available" {{ request('status') == 'not available' ? 'selected' : '' }}>Not Available</option>
+                                </select>
+                            </div>
+                        </div>
+                        @if(request()->hasAny(['search', 'property_type', 'status']))
+                        <div class="mt-2">
+                            <a href="{{ route('admin.properties.index') }}" class="btn btn-link btn-sm p-0 text-decoration-none">
+                                <i class="bi bi-x-circle"></i> Clear filters
+                            </a>
+                        </div>
+                        @endif
+                    </div>
+                    {{-- pv_header end --}}
                     <div class="pv_card_wrapper" id="propertyListContainer">
                         @include('backend.properties.partials.property-list')
                     </div>
@@ -45,8 +79,228 @@
         </div>
         <div class="col-lg-7 col-12 property_detail_wrapper hide_this pt-lg-4 pt-0">
             <div class="pv_detail_wrapper">
+                @if(isset($property) && $property)
+                    {{-- Property Header Card --}}
+                    <div class="card mb-3 property-header-card">
+                        <div class="card-body">
+                            <div class="d-flex gap-3 align-items-start">
+                                {{-- Photo Thumbnail --}}
+                                <div class="property-thumbnail flex-shrink-0">
+                                    @php
+                                        $firstPhoto = null;
+                                        if ($property->photos) {
+                                            $photoIds = array_filter(explode(',', $property->photos), fn($id) => trim($id));
+                                            if (!empty($photoIds)) {
+                                                $firstPhoto = uploaded_asset(trim($photoIds[0]));
+                                            }
+                                        }
+                                    @endphp
+                                    @if($firstPhoto)
+                                        <img src="{{ $firstPhoto }}" alt="Property" class="rounded property-thumb-img" onclick="openImageModal('{{ $firstPhoto }}')" style="cursor:pointer">
+                                    @else
+                                        <div class="property-thumb-placeholder rounded d-flex align-items-center justify-content-center">
+                                            <i class="bi bi-building text-muted" style="font-size: 2rem;"></i>
+                                        </div>
+                                    @endif
+                                </div>
+                                
+                                {{-- Property Info --}}
+                                <div class="flex-grow-1 min-width-0">
+                                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                        <div class="min-width-0">
+                                            <div class="text-muted small">Property Ref: <strong>{{ $property->prop_ref_no }}</strong></div>
+                                            <h5 class="mb-1 mt-1 text-truncate">{{ $property->prop_name ?: $property->line_1 }}</h5>
+                                            <div class="text-muted small text-truncate">
+                                                {{ $property->line_1 }}{{ $property->line_2 ? ', ' . $property->line_2 : '' }}, {{ $property->city }}, {{ $property->postcode }}
+                                            </div>
+                                            <div class="mt-2">
+                                                <span class="badge bg-light text-dark border">{{ $property->property_type }}</span>
+                                                @if($property->sales_current_status)
+                                                    <span class="badge {{ $property->sales_current_status == 'available' || $property->sales_current_status == 'for sale' ? 'bg-success' : ($property->sales_current_status == 'let agreed' ? 'bg-warning text-dark' : 'bg-secondary') }} me-1">
+                                                        {{ $property->sales_current_status }}
+                                                    </span>
+                                                @endif
+                                                @if($property->letting_current_status)
+                                                    <span class="badge {{ $property->letting_current_status == 'available' ? 'bg-success' : ($property->letting_current_status == 'let agreed' ? 'bg-warning text-dark' : 'bg-secondary') }}">
+                                                        {{ $property->letting_current_status }}
+                                                    </span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2 flex-wrap">
+                                            @can('edit properties')
+                                            <a href="{{ route('admin.properties.edit', $property->id) }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-pencil"></i> Edit
+                                            </a>
+                                            @endcan
+                                            @can('create tenancies')
+                                            <a href="{{ route('admin.tenancies.create', ['property_id' => $property->id]) }}" class="btn btn-sm btn-primary">
+                                                <i class="bi bi-plus-circle"></i> Add Tenancy
+                                            </a>
+                                            @endcan
+                                            <a href="{{ route('admin.properties.brochure', $property->id) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-file-earmark-pdf"></i> Brochure
+                                            </a>
+                                            @can('delete properties')
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                onclick="confirmModal('{{ route('admin.properties.delete', $property->id) }}', responseHandler)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            @endcan
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {{-- Quick Stats Bar --}}
+                    @php
+                        $activeTenancies = \App\Models\Tenancy::where('property_id', $property->id)
+                            ->where('status', 'Active')->count();
+                        $openRepairs = \App\Models\RepairIssue::where('property_id', $property->id)
+                            ->whereIn('status', ['Pending', 'Reported', 'Under Process'])->count();
+                        $complianceCount = $property->complianceRecords()->count();
+                        $expiringCompliance = $property->complianceRecords()
+                            ->where('expiry_date', '<=', now()->addMonths(2))
+                            ->where('expiry_date', '>=', now())->count();
+                        $daysListed = $property->created_at ? now()->diffInDays($property->created_at) : 0;
+                    @endphp
+                    <div class="row g-2 mb-3 property-stats-bar">
+                        <div class="col-md-2 col-6">
+                            <a href="{{ route('admin.tenancies.index', ['propertyId' => $property->id]) }}" class="stat-pill text-decoration-none">
+                                <div class="stat-icon"><i class="bi bi-house-door"></i></div>
+                                <div class="stat-content">
+                                    <div class="stat-value">{{ $activeTenancies }}</div>
+                                    <div class="stat-label">Tenancies</div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <div class="stat-pill">
+                                <div class="stat-icon"><i class="bi bi-currency-pound"></i></div>
+                                <div class="stat-content">
+                                    <div class="stat-value">£{{ number_format($property->letting_price ?? 0, 0) }}</div>
+                                    <div class="stat-label">Rent/mo</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <a href="{{ route('admin.properties.index', ['property_id' => $property->id, 'tabname' => 'Compliance']) }}" class="stat-pill text-decoration-none">
+                                <div class="stat-icon"><i class="bi bi-shield-check"></i></div>
+                                <div class="stat-content">
+                                    <div class="stat-value {{ $expiringCompliance > 0 ? 'text-warning' : 'text-success' }}">
+                                        {{ $complianceCount }}
+                                    </div>
+                                    <div class="stat-label">Compliance {{ $expiringCompliance > 0 ? '(' . $expiringCompliance . ' expiring)' : '' }}</div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <a href="{{ route('admin.property_repairs.index', ['property_id' => $property->id]) }}" class="stat-pill text-decoration-none">
+                                <div class="stat-icon"><i class="bi bi-wrench"></i></div>
+                                <div class="stat-content">
+                                    <div class="stat-value">{{ $openRepairs }}</div>
+                                    <div class="stat-label">Open Repairs</div>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <div class="stat-pill">
+                                <div class="stat-icon"><i class="bi bi-calendar"></i></div>
+                                <div class="stat-content">
+                                    <div class="stat-value">{{ $daysListed }}</div>
+                                    <div class="stat-label">Days Listed</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-2 col-6">
+                            <div class="stat-pill">
+                                <div class="stat-icon"><i class="bi bi-clock"></i></div>
+                                <div class="stat-content">
+                                    <div class="stat-value">-</div>
+                                    <div class="stat-label">Next Rent Due</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {{-- Quick Actions Toolbar --}}
+                    <div class="property-quick-actions mb-3">
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <span class="text-muted small me-2">Quick Add:</span>
+                            @can('create tenancies')
+                            <a href="{{ route('admin.tenancies.create', ['property_id' => $property->id]) }}" class="btn btn-sm btn-primary">
+                                <i class="bi bi-plus-circle me-1"></i> Tenancy
+                            </a>
+                            @endcan
+                            <a href="{{ route('admin.property_repairs.create') }}?property_id={{ $property->id }}" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-wrench me-1"></i> Repair
+                            </a>
+                            <a href="{{ route('admin.properties.brochure', $property->id) }}" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-file-earmark-pdf me-1"></i> Brochure
+                            </a>
+                            @can('edit properties')
+                            <a href="{{ route('admin.properties.edit', $property->id) }}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil me-1"></i> Edit Property
+                            </a>
+                            @endcan
+                        </div>
+                    </div>
+                @endif
 
-                <x-backend.properties-tabs :tabs="$tabs" class="poperty_tabs" />
+                @php
+    $activeTabIndex = collect($tabs)->search(fn($tab) => strtolower($tab['name']) === strtolower($tabName));
+    if ($activeTabIndex === false) {
+        $activeTabIndex = 0;
+    }
+                @endphp
+                @php
+                    $primaryTabs = ['property', 'tenancy', 'documents', 'notes', 'compliance', 'statement'];
+                    $moreTabs = ['media', 'appointments', 'owners', 'teams', 'offers', 'aps', 'responsibility'];
+                    $primaryTabNames = array_map('strtolower', $primaryTabs);
+                    $moreTabNames = array_map('strtolower', $moreTabs);
+                @endphp
+                <div class="property-tabs-container mb-3">
+                    <div class="d-flex gap-2 flex-wrap align-items-center">
+                        @foreach($tabs as $key => $tab)
+                            @php
+                                $tabName = strtolower($tab['name']);
+                                $isPrimary = in_array($tabName, $primaryTabNames, true);
+                                $isActive = strtolower($tabName) === strtolower($tabName);
+                            @endphp
+                            @if($isPrimary)
+                                <a href="#{{ Str::slug($tab['name']) }}"
+                                   data-tab-name="{{ $tabName }}"
+                                   class="nav-link tab-link {{ $key === $activeTabIndex ? 'active' : '' }}">
+                                    {{ $tab['name'] }}
+                                </a>
+                            @endif
+                        @endforeach
+                        @php
+                            $availableMoreTabs = collect($tabs)->filter(function($tab) use ($moreTabNames) {
+                                return in_array(strtolower($tab['name']), $moreTabNames, true);
+                            });
+                        @endphp
+                        @if($availableMoreTabs->count() > 0)
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    More
+                                </button>
+                                <ul class="dropdown-menu">
+                                    @foreach($availableMoreTabs as $tab)
+                                        <li>
+                                            <a href="#{{ Str::slug($tab['name']) }}"
+                                               data-tab-name="{{ strtolower($tab['name']) }}"
+                                               class="dropdown-item tab-link {{ strtolower($tab['name']) === strtolower($tabName) ? 'active' : '' }}">
+                                                {{ $tab['name'] }}
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+                    </div>
+                </div>
 
                 <div class="pv_detail_content">
                     <div class="pv_detail_header">
@@ -190,6 +444,357 @@
         .modal-backdrop.modal-stack {
             opacity: 0.3 !important;
         }
+
+        /* Property Header Card */
+        .property-header-card {
+            border-left: 4px solid #0d6efd;
+        }
+        .property-header-card .card-body {
+            padding: 1rem;
+        }
+        .property-thumb-img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+        }
+        .property-thumb-placeholder {
+            width: 80px;
+            height: 80px;
+            background: #f8f9fa;
+            border: 2px dashed #dee2e6;
+        }
+
+        /* Quick Stats Bar */
+        .property-stats-bar .stat-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            text-decoration: none;
+            transition: all 0.15s ease;
+            height: 100%;
+        }
+        .property-stats-bar .stat-pill:hover {
+            border-color: #0d6efd;
+            box-shadow: 0 0.125rem 0.5rem rgba(0,0,0,0.075);
+            transform: translateY(-1px);
+        }
+        .property-stats-bar .stat-icon {
+            font-size: 1.5rem;
+            color: #6c757d;
+            width: 2.5rem;
+            height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border-radius: 0.375rem;
+            flex-shrink: 0;
+        }
+        .property-stats-bar .stat-content {
+            min-width: 0;
+        }
+        .property-stats-bar .stat-value {
+            font-weight: 600;
+            font-size: 1.1rem;
+            line-height: 1.2;
+            color: #212529;
+        }
+        .property-stats-bar .stat-label {
+            font-size: 0.75rem;
+            color: #6c757d;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Quick Actions */
+        .property-quick-actions {
+            padding: 0.75rem;
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            border: 1px solid #e9ecef;
+        }
+
+        /* Tab Navigation */
+        .property-tabs-container .nav-link {
+            color: #6c757d;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            white-space: nowrap;
+        }
+        .property-tabs-container .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        .property-tabs-container .nav-link:hover:not(.active) {
+            background-color: #e9ecef;
+        }
+
+        /* Quick Stats */
+        .stat-card {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0.125rem 0.5rem rgba(0,0,0,0.075);
+        }
+
+        /* Property Tabs */
+        .property-tabs-scroll {
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+        .property-nav-pills {
+            flex-wrap: nowrap;
+            gap: 0.25rem;
+        }
+        .property-nav-pills .nav-link {
+            white-space: nowrap;
+            font-size: 0.875rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            color: #6c757d;
+        }
+        .property-nav-pills .nav-link.active {
+            background-color: #0d6efd;
+            color: #fff;
+        }
+        .property-nav-pills .nav-link:hover:not(.active) {
+            background-color: #e9ecef;
+        }
+
+        /* Filter Bar */
+        .pv_filter_bar {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 991.98px) {
+            .property_detail_wrapper {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100vh;
+                overflow-y: auto;
+                z-index: 1050;
+                background: #fff;
+                transform: translateX(100%);
+                transition: transform 0.3s ease-in-out;
+            }
+            .property_detail_wrapper.show_this {
+                transform: translateX(0);
+            }
+            .property_list_wrapper.hide_this {
+                display: none !important;
+            }
+            .mobile_backdrop {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 1040;
+            }
+            .mobile_backdrop.show {
+                display: block;
+            }
+        }
+        @media (min-width: 992px) {
+            .mobile_backdrop {
+                display: none !important;
+            }
+            .property_detail_wrapper {
+                position: static !important;
+                transform: none !important;
+                height: auto !important;
+                overflow-y: visible !important;
+            }
+        }
+
+        /* Property Overview Dashboard */
+        .property-overview-dashboard .fact-card {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            height: 100%;
+        }
+        .property-overview-dashboard .fact-icon {
+            font-size: 1.5rem;
+            color: #6c757d;
+            width: 2.5rem;
+            height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border-radius: 0.375rem;
+            flex-shrink: 0;
+        }
+        .property-overview-dashboard .fact-content {
+            min-width: 0;
+        }
+        .property-overview-dashboard .fact-label {
+            font-size: 0.75rem;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .property-overview-dashboard .fact-value {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #212529;
+        }
+        .property-overview-dashboard .card-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .property-overview-dashboard .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+        .property-overview-dashboard .feature-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 0.375rem;
+        }
+        .property-overview-dashboard .feature-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        .property-overview-dashboard .feature-value {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #212529;
+        }
+        .property-overview-dashboard .pricing-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 0.375rem;
+        }
+        .property-overview-dashboard .pricing-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        .property-overview-dashboard .pricing-value {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #212529;
+        }
+        .property-overview-dashboard .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            background: #f8f9fa;
+            border-radius: 0.375rem;
+        }
+        .property-overview-dashboard .status-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+        .property-overview-dashboard .status-value {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #212529;
+        }
+        .property-overview-dashboard .property-media-thumb:hover {
+            opacity: 0.8;
+        }
+
+        /* Property Cards */
+        .property-card {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .property-card:hover {
+            border-color: #0d6efd;
+            box-shadow: 0 0.125rem 0.5rem rgba(0,0,0,0.075);
+        }
+        .property-card.current {
+            border-left: 4px solid #0d6efd;
+            background-color: #f8f9fa;
+        }
+        .property-card-body {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .property-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .property-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+            line-height: 1.3;
+            color: #212529;
+        }
+        .property-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .stat-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+            color: #6c757d;
+            background: #f8f9fa;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+        }
+        .stat-item i {
+            font-size: 0.75rem;
+        }
+        .property-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            font-size: 0.8rem;
+        }
+        .meta-item {
+            color: #495057;
+        }
+        .meta-item strong {
+            color: #6c757d;
+            font-weight: 500;
+        }
+        .property-actions {
+            display: flex;
+            gap: 0.25rem;
+            flex-wrap: wrap;
+        }
+        .property-actions .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
     </style>
     <!-- property offer add Modal -->
     <div class="modal fade" id="addOfferModal" tabindex="-1" aria-labelledby="addOfferModal-label" aria-hidden="true"
@@ -328,6 +933,160 @@
 <script src="{{ asset('/asset/backend/js/common-documents.js') }}"></script>
 @endpush
 @section('page.scripts')
+<script>
+    // Global: important note modal helper
+    function showImportantNoteForCard(card) {
+        if (!card || !card.length) {
+            return;
+        }
+        var importantNote = (card.attr('data-important-note') || '').trim();
+        if (importantNote) {
+            $('#importantNoteVisitContent').text(importantNote);
+            $('#importantNoteVisitModal').modal('show');
+        }
+    }
+
+    // Global: tab content loader
+    function loadTabContent(propertyId, tabName) {
+        var url = '{{ route('admin.properties.index') }}' + '?property_id=' + propertyId + '&tabname=' + tabName;
+        $.ajax({
+            url: url,
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                $('.pv_content_detail').html(response.content);
+                updateTitle(tabName, propertyId);
+                if (tabName === 'documents') {
+                    $('.pv_content_detail .documents-component').trigger('documents:refresh');
+                }
+                if (tabName === 'notes') {
+                    $('.pv_content_detail .notes-component').trigger('notes:refresh');
+                }
+                $('.tab-tenancy-group-btn, .tab-owners-group-btn, .tab-offers-btn').attr('data-property-id', propertyId);
+                window.history.pushState(null, null, url);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading tab content:', error);
+                let message = "Something went wrong.";
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    message = xhr.responseJSON.message;
+                }
+                AIZ.plugins.notify('danger', message);
+                $('.pv_content_detail').html('<div class="alert alert-danger">' + message + '</div>');
+            }
+        });
+    }
+
+    // Global: title updater
+    function updateTitle(tabName, propertyId) {
+        var formattedTitle = tabName.charAt(0).toUpperCase() + tabName.slice(1);
+        $('.pv_main_title').text(formattedTitle + ' Detail');
+        if (tabName === 'owners') {
+            $('.tab-owners-group-btn').removeClass('d-none');
+        } else {
+            $('.tab-owners-group-btn').addClass('d-none');
+        }
+        if (tabName === 'offers') {
+            $('.tab-offers-btn').removeClass('d-none');
+        } else {
+            $('.tab-offers-btn').addClass('d-none');
+        }
+        if (tabName === 'tenancy') {
+            $('.tab-tenancy-group-btn').removeClass('d-none');
+        } else {
+            $('.tab-tenancy-group-btn').addClass('d-none');
+        }
+    }
+
+    // Filter bar handlers
+    $('#filterPropertyType, #filterStatus').on('change', function() {
+        const params = new URLSearchParams(window.location.search);
+        const propertyType = $('#filterPropertyType').val();
+        const status = $('#filterStatus').val();
+
+        if (propertyType) {
+            params.set('property_type', propertyType);
+        } else {
+            params.delete('property_type');
+        }
+        if (status) {
+            params.set('status', status);
+        } else {
+            params.delete('status');
+        }
+
+        // Preserve property_id and tabname if present
+        const propertyId = params.get('property_id');
+        const tabName = params.get('tabname');
+        if (propertyId) params.set('property_id', propertyId);
+        if (tabName) params.set('tabname', tabName);
+
+        window.location.href = '{{ route('admin.properties.index') }}?' + params.toString();
+    });
+
+    // Mobile: open detail panel
+    $(document).on('click', '.property-card', function() {
+        var propertyId = $(this).data('property-id');
+        $('.property-card').removeClass('current');
+        $(this).addClass('current');
+        var tabName = $('.tab-link.active').data('tab-name') || 'property';
+        showImportantNoteForCard($(this));
+        loadTabContent(propertyId, tabName);
+        openMobileDetail();
+    });
+
+    // Tab click handler
+    $(document).on('click', '.tab-link', function(e) {
+        e.preventDefault();
+        var tabName = $(this).data('tab-name');
+        var propertyId = $('.property-card.current').data('property-id');
+        if (!propertyId) {
+            propertyId = $('.property-card').first().data('property-id');
+            if (propertyId) {
+                $('.property-card').removeClass('current');
+                $('.property-card').first().addClass('current');
+            }
+        }
+        if (!propertyId) return;
+        $('.tab-link').removeClass('active');
+        $(this).addClass('active');
+        loadTabContent(propertyId, tabName);
+    });
+
+    function openMobileDetail() {
+        if ($(window).width() < 992) {
+            $('.property_detail_wrapper').addClass('show_this');
+            $('.property_list_wrapper').addClass('hide_this');
+            $('#mobileBackdrop').addClass('show');
+            $('body').css('overflow', 'hidden');
+        }
+    }
+
+    function closeMobileDetail() {
+        $('.property_detail_wrapper').removeClass('show_this');
+        $('.property_list_wrapper').removeClass('hide_this');
+        $('#mobileBackdrop').removeClass('show');
+        $('body').css('overflow', '');
+    }
+
+    // Back button in detail panel
+    $(document).on('click', '#backBtn', function(e) {
+        e.preventDefault();
+        closeMobileDetail();
+    });
+
+    // Backdrop click closes detail
+    $(document).on('click', '#mobileBackdrop', function() {
+        closeMobileDetail();
+    });
+
+    // Escape key closes detail
+    $(document).on('keydown', function(e) {
+        if (e.key === 'Escape' && $('.property_detail_wrapper').hasClass('show_this')) {
+            closeMobileDetail();
+        }
+    });
+</script>
 @if (isset($propertyId) && isset($property) && $propertyId != $property->id)
 {{-- @php
 var_dump($propertyId);
@@ -852,21 +1611,8 @@ var_dump($propertyId);
                 );
             }
 
-            if (is_mobile()) {
-                $(document).on('click', '.property-card', function() {
-                    $('#backBtn').addClass('property_bk_btn_show');
-                    $('.property_detail_wrapper').removeClass('hide_this');
-                    $('.property_list_wrapper').toggleClass('hide_this'); // Hide left column
-                    $('.property_detail_wrapper').addClass('show_this'); // Show right column
-                });
-
-                $(document).on('click', '#backBtn', function() {
-                    $('#backBtn').removeClass('property_bk_btn_show');
-                    $('.property_detail_wrapper').addClass('hide_this');
-                    $('.property_detail_wrapper').toggleClass('show_this'); // Hide right column
-                    $('.property_list_wrapper').toggleClass('hide_this'); // Show left column
-                });
-            }
+            // Mobile handling is now CSS-based via .show_this / .hide_this classes
+            // See page.scripts section for openMobileDetail() / closeMobileDetail()
 
             $(document).on('click', '.popup-tab-owners-create', function(e) {
                 e.preventDefault(); // Prevent the default action (e.g., following the link)
@@ -1291,242 +2037,34 @@ var_dump($propertyId);
 
 
         $(document).ready(function() {
+            var urlParams = new URLSearchParams(window.location.search);
+            var propertyId = urlParams.get('property_id');
+            var tabName = urlParams.get('tabname');
 
-            // Function to get URL parameters
-            function getUrlParameter(name) {
-                var urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get(name);
-            }
-
-            // Check if URL parameters are present (property_id and tabname)
-            function hasUrlParams() {
-                var urlParams = new URLSearchParams(window.location.search);
-                return urlParams.has('property_id') && urlParams.has('tabname');
-            }
-
-            // Function to update the title dynamically
-            function updateTitle(tabName, propertyId = null) {
-                // Capitalize the first letter of the tab name for display
-                var formattedTitle = tabName.charAt(0).toUpperCase() + tabName.slice(1);
-
-                // Update the content of the title div
-                $('.pv_main_title').text(formattedTitle + ' Detail');
-
-                // Show or hide the button based on the tabName
-                if (tabName === 'owners') {
-                    // $('.tab-owners-btn').removeClass('d-none'); // Show the button for 'owner' tab
-                    $('.tab-owners-group-btn').removeClass('d-none'); // Show the button for 'owner' tab
-                } else {
-                    // $('.tab-owners-btn').addClass('d-none'); // Hide the button for other tabs
-                    $('.tab-owners-group-btn').addClass('d-none'); // Hide the button for other tabs
-                }
-                if (tabName === 'offers') {
-                    $('.tab-offers-btn').removeClass('d-none'); // Show the button for 'owner' tab
-                } else {
-                    $('.tab-offers-btn').addClass('d-none'); // Hide the button for other tabs
-                }
-                if (tabName === 'tenancy') {
-                    $('.tab-tenancy-group-btn').removeClass('d-none'); // Show the button for 'owner' tab
-                } else {
-                    $('.tab-tenancy-group-btn').addClass('d-none'); // Hide the button for other tabs
-                }
-                // Update the "Edit Property" button dynamically if property ID exists
-                // if (propertyId) {
-                //     var editButtonLink = '{{ route('admin.properties.edit', ['id' => ':id']) }}'.replace(':id', propertyId);
-                //     $('.pvdh_btns_wrapper .edit-property-btn').removeClass('d-none').attr('href', editButtonLink);
-                //         // console.log(editButtonLink);
-                // } else {
-                //     $('.pvdh_btns_wrapper .edit-property-btn').addClass('d-none'); // Hide the button if no property ID
-                // }
-
-            }
-
-            function showImportantNoteForCard(card) {
-                if (!card || !card.length) {
-                    return;
-                }
-
-                var importantNote = (card.attr('data-important-note') || '').trim();
-
-                if (importantNote) {
-                    $('#importantNoteVisitContent').text(importantNote);
-                    $('#importantNoteVisitModal').modal('show');
-                }
-            }
-
-            // Handle Tab Clicks
-            // Event listener for property cards (left side)
-            $(document).on('click', '.property-card', function() {
-                var propertyId = $(this).data('property-id');
-                $('.property-card').removeClass('current');
-                $(this).addClass('current');
-                var tabName = $('.tab-link.active').data('tab-name');
-                showImportantNoteForCard($(this));
-                loadTabContent(propertyId, tabName);
-            });
-
-            // Event listener for tabs (right side)
-            $(document).on('click', '.tab-link', function(e) {
-                e.preventDefault();
-                var tabName = $(this).data('tab-name');
-                var propertyId = $('.property-card.current').data('property-id');
-                $('.tab-link').removeClass('active');
-                $(this).addClass('active');
-                loadTabContent(propertyId, tabName); // Load content dynamically
-            });
-
-            // Check if URL parameters are present (property_id and tabname)
-            function hasUrlParams() {
-                var urlParams = new URLSearchParams(window.location.search);
-                return urlParams.has('property_id') && urlParams.has('tabname');
-            }
-            // Call the appropriate function based on URL parameters or default
-            if (hasUrlParams()) {
-                activateTabFromUrl(); // Handle tabs based on URL parameters
-            } else {
-                simulateTabClickAndPropertyCard(); // Default behavior
-            }
-
-
-            // Scroll the property list so the given card is visible
-            function scrollToCard(card) {
-                if (!card || !card.length) return;
-                var container = $('.pv_card_wrapper');
-                if (!container.length) return;
-                var cardTop    = card.position().top;
-                var cardHeight = card.outerHeight();
-                var containerHeight = container.height();
-                container.animate({
-                    scrollTop: container.scrollTop() + cardTop - (containerHeight / 2) + (cardHeight / 2)
-                }, 300);
-            }
-
-            // Function to activate tab based on URL parameter
-            function activateTabFromUrl() {
-                var tabName = getUrlParameter('tabname'); // Get tabname from URL
-                var propertyId = getUrlParameter('property_id'); // Get property_id from URL
-
-                if (tabName && propertyId) {
-                    // Find the tab and property card with the matching data attributes
-                    var selectedTab = $('.tab-link[data-tab-name="' + tabName + '"]');
-                    var selectedPropertyCard = $('.property-card[data-property-id="' + propertyId + '"]');
-
-                    // Mark the selected tab as active
-                    $('.tab-link').removeClass('active');
-                    selectedTab.addClass('active');
-
-                    // If the card is already in the DOM, highlight it and load content
-                    if (selectedPropertyCard.length) {
-                        $('.property-card').removeClass('current');
-                        selectedPropertyCard.addClass('current');
-                        scrollToCard(selectedPropertyCard);
-                        showImportantNoteForCard(selectedPropertyCard);
-                        loadTabContent(propertyId, tabName);
-                    } else {
-                        // Card is on a different page — reload the list to the correct page first
-                        $.ajax({
-                            url: '{{ route('admin.properties.index') }}',
-                            type: 'GET',
-                            data: { list_only: 1, highlight_id: propertyId },
-                            success: function(response) {
-                                $('#propertyListContainer').html(response.html);
-                                // Now highlight and scroll to the card
-                                $('.property-card').removeClass('current');
-                                var card = $('.property-card[data-property-id="' + propertyId + '"]');
-                                card.addClass('current');
-                                scrollToCard(card);
-                                showImportantNoteForCard(card);
-                                loadTabContent(propertyId, tabName);
-                            },
-                            error: function() {
-                                // Property doesn't exist — fall back to first card
-                                var firstCard = $('.property-card').first();
-                                var firstId   = firstCard.data('property-id');
-                                firstCard.addClass('current');
-                                showImportantNoteForCard(firstCard);
-                                loadTabContent(firstId, tabName);
-                            }
-                        });
+            if (propertyId && tabName) {
+                var targetCard = $('.property-card[data-property-id="' + propertyId + '"]');
+                if (targetCard.length) {
+                    $('.property-card').removeClass('current');
+                    targetCard.addClass('current');
+                    var activeTab = $('.tab-link[data-tab-name="' + tabName + '"]');
+                    if (activeTab.length) {
+                        $('.tab-link').removeClass('active');
+                        activeTab.addClass('active');
                     }
-                }
-            }
-
-            // Simulate the first tab and first property card selection on page load
-            function simulateTabClickAndPropertyCard() {
-                var firstPropertyCard = $('.property-card').first(); // Get the first property card
-                var firstTab = $('.tab-link').first(); // Get the first tab
-
-                // Get the propertyId and tabName from the first property card and tab
-                var propertyId = firstPropertyCard.data('property-id');
-                var tabName = firstTab.data('tab-name');
-                console.log(propertyId);
-                console.log(tabName);
-
-                // Trigger the AJAX load
-                if (propertyId && tabName) {
                     loadTabContent(propertyId, tabName);
-                    firstPropertyCard.addClass('current'); // Add 'current' class to the first property card
-                    firstTab.addClass('active'); // Add 'active' class to the first tab
-                    showImportantNoteForCard(firstPropertyCard);
+                    if ($(window).width() < 992) {
+                        openMobileDetail();
+                    }
+                }
+            } else {
+                var firstCard = $('.property-card').first();
+                var firstTab = $('.tab-link').first();
+                if (firstCard.length && firstTab.length) {
+                    firstCard.addClass('current');
+                    firstTab.addClass('active');
+                    loadTabContent(firstCard.data('property-id'), firstTab.data('tab-name'));
                 }
             }
-
-            // Call the simulateTabClickAndPropertyCard function on document ready only if URL parameters are NOT present
-            // if (!hasUrlParams()) {
-            //     simulateTabClickAndPropertyCard();
-            // }
-
-            // Function to load tab content dynamically via AJAX
-            function loadTabContent(propertyId, tabName) {
-                // Correctly format the URL with query parameters instead of placeholders
-                var url = '{{ route('admin.properties.index') }}' + '?property_id=' + propertyId + '&tabname=' +
-                    tabName;
-
-                $.ajax({
-                    url: url,
-                    type: 'GET',
-                    dataType: 'json',
-                    success: function(response) {
-                        $('.pv_content_detail').html(response.content);
-                        updateTitle(tabName, propertyId);
-                        if (tabName === 'documents') {
-                            $('.pv_content_detail .documents-component').trigger('documents:refresh');
-                        }
-                        if (tabName === 'notes') {
-                            $('.pv_content_detail .notes-component').trigger('notes:refresh');
-                        }
-                        // Stamp the current property ID onto action buttons so click handlers can read it reliably
-                        $('.tab-tenancy-group-btn, .tab-owners-group-btn, .tab-offers-btn').attr('data-property-id', propertyId);
-                        window.history.pushState(null, null, url);
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Error loading tab content:', error);
-
-                        let message = "Something went wrong.";
-
-                        if (xhr.responseJSON && xhr.responseJSON.message) {
-                            message = xhr.responseJSON.message;
-                        }
-
-                        // AIZ Notify (or switch to toastr or SweetAlert if needed)
-                        AIZ.plugins.notify('danger', message);
-
-                        // Optional: fallback content or redirect
-                        $('.pv_content_detail').html('<div class="alert alert-danger">' + message + '</div>');
-                    }
-                });
-            }
-
-            $(document).on('change', '#pets_allow', function() {
-                // Set the value to 1 if checked, otherwise set to 0
-                this.value = this.checked ? 1 : 0;
-            });
-
-            // Trigger change once on page load to set initial value
-            // $(function() {
-            //     $('#pets_allow').trigger('change');
-            // });
-
         });
     </script>
 

@@ -72,6 +72,20 @@ class PropertyController
             });
         }
 
+        // Apply property type filter
+        if ($request->filled('property_type')) {
+            $propertiesQuery->where('property_type', $request->property_type);
+        }
+
+        // Apply status filter (matches sales or letting status)
+        if ($request->filled('status')) {
+            $status = $request->status;
+            $propertiesQuery->where(function ($query) use ($status) {
+                $query->where('sales_current_status', $status)
+                    ->orWhere('letting_current_status', $status);
+            });
+        }
+
         // Fetch properties based on role
         if ($isPortalUser) {
             $properties = $propertiesQuery->whereIn('id', $portalAccessService->accessiblePropertyIds($user, $accountId))
@@ -128,6 +142,16 @@ class PropertyController
                           ->orWhere('city', 'like', "%{$search}%")
                           ->orWhere('postcode', 'like', "%{$search}%")
                           ->orWhere('property_type', 'like', "%{$search}%");
+                    });
+                }
+                if ($request->filled('property_type')) {
+                    $positionQuery->where('property_type', $request->property_type);
+                }
+                if ($request->filled('status')) {
+                    $status = $request->status;
+                    $positionQuery->where(function ($q) use ($status) {
+                        $q->where('sales_current_status', $status)
+                          ->orWhere('letting_current_status', $status);
                     });
                 }
                 if ($isPortalUser) {

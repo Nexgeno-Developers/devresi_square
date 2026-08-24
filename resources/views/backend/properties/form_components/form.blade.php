@@ -3,6 +3,32 @@
 
 @push('styles')
     <link href="{{ asset('asset/backend/css/property-address-lookup.css') }}" rel="stylesheet">
+    <style>
+        .step-indicator {
+            opacity: 1;
+        }
+        .step-number-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border: 2px solid currentColor;
+        }
+        .step-indicator.text-primary .step-number-badge {
+            background-color: #0d6efd;
+            color: #fff;
+            border-color: #0d6efd;
+        }
+        .left_inner_menu {
+            background: #f8f9fa;
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+    </style>
 @endpush
 
 @push('scripts')
@@ -26,10 +52,49 @@
 
     // Determine the last enabled step based on $property->step or default to 1
     $currentStep = isset($property->step) ? $property->step+1 : 1;
+    $totalSteps = count($stepNames);
+    $progressPercent = round(($currentStep / $totalSteps) * 100);
 @endphp
 
 <div class="container-fluid">
     <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white py-3">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div>
+                            <h5 class="mb-0">Add New Property</h5>
+                            <p class="text-muted small mb-0">Step {{ min($currentStep, $totalSteps) }} of {{ $totalSteps }}: {{ $stepNames[min($currentStep, $totalSteps)] ?? '' }}</p>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="progress" style="width: 200px; height: 8px;">
+                                <div class="progress-bar" role="progressbar" style="width: {{ $progressPercent }}%;" aria-valuenow="{{ $progressPercent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <span class="small text-muted">{{ $progressPercent }}%</span>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach ($stepNames as $step => $name)
+                                @php
+                                    $stepNum = (int) $step;
+                                    $isComplete = $stepNum < $currentStep;
+                                    $isCurrent = $stepNum === $currentStep;
+                                @endphp
+                                <div class="step-indicator d-flex align-items-center gap-1 {{ $isCurrent ? 'text-primary fw-semibold' : ($isComplete ? 'text-success' : 'text-muted') }}">
+                                    @if($isComplete)
+                                        <i class="bi bi-check-circle-fill"></i>
+                                    @else
+                                        <span class="step-number-badge">{{ $stepNum }}</span>
+                                    @endif
+                                    <span class="d-none d-sm-inline small">{{ $name }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+        <div class="row">
         <div class="col-3 left_inner_menu">
             <div class="stepformcomponents">
                 <!-- @for ($i = 1; $i <= count($stepNames); $i++)
@@ -104,7 +169,11 @@
 
 
     </div>
-</div>
+                </div>{{-- card-body --}}
+            </div>{{-- card --}}
+        </div>{{-- col-12 --}}
+    </div>{{-- row --}}
+</div>{{-- container-fluid --}}
 <!-- Modal for confirmation -->
 <div class="modal fade" id="smallModal2" tabindex="-1" aria-labelledby="smallModal2-label" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-md">

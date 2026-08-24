@@ -1,377 +1,664 @@
 @php
-// echo '<pre>';
-// var_dump($propertyId);
-// echo '</pre>';
-// echo '<pre>';
-// var_dump($property);
-// echo '</pre>';
+    $addressParts = [];
+    if (isset($property) && isset($property->line_1)) { $addressParts[] = $property->line_1; }
+    if (isset($property) && isset($property->line_2)) { $addressParts[] = $property->line_2; }
+    if (isset($property) && isset($property->city)) { $addressParts[] = $property->city; }
+    if (isset($property) && isset($property->country)) { $addressParts[] = $property->country; }
+    if (isset($property) && isset($property->postcode)) { $addressParts[] = $property->postcode; }
+    $address = implode(', ', $addressParts);
 
-// Build the address string while checking for null values
-$addressParts = [];
-
-if (isset($property) && isset($property->line_1)) {
-    $addressParts[] = $property->line_1;
-}
-if (isset($property) && isset($property->line_2)) {
-    $addressParts[] = $property->line_2;
-}
-if (isset($property) && isset($property->city)) {
-    $addressParts[] = $property->city;
-}
-if (isset($property) && isset($property->country)) {
-    $addressParts[] = $property->country;
-}
-if (isset($property) && isset($property->postcode)) {
-    $addressParts[] = $property->postcode;
-}
-
-// Join all parts with commas and spaces
-$address = implode(', ', $addressParts);
-
-$propRefNo = $property->prop_ref_no ?? '';
-$propertyType = $property->property_type ?? '';
-$transactionType = $property->transaction_type ?? '';
-$specificPropertyType = $property->specific_property_type ?? '';
-$bedroom = $property->bedroom ?? '';
-$bathroom = $property->bathroom ?? '';
-$reception = $property->reception ?? '';
-$parkingLocation = $property->parking_location ?? 'N/A';
-$parking = booleanToYesNo($property->parking) ?? '';
-$balcony = booleanToYesNo($property->balcony) ?? '';
-$garden = booleanToYesNo($property->garden) ?? '';
-$petsAllowed = booleanToYesNo($property->pets_allow) ?? '';
-$service = $property->service ?? '';
-$collectingRent = booleanToYesNo($property->collecting_rent) ?? '';
-$floor = $property->floor ?? '';
-$squareFeet = $property->square_feet ?? '';
-$squareMeter = $property->square_meter ?? '';
-$aspects = $property->aspects ?? '';
-$currentStatus = $property->current_status ?? '';
-$lettingCurrentStatus = $property->letting_current_status ?? '';
-$salesCurrentStatus = $property->sales_current_status ?? '';
-$salesStatusDescription = $property->sales_status_description ?? '';
-$lettingStatusDescription = $property->letting_status_description ?? '';
-$availableFrom = formatDate($property->available_from) ?? '';
-$marketOn = $property->market_on ?? '';
-$features = $property->features ?? '';
-$furniture = jsonDecodeAndPrint($property->furniture) ?? '';
-$kitchen = jsonDecodeAndPrint($property->kitchen) ?? '';
-$heatingCooling = jsonDecodeAndPrint($property->heating_cooling) ?? '';
-$safety = jsonDecodeAndPrint($property->safety) ?? '';
-$other = jsonDecodeAndPrint($property->other) ?? '';
-$price = $property->price ?? '';
-$groundRent = $property->ground_rent ?? '';
-$serviceCharge = $property->service_charge ?? '';
-$annualCouncilTax = $property->annual_council_tax ?? '';
-$councilTaxBand = $property->council_tax_band ?? '';
-$lettingPrice = $property->letting_price ?? '';
-$tenure = $property->tenure ?? '';
-$lengthOfLease = $property->length_of_lease ?? '';
-$epcRequired = booleanToYesNo($property->epc_required) ?? '';
-$epcRating = $property->epc_rating ?? '';
-$isGas = $property->is_gas ?? '';
-$photos = $property->photos ?? '';
-$floorPlan = $property->floor_plan ?? '';
-$view360 = $property->view_360 ?? '';
-$videoUrl = $property->video_url ?? '';
-$designation = $property->designation ?? '';
-$branch = $property->branch ?? '';
-$commissionPercentage = $property->commission_percentage ?? '';
-$commissionAmount = $property->commission_amount ?? '';
-
-// Merge all features into one array
-$allFeatures = array_merge(
-    explode(', ', $furniture),
-    explode(', ', $kitchen),
-    explode(', ', $heatingCooling),
-    explode(', ', $safety),
-    explode(', ', $other)
-);
-
-// Split the array into two halves
-$halfCount = ceil(count($allFeatures) / 2); // to handle odd numbers
-$firstHalf = array_slice($allFeatures, 0, $halfCount);
-$secondHalf = array_slice($allFeatures, $halfCount);
-
+    $propertyType = $property->property_type ?? '';
+    $transactionType = $property->transaction_type ?? '';
+    $specificPropertyType = $property->specific_property_type ?? '';
+    $bedroom = $property->bedroom ?? '';
+    $bathroom = $property->bathroom ?? '';
+    $reception = $property->reception ?? '';
+    $floor = $property->floor ?? '';
+    $squareFeet = $property->square_feet ?? '';
+    $squareMeter = $property->square_meter ?? '';
+    $parking = booleanToYesNo($property->parking) ?? '';
+    $parkingLocation = $property->parking_location ?? '';
+    $garden = booleanToYesNo($property->garden) ?? '';
+    $balcony = booleanToYesNo($property->balcony) ?? '';
+    $aspects = $property->aspects ?? '';
+    $petsAllowed = booleanToYesNo($property->pets_allow) ?? '';
+    $service = $property->service ?? '';
+    $collectingRent = booleanToYesNo($property->collecting_rent) ?? '';
+    $availableFrom = formatDate($property->available_from) ?? '';
+    $salesStatus = $property->sales_current_status ?? '';
+    $lettingStatus = $property->letting_current_status ?? '';
+    $salesDescription = $property->sales_status_description ?? '';
+    $lettingDescription = $property->letting_status_description ?? '';
+    $price = $property->price ?? '';
+    $lettingPrice = $property->letting_price ?? '';
+    $groundRent = $property->ground_rent ?? '';
+    $serviceCharge = $property->service_charge ?? '';
+    $annualCouncilTax = $property->annual_council_tax ?? '';
+    $councilTaxBand = $property->council_tax_band ?? '';
+    $estateCharge = $property->estate_charge ?? '';
+    $miscellaneousCharge = $property->miscellaneous_charge ?? '';
+    $tenure = $property->tenure ?? '';
+    $lengthOfLease = $property->length_of_lease ?? '';
+    $epcRequired = booleanToYesNo($property->epc_required) ?? '';
+    $epcRating = $property->epc_rating ?? '';
+    $isGas = booleanToYesNo($property->is_gas) ?? '';
+    $marketOn = $property->market_on ?? '';
+    $impNotes = $property->imp_notes ?? '';
+    $photos = $property->photos ?? '';
+    $floorPlan = $property->floor_plan ?? '';
+    $view360 = $property->view_360 ?? '';
+    $youtubeUrl = $property->youtube_url ?? '';
+    $instagramUrl = $property->instagram_url ?? '';
+    $accessArrangement = $property->access_arrangement ?? '';
+    $keyHighlights = $property->key_highlights ?? '';
+    $usefulInformation = $property->useful_information ?? '';
 @endphp
-<div class="flex flex_row gap_16">
-    {{-- <div class="pv_image">
-        <img src="{{ asset('/asset/images/temp-property.webp') }}" alt="property">
-    </div> --}}
-    
-    <div class="pv_content w-100">
 
-       <div class="pvc_property_name_wrapper">
-            <div>
-                <div class="pvc_ref_id"> <strong> Property Ref: {{$propRefNo}} </strong></div>
-                <div class="pvc_poperty_name">{{ $address }}</div>
-            </div>
-            @can('delete properties')
-            @if (isset($property) && isset($property->id))
-                <!-- Delete Button -->
-                <button type="button" class="float-end btn btn-sm btn-outline-danger"
-                onclick="confirmModal('{{ url(route('admin.properties.delete', $property->id)) }}', responseHandler)">
-                <i class="mdi mdi-delete" title="Delete"></i>
-                Delete
-                </button>
-            @endif
-            @endcan
-        </div>
-        {{-- <div class="rs_property_icons">
-            <div class="bed_icon rs_tooltip" data-label="Bedroom">
-                <img src=" {{ asset('asset/images/svg/icons/bed.svg') }} " alt="bedroom"> {{$bedroom}}
-            </div>
-            <div class="bath_icon rs_tooltip" data-label="Bathroom">
-                <img src=" {{ asset('asset/images/svg/icons/bath.svg') }} " alt="bathroom"> {{$bathroom}}
-            </div>
-            <div class="floors_icon rs_tooltip" data-label="Floors">
-                <img src=" {{ asset('asset/images/svg/icons/floor.svg') }} " alt="Floors"> {{$floor}}
-            </div>
-            <div class="living_icon rs_tooltip" data-label="Sofa">
-                <img src=" {{ asset('asset/images/svg/icons/sofa.svg') }} " alt="sofa"> {{ $reception }}
-            </div>
-        </div> --}}
-        
-        {{-- <div class="d-flex justify-content-between align-items-center border rounded-4 p-3 mt-3">
-            <span class="fw-semibold">Important Note
-            <div class="notes-update-ajax" id="section-notes-{{ $property->id }}">
-                @include("backend.properties.popup_forms.notes", ['property' => $property])
-            </div>
-            </span>
-            <button class="btn btn-outline-danger btn-sm editForm" data-form="{{ 'notes' }}" data-id="{{ $property->id }}">
-                Edit
-            </button>
-        </div> --}}
-        
-    </div>
-    {{-- pv_content end  --}}
-</div>
-
-<div class="property_note">
-    <span class="fw-semibold">Description
-    <div class="property-description-update-ajax" id="section-property_description-{{ $property->id }}">
-        @include("backend.properties.popup_forms.property_description", ['property' => $property])
-    </div>
-    </span>
-    @can('edit properties')
-    <button class="btn btn-outline-danger btn-sm editForm" data-form="{{ 'property_description' }}" data-id="{{ $property->id }}">
-        Edit
-    </button>
-    @endcan
-</div>
-
-@canany(['edit important note', 'view important note'])
-<div class="property_note">
-    <span class="fw-semibold">Important Note
-    <div class="notes-update-ajax" id="section-notes-{{ $property->id }}">
-        @include("backend.properties.popup_forms.notes", ['property' => $property])
-    </div>
-    </span>
-    @can('edit important note')
-    <button class="btn btn-outline-danger btn-sm editForm" data-form="{{ 'notes' }}" data-id="{{ $property->id }}">
-        Edit
-    </button>
-    @endcan
-</div>
-@endcanany
-
-<div class="property_note">
-    <span class="fw-semibold">
-    <div class="property_status-update-ajax" id="section-property_status-{{ $property->id }}">
-        @include("backend.properties.popup_forms.property_status", ['property' => $property])
-    </div>
-    </span>
-    @can('edit properties')
-    <button class="btn btn-outline-danger btn-sm editForm" data-form="{{ 'property_status' }}" data-id="{{ $property->id }}">
-        Edit
-    </button>
-    @endcan
-</div>
-
-<div class="pvd_content_wrapper">
-<!-- Button to Collapse/Expand All -->
-<div class="d-flex justify-content-end mb-3">
-    <a id="toggleAll" class="pointer underline">Collapse All</a>
-</div>
-    
-    <div class="accordion" id="propertyAccordion">
-
-        @php
-        $formSections = [
-            ['key' => 'availability_pricing', 'title' => 'Availability & Pricing', 'order' => 1],
-            ['key' => 'property_features', 'title' => 'Property Features', 'order' => 3],
-            ['key' => 'property_info', 'title' => 'Property Information', 'order' => 2],
-            ['key' => 'property_services', 'title' => 'Service', 'order' => 4],
-            // ['key' => 'property_accessibility', 'title' => 'Accessibility', 'order' => 6],
-            // ['key' => 'property_compliance', 'title' => 'Compliance', 'order' => 5],
-            // ['key' => 'property_media', 'title' => 'Media', 'order' => 7],
-            // ['key' => 'property_status', 'title' => 'Status', 'order' => 7],
-            // Add more sections with order values as needed
-        ];
-        if (!in_array($property->property_type, ['lettings', 'both'], true)) {
-            $formSections = array_values(array_filter($formSections, fn ($section) => $section['key'] !== 'property_services'));
-        }
-    
-        // Sort by 'order' key
-        usort($formSections, function ($a, $b) {
-            return $a['order'] <=> $b['order'];
-        });
-    @endphp
-    @foreach($formSections as $index => $section)
-        @php
-            $formType = $section['key'];
-            $title = $section['title'];
-            $isFirst = $index === 0;
-        @endphp
-
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="heading-{{ $formType }}">
-                <button 
-                    class="accordion-button {{ $isFirst ? '' : 'collapsed' }}" 
-                    type="button" 
-                    data-bs-toggle="collapse" 
-                    data-bs-target="#collapse-{{ $formType }}" 
-                    aria-expanded="{{ $isFirst ? 'true' : 'false' }}" 
-                    aria-controls="collapse-{{ $formType }}">
-                    {{ $title }}
-                </button>
-            </h2>
-            <div 
-                id="collapse-{{ $formType }}" 
-                class="accordion-collapse collapse {{ $isFirst ? 'show' : '' }}" 
-                aria-labelledby="heading-{{ $formType }}">
-                @can('edit properties')
-                <button class="btn btn_outline_secondary mt-2 float-end editForm" data-form="{{ $formType }}" data-id="{{ $property->id }}">
-                    Edit
-                </button>
-                @endcan
-                <div class="accordion-body" id="section-{{ $formType }}-{{ $property->id }}">
-                    @include("backend.properties.popup_forms.$formType", ['property' => $property])
+<div class="property-overview-dashboard">
+    {{-- Row 1: Key Facts Grid --}}
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+            <div class="fact-card">
+                <div class="fact-icon"><i class="bi bi-building"></i></div>
+                <div class="fact-content">
+                    <div class="fact-label">Property Type</div>
+                    <div class="fact-value text-capitalize">{{ $propertyType ?: 'N/A' }}</div>
                 </div>
             </div>
         </div>
-    @endforeach
-
-    {{-- @foreach($formSections as $section)
-        @php
-            $formType = $section['key'];
-            $title = $section['title'];
-        @endphp
-    
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="heading-{{ $formType }}">
-                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ $formType }}" aria-expanded="true" aria-controls="collapse-{{ $formType }}">
-                    {{ $title }}
-                </button>
-            </h2>
-            <div id="collapse-{{ $formType }}" class="accordion-collapse collapse show" aria-labelledby="heading-{{ $formType }}">
-                <button class="btn btn_outline_secondary mt-2 float-end editForm" data-form="{{ $formType }}" data-id="{{ $property->id }}">
-                    Edit
-                </button>
-                <div class="accordion-body" id="section-{{ $formType }}-{{ $property->id }}">
-                    @include("backend.properties.popup_forms.$formType", ['property' => $property])
+        <div class="col-md-3 col-6">
+            <div class="fact-card">
+                <div class="fact-icon"><i class="bi bi-tag"></i></div>
+                <div class="fact-content">
+                    <div class="fact-label">Category</div>
+                    <div class="fact-value text-capitalize">{{ $transactionType ?: 'N/A' }}</div>
                 </div>
             </div>
         </div>
-    @endforeach         --}}
+        <div class="col-md-2 col-6">
+            <div class="fact-card">
+                <div class="fact-icon"><i class="bi bi-door-closed"></i></div>
+                <div class="fact-content">
+                    <div class="fact-label">Bedrooms</div>
+                    <div class="fact-value">{{ $bedroom ?: '-' }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6">
+            <div class="fact-card">
+                <div class="fact-icon"><i class="bi bi-droplet"></i></div>
+                <div class="fact-content">
+                    <div class="fact-label">Bathrooms</div>
+                    <div class="fact-value">{{ $bathroom ?: '-' }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6">
+            <div class="fact-card">
+                <div class="fact-icon"><i class="bi bi-sofa"></i></div>
+                <div class="fact-content">
+                    <div class="fact-label">Reception</div>
+                    <div class="fact-value">{{ $reception ?: '-' }}</div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    {{-- mobile view only start  --}}
-    <div class="pv_content mobile_only">
-        <div class="rs_property_icons">
-            <div class="bed_icon rs_tooltip"  data-label="Bedroom">
-                <img src=" {{ asset('asset/images/svg/icons/bed.svg') }} " alt="bedroom"> {{$bedroom}}
+    {{-- Row 2: Two Column Layout --}}
+    <div class="row g-3 mb-4">
+        {{-- Left Column: Description & Note --}}
+        <div class="col-lg-6">
+            {{-- Description Card --}}
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="card-title mb-0">Description</span>
+                    @can('edit properties')
+                    <button class="btn btn-sm btn-outline-primary editForm" data-form="property_description" data-id="{{ $property->id }}">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    @endcan
+                </div>
+                <div class="card-body">
+                    <div class="description-section">
+                        @if($salesDescription)
+                            <div class="mb-2">
+                                <strong>Sales:</strong>
+                                <x-toggle-description :text="$salesDescription" :limit="180" />
+                            </div>
+                        @endif
+                        @if($lettingDescription)
+                            <div>
+                                <strong>Lettings:</strong>
+                                <x-toggle-description :text="$lettingDescription" :limit="180" />
+                            </div>
+                        @endif
+                        @if(!$salesDescription && !$lettingDescription)
+                            <span class="text-muted">No description added.</span>
+                        @endif
+                    </div>
+                </div>
             </div>
-            <div class="bath_icon rs_tooltip"  data-label="Bathroom">
-                <img src=" {{ asset('asset/images/svg/icons/bath.svg') }} " alt="bathroom"> {{$bathroom}}
-            </div>
-            <div class="floors_icon rs_tooltip"  data-label="Floors">
-                <img src=" {{ asset('asset/images/svg/icons/floor.svg') }} " alt="Floors">{{$floor}}
-            </div>
-            <div class="living_icon rs_tooltip"  data-label="Sofa">
-                <img src=" {{ asset('asset/images/svg/icons/sofa.svg') }} " alt="sofa"> {{ $reception }}
-            </div>
-        </div>
-        <div class="pvc_ref_id">Ref: 1234SSSD</div>
-        <div class="pvc_poperty_name">{{ $address }}</div>
-        <div class="pvc_price">
-            Price: <span>£3000</span>
-        </div>
-        <div class="rs_row">
-            <div class="rs_col">
-                <div class="pv_type">Type: <strong> Apparment</strong></div>
-            </div>
-            <div class="rs_col">
-                <div class="pv_availability">Availability: <strong>11/02/25</strong></div>
-            </div>
-        </div>
-        {{-- rs_row end  --}}
-        <div class="rs_row">
-            <div class="rs_col">
-                <div class="pv_status">Status: <strong> For Sale</strong></div>
-            </div>
-            <div class="rs_col">
-                <div class="pv_service">Service: <strong>Let Only</strong></div>
-            </div>
-        </div>
-        {{-- rs_row end  --}}
 
+            {{-- Important Note Card --}}
+            @canany(['edit important note', 'view important note'])
+            <div class="card mb-3 border-warning">
+                <div class="card-header d-flex justify-content-between align-items-center bg-warning bg-opacity-10">
+                    <span class="card-title mb-0"><i class="bi bi-exclamation-triangle me-1"></i> Important Note</span>
+                    @can('edit important note')
+                    <button class="btn btn-sm btn-outline-warning editForm" data-form="notes" data-id="{{ $property->id }}">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    @endcan
+                </div>
+                <div class="card-body">
+                    <div class="notes-update-ajax" id="section-notes-{{ $property->id }}">
+                        @include("backend.properties.popup_forms.notes", ['property' => $property, 'editMode' => false])
+                    </div>
+                </div>
+            </div>
+            @endcanany
+        </div>
+
+        {{-- Right Column: Status & Availability --}}
+        <div class="col-lg-6">
+            {{-- Status Card --}}
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="card-title mb-0">Status & Availability</span>
+                    @can('edit properties')
+                    <button class="btn btn-sm btn-outline-primary editForm" data-form="property_status" data-id="{{ $property->id }}">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    @endcan
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <div class="status-item">
+                                <span class="status-label">Available From:</span>
+                                <span class="status-value">{{ $availableFrom ?: 'N/A' }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="status-item">
+                                <span class="status-label">Tenure:</span>
+                                <span class="status-value text-capitalize">{{ $tenure ?: 'N/A' }}</span>
+                            </div>
+                        </div>
+                        @if($lengthOfLease)
+                        <div class="col-md-6">
+                            <div class="status-item">
+                                <span class="status-label">Length of Lease:</span>
+                                <span class="status-value">{{ $lengthOfLease }} years</span>
+                            </div>
+                        </div>
+                        @endif
+                        <div class="col-md-6">
+                            <div class="status-item">
+                                <span class="status-label">Local Authority:</span>
+                                <span class="status-value">{{ $property->localAuthority->display_name ?? 'N/A' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Pricing Card --}}
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="card-title mb-0">Pricing</span>
+                    @can('edit properties')
+                    <button class="btn btn-sm btn-outline-primary editForm" data-form="availability_pricing" data-id="{{ $property->id }}">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    @endcan
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        @if($price)
+                        <div class="col-md-6">
+                            <div class="pricing-item">
+                                <span class="pricing-label">Sales Price:</span>
+                                <span class="pricing-value">£{{ number_format($price, 2) }}</span>
+                            </div>
+                        </div>
+                        @endif
+                        @if($lettingPrice)
+                        <div class="col-md-6">
+                            <div class="pricing-item">
+                                <span class="pricing-label">Letting Price:</span>
+                                <span class="pricing-value">£{{ number_format($lettingPrice, 2) }}/mo</span>
+                            </div>
+                        </div>
+                        @endif
+                        @if($groundRent)
+                        <div class="col-md-6">
+                            <div class="pricing-item">
+                                <span class="pricing-label">Ground Rent:</span>
+                                <span class="pricing-value">£{{ number_format($groundRent, 2) }}/yr</span>
+                            </div>
+                        </div>
+                        @endif
+                        @if($serviceCharge)
+                        <div class="col-md-6">
+                            <div class="pricing-item">
+                                <span class="pricing-label">Service Charge:</span>
+                                <span class="pricing-value">£{{ number_format($serviceCharge, 2) }}/yr</span>
+                            </div>
+                        </div>
+                        @endif
+                        @if($estateCharge)
+                        <div class="col-md-6">
+                            <div class="pricing-item">
+                                <span class="pricing-label">Estate Charge:</span>
+                                <span class="pricing-value">£{{ number_format($estateCharge, 2) }}</span>
+                            </div>
+                        </div>
+                        @endif
+                        @if($miscellaneousCharge)
+                        <div class="col-md-6">
+                            <div class="pricing-item">
+                                <span class="pricing-label">Misc. Charge:</span>
+                                <span class="pricing-value">£{{ number_format($miscellaneousCharge, 2) }}/yr</span>
+                            </div>
+                        </div>
+                        @endif
+                        @if($annualCouncilTax)
+                        <div class="col-md-6">
+                            <div class="pricing-item">
+                                <span class="pricing-label">Council Tax:</span>
+                                <span class="pricing-value">£{{ number_format($annualCouncilTax, 2) }}/yr</span>
+                            </div>
+                        </div>
+                        @endif
+                        @if($councilTaxBand)
+                        <div class="col-md-6">
+                            <div class="pricing-item">
+                                <span class="pricing-label">Council Tax Band:</span>
+                                <span class="pricing-value">{{ $councilTaxBand }}</span>
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-    {{-- pv_content end  --}}
-    {{-- mobile view only end  --}}
 
-    {{-- <div class="pvd_other_content border_bottom">
-        <div class="row">
-            <div class="col-lg-4 col-12">
-                <div class="row">
-                    <div class="col-lg-5 col-6 mb-2 ">Furniture</div>
-                    <div class="col-lg-7 col-6 mb-2 text-lg-start text-end">{{$furniture}}</div>
-                    <div class="col-lg-5 col-6 mb-2 ">Parking</div>
-                    <div class="col-lg-7 col-6 mb-2 text-lg-start text-end">{{$parking}}</div>
-                    <div class="col-lg-5 col-6 mb-2 ">Balcony</div>
-                    <div class="col-lg-7 col-6 mb-2 text-lg-start text-end">{{$balcony}}</div>
-                    <div class="col-lg-5 col-6 mb-2 ">Garden</div>
-                    <div class="col-lg-7 col-6 mb-2 text-lg-start text-end">{{$garden}}</div>
+    {{-- Row 3: Features & Services --}}
+    <div class="row g-3 mb-4">
+        <div class="col-lg-4">
+            {{-- Property Features Card --}}
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="card-title mb-0">Features</span>
+                    @can('edit properties')
+                    <button class="btn btn-sm btn-outline-primary editForm" data-form="property_features" data-id="{{ $property->id }}">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    @endcan
+                </div>
+                <div class="card-body">
+                    <div class="features-grid">
+                        <div class="feature-item">
+                            <span class="feature-label">Bedrooms:</span>
+                            <span class="feature-value">{{ $bedroom ?: '-' }}</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-label">Bathrooms:</span>
+                            <span class="feature-value">{{ $bathroom ?: '-' }}</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-label">Reception:</span>
+                            <span class="feature-value">{{ $reception ?: '-' }}</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-label">Floor:</span>
+                            <span class="feature-value text-capitalize">{{ $floor ?: '-' }}</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-label">Balcony:</span>
+                            <span class="feature-value">{{ $balcony }}</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-label">Garden:</span>
+                            <span class="feature-value">{{ $garden }}</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-label">Parking:</span>
+                            <span class="feature-value">{{ $parking }}</span>
+                        </div>
+                        @if($parking == 'Yes' && $parkingLocation)
+                        <div class="feature-item">
+                            <span class="feature-label">Parking Location:</span>
+                            <span class="feature-value">{{ $parkingLocation }}</span>
+                        </div>
+                        @endif
+                        <div class="feature-item">
+                            <span class="feature-label">Aspect:</span>
+                            <span class="feature-value text-capitalize">{{ $aspects ?: '-' }}</span>
+                        </div>
+                        @if($squareFeet)
+                        <div class="feature-item">
+                            <span class="feature-label">Area:</span>
+                            <span class="feature-value">{{ number_format($squareFeet, 2) }} sqft</span>
+                        </div>
+                        @endif
+                        @if($squareMeter)
+                        <div class="feature-item">
+                            <span class="feature-label">Area:</span>
+                            <span class="feature-value">{{ number_format($squareMeter, 2) }} sqm</span>
+                        </div>
+                        @endif
+                    </div>
                 </div>
             </div>
-            <div class="col-lg-4 col-12">
-                <div class="row">
-                    <div class="col-lg-6 col-6 mb-2 ">Collecting Rent</div>
-                    <div class="col-lg-6 col-6 mb-2 text-lg-start text-end">{{$collectingRent}}</div>
-                    <div class="col-lg-6 col-6 mb-2 ">Area Sqr. Feet</div>
-                    <div class="col-lg-6 col-6 mb-2 text-lg-start text-end">{{$squareFeet}}</div>
-                    <div class="col-lg-6 col-6 mb-2 ">Area Sqr. Meter</div>
-                    <div class="col-lg-6 col-6 mb-2 text-lg-start text-end">{{$squareMeter}}</div>
-                    <div class="col-lg-6 col-6 mb-2 ">Aspects</div>
-                    <div class="col-lg-6 col-6 mb-2 text-lg-start text-end">{{$aspects}}</div>
+        </div>
+
+        <div class="col-lg-4">
+            {{-- Services Card --}}
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="card-title mb-0">Services</span>
+                    @can('edit properties')
+                    <button class="btn btn-sm btn-outline-primary editForm" data-form="property_services" data-id="{{ $property->id }}">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    @endcan
                 </div>
+                <div class="card-body">
+                    <div class="features-grid">
+                        <div class="feature-item">
+                            <span class="feature-label">Service:</span>
+                            <span class="feature-value">{{ $service ?: 'N/A' }}</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-label">Pets Allowed:</span>
+                            <span class="feature-value">{{ in_array($propertyType, ['lettings', 'both']) ? $petsAllowed : 'N/A' }}</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-label">Collecting Rent:</span>
+                            <span class="feature-value">{{ $collectingRent }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <div class="col-lg-4">
+            {{-- Compliance & Media Quick View --}}
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="card-title mb-0">Compliance</span>
+                    @can('edit properties')
+                    <button class="btn btn-sm btn-outline-primary editForm" data-form="property_compliance" data-id="{{ $property->id }}">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    @endcan
+                </div>
+                <div class="card-body">
+                    <div class="features-grid">
+                        <div class="feature-item">
+                            <span class="feature-label">EPC Required:</span>
+                            <span class="feature-value">{{ $epcRequired }}</span>
+                        </div>
+                        @if($epcRequired === 'Yes')
+                        <div class="feature-item">
+                            <span class="feature-label">EPC Rating:</span>
+                            <span class="feature-value">{{ $epcRating ?: 'N/A' }}</span>
+                        </div>
+                        @endif
+                        <div class="feature-item">
+                            <span class="feature-label">Gas:</span>
+                            <span class="feature-value">{{ $isGas }}</span>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feature-label">Market On:</span>
+                            <span class="feature-value">{{ $marketOn ? implode(', ', $marketOn) : 'N/A' }}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div> --}}
-    {{-- pvd_other_content end --}}
-    {{-- <div class="pvd_features">
-        <div class="pv_sub_title mb-4">
-            Features
-        </div>
-        <div class="row features_list_warpper">
-            <div class="col-lg-6">
-                <ul class="features_list">
-                    @foreach($firstHalf as $feature)
-                        <li>{{ $feature }}</li>
-                    @endforeach
-                </ul>
-            </div>
+    </div>
 
-            <div class="col-lg-6">
-                <ul class="features_list">
-                    @foreach($secondHalf as $feature)
-                        <li>{{ $feature }}</li>
-                    @endforeach
-                </ul>
+    {{-- Row 4: Accessibility & Media --}}
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6">
+            {{-- Accessibility Card --}}
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="card-title mb-0">Accessibility & Location</span>
+                    @can('edit properties')
+                    <button class="btn btn-sm btn-outline-primary editForm" data-form="property_accessibility" data-id="{{ $property->id }}">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    @endcan
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <strong>Access Arrangement:</strong>
+                        <p class="text-muted mb-0">{{ $accessArrangement ?: 'N/A' }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <strong>Key Highlights:</strong>
+                        <p class="text-muted mb-0">{{ $keyHighlights ?: 'N/A' }}</p>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <strong>Nearest Station:</strong>
+                            <p class="text-muted mb-0">
+                                @if($stations->isNotEmpty())
+                                    {{ implode(', ', $stations->toArray()) }}
+                                @else
+                                    N/A
+                                @endif
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Nearest School:</strong>
+                            <p class="text-muted mb-0">
+                                @if($schools->isNotEmpty())
+                                    {{ implode(', ', $schools->toArray()) }}
+                                @else
+                                    N/A
+                                @endif
+                            </p>
+                        </div>
+                    </div>
+                    @php
+                        $places = $property->nearest_places;
+                        if (is_string($places)) { $places = json_decode($places, true) ?: []; }
+                        elseif (is_object($places)) { $places = (array) $places; }
+                        $places = $places ?? [];
+                    @endphp
+                    @if(!empty($places))
+                    <div class="mt-3">
+                        <strong>Nearest Places:</strong>
+                        <div class="row g-2 mt-1">
+                            @foreach($places as $name => $distance)
+                                <div class="col-sm-6">
+                                    <span class="text-muted">{{ ucfirst($name) }}:</span> {{ $distance }} km
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
+                    @if($usefulInformation)
+                    <div class="mt-3">
+                        <strong>Useful Information:</strong>
+                        <p class="text-muted mb-0">{{ $usefulInformation }}</p>
+                    </div>
+                    @endif
+                </div>
             </div>
         </div>
-    </div> --}}
-    {{-- pvd_features end --}}
+
+        <div class="col-lg-6">
+            {{-- Media Card --}}
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="card-title mb-0">Media</span>
+                    @can('edit properties')
+                    <button class="btn btn-sm btn-outline-primary editForm" data-form="property_media" data-id="{{ $property->id }}">
+                        <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    @endcan
+                </div>
+                <div class="card-body">
+                    @if($photos)
+                        <div class="mb-3">
+                            <strong>Photos:</strong>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                @foreach(explode(',', $photos) as $photo_id)
+                                    @php $trimmedId = trim($photo_id); @endphp
+                                    @if($trimmedId)
+                                        <img src="{{ uploaded_asset($trimmedId) }}" alt="Property Photo" class="img-thumbnail property-media-thumb" style="width: 80px; height: 60px; object-fit: cover; cursor: pointer;" onclick="openImageModal('{{ uploaded_asset($trimmedId) }}')">
+                                    @endif
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                    @if($floorPlan)
+                        <div class="mb-3">
+                            <strong>Floor Plan:</strong>
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                @foreach(explode(',', $floorPlan) as $fp_id)
+                                    @php $trimmedId = trim($fp_id); @endphp
+                                    @if($trimmedId)
+                                        <img src="{{ uploaded_asset($trimmedId) }}" alt="Floor Plan" class="img-thumbnail property-media-thumb" style="width: 80px; height: 60px; object-fit: cover; cursor: pointer;" onclick="openImageModal('{{ uploaded_asset($trimmedId) }}')">
+                                    @endif
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                    @if($view360)
+                        <div class="mb-3">
+                            <strong>360° View:</strong>
+                            <a href="{{ $view360 }}" target="_blank">View 360°</a>
+                        </div>
+                    @endif
+                    @if($youtubeUrl || $instagramUrl)
+                        <div class="mb-3">
+                            @if($youtubeUrl)
+                                <div class="mb-1">
+                                    <strong>YouTube:</strong>
+                                    <a href="{{ $youtubeUrl }}" target="_blank">Watch</a>
+                                </div>
+                            @endif
+                            @if($instagramUrl)
+                                <div>
+                                    <strong>Instagram:</strong>
+                                    <a href="{{ $instagramUrl }}" target="_blank">View</a>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+                    @if(!$photos && !$floorPlan && !$view360 && !$youtubeUrl && !$instagramUrl)
+                        <p class="text-muted mb-0">No media uploaded yet.</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
-{{-- pvd_content_wrapper end --}}
+    .property-overview-dashboard .fact-card {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        height: 100%;
+    }
+    .property-overview-dashboard .fact-icon {
+        font-size: 1.5rem;
+        color: #6c757d;
+        width: 2.5rem;
+        height: 2.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f8f9fa;
+        border-radius: 0.375rem;
+        flex-shrink: 0;
+    }
+    .property-overview-dashboard .fact-content {
+        min-width: 0;
+    }
+    .property-overview-dashboard .fact-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .property-overview-dashboard .fact-value {
+        font-weight: 600;
+        font-size: 1rem;
+        color: #212529;
+    }
+    .property-overview-dashboard .card-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .property-overview-dashboard .features-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+    }
+    .property-overview-dashboard .feature-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+        background: #f8f9fa;
+        border-radius: 0.375rem;
+    }
+    .property-overview-dashboard .feature-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    .property-overview-dashboard .feature-value {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #212529;
+    }
+    .property-overview-dashboard .pricing-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+        background: #f8f9fa;
+        border-radius: 0.375rem;
+    }
+    .property-overview-dashboard .pricing-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    .property-overview-dashboard .pricing-value {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #212529;
+    }
+    .property-overview-dashboard .status-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+        background: #f8f9fa;
+        border-radius: 0.375rem;
+    }
+    .property-overview-dashboard .status-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    .property-overview-dashboard .status-value {
+        font-weight: 600;
+        font-size: 0.85rem;
+        color: #212529;
+    }
+    .property-overview-dashboard .property-media-thumb:hover {
+        opacity: 0.8;
+    }
+</style>
