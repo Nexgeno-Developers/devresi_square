@@ -217,6 +217,12 @@ Route::middleware('auth')->group(function () {
             
             Route::get('/ajax', 'ajaxList')->name('ajax');
             Route::get('/{property}/brochure', 'brochure')->name('brochure');
+            Route::get('/{property}/tabs-all', [PropertyController::class, 'getAllTabs'])
+                ->middleware(['current.account', 'account.status'])
+                ->name('tabs-all');
+            Route::post('/bulk-action', [PropertyController::class, 'bulkAction'])
+                ->middleware(['current.account', 'account.status'])
+                ->name('bulk-action');
         });
 
         Route::prefix('companies')->name('companies.')->middleware('not.portal')->controller(CompanyController::class)->group(function () {

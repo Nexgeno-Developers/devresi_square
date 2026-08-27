@@ -58,33 +58,7 @@ class PropertyController
         $propertiesQuery = Property::query();
         $this->scopePropertyQuery($propertiesQuery);
 
-        // Apply search filter
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $propertiesQuery->where(function ($query) use ($search) {
-                $query->where('prop_name', 'like', "%{$search}%")
-                    ->orWhere('prop_ref_no', 'like', "%{$search}%")
-                    ->orWhere('line_1', 'like', "%{$search}%")
-                    ->orWhere('line_2', 'like', "%{$search}%")
-                    ->orWhere('city', 'like', "%{$search}%")
-                    ->orWhere('postcode', 'like', "%{$search}%")
-                    ->orWhere('property_type', 'like', "%{$search}%");
-            });
-        }
-
-        // Apply property type filter
-        if ($request->filled('property_type')) {
-            $propertiesQuery->where('property_type', $request->property_type);
-        }
-
-        // Apply status filter (matches sales or letting status)
-        if ($request->filled('status')) {
-            $status = $request->status;
-            $propertiesQuery->where(function ($query) use ($status) {
-                $query->where('sales_current_status', $status)
-                    ->orWhere('letting_current_status', $status);
-            });
-        }
+        $this->applyListFilters($propertiesQuery, $request);
 
         // Fetch properties based on role
         if ($isPortalUser) {
@@ -122,38 +96,20 @@ class PropertyController
             $properties = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
         }
 
+        if (method_exists($properties, 'appends')) {
+            $properties->appends($request->except(['list_only']));
+        }
+
         // If AJAX request for property list only (search/pagination)
         if ($request->ajax() && $request->has('list_only')) {
-            // If a highlight_id is given, jump to the page that contains it
+            $selectedPropertyId = $request->integer('property_id') ?: null;
+
             if ($request->filled('highlight_id')) {
                 $highlightId = (int) $request->highlight_id;
                 $perPage = 15;
-
-                // Rebuild a fresh query with the same role-based filters to find the position
                 $positionQuery = Property::query();
                 $this->scopePropertyQuery($positionQuery);
-                if ($request->filled('search')) {
-                    $search = $request->search;
-                    $positionQuery->where(function ($q) use ($search) {
-                        $q->where('prop_name', 'like', "%{$search}%")
-                          ->orWhere('prop_ref_no', 'like', "%{$search}%")
-                          ->orWhere('line_1', 'like', "%{$search}%")
-                          ->orWhere('line_2', 'like', "%{$search}%")
-                          ->orWhere('city', 'like', "%{$search}%")
-                          ->orWhere('postcode', 'like', "%{$search}%")
-                          ->orWhere('property_type', 'like', "%{$search}%");
-                    });
-                }
-                if ($request->filled('property_type')) {
-                    $positionQuery->where('property_type', $request->property_type);
-                }
-                if ($request->filled('status')) {
-                    $status = $request->status;
-                    $positionQuery->where(function ($q) use ($status) {
-                        $q->where('sales_current_status', $status)
-                          ->orWhere('letting_current_status', $status);
-                    });
-                }
+                $this->applyListFilters($positionQuery, $request);
                 if ($isPortalUser) {
                     $positionQuery->whereIn('id', $portalAccessService->accessiblePropertyIds($user, $accountId));
                 } elseif ($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')) {
@@ -168,26 +124,48 @@ class PropertyController
                 if ($position !== false) {
                     $page = (int) floor($position / $perPage) + 1;
                     $properties = $positionQuery->orderBy('id', 'desc')->paginate($perPage, ['*'], 'page', $page);
+                    $properties->appends($request->except(['list_only']));
                 }
             }
-            return response()->json([
-                'html' => view('backend.properties.partials.property-list', compact('properties'))->render()
-            ]);
+
+            $response = [
+                'html' => view('backend.properties.partials.property-list', [
+                    'properties' => $properties,
+                    'propertyId' => $selectedPropertyId,
+                    'isPortalUser' => $isPortalUser,
+                ])->render(),
+                'pagination' => $properties->hasPages() ? (string) $properties->links() : '',
+            ];
+
+            if ($selectedPropertyId) {
+                $selectedProperty = Property::find($selectedPropertyId);
+                if ($selectedProperty) {
+                    ensureModelBelongsToCurrentAccount($selectedProperty);
+                    $this->assertPropertyVisibleToUser($user, $selectedProperty, $isPortalUser, $portalAccessService);
+
+                    $response['tabs'] = $this->tabsForUser($user, $selectedProperty, $isPortalUser, $portalAccessService);
+                    $response['detail_header'] = view('backend.properties.partials.detail-header', ['property' => $selectedProperty])->render();
+                    $response['detail_stats'] = view('backend.properties.partials.detail-stats', ['property' => $selectedProperty])->render();
+                    $response['detail_actions'] = view('backend.properties.partials.detail-actions', ['property' => $selectedProperty])->render();
+                }
+            }
+
+            return response()->json($response);
         }
         
         // Redirect to 'quick' if there are no properties
         if ($properties->isEmpty()) {
             if ($isPortalUser || $user->hasRole('Tenant')) {
-                // Show properties page with empty state — no redirect
-                $tabs = $this->buildPermissionTabs($user);
+                $tabs = $this->tabsForUser($user, null, $isPortalUser, $portalAccessService);
                 $content = '<div class="alert alert-info m-3">You don\'t have any active tenancy properties linked to your account. Please contact your property manager.</div>';
-                return view('backend.properties.index', [
+                return view('backend.properties.control-center', [
                     'properties' => new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15),
                     'tabs'       => $tabs,
                     'propertyId' => null,
                     'tabName'    => 'property',
                     'content'    => $content,
                     'property'   => null,
+                    'isPortalUser' => $isPortalUser,
                 ]);
             }
             flash("You don't have any properties yet!")->error();
@@ -202,15 +180,16 @@ class PropertyController
         // Tenant → show list only, nothing selected (clean page)
         // Others → redirect to first property
         if (!$propertyId) {
-            if ($user->hasRole('Tenant')) {
-                $tabs = $this->buildPermissionTabs($user);
-                return view('backend.properties.index', [
+            if ($user->hasRole('Tenant') || $isPortalUser) {
+                $tabs = $this->tabsForUser($user, null, $isPortalUser, $portalAccessService);
+                return view('backend.properties.control-center', [
                     'properties' => $properties,
                     'tabs'       => $tabs,
                     'propertyId' => null,
                     'tabName'    => $tabName,
                     'content'    => '',
                     'property'   => null,
+                    'isPortalUser' => $isPortalUser,
                 ]);
             }
             $firstProperty = $properties->first();
@@ -243,31 +222,8 @@ class PropertyController
         }*/
                     
         if ($property) {
-            // Check if user can access this property
-            $user = auth()->user();
-
-            if ($isPortalUser) {
-                $isAuthorized = $portalAccessService->canAccessProperty($user, $property);
-            } else {
-                $isAuthorized = $user->hasRole('Super Admin') || 
-                    $user->hasRole('Property Manager') || 
-                    ($user->hasRole('Landlord') && $property->created_by === $user->id) || 
-                    ($user->hasRole('Estate Agent') && ($property->created_by === $user->id || $user->createdUsers()->pluck('id')->contains($property->created_by))) ||
-                    (($user->hasRole('Staff') || $user->hasRole('Test')) && $property->created_by === $user->id) ||
-                    ($user->hasRole('Tenant') && \App\Models\TenantMember::where('user_id', $user->id)
-                        ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
-                        ->where('tenant_members.account_id', $accountId)
-                        ->where('tenancies.account_id', $accountId)
-                        ->where('tenancies.status', 'Active')
-                        ->where('tenancies.property_id', $property->id)
-                        ->exists());
-            }
-
-            if (! $isAuthorized) {
-                abort(403, 'You do not have access to this property.');
-            }
+            $this->assertPropertyVisibleToUser($user, $property, $isPortalUser, $portalAccessService);
         } else {
-            // property_id missing, invalid, or deleted — redirect to first property on page 1
             $firstProperty = $properties->first();
             return redirect()->route('admin.properties.index', [
                 'property_id' => $firstProperty->id,
@@ -275,93 +231,28 @@ class PropertyController
             ]);
         }
 
-        $availableTabs = [
-            'view properties'     => 'Property',
-            'view property owners'       => 'Owners',
-            'manage property compliance'   => 'Compliance',
-            'view property media'        => 'Media',
-            'view property offers'       => 'Offers',
-            'view property tenancy'      => 'Tenancy',
-            'view property aps'          => 'APD',
-            'view property teams'        => 'Teams',
-            'view property documents'    => 'Documents',
-            // 'view property contractor'    => 'Contractor',
-            // 'view property work offer'    => 'Work Offer',
-            'view property notes'        => 'Notes',
-            'view property appointments' => 'Appointments',
-            'view property statement'    => 'Statement',
-        ];
-
-        $tabs = [];
-
-        foreach ($availableTabs as $permission => $name) {
-            if ($user->can($permission)) {
-                $tabs[] = ['name' => $name];
-            }
-        }
-
-        if ($user->can('view property teams') && $this->hasPropertyManagerAddon()) {
-            $tabs[] = ['name' => 'Responsibility'];
-        }
-
-        if ($isPortalUser) {
-            $participant = $portalAccessService->getParticipant($user, $property);
-            $portalTabs = [
-                ['name' => 'Property'],
-            ];
-
-            if ($participant && in_array($participant->participant_type, ['tenant', 'landlord', 'owner', 'property_manager'], true)) {
-                $portalTabs[] = ['name' => 'Tenancy'];
-            }
-
-            if ($portalAccessService->canViewDocuments($user, $property)) {
-                $portalTabs[] = ['name' => 'Documents'];
-            }
-
-            if ($participant?->participant_type === 'property_manager') {
-                $portalTabs[] = ['name' => 'Notes'];
-            }
-
-            if ($portalAccessService->canViewFinance($user, $property)) {
-                $portalTabs[] = ['name' => 'Statement'];
-            }
-
-            $tabs = $portalTabs;
-        }
+        $tabs = $this->tabsForUser($user, $property, $isPortalUser, $portalAccessService);
 
         $requestedTabIsAllowed = collect($tabs)->contains(
             fn (array $tab) => strtolower($tab['name']) === strtolower($tabName)
         );
         abort_unless($requestedTabIsAllowed, 403, 'You do not have access to this property tab.');
 
-        // Get tabs for properties (you can customize the tabs as per your needs)
-        // $tabs = [
-        //     ['name' => 'Property'],
-        //     ['name' => 'Owners'],
-        //     ['name' => 'Compliance'],
-        //     ['name' => 'Media'],
-        //     ['name' => 'Offers'],
-        //     ['name' => 'Tenancy'],
-        //     ['name' => 'APS'],
-        //     ['name' => 'Teams'],
-        //     ['name' => 'Documents'],
-        //     // ['name' => 'Contractor'],
-        //     // ['name' => 'Work Offer'],
-        //     ['name' => 'Notes'],
-        //     ['name' => 'Appointments']
-        // ];
+        $content = $this->getTabContent($tabName, $propertyId, $property);
 
-        // Retrieve the content for the selected tab and property
-        $content = $this->getTabContent($tabName, $propertyId, $property); // Dynamically get content for the tab and property
-
-        // Check if the request is via AJAX (this handles dynamic content loading)
         if ($request->ajax()) {
-            // If the request is via AJAX, return only the content
             return response()->json(['content' => $content]);
         }
 
-        // Pass data to the view
-        return view('backend.properties.index', compact('properties', 'tabs', 'propertyId', 'tabName', 'content', 'property'));
+        return view('backend.properties.control-center', compact(
+            'properties',
+            'tabs',
+            'propertyId',
+            'tabName',
+            'content',
+            'property',
+            'isPortalUser'
+        ));
     }
 
     private function buildPermissionTabs($user): array
@@ -392,6 +283,112 @@ class PropertyController
         }
 
         return $tabs;
+    }
+
+    private function tabsForUser($user, ?Property $property, bool $isPortalUser, PortalAccessService $portalAccessService): array
+    {
+        if ($isPortalUser) {
+            if (! $property) {
+                return [['name' => 'Property']];
+            }
+
+            $participant = $portalAccessService->getParticipant($user, $property);
+            $portalTabs = [['name' => 'Property']];
+
+            if ($participant && in_array($participant->participant_type, ['tenant', 'landlord', 'owner', 'property_manager'], true)) {
+                $portalTabs[] = ['name' => 'Tenancy'];
+            }
+
+            if ($portalAccessService->canViewDocuments($user, $property)) {
+                $portalTabs[] = ['name' => 'Documents'];
+            }
+
+            if ($participant?->participant_type === 'property_manager') {
+                $portalTabs[] = ['name' => 'Notes'];
+            }
+
+            if ($portalAccessService->canViewFinance($user, $property)) {
+                $portalTabs[] = ['name' => 'Statement'];
+            }
+
+            return $portalTabs;
+        }
+
+        return $this->buildPermissionTabs($user);
+    }
+
+    private function applyListFilters($query, Request $request)
+    {
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('prop_name', 'like', "%{$search}%")
+                    ->orWhere('prop_ref_no', 'like', "%{$search}%")
+                    ->orWhere('line_1', 'like', "%{$search}%")
+                    ->orWhere('line_2', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%")
+                    ->orWhere('postcode', 'like', "%{$search}%")
+                    ->orWhere('property_type', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('property_type')) {
+            $query->where('property_type', $request->property_type);
+        }
+
+        if ($request->filled('status')) {
+            $statuses = collect(is_array($request->status) ? $request->status : explode(',', (string) $request->status))
+                ->map(fn ($status) => trim((string) $status))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($statuses) {
+                $query->where(function ($q) use ($statuses) {
+                    $q->whereIn('sales_current_status', $statuses)
+                        ->orWhereIn('letting_current_status', $statuses);
+                });
+            }
+        }
+
+        if ($request->boolean('compliance_expiring')) {
+            $query->whereHas('complianceRecords', function ($q) {
+                $q->where('expiry_date', '<=', now()->addMonths(2))
+                    ->where('expiry_date', '>=', now());
+            });
+        }
+
+        if ($request->boolean('has_open_repairs')) {
+            $query->whereHas('repairIssues', function ($q) {
+                $q->whereNotIn('status', ['Closed', 'Invoice Paid']);
+            });
+        }
+
+        return $query;
+    }
+
+    private function assertPropertyVisibleToUser($user, Property $property, bool $isPortalUser, PortalAccessService $portalAccessService): void
+    {
+        if ($isPortalUser) {
+            abort_unless($portalAccessService->canAccessProperty($user, $property), 403, 'You do not have access to this property.');
+            return;
+        }
+
+        $isAuthorized = $user->hasRole('Super Admin')
+            || $user->hasRole('Property Manager')
+            || ($user->hasRole('Landlord') && $property->created_by === $user->id)
+            || ($user->hasRole('Estate Agent') && ($property->created_by === $user->id || $user->createdUsers()->pluck('id')->contains($property->created_by)))
+            || (($user->hasRole('Staff') || $user->hasRole('Test')) && $property->created_by === $user->id)
+            || ($user->hasRole('Tenant') && \App\Models\TenantMember::where('user_id', $user->id)
+                ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
+                ->where('tenant_members.account_id', current_account_id())
+                ->where('tenancies.account_id', current_account_id())
+                ->where('tenancies.status', 'Active')
+                ->where('tenancies.property_id', $property->id)
+                ->exists());
+
+        abort_unless($isAuthorized, 403, 'You do not have access to this property.');
     }
 
     private function hasPropertyManagerAddon(): bool
@@ -426,9 +423,8 @@ class PropertyController
                 $allstations = StationName::select('id', 'name')->get();  // Fetch all station names
                 $allschools = SchoolName::select('id', 'name')->get();    // Fetch all school names
 
-                // Get the nearest station IDs and nearest school IDs from the property (these will be comma-separated strings)
-                $stationIds = explode(',', $property->nearest_station);  // Convert to an array
-                $schoolIds = explode(',', $property->nearest_school);    // Convert to an array
+                $stationIds = array_values(array_filter(array_map('trim', explode(',', (string) $property->nearest_station))));
+                $schoolIds = array_values(array_filter(array_map('trim', explode(',', (string) $property->nearest_school))));
 
                 // Fetch the station and school names using the IDs
                 $stations = StationName::whereIn('id', $stationIds)->pluck('name', 'id');
@@ -794,8 +790,8 @@ class PropertyController
                 $allschools = SchoolName::select('id', 'name')->get();    // Fetch all school names
 
                 // Get the nearest station IDs and nearest school IDs from the property (these will be comma-separated strings)
-                $stationIds = explode(',', $property->nearest_station);  // Convert to an array
-                $schoolIds = explode(',', $property->nearest_school);    // Convert to an array
+                $stationIds = array_values(array_filter(array_map('trim', explode(',', (string) $property->nearest_station))));  // Convert to an array
+                $schoolIds = array_values(array_filter(array_map('trim', explode(',', (string) $property->nearest_school))));    // Convert to an array
 
                 // Fetch the station and school names using the IDs
                 $stations = StationName::whereIn('id', $stationIds)->pluck('name', 'id');
@@ -1120,8 +1116,8 @@ class PropertyController
         $allschools = SchoolName::select('id', 'name')->get();    // Fetch all school names
 
         // Get the nearest station IDs and nearest school IDs from the property (these will be comma-separated strings)
-        $stationIds = explode(',', $property->nearest_station);  // Convert to an array
-        $schoolIds = explode(',', $property->nearest_school);    // Convert to an array
+        $stationIds = array_values(array_filter(array_map('trim', explode(',', (string) $property->nearest_station))));  // Convert to an array
+        $schoolIds = array_values(array_filter(array_map('trim', explode(',', (string) $property->nearest_school))));    // Convert to an array
 
         // Fetch the station and school names using the IDs
         $stations = StationName::whereIn('id', $stationIds)->pluck('name', 'id');
@@ -1769,8 +1765,8 @@ class PropertyController
             $allschools = SchoolName::select('id', 'name')->get();
 
             // Get the nearest station and school IDs from the property (comma-separated)
-            $stationIds = explode(',', $property->nearest_station);
-            $schoolIds = explode(',', $property->nearest_school);
+            $stationIds = array_values(array_filter(array_map('trim', explode(',', (string) $property->nearest_station))));
+            $schoolIds = array_values(array_filter(array_map('trim', explode(',', (string) $property->nearest_school))));
 
             // Fetch names using IDs
             $stations = StationName::whereIn('id', $stationIds)->pluck('name', 'id');
@@ -2564,6 +2560,69 @@ class PropertyController
             'date_from' => $start->toDateString(),
             'date_to' => $end?->toDateString(),
         ];
+    }
+
+    public function getAllTabs(Property $property)
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+        $portalAccessService = app(PortalAccessService::class);
+        $isPortal = $accountId && $portalAccessService->isPortalUser($user, $accountId);
+
+        ensureModelBelongsToCurrentAccount($property);
+        $this->assertPropertyVisibleToUser($user, $property, $isPortal, $portalAccessService);
+
+        $html = [];
+        foreach ($this->tabsForUser($user, $property, $isPortal, $portalAccessService) as $tab) {
+            $key = strtolower($tab['name']);
+            $html[$key] = $this->getTabContent($key, $property->id, $property);
+        }
+
+        return $html;
+    }
+
+    public function bulkAction(Request $request)
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+        $portalAccessService = app(PortalAccessService::class);
+        abort_if($accountId && $portalAccessService->isPortalUser($user, $accountId), 403);
+        abort_unless($user->can('delete properties'), 403);
+
+        $request->validate([
+            'action' => 'required|string|in:archive,delete',
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:properties,id',
+        ]);
+
+        $ids = $request->input('ids');
+        $action = $request->input('action');
+
+        $query = Property::whereIn('id', $ids)->where('account_id', $accountId);
+        $affected = 0;
+
+        switch ($action) {
+            case 'archive':
+                $affected = $query->count();
+                $query->each(function ($property) {
+                    $this->persistProperty(function () use ($property) {
+                        $property->deleted_by = auth()->id();
+                        $property->save();
+                        $property->delete();
+                    });
+                });
+                break;
+            case 'delete':
+                $affected = $query->count();
+                $query->each(function ($property) {
+                    $this->persistProperty(function () use ($property) {
+                        $property->forceDelete();
+                    });
+                });
+                break;
+        }
+
+        return response()->json(['affected' => $affected]);
     }
 
 

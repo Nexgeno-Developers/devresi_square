@@ -203,6 +203,16 @@ class Property extends Model
         return $this->hasMany(ComplianceRecord::class);
     }
 
+    public function tenancies()
+    {
+        return $this->hasMany(Tenancy::class);
+    }
+
+    public function repairIssues()
+    {
+        return $this->hasMany(RepairIssue::class);
+    }
+
     public function countryRelation()
     {
         return $this->belongsTo(Country::class, 'country');

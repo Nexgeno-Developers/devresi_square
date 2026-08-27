@@ -129,15 +129,8 @@
     </div>
 </div>
 <style>
-    /* 
-    #eventModal .modal-content {
-        max-height: calc(100vh - 200px);
-        overflow-y: auto;
-    } 
-*/
-    .modal-body {
+    #rruleModal .modal-body {
         background: #eee;
-        min-height: 600px;
         max-height: 400px;
         overflow-y: auto;
     }
