@@ -35,8 +35,11 @@ class PropertyPolicy
      */
     public function create(User $user): bool
     {
-        // Only Super Admin & Property Manager can create new
-        return $user->hasAnyRole(['Super Admin', 'Property Manager']);
+        if ($user->hasAnyRole(['Super Admin', 'Property Manager'])) {
+            return true;
+        }
+
+        return $user->hasRole('Landlord') && $user->can('create properties');
     }
 
     /**
@@ -44,8 +47,13 @@ class PropertyPolicy
      */
     public function update(User $user, Property $property): bool
     {
-        // Only Super Admin & Property Manager
-        return $user->hasAnyRole(['Super Admin', 'Property Manager']);
+        if ($user->hasAnyRole(['Super Admin', 'Property Manager'])) {
+            return true;
+        }
+
+        return $user->hasRole('Landlord')
+            && $user->can('edit properties')
+            && (int) $property->created_by === (int) $user->id;
     }
 
     /**

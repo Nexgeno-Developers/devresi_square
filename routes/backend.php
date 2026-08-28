@@ -22,6 +22,7 @@ use App\Http\Controllers\Backend\TenancyNoticeController;
 use App\Http\Controllers\Backend\WebsiteController;
 use App\Http\Controllers\Backend\NoteTypeController;
 use App\Http\Controllers\Backend\PropertyController;
+use App\Http\Controllers\Backend\LandlordPropertyWizardController;
 use App\Http\Controllers\Backend\PropertyAddressLookupController;
 use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\DocumentsController;
@@ -85,7 +86,7 @@ Route::get('/', function () {
     return redirect()->route('backend.login');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', 'landlord.restricted'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index'])
         ->middleware(['current.account', 'account.status'])
         ->name('backend.notifications.index');
@@ -185,6 +186,13 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['current.account', 'account.status'])->name('admin.')->group(function () {
         Route::get('/portal-access', [PortalAccessController::class, 'index'])
             ->name('portal-access.index');
+
+        // Landlord Property Passport wizard (3-step flow)
+        Route::prefix('properties/wizard')->name('properties.landlord_wizard.')->controller(LandlordPropertyWizardController::class)->group(function () {
+            Route::get('/', 'show')->name('show');
+            Route::get('/step/{step}', 'show')->name('step');
+            Route::post('/', 'store')->name('store');
+        });
 
         // Property
         Route::prefix('properties')->name('properties.')->controller(PropertyController::class)->group(function () {

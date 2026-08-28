@@ -10,7 +10,7 @@
         <span class="pcc-kbd">Ctrl+K</span>
     </button>
     @can('create properties')
-        <a href="{{ route('admin.properties.quick') }}" class="btn btn-sm btn-primary">
+        <a href="{{ property_create_url() }}" class="btn btn-sm btn-primary">
             <i class="bi bi-plus-circle"></i>
             <span>Add Property</span>
         </a>

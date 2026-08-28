@@ -8,6 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (
+            ! Schema::hasTable('credit_note_refunds')
+            || ! Schema::hasTable('credit_notes')
+            || ! Schema::hasTable('debit_note_refunds')
+            || ! Schema::hasTable('debit_notes')
+        ) {
+            return;
+        }
+
         // Use a view that returns a unified refund feed.
         $sql = <<<SQL
 CREATE OR REPLACE VIEW all_note_refunds AS

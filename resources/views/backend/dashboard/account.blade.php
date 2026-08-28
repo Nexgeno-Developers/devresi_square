@@ -102,7 +102,7 @@
                 <div class="card-header bg-white border-0 px-4 pt-4"><h5 class="mb-1">Quick actions</h5><div class="text-muted small">Common tasks for your role</div></div>
                 <div class="card-body px-4"><div class="row g-3">
                     @can('create properties')
-                        <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.properties.quick') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-house-add fs-4 text-primary"></i><span class="fw-semibold">Add property</span></a></div>
+                        <div class="col-sm-6 col-lg-4"><a href="{{ property_create_url() }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-house-add fs-4 text-primary"></i><span class="fw-semibold">Add property</span></a></div>
                     @endcan
                     @can('view properties')
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.properties.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-buildings fs-4 text-info"></i><span class="fw-semibold">View properties</span></a></div>

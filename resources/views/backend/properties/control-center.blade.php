@@ -9,7 +9,7 @@
             'label' => 'Add property',
             'hint' => 'Create',
             'icon' => 'bi-plus-circle',
-            'url' => route('admin.properties.quick'),
+            'url' => property_create_url(),
         ];
     }
     $commandItems[] = [
@@ -55,7 +55,7 @@
         'ajaxUrl' => route('admin.properties.index'),
         'tabsAllUrlTemplate' => str_replace('999999', '__ID__', route('admin.properties.tabs-all', ['property' => 999999])),
         'searchUrl' => route('backend.properties.search-ajax'),
-        'quickCreateUrl' => route('admin.properties.quick'),
+        'quickCreateUrl' => property_create_url(),
         'bulkActionUrl' => route('admin.properties.bulk-action'),
         'isPortal' => (bool) $isPortalUser,
         'canCreate' => (bool) auth()->user()?->can('create properties'),

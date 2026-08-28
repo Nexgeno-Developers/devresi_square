@@ -86,7 +86,7 @@ class StagingSaasTestDataSeeder extends Seeder
                 'description' => 'Staging landlord plan with one property and no branch or staff access.',
                 'monthly_price_minor' => 2900,
                 'annual_price_minor' => 29000,
-                'property_limit' => 1,
+                'property_limit' => 5,
                 'branch_limit' => 0,
                 'staff_limit' => 0,
                 'property_manager_limit' => 0,

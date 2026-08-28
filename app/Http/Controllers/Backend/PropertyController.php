@@ -169,7 +169,7 @@ class PropertyController
                 ]);
             }
             flash("You don't have any properties yet!")->error();
-            return redirect()->route('admin.properties.quick');
+            return redirect()->route($this->propertyCreateRoute());
         }
 
         // Get property_id and tabname from query parameters
@@ -677,6 +677,10 @@ class PropertyController
             return $response;
         }
 
+        if ($this->shouldUseLandlordWizard()) {
+            return redirect()->route('admin.properties.landlord_wizard.show');
+        }
+
         $countries = Country::orderBy('name')->get();
         return view('backend.properties.quick', compact('countries')); // Return the create property view
     }
@@ -862,7 +866,7 @@ class PropertyController
                     $property = $this->persistProperty(function () use ($validatedData, $request) {
                         return Property::create(array_merge($validatedData, [
                             'account_id' => current_account_id(),
-                            'added_by' => Auth::id(),
+                            'created_by' => Auth::id(),
                             'step' => $request->step,
                         ]));
                     });
@@ -948,7 +952,7 @@ class PropertyController
                     $property = $this->persistProperty(function () use ($validatedData) {
                         return Property::create(array_merge($validatedData, [
                             'account_id' => current_account_id(),
-                            'added_by' => Auth::id(),
+                            'created_by' => Auth::id(),
                         ]));
                     });
                     // $request->session()->put('property_id', $property->id);
@@ -2623,6 +2627,24 @@ class PropertyController
         }
 
         return response()->json(['affected' => $affected]);
+    }
+
+    private function shouldUseLandlordWizard(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user || ! $user->hasRole('Landlord')) {
+            return false;
+        }
+
+        return ! $user->hasAnyRole(['Super Admin', 'Property Manager', 'Estate Agent']);
+    }
+
+    private function propertyCreateRoute(): string
+    {
+        return $this->shouldUseLandlordWizard()
+            ? 'admin.properties.landlord_wizard.show'
+            : 'admin.properties.quick';
     }
 
 

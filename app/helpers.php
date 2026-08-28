@@ -1050,6 +1050,26 @@ if (!function_exists('safeAssignRoles')) {
 
 }
 
+if (! function_exists('property_create_url')) {
+    /**
+     * URL for adding a new property — landlords use the Property Passport wizard.
+     */
+    function property_create_url(): string
+    {
+        $user = auth()->user();
+
+        if (
+            $user
+            && $user->hasRole('Landlord')
+            && ! $user->hasAnyRole(['Super Admin', 'Property Manager', 'Estate Agent'])
+        ) {
+            return route('admin.properties.landlord_wizard.show');
+        }
+
+        return route('admin.properties.quick');
+    }
+}
+
 /*
 {!! attachmentViewer(uploaded_asset($quoteAttachment), 'View Quote', 'btn btn-primary', 'lg') !!}
 {!! attachmentViewer(uploaded_asset($quoteAttachment), 'View Quote', 'btn btn-primary', 'sm') !!}

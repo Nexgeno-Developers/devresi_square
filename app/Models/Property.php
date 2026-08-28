@@ -96,6 +96,7 @@ class Property extends Model
         'property_identity_hash',
         'uprn',
         'created_by',
+        'updated_by',
         'deleted_by',
     ];
     protected $casts = [

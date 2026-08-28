@@ -83,8 +83,8 @@
 
                 @can('create properties')
                 @component('components.backend.common.sidebar-sublink')
-                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.properties.quick') ? 'active' : '') }} @endslot
-                    @slot('link') {{ route('admin.properties.quick') }} @endslot
+                    @slot('class') {{ 'submenu-link' . (request()->routeIs('admin.properties.landlord_wizard.*') || request()->routeIs('admin.properties.quick') ? 'active' : '') }} @endslot
+                    @slot('link') {{ property_create_url() }} @endslot
                     @slot('link_name') Add New Property @endslot
                 @endcomponent
                 @endcan
