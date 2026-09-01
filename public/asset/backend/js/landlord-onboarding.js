@@ -18,10 +18,15 @@
     const postcodeInput = document.getElementById('lob-postcode');
     const doneCopy = root.querySelector('[data-lob-done-copy]');
     const openProperty = root.querySelector('[data-lob-open-property]');
+    const stage = root.querySelector('[data-lob-stage]');
+    const busyBar = root.querySelector('[data-lob-busybar]');
+    const busyLabel = root.querySelector('[data-lob-busy-label]');
+    const searchBtn = root.querySelector('[data-lob-search-btn]');
 
     let state = bootstrap;
     let lastPostcode = state.property?.postcode || '';
     let busy = false;
+    let activeButton = null;
 
     function showAlert(message) {
         if (!message) {
@@ -65,14 +70,47 @@
         return payload;
     }
 
-    function setBusy(isBusy) {
+    function setBusy(isBusy, options = {}) {
         busy = isBusy;
+        root.classList.toggle('is-busy', isBusy);
+        stage?.setAttribute('aria-busy', isBusy ? 'true' : 'false');
+
+        if (busyBar) {
+            busyBar.hidden = !isBusy;
+        }
+        if (busyLabel) {
+            busyLabel.hidden = !isBusy;
+            busyLabel.textContent = options.label || 'Working…';
+        }
+
+        if (activeButton && !isBusy) {
+            activeButton.classList.remove('is-loading');
+            activeButton = null;
+        }
+        if (isBusy && options.button) {
+            activeButton = options.button;
+            activeButton.classList.add('is-loading');
+        }
+
         root.querySelectorAll('button, input, a.lob-btn').forEach((el) => {
             if (el.matches('[data-lob-later], [data-lob-done-close]')) {
                 return;
             }
             el.disabled = isBusy;
         });
+    }
+
+    function setUploadBusy(kind, isUploading, fileName) {
+        const status = root.querySelector(`[data-lob-file-status="${kind}"]`);
+        const nameEl = root.querySelector(`[data-lob-file-name="${kind}"]`);
+        const box = nameEl?.closest('.lob-upload');
+        box?.classList.toggle('is-uploading', isUploading);
+        if (status) {
+            status.hidden = !isUploading;
+        }
+        if (isUploading && nameEl) {
+            nameEl.textContent = fileName ? `Selected ${fileName}` : 'Uploading…';
+        }
     }
 
     function closeModal() {
@@ -198,7 +236,14 @@
         event.preventDefault();
         showAlert('');
         lastPostcode = postcodeInput.value.trim();
-        setBusy(true);
+        resultsEl.hidden = false;
+        resultsEl.innerHTML = `
+            <div class="lob-skeleton" aria-hidden="true">
+                <div class="lob-skeleton-card"></div>
+                <div class="lob-skeleton-card"></div>
+            </div>
+        `;
+        setBusy(true, { label: 'Looking up that postcode…', button: searchBtn });
         try {
             const payload = await request(`${root.dataset.search}?postcode=${encodeURIComponent(lastPostcode)}`);
             const rows = payload.data || [];
@@ -221,6 +266,8 @@
             `).join('');
             resultsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch (error) {
+            resultsEl.innerHTML = '';
+            resultsEl.hidden = true;
             showAlert(error.message);
         } finally {
             setBusy(false);
@@ -233,7 +280,8 @@
             return;
         }
         showAlert('');
-        setBusy(true);
+        button.classList.add('is-picking');
+        setBusy(true, { label: 'Saving this property…' });
         try {
             const payload = await request(root.dataset.property, {
                 method: 'POST',
@@ -247,6 +295,7 @@
             renderFacts(state.property);
             goTo(2);
         } catch (error) {
+            button.classList.remove('is-picking');
             showAlert(error.message);
         } finally {
             setBusy(false);
@@ -259,10 +308,11 @@
                 return;
             }
             showAlert('');
+            setUploadBusy(input.dataset.lobFile, true, input.files[0].name);
             const body = new FormData();
             body.append('kind', input.dataset.lobFile);
             body.append('file', input.files[0]);
-            setBusy(true);
+            setBusy(true, { label: 'Uploading document…' });
             try {
                 const payload = await request(root.dataset.document, { method: 'POST', body });
                 state.documents = state.documents || {};
@@ -270,8 +320,13 @@
                 renderDocuments();
             } catch (error) {
                 input.value = '';
+                const nameEl = root.querySelector(`[data-lob-file-name="${input.dataset.lobFile}"]`);
+                if (nameEl && !state.documents?.[input.dataset.lobFile]) {
+                    nameEl.textContent = 'No file yet';
+                }
                 showAlert(error.message);
             } finally {
+                setUploadBusy(input.dataset.lobFile, false);
                 setBusy(false);
             }
         });
@@ -293,7 +348,10 @@
             return;
         }
 
-        setBusy(true);
+        setBusy(true, {
+            label: 'Saving owners…',
+            button: root.querySelector('[data-lob-save-owners]'),
+        });
         showAlert('');
         try {
             const payload = await request(root.dataset.owners, {
@@ -312,7 +370,10 @@
 
     async function finish(withTenancy) {
         showAlert('');
-        setBusy(true);
+        setBusy(true, {
+            label: withTenancy ? 'Inviting tenant…' : 'Finishing setup…',
+            button: root.querySelector(withTenancy ? '[data-lob-save-tenancy]' : '[data-lob-skip-complete]'),
+        });
         try {
             if (withTenancy) {
                 const form = root.querySelector('[data-lob-tenancy]');

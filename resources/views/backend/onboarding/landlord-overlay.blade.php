@@ -22,7 +22,9 @@
 >
     <script type="application/json" id="lob-bootstrap">{!! json_encode($lobState, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) !!}</script>
 
-    <div class="lob-stage" role="dialog" aria-modal="true" aria-labelledby="lob-title">
+    <div class="lob-stage" role="dialog" aria-modal="true" aria-labelledby="lob-title" data-lob-stage>
+        <div class="lob-busybar" data-lob-busybar hidden></div>
+        <p class="lob-busy-copy" data-lob-busy-label hidden aria-live="polite">Working…</p>
         <header class="lob-head">
             <div class="lob-head-row">
                 <div>
@@ -54,7 +56,10 @@
                     <label for="lob-postcode">Postcode</label>
                     <div class="lob-search-row">
                         <input id="lob-postcode" name="postcode" type="text" autocomplete="postal-code" placeholder="SW1A 1AA" maxlength="12">
-                        <button type="submit" class="lob-btn lob-btn-primary">Search</button>
+                        <button type="submit" class="lob-btn lob-btn-primary" data-lob-search-btn>
+                            <span class="lob-btn-label">Search</span>
+                            <span class="lob-spinner" aria-hidden="true"></span>
+                        </button>
                     </div>
                 </form>
 
@@ -75,12 +80,20 @@
                         <span class="lob-upload-title">Photo ID</span>
                         <span class="lob-upload-copy">Passport, driving licence, or national ID.</span>
                         <span class="lob-upload-file" data-lob-file-name="photo_id">No file yet</span>
+                        <span class="lob-upload-status" data-lob-file-status="photo_id" hidden>
+                            <span class="lob-spinner" aria-hidden="true"></span>
+                            Uploading…
+                        </span>
                     </label>
                     <label class="lob-upload">
                         <input type="file" accept=".jpg,.jpeg,.png,.webp,.pdf,image/*,application/pdf" data-lob-file="proof_of_address">
                         <span class="lob-upload-title">Proof of address</span>
                         <span class="lob-upload-copy">Utility bill, bank letter, or council tax.</span>
                         <span class="lob-upload-file" data-lob-file-name="proof_of_address">No file yet</span>
+                        <span class="lob-upload-status" data-lob-file-status="proof_of_address" hidden>
+                            <span class="lob-spinner" aria-hidden="true"></span>
+                            Uploading…
+                        </span>
                     </label>
                 </div>
             </div>
@@ -128,17 +141,29 @@
             </div>
             <div class="lob-actions" data-lob-actions="2" hidden>
                 <button type="button" class="lob-btn" data-lob-back>Back</button>
-                <button type="button" class="lob-btn lob-btn-primary" data-lob-next="3">Continue</button>
+                <button type="button" class="lob-btn lob-btn-primary" data-lob-next="3">
+                    <span class="lob-btn-label">Continue</span>
+                    <span class="lob-spinner" aria-hidden="true"></span>
+                </button>
             </div>
             <div class="lob-actions" data-lob-actions="3" hidden>
                 <button type="button" class="lob-btn" data-lob-back>Back</button>
                 <button type="button" class="lob-btn" data-lob-skip="4">Skip</button>
-                <button type="button" class="lob-btn lob-btn-primary" data-lob-save-owners>Save</button>
+                <button type="button" class="lob-btn lob-btn-primary" data-lob-save-owners>
+                    <span class="lob-btn-label">Save</span>
+                    <span class="lob-spinner" aria-hidden="true"></span>
+                </button>
             </div>
             <div class="lob-actions" data-lob-actions="4" hidden>
                 <button type="button" class="lob-btn" data-lob-back>Back</button>
-                <button type="button" class="lob-btn" data-lob-skip-complete>Skip</button>
-                <button type="button" class="lob-btn lob-btn-primary" data-lob-save-tenancy>Invite tenant</button>
+                <button type="button" class="lob-btn" data-lob-skip-complete>
+                    <span class="lob-btn-label">Skip</span>
+                    <span class="lob-spinner" aria-hidden="true"></span>
+                </button>
+                <button type="button" class="lob-btn lob-btn-primary" data-lob-save-tenancy>
+                    <span class="lob-btn-label">Invite tenant</span>
+                    <span class="lob-spinner" aria-hidden="true"></span>
+                </button>
             </div>
             <div class="lob-actions" data-lob-actions="5" hidden>
                 <button type="button" class="lob-btn" data-lob-done-close>Done</button>
