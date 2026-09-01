@@ -23,6 +23,7 @@ use App\Http\Controllers\Backend\WebsiteController;
 use App\Http\Controllers\Backend\NoteTypeController;
 use App\Http\Controllers\Backend\PropertyController;
 use App\Http\Controllers\Backend\LandlordPropertyWizardController;
+use App\Http\Controllers\Backend\LandlordOnboardingController;
 use App\Http\Controllers\Backend\PropertyAddressLookupController;
 use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\DocumentsController;
@@ -186,6 +187,17 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
     Route::middleware(['current.account', 'account.status'])->name('admin.')->group(function () {
         Route::get('/portal-access', [PortalAccessController::class, 'index'])
             ->name('portal-access.index');
+
+        Route::prefix('onboarding/landlord')->name('onboarding.landlord.')->controller(LandlordOnboardingController::class)->group(function () {
+            Route::get('/state', 'state')->name('state');
+            Route::get('/search', 'search')->middleware('throttle:20,1')->name('search');
+            Route::post('/property', 'storeProperty')->name('property');
+            Route::post('/documents', 'storeDocument')->name('documents');
+            Route::post('/owners', 'storeOwners')->name('owners');
+            Route::post('/tenancy', 'storeTenancy')->name('tenancy');
+            Route::post('/complete', 'complete')->name('complete');
+            Route::post('/step', 'saveStep')->name('step');
+        });
 
         // Landlord Property Passport wizard (3-step flow)
         Route::prefix('properties/wizard')->name('properties.landlord_wizard.')->controller(LandlordPropertyWizardController::class)->group(function () {

@@ -34,7 +34,9 @@ class DashboardController extends Controller
             return redirect()->route('backend.home');
         }
 
-        $this->authorize('view dashboard');
+        if (! $user->hasRole('Landlord')) {
+            $this->authorize('view dashboard');
+        }
         // $this->middleware(middleware: 'auth'); // Ensure the user is authenticated
         // $this->middleware('can:view dashboard'); // Optional: Ensure the user has permission to view the dashboard
 

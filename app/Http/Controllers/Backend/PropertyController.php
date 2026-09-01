@@ -20,6 +20,7 @@ use App\Models\Designation;
 use App\Models\StationName;
 // use App\Models\EstateCharge;
 use App\Models\EstateCharge;
+use App\Services\Onboarding\LandlordOnboardingService;
 use App\Services\Saas\PortalAccessService;
 use Dom\Document;
 use Illuminate\Http\Request;
@@ -168,6 +169,22 @@ class PropertyController
                     'isPortalUser' => $isPortalUser,
                 ]);
             }
+            if ($this->shouldUseLandlordWizard()) {
+                $account = current_account();
+                if (app(LandlordOnboardingService::class)->shouldShow($user, $account)) {
+                    $tabs = $this->tabsForUser($user, null, $isPortalUser, $portalAccessService);
+
+                    return view('backend.properties.control-center', [
+                        'properties' => $properties,
+                        'tabs'       => $tabs,
+                        'propertyId' => null,
+                        'tabName'    => 'property',
+                        'content'    => '',
+                        'property'   => null,
+                        'isPortalUser' => $isPortalUser,
+                    ]);
+                }
+            }
             flash("You don't have any properties yet!")->error();
             return redirect()->route($this->propertyCreateRoute());
         }
@@ -278,11 +295,28 @@ class PropertyController
             }
         }
 
+        if ($user->can('create properties') || $user->can('edit properties')) {
+            $this->ensureTab($tabs, 'Property');
+        }
+
+        if ($this->shouldUseLandlordWizard()) {
+            foreach (['Property', 'Owners', 'Tenancy', 'Documents'] as $name) {
+                $this->ensureTab($tabs, $name);
+            }
+        }
+
         if ($user->can('view property teams') && $this->hasPropertyManagerAddon()) {
-            $tabs[] = ['name' => 'Responsibility'];
+            $this->ensureTab($tabs, 'Responsibility');
         }
 
         return $tabs;
+    }
+
+    private function ensureTab(array &$tabs, string $name): void
+    {
+        if (! collect($tabs)->contains(fn (array $tab) => $tab['name'] === $name)) {
+            $tabs[] = ['name' => $name];
+        }
     }
 
     private function tabsForUser($user, ?Property $property, bool $isPortalUser, PortalAccessService $portalAccessService): array

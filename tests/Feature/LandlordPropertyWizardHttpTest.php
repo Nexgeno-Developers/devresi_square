@@ -41,19 +41,20 @@ class LandlordPropertyWizardHttpTest extends TestCase
         }
 
         $session = ['current_account_id' => $accountId];
+        $line1 = '99 Wizard Test Street '.uniqid();
 
         $step1 = $this->actingAs($user)
             ->withSession($session)
             ->post(route('admin.properties.landlord_wizard.store'), [
                 'step' => 1,
-                'line_1' => '99 Wizard Test Street',
+                'line_1' => $line1,
                 'city' => 'London',
                 'postcode' => 'W1A 1AA',
                 'country' => $countryId,
             ]);
 
         $step1->assertRedirect();
-        $propertyId = Property::query()->where('line_1', '99 Wizard Test Street')->value('id');
+        $propertyId = Property::query()->where('line_1', $line1)->value('id');
         $this->assertNotNull($propertyId);
 
         $property = Property::find($propertyId);
@@ -106,6 +107,45 @@ class LandlordPropertyWizardHttpTest extends TestCase
         );
     }
 
+    public function test_landlord_can_open_property_tab_without_view_properties_permission(): void
+    {
+        [$user, $accountId] = $this->createLandlordUser();
+        Permission::findOrCreate('view properties', 'web');
+        $role = Role::findByName('Landlord', 'web');
+        $hadViewProperties = $role->hasPermissionTo('view properties');
+
+        if ($hadViewProperties) {
+            $role->revokePermissionTo('view properties');
+        }
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        $user->unsetRelation('roles');
+        $user->unsetRelation('permissions');
+
+        $this->assertFalse($user->fresh()->can('view properties'));
+
+        $property = Property::create([
+            'account_id' => $accountId,
+            'created_by' => $user->id,
+            'line_1' => '12 Tab Access Street',
+            'city' => 'London',
+            'postcode' => 'EC1A 1BB',
+        ]);
+
+        try {
+            $response = $this->actingAs($user)
+                ->withSession(['current_account_id' => $accountId])
+                ->get(route('admin.properties.index', [
+                    'property_id' => $property->id,
+                    'tabname' => 'property',
+                ]));
+
+            $response->assertOk();
+        } finally {
+            $role->givePermissionTo('view properties');
+            app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        }
+    }
+
     /**
      * @return array{0: User, 1: int}
      */
@@ -114,7 +154,7 @@ class LandlordPropertyWizardHttpTest extends TestCase
         Permission::findOrCreate('create properties', 'web');
         Permission::findOrCreate('edit properties', 'web');
         $role = Role::findOrCreate('Landlord', 'web');
-        $role->syncPermissions(['create properties', 'edit properties']);
+        $role->givePermissionTo(['create properties', 'edit properties']);
 
         $user = User::create([
             'name' => 'Test Landlord',
@@ -126,6 +166,7 @@ class LandlordPropertyWizardHttpTest extends TestCase
         $accountId = \DB::table('accounts')->insertGetId([
             'owner_user_id' => $user->id,
             'status' => 'active',
+            'onboarding_completed_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -143,9 +184,18 @@ class LandlordPropertyWizardHttpTest extends TestCase
 
         \DB::table('account_subscriptions')->insert([
             'account_id' => $accountId,
+            'plan_id' => \DB::table('plans')->value('id') ?: 1,
             'status' => 'active',
             'created_at' => now(),
             'updated_at' => now(),
+        ]);
+
+        Property::create([
+            'account_id' => $accountId,
+            'created_by' => $user->id,
+            'line_1' => 'Existing Landlord Property',
+            'city' => 'London',
+            'postcode' => 'N1 9GU',
         ]);
 
         return [$user, $accountId];

@@ -29,6 +29,9 @@ class Account extends Model implements Auditable
         'stripe_customer_id',
         'registration_welcome_email_sent_at',
         'subscription_activation_email_sent_at',
+        'onboarding_completed_at',
+        'onboarding_step',
+        'onboarding_property_id',
     ];
 
     protected $casts = [
@@ -36,6 +39,8 @@ class Account extends Model implements Auditable
         'trial_ends_at' => 'datetime',
         'registration_welcome_email_sent_at' => 'datetime',
         'subscription_activation_email_sent_at' => 'datetime',
+        'onboarding_completed_at' => 'datetime',
+        'onboarding_step' => 'integer',
     ];
 
     public function owner(): BelongsTo

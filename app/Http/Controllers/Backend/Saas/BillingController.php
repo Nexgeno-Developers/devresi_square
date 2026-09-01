@@ -75,6 +75,14 @@ class BillingController extends Controller
             }
         }
 
+        $account->refresh();
+
+        if (in_array($account->status, ['trialing', 'active'], true)) {
+            return redirect()
+                ->route('backend.dashboard')
+                ->with('success', 'Your subscription is active.');
+        }
+
         return view('backend.saas.billing.success');
     }
 

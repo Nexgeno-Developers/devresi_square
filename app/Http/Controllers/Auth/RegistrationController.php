@@ -162,6 +162,8 @@ class RegistrationController extends Controller
 
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
+        $this->logDebugOtp($request->email, $otp);
+
         $registration = Registration::create([
             'first_name'     => $request->first_name,
             'last_name'      => $request->last_name,
@@ -211,7 +213,11 @@ class RegistrationController extends Controller
             return view('frontend.register-pending-approval');
         }
 
-        return view('frontend.register-verify-otp', compact('registration'));
+        $debugOtp = DebugRegistrationOtpController::debugOtpEnabled()
+            ? $registration->otp_code
+            : null;
+
+        return view('frontend.register-verify-otp', compact('registration', 'debugOtp'));
     }
 
     // ─── Step 4: Verify OTP ───────────────────────────────────────────────────
@@ -343,6 +349,8 @@ class RegistrationController extends Controller
 
         $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
+        $this->logDebugOtp($registration->email, $otp);
+
         $registration->update([
             'otp_code'       => $otp,
             'otp_expires_at' => now()->addMinutes(2),
@@ -406,6 +414,19 @@ class RegistrationController extends Controller
     {
         $phone = $this->normalizePhone($registration->phone ?? '');
         SmsUtility::phone_number_verification($phone, $otp);
+    }
+
+    private function logDebugOtp(string $email, string $otp): void
+    {
+        if (! DebugRegistrationOtpController::debugOtpEnabled()) {
+            return;
+        }
+
+        Log::debug('Registration OTP (local debug only)', [
+            'email' => $email,
+            'otp' => $otp,
+            'lookup' => url('/_debug/registration-otp').'?email='.urlencode($email),
+        ]);
     }
 
     // ─── Normalize phone to E.164 ─────────────────────────────────────────────

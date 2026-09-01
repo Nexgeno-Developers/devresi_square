@@ -89,7 +89,7 @@
         @foreach($roleUi['metrics'] as [$label, $value, $icon, $colour])
             <div class="col-sm-6 col-xl-3">
                 <div class="card dashboard-card h-100"><div class="card-body d-flex justify-content-between align-items-center gap-3">
-                    <div><div class="text-muted small mb-2">{{ $label }}</div><div class="metric-number">{{ number_format($value) }}</div></div>
+                    <div><div class="text-muted small mb-2">{{ $label }}</div><div class="metric-number" data-dash-label="{{ $label }}">{{ number_format($value) }}</div></div>
                     <div class="metric-icon bg-{{ $colour }} bg-opacity-10 text-{{ $colour }}"><i class="bi {{ $icon }}"></i></div>
                 </div></div>
             </div>
@@ -104,9 +104,9 @@
                     @can('create properties')
                         <div class="col-sm-6 col-lg-4"><a href="{{ property_create_url() }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-house-add fs-4 text-primary"></i><span class="fw-semibold">Add property</span></a></div>
                     @endcan
-                    @can('view properties')
+                    @canany(['view properties', 'create properties', 'edit properties'])
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.properties.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-buildings fs-4 text-info"></i><span class="fw-semibold">View properties</span></a></div>
-                    @endcan
+                    @endcanany
                     @can('manage tenancies')
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.tenancies.all') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-key fs-4 text-success"></i><span class="fw-semibold">Tenancies</span></a></div>
                     @endcan

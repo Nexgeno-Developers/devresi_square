@@ -66,6 +66,10 @@ Route::group(['middleware' => 'web'], function () {
     Route::post('/register/verify-otp',  [RegistrationController::class, 'verifyOtp'])->name('register.verify.otp.post');
     Route::post('/register/resend-otp',  [RegistrationController::class, 'resendOtp'])->name('register.resend.otp');
 
+    // Local-only OTP lookup for signup debugging. 404 outside local+APP_DEBUG.
+    Route::get('/_debug/registration-otp', [\App\Http\Controllers\Auth\DebugRegistrationOtpController::class, 'show'])
+        ->name('debug.registration.otp');
+
     // Frontend routes
     Route::get('/', [FrontendController::class, 'index'])->name('home');
     Route::get('/pricing', [FrontendController::class, 'pricing'])->name('pricing');
@@ -85,6 +89,12 @@ Route::group(['middleware' => 'web'], function () {
     Route::middleware(['auth', 'current.account', 'account.status'])->group(function () {
         Route::get('/customer/statements', [CustomerStatementController::class, 'show'])->name('customer.statements');
     });
+
+    // Design experiment — proposed replacement for the property detail page.
+    // Read-only prototype, self-contained in resources/views/backend/testExperiments.blade.php
+    Route::get('/testExperiments', function () {
+        return view('backend.testExperiments');
+    })->middleware(['auth', 'current.account', 'account.status'])->name('test.experiments');
 
     // Contractor portal — repair listing & detail (auth required)
     Route::middleware(['auth', 'current.account', 'account.status'])->prefix('contractor')->name('contractor.')->group(function () {

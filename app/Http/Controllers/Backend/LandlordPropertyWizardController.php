@@ -6,6 +6,7 @@ use App\Http\Controllers\Backend\Concerns\EnforcesSaasPlanLimits;
 use App\Http\Requests\Property\LandlordPropertyWizardStepRequest;
 use App\Models\Country;
 use App\Models\Property;
+use App\Services\Onboarding\LandlordOnboardingService;
 use App\Services\Property\LandlordPropertyWizardService;
 use App\Services\Saas\AccountLimitService;
 use Illuminate\Http\RedirectResponse;
@@ -23,6 +24,12 @@ class LandlordPropertyWizardController
 
     public function show(Request $request, int $step = 1): View|RedirectResponse
     {
+        $account = current_account();
+        $user = $request->user();
+        if (app(LandlordOnboardingService::class)->shouldShow($user, $account)) {
+            return redirect()->route('admin.properties.index');
+        }
+
         $step = max(1, min(3, $step));
         $property = $this->resolveProperty($request);
 
