@@ -60,6 +60,12 @@
         'isPortal' => (bool) $isPortalUser,
         'canCreate' => (bool) auth()->user()?->can('create properties'),
         'canDelete' => (bool) auth()->user()?->can('delete properties'),
+        'tabGroups' => [
+            ['id' => 'overview', 'label' => 'Overview', 'tabs' => ['property', 'notes', 'media', 'apd', 'appointments', 'teams', 'responsibility']],
+            ['id' => 'occupancy', 'label' => 'Occupancy', 'tabs' => ['tenancy', 'owners', 'offers']],
+            ['id' => 'operations', 'label' => 'Operations', 'tabs' => ['compliance', 'documents']],
+            ['id' => 'money', 'label' => 'Money', 'tabs' => ['statement']],
+        ],
     ];
 @endphp
 
@@ -90,16 +96,6 @@
                 <div id="pccDetailHeaderSlot">
                     @if(!empty($property))
                         @include('backend.properties.partials.detail-header', ['property' => $property])
-                    @endif
-                </div>
-                <div id="pccDetailStatsSlot">
-                    @if(!empty($property))
-                        @include('backend.properties.partials.detail-stats', ['property' => $property])
-                    @endif
-                </div>
-                <div id="pccDetailActionsSlot">
-                    @if(!empty($property))
-                        @include('backend.properties.partials.detail-actions', ['property' => $property])
                     @endif
                 </div>
                 <div class="pcc-tab-nav" id="pccTabNav"></div>

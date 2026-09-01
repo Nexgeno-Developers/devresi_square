@@ -10,8 +10,8 @@
             <option value="archive">Archive selected</option>
             <option value="delete">Permanently delete</option>
         </select>
-        <button class="btn btn-sm btn-primary" id="pccBulkApply" type="button">Apply</button>
-        <button class="btn btn-sm btn-outline-secondary" id="pccBulkClear" type="button">Clear</button>
+        <button class="pcc-btn-ink" id="pccBulkApply" type="button">Apply</button>
+        <button class="pcc-btn-ghost" id="pccBulkClear" type="button">Clear</button>
     </div>
 </div>
 @endif

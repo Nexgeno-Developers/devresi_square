@@ -153,11 +153,7 @@
 
     function hydrateDetail(res) {
         const headerSlot = document.getElementById('pccDetailHeaderSlot');
-        const statsSlot = document.getElementById('pccDetailStatsSlot');
-        const actionsSlot = document.getElementById('pccDetailActionsSlot');
         if (headerSlot && res.detail_header) headerSlot.innerHTML = res.detail_header;
-        if (statsSlot && res.detail_stats) statsSlot.innerHTML = res.detail_stats;
-        if (actionsSlot && res.detail_actions) actionsSlot.innerHTML = res.detail_actions;
     }
 
     function showDetailLoading() {
@@ -166,7 +162,7 @@
         if (!overlay) {
             overlay = document.createElement('div');
             overlay.className = 'pcc-loading-overlay';
-            overlay.innerHTML = '<div class="spinner-border text-primary"></div>';
+            overlay.innerHTML = '<div class="spinner-border pcc-spinner"></div>';
             els.rightPane.appendChild(overlay);
         }
         overlay.classList.remove('d-none');
@@ -197,41 +193,60 @@
         });
     }
 
+    function allowedTabNames() {
+        return (state.tabs || []).map((t) => String(t.name).toLowerCase());
+    }
+
+    function tabGroups() {
+        const allowed = new Set(allowedTabNames());
+        const groups = cfg.tabGroups || [];
+        return groups
+            .map((group) => ({
+                ...group,
+                tabs: (group.tabs || []).filter((name) => allowed.has(String(name).toLowerCase())),
+            }))
+            .filter((group) => group.tabs.length > 0);
+    }
+
+    function groupForTab(tabName) {
+        const name = String(tabName || '').toLowerCase();
+        return tabGroups().find((group) => group.tabs.includes(name)) || tabGroups()[0] || null;
+    }
+
     function renderTabs() {
         const tabs = state.tabs;
         if (!tabs.length || !els.tabNav) return;
 
-        const primary = ['property', 'tenancy', 'documents', 'notes', 'compliance', 'statement'];
-        const primaryTabs = tabs.filter((t) => primary.includes(String(t.name).toLowerCase()));
-        const moreTabs = tabs.filter((t) => !primary.includes(String(t.name).toLowerCase()));
-
-        let navHtml = primaryTabs.map((t) =>
-            `<a href="#" class="pcc-tab-link ${String(t.name).toLowerCase() === state.tabName ? 'active' : ''}"
-               data-tab="${String(t.name).toLowerCase()}" role="button">${t.name}</a>`
-        ).join('');
-
-        if (moreTabs.length) {
-            navHtml += `
-                <div class="dropdown">
-                    <button class="pcc-tab-more-btn" data-bs-toggle="dropdown" type="button">
-                        More <i class="bi bi-chevron-down"></i>
-                    </button>
-                    <ul class="dropdown-menu">
-                        ${moreTabs.map((t) =>
-                            `<li><a href="#" class="dropdown-item pcc-tab-link ${String(t.name).toLowerCase() === state.tabName ? 'active' : ''}"
-                                      data-tab="${String(t.name).toLowerCase()}" role="button">${t.name}</a></li>`
-                        ).join('')}
-                    </ul>
-                </div>`;
+        const groups = tabGroups();
+        const current = String(state.tabName || '').toLowerCase();
+        let activeGroup = groupForTab(current);
+        if (activeGroup && !activeGroup.tabs.includes(current)) {
+            state.tabName = activeGroup.tabs[0];
         }
 
-        els.tabNav.innerHTML = navHtml;
+        const groupHtml = groups.map((group) =>
+            `<button type="button" class="pcc-tab-group ${group.id === activeGroup?.id ? 'active' : ''}"
+                data-group="${group.id}">${group.label}</button>`
+        ).join('');
+
+        const subTabs = (activeGroup?.tabs || [])
+            .map((name) => tabs.find((t) => String(t.name).toLowerCase() === name))
+            .filter(Boolean);
+        const subHtml = subTabs.length > 1
+            ? `<div class="pcc-tab-subs">${subTabs.map((t) => {
+                const key = String(t.name).toLowerCase();
+                return `<a href="#" class="pcc-tab-link ${key === state.tabName ? 'active' : ''}"
+                    data-tab="${key}" role="button">${t.name}</a>`;
+            }).join('')}</div>`
+            : '';
+
+        els.tabNav.innerHTML = `<div class="pcc-tab-groups">${groupHtml}</div>${subHtml}`;
 
         const cached = state.tabCache.get(state.tabName);
         if (els.tabContent) {
             els.tabContent.innerHTML = cached
                 ? cached.html
-                : '<div class="pcc-tab-loading"><div class="spinner-border text-primary"></div></div>';
+                : '<div class="pcc-tab-loading"><div class="spinner-border pcc-spinner"></div></div>';
         }
 
         if (!cached && state.propertyId) {
@@ -243,26 +258,11 @@
 
     function switchTab(tabName) {
         state.tabName = tabName;
-        document.querySelectorAll('.pcc-tab-link').forEach((link) =>
-            link.classList.toggle('active', link.dataset.tab === tabName));
-
-        const cached = state.tabCache.get(tabName);
-        if (els.tabContent) {
-            els.tabContent.innerHTML = cached
-                ? cached.html
-                : '<div class="pcc-tab-loading"><div class="spinner-border text-primary"></div></div>';
-        }
-
-        if (!cached && state.propertyId) {
-            fetchTab(tabName);
-        } else {
-            refreshTabComponents();
-        }
-
         const url = new URL(window.location);
         url.searchParams.set('tabname', tabName);
         if (state.propertyId) url.searchParams.set('property_id', state.propertyId);
         window.history.replaceState(null, '', url);
+        renderTabs();
     }
 
     function fetchTab(tabName) {
@@ -287,7 +287,7 @@
 
     function showTabLoading() {
         if (els.tabContent) {
-            els.tabContent.innerHTML = '<div class="pcc-tab-loading"><div class="spinner-border text-primary"></div></div>';
+            els.tabContent.innerHTML = '<div class="pcc-tab-loading"><div class="spinner-border pcc-spinner"></div></div>';
         }
     }
 
@@ -301,6 +301,13 @@
     }
 
     document.addEventListener('click', (e) => {
+        const groupBtn = e.target.closest('.pcc-tab-group');
+        if (groupBtn && els.root?.contains(groupBtn)) {
+            e.preventDefault();
+            const group = tabGroups().find((g) => g.id === groupBtn.dataset.group);
+            if (group?.tabs?.[0]) switchTab(group.tabs[0]);
+            return;
+        }
         const link = e.target.closest('.pcc-tab-link');
         if (!link || !els.root?.contains(link)) return;
         e.preventDefault();
@@ -310,11 +317,13 @@
 
     function collectFilterParams() {
         const params = new URLSearchParams();
+        const search = document.getElementById('pccListSearch');
+        if (search?.value.trim()) params.set('search', search.value.trim());
         if (!els.filterRail) return params;
         els.filterRail.querySelectorAll('input, select').forEach((el) => {
             if (!el.name) return;
             if ((el.type === 'checkbox' || el.type === 'radio') && !el.checked) return;
-            if ((el.type === 'text' || el.type === 'search') && !el.value.trim()) return;
+            if (!String(el.value || '').trim()) return;
             if (el.type === 'checkbox' && params.has(el.name)) {
                 params.set(el.name, params.get(el.name) + ',' + el.value);
             } else {
@@ -324,9 +333,19 @@
         return params;
     }
 
-    function bindFilters() {
-        if (!els.filterRail) return;
+    function syncChipState() {
+        els.filterRail?.querySelectorAll('.pcc-chip').forEach((chip) => {
+            const input = chip.querySelector('input');
+            chip.classList.toggle('is-on', !!(input && input.checked && input.value !== ''));
+        });
+        const allChip = els.filterRail?.querySelector('input[name="property_type"][value=""]')?.closest('.pcc-chip');
+        if (allChip) {
+            const selected = els.filterRail.querySelector('input[name="property_type"]:checked');
+            allChip.classList.toggle('is-on', !selected || selected.value === '');
+        }
+    }
 
+    function bindFilters() {
         const applyFilters = debounce(() => {
             const params = collectFilterParams();
             const url = cfg.ajaxUrl + '?' + params.toString() + (params.toString() ? '&' : '') + 'list_only=1';
@@ -338,7 +357,6 @@
                 success: (res) => {
                     if (els.listScroll && res.html) els.listScroll.innerHTML = res.html;
                     if (els.listFooter) els.listFooter.innerHTML = res.pagination || '';
-                    updateActiveFilterChips(params);
                     const historyUrl = cfg.ajaxUrl + (params.toString() ? '?' + params.toString() : '');
                     window.history.replaceState(null, '', historyUrl);
                 },
@@ -348,67 +366,15 @@
             });
         }, 250);
 
-        els.filterRail.addEventListener('change', applyFilters);
-        els.filterRail.addEventListener('input', (e) => {
-            if (e.target.name === 'search') applyFilters();
-        });
-
-        els.filterRail.querySelectorAll('.pcc-filter-section-toggle').forEach((btn) => {
-            btn.addEventListener('click', () => {
-                const body = btn.nextElementSibling;
-                const isOpen = body.classList.toggle('open');
-                btn.classList.toggle('open', isOpen);
-            });
-        });
-
-        const drawerBtn = document.getElementById('pccFilterDrawerBtn');
-        if (drawerBtn) {
-            drawerBtn.addEventListener('click', () => {
-                const open = els.filterRail.classList.toggle('is-open');
-                drawerBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-            });
-        }
-
-        const resetBtn = document.getElementById('pccFilterReset');
-        if (resetBtn) {
-            resetBtn.addEventListener('click', () => {
-                window.location.href = cfg.ajaxUrl;
-            });
-        }
-
-        els.filterRail.addEventListener('click', (e) => {
-            const chipRemove = e.target.closest('.pcc-filter-chip-remove');
-            if (!chipRemove) return;
-            const key = chipRemove.dataset.key;
-            els.filterRail.querySelectorAll(`[name="${key}"]`).forEach((input) => {
-                if (input.type === 'checkbox' || input.type === 'radio') input.checked = false;
-                else input.value = '';
-            });
-            chipRemove.closest('.pcc-filter-chip')?.remove();
+        els.filterRail?.addEventListener('change', () => {
+            syncChipState();
             applyFilters();
         });
-    }
+        document.getElementById('pccListSearch')?.addEventListener('input', applyFilters);
 
-    function updateActiveFilterChips(params) {
-        let container = document.getElementById('pccActiveFilters');
-        if (!container && els.filterRail) {
-            container = document.createElement('div');
-            container.id = 'pccActiveFilters';
-            container.className = 'pcc-active-filters';
-            els.filterRail.appendChild(container);
-        }
-        if (!container) return;
-        const chips = [];
-        params.forEach((val, key) => {
-            if (val) chips.push({ key, val: String(val) });
+        document.getElementById('pccFilterReset')?.addEventListener('click', () => {
+            window.location.href = cfg.ajaxUrl;
         });
-        if (!chips.length) { container.innerHTML = ''; return; }
-        container.innerHTML = '<span class="pcc-active-filters-label">Active:</span>' +
-            chips.map((c) =>
-                `<span class="pcc-filter-chip" data-key="${c.key}">${c.val}
-                    <button class="pcc-filter-chip-remove" data-key="${c.key}" type="button">&times;</button>
-                </span>`
-            ).join('');
     }
 
     function bindBulkActions() {
@@ -448,6 +414,7 @@
         const count = state.selectedIds.size;
         if (els.bulkCount) els.bulkCount.textContent = count + ' selected';
         if (els.bulkToolbar) els.bulkToolbar.style.display = count > 0 ? 'flex' : 'none';
+        els.listScroll?.classList.toggle('pcc-bulk-on', count > 0);
     }
 
     function executeBulkAction(action, ids) {

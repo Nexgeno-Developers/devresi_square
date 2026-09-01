@@ -146,8 +146,6 @@ class PropertyController
 
                     $response['tabs'] = $this->tabsForUser($user, $selectedProperty, $isPortalUser, $portalAccessService);
                     $response['detail_header'] = view('backend.properties.partials.detail-header', ['property' => $selectedProperty])->render();
-                    $response['detail_stats'] = view('backend.properties.partials.detail-stats', ['property' => $selectedProperty])->render();
-                    $response['detail_actions'] = view('backend.properties.partials.detail-actions', ['property' => $selectedProperty])->render();
                 }
             }
 
