@@ -46,6 +46,45 @@
         </li>
         @endunless
 
+        @if(auth()->user()->hasRole('Tenant'))
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('backend.home') ? 'active' : '' }}"
+                href="{{ route('backend.home') }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-house"></i>Home</span>
+            </a>
+        </li>
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('tenant.tenancy') ? 'active' : '' }}"
+                href="{{ route('tenant.tenancy') }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-key"></i>My Tenancy</span>
+            </a>
+        </li>
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('tenant.rent') ? 'active' : '' }}"
+                href="{{ route('tenant.rent') }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-file-invoice-dollar"></i>Rent &amp; Payments</span>
+            </a>
+        </li>
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('tenant.maintenance') || request()->routeIs('admin.property_repairs.create') ? 'active' : '' }}"
+                href="{{ route('tenant.maintenance') }}">
+                <span class="icon_wrapper"><i class="bi bi-tools"></i>Maintenance</span>
+            </a>
+        </li>
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('tenant.documents') ? 'active' : '' }}"
+                href="{{ route('tenant.documents') }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-folder-open"></i>Documents</span>
+            </a>
+        </li>
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('admin.users.profile.*') ? 'active' : '' }}"
+                href="{{ route('admin.users.profile.show') }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-user"></i>Profile</span>
+            </a>
+        </li>
+        @endif
+
         @can('view calendar')
         {{-- Calendar --}}
          <li class="nav-item">
@@ -56,6 +95,7 @@
         </li>
         @endcan
         
+        @unless(auth()->user()->hasRole('Tenant'))
         @canany(['view properties', 'edit properties', 'create properties'])
         {{-- Properties --}}
          <li class="nav-item">
@@ -91,6 +131,7 @@
             </ul>
         </li>
         @endcanany
+        @endunless
 
         @can('manage tenancies')
         {{-- Tenancies --}}
@@ -136,6 +177,7 @@
         </li>
         @endcan
 
+        @unless(auth()->user()->hasRole('Tenant'))
         @canany(['view properties', 'create properties'])
         {{-- Sales Offer --}}
          <li class="nav-item">
@@ -167,7 +209,9 @@
             </ul>
         </li>
         @endcanany
+        @endunless
 
+        @unless(auth()->user()->hasRole('Tenant'))
         @canany(['view contacts', 'create contacts', 'edit contacts', 'delete contacts'])
         {{-- Contacts --}}
          <li class="nav-item">
@@ -199,6 +243,7 @@
             </ul>
         </li>
         @endcanany
+        @endunless
         @if($canViewBilling)
          <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('backend.billing.*') ? 'active' : '' }}"
@@ -258,6 +303,7 @@
         </li>
         @endif
 
+        @unless(auth()->user()->hasRole('Tenant'))
         @canany(['view property repair', 'edit property repair', 'create property repair'])
          <li class="nav-item">
             <a href="#repairSubmenu" data-bs-toggle="collapse"
@@ -320,6 +366,7 @@
             </ul>
         </li>
         @endcanany
+        @endunless
 
         {{-- -- Contractor: only sees Repair Issues -- --}}
         @if(auth()->user()->hasRole('Contractor'))

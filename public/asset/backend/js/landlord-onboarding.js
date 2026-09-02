@@ -368,33 +368,67 @@
         }
     }
 
+    function doneMessage(completeData, tenancyData) {
+        if (tenancyData?.invited && tenancyData?.sent) {
+            return `Invite sent to ${tenancyData.email}.`;
+        }
+        if (tenancyData?.invited && !tenancyData?.sent) {
+            return 'Tenancy saved, but the email did not send.';
+        }
+        if (tenancyData) {
+            return 'Tenancy saved without sending an invite.';
+        }
+        if (completeData?.property?.label) {
+            return `${completeData.property.label} is on your portfolio.`;
+        }
+        return 'It’s on your portfolio. You can keep working from here.';
+    }
+
     async function finish(withTenancy) {
+        const form = root.querySelector('[data-lob-tenancy]');
+        const name = form.name.value.trim();
+        const email = form.email.value.trim();
+        const phone = form.phone.value.trim();
+
+        if (!withTenancy && (name || email)) {
+            if (!name || !email) {
+                showAlert('Add both a tenant name and email, or clear the form to skip.');
+                return;
+            }
+        }
+
         showAlert('');
         setBusy(true, {
             label: withTenancy ? 'Inviting tenant…' : 'Finishing setup…',
             button: root.querySelector(withTenancy ? '[data-lob-save-tenancy]' : '[data-lob-skip-complete]'),
         });
         try {
-            if (withTenancy) {
-                const form = root.querySelector('[data-lob-tenancy]');
-                await request(root.dataset.tenancy, {
+            let tenancyData = null;
+            if (withTenancy || name || email) {
+                const tenancyPayload = await request(root.dataset.tenancy, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        name: form.name.value.trim(),
-                        email: form.email.value.trim(),
-                        phone: form.phone.value.trim(),
+                        name,
+                        email,
+                        phone,
+                        invite: withTenancy,
                     }),
                 });
+                tenancyData = tenancyPayload.data;
             }
             const payload = await request(root.dataset.complete, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({}),
+                body: JSON.stringify({
+                    invited: Boolean(tenancyData?.invited),
+                    sent: Boolean(tenancyData?.sent),
+                    invite_error: tenancyData?.error || null,
+                }),
             });
             updateDashboard(payload.data);
-            if (payload.data?.property?.label && doneCopy) {
-                doneCopy.textContent = `${payload.data.property.label} is on your portfolio.`;
+            if (doneCopy) {
+                doneCopy.textContent = doneMessage(payload.data, tenancyData);
             }
             if (payload.data?.property?.id && openProperty) {
                 const url = new URL(root.dataset.propertiesUrl, window.location.origin);

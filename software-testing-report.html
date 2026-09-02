@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tenant Module QA Report — Resisquare</title>
+  <style>
+    :root {
+      --ink: #1a1d23;
+      --muted: #5c6570;
+      --line: #d8dde3;
+      --bg: #f4f6f8;
+      --card: #fff;
+      --pass: #1b7a4a;
+      --pass-bg: #e7f6ee;
+      --fail: #b42318;
+      --fail-bg: #fdecea;
+      --crit: #7a1010;
+      --high: #c2410c;
+      --med: #b45309;
+      --low: #475569;
+      --blocked: #c2410c;
+      --nt: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.5; }
+    .header { background: #1a1d23; color: #fff; padding: 32px 24px; }
+    .header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 650; }
+    .header p { margin: 0; color: #c5ccd4; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: -40px; margin-bottom: 24px; }
+    .card { background: var(--card); border: 1px solid var(--line); padding: 16px; }
+    .card h3 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .card .v { font-size: 20px; font-weight: 650; }
+    .badge { display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 650; }
+    .pass { background: var(--pass-bg); color: var(--pass); }
+    .fail { background: var(--fail-bg); color: var(--fail); }
+    .blocked { background: #fff4e5; color: var(--blocked); }
+    .nt { background: #eef1f4; color: var(--nt); }
+    .crit { background: #fdecea; color: var(--crit); }
+    .high { background: #fff4e5; color: var(--high); }
+    .med { background: #fffbeb; color: var(--med); }
+    .low { background: #eef2ff; color: var(--low); }
+    .open { background: var(--fail-bg); color: var(--fail); }
+    h2 { font-size: 18px; margin: 32px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 13px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #eef1f4; font-weight: 650; }
+    tbody tr:nth-child(even) { background: #fafbfc; }
+    code, .path { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+    .note { color: var(--muted); font-size: 14px; }
+    footer { color: var(--muted); font-size: 12px; margin: 40px 0 12px; }
+    @media print { body { background: #fff; } .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    @media (max-width: 700px) { table { display: block; overflow-x: auto; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Software Testing Report — Tenant Module</h1>
+    <p>Resisquare local Laravel application · interactive browser walkthrough + codebase review</p>
+  </div>
+  <div class="wrap">
+    <div class="meta">
+      <div class="card"><h3>Overall score</h3><div class="v">41%</div></div>
+      <div class="card"><h3>Final status</h3><div class="v"><span class="badge fail">Not Ready for Production</span></div></div>
+      <div class="card"><h3>Quality rating</h3><div class="v">Critical</div></div>
+      <div class="card"><h3>Environment</h3><div class="v">Local · Laravel 11</div></div>
+    </div>
+
+    <h2>1. Project Information</h2>
+    <table>
+      <tr><th>Project</th><td>Resisquare (devresi_square)</td></tr>
+      <tr><th>Module under test</th><td>Tenant portal and staff tenancy management</td></tr>
+      <tr><th>Testing date</th><td>2 September 2026</td></tr>
+      <tr><th>Tester</th><td>Cursor Agent (interactive browser + codebase)</td></tr>
+      <tr><th>Base URL</th><td>http://127.0.0.1:8000</td></tr>
+      <tr><th>Tenant landing URL</th><td>http://127.0.0.1:8000/admin/home</td></tr>
+      <tr><th>Staff tenancies URL</th><td>http://127.0.0.1:8000/admin/tenancies</td></tr>
+      <tr><th>Browser used</th><td>Cursor IDE browser (Chromium)</td></tr>
+      <tr><th>Test account</th><td>Spatie role Tenant · email tenant@resisquare.test (staging seeder user, account 19)</td></tr>
+      <tr><th>Database</th><td>MySQL resisquare_laravel_webdeveloper</td></tr>
+    </table>
+    <p class="note">Interactive window: Cursor Simple Browser tab (opened visibly for this audit). Tenant home after login is <code>/admin/home</code>. Laravel Debugbar is the black bar at the bottom of local pages (APP_DEBUG=true). It is not the tenant product UI.</p>
+
+    <h2>2. Testing Summary</h2>
+    <table>
+      <thead><tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Functional Testing</td><td>14</td><td>6</td><td>8</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Security Testing</td><td>6</td><td>3</td><td>3</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>UI/UX Testing</td><td>6</td><td>1</td><td>5</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Performance Testing</td><td>3</td><td>1</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>SEO Testing</td><td>2</td><td>0</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Content Testing</td><td>4</td><td>1</td><td>3</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Compatibility Testing</td><td>1</td><td>1</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>API Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+        <tr><td>Database Testing</td><td>4</td><td>2</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Production / Deployment Testing</td><td>2</td><td>1</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+      </tbody>
+    </table>
+
+    <h2>3. Functional Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>FT-001</td><td>Tenant users</td><td>Tenant-role users exist in the database</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-002</td><td>Login</td><td>Login as tenant@resisquare.test after checking Remember Me</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-003</td><td>Login</td><td>Submit login without checking Remember Me</td><td><span class="badge fail">Fail</span></td><td>High</td><td>resources/views/frontend/login.blade.php → Remember Me checkbox → Remove the required attribute. Remember Me must be optional.</td></tr>
+        <tr><td>FT-004</td><td>Tenant home</td><td>Tenant is redirected to /admin/home with welcome copy</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-005</td><td>Properties</td><td>Tenant sees the property for their active tenancy</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>Property 37 is soft-deleted while tenancy 15 remains Active. PropertyController.php → index() tenant branch only queries non-deleted properties. Restore or unlink the property, or treat deleted properties as inactive tenancies.</td></tr>
+        <tr><td>FT-006</td><td>Contacts</td><td>Sidebar Contacts opens a usable contact view</td><td><span class="badge fail">Fail</span></td><td>High</td><td>aside2.blade.php shows Contacts via view contacts; admin.users.index is behind not.portal and returns 403. Hide Contacts for Tenant or provide a tenant-safe profile route.</td></tr>
+        <tr><td>FT-007</td><td>Repair</td><td>Repair Issues list loads for the tenant</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-008</td><td>Repair</td><td>Repair row shows the linked property name</td><td><span class="badge fail">Fail</span></td><td>High</td><td>Issue list showed “Property not found” because property 37 is soft-deleted. Align repair/tenancy records when a property is deleted.</td></tr>
+        <tr><td>FT-009</td><td>Statement</td><td>Header My Statement opens a statement</td><td><span class="badge fail">Fail</span></td><td>High</td><td>CustomerStatementController.php → show() → Property::find(37) is null after soft-delete, so financePropertyIds is empty and the page 403s. Include trashed properties or hide the header link when no finance properties exist.</td></tr>
+        <tr><td>FT-010</td><td>Dashboard</td><td>GET /admin/dashboard as Tenant redirects to home</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-011</td><td>Tenancies</td><td>GET /admin/tenancies/14 (other account) is denied</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-012</td><td>Tenancies</td><td>Tenant cannot open staff tenancy list or create form</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>TenancyController.php → all()/create() have no authorize() or not.portal middleware. Tenant opened /admin/tenancies and /admin/tenancies/create. Restrict to manage tenancies.</td></tr>
+        <tr><td>FT-013</td><td>Tenancies</td><td>Tenant tenancy detail is a tenant-safe read-only view</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>resources/views/backend/tenancies/show.blade.php is a raw fragment (no layout) with Right to rent Save and Record &amp; notify. Do not expose staff notice/RTR tools to Tenant.</td></tr>
+        <tr><td>FT-014</td><td>Sales Offer</td><td>Tenant sidebar does not include staff Sales Offer</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td>aside2.blade.php → Sales Offer is gated by view properties, which Tenant has. Narrow the canany check or exclude Tenant.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4. Bug / Issue Report</h2>
+    <table>
+      <thead><tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>BUG-001</td><td>Tenancies</td><td>Authenticated Tenant can load staff tenancy list, create form (including Quick Add New Tenant), show page with notice/RTR actions, and rent ledger URLs. Cross-account records are blocked; same-account staff functions are not.</td><td><span class="badge crit">Critical</span></td><td><span class="badge open">Open</span></td><td>TenancyController.php and routes/backend.php tenancies group → Add authorize('manage tenancies') or not.portal middleware. Tenant should only see their own lease summary.</td></tr>
+        <tr><td>BUG-002</td><td>Login</td><td>Remember Me is a required checkbox. Native HTML validation blocked login until it was checked via script.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>resources/views/frontend/login.blade.php → remember input → drop required.</td></tr>
+        <tr><td>BUG-003</td><td>Tenancy / Property</td><td>Active tenancy 15 still points at soft-deleted property 37. Tenant properties list is empty; tenancy table shows Property N/A; repairs show Property not found; statements 403.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>When a property is deleted, archive related tenancies or block delete while Active tenancies exist. PropertyController.php tenant query should surface this state instead of a landlord empty-state (“No properties yet”).</td></tr>
+        <tr><td>BUG-004</td><td>Contacts</td><td>Tenant has view contacts so Contacts appears in the sidebar, but /admin/users is forbidden: “Portal users cannot access this module.”</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>aside2.blade.php Contacts block → exclude Tenant, or add a tenant profile page that is not behind not.portal.</td></tr>
+        <tr><td>BUG-005</td><td>Statement</td><td>My Statement in the header 403s for this tenant because the only accessible property is soft-deleted.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>CustomerStatementController.php → show() → handle missing/deleted properties; hide the header link when there is nothing to show.</td></tr>
+        <tr><td>BUG-006</td><td>Tenancies UI</td><td>create.blade.php and show.blade.php do not @extend the backend layout. Direct URL access renders an unstyled fragment.</td><td><span class="badge med">Medium</span></td><td><span class="badge open">Open</span></td><td>Those views are fragments for embedding. If kept, abort direct access for roles that are not staff, or wrap them in the layout for full-page use.</td></tr>
+        <tr><td>BUG-007</td><td>Sidebar</td><td>Sales Offer is visible to Tenant because it shares the view properties permission.</td><td><span class="badge med">Medium</span></td><td><span class="badge open">Open</span></td><td>aside2.blade.php → Sales Offer @canany → exclude Tenant/Contractor the same way Dashboard is excluded.</td></tr>
+        <tr><td>BUG-008</td><td>Login</td><td>Sign Up links to route register.post (POST) instead of the GET register form.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>resources/views/frontend/login.blade.php → Sign Up href → route('register').</td></tr>
+        <tr><td>BUG-009</td><td>Login</td><td>Public login document title is “Backend Dashboard”.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>frontend.layout.app / page title → use Login for the login view.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. Security Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Security Check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>ST-001</td><td>Login form includes CSRF token</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>ST-002</td><td>Cross-account tenancy IDOR (/admin/tenancies/14)</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>ST-003</td><td>Tenant authorization on staff tenancy CRUD</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>TenancyController.php has no authorize() calls. routes/backend.php tenancies routes are not behind not.portal. Confirmed Tenant can open list, create, show, and rent-ledger URLs on their account.</td></tr>
+        <tr><td>ST-004</td><td>Portal users blocked from contacts index</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>ST-005</td><td>Debug mode / Debugbar on tenant pages</td><td><span class="badge fail">Fail</span></td><td>High</td><td>.env APP_DEBUG=true exposes Debugbar (queries, session, gates) on /login and /admin/home. Acceptable only for local. Must be off in shared/staging/production.</td></tr>
+        <tr><td>ST-006</td><td>SQL injection (Eloquent queries in tenant property/tenancy paths)</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>ST-007</td><td>XSS / file upload / rate limiting / HTTPS</td><td><span class="badge nt">Not Tested</span></td><td>-</td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>6. UI/UX Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>UX-001</td><td>Tenant home</td><td>Welcome screen renders with name Tina</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-002</td><td>Navigation</td><td>Home copy says Properties, Contacts, or Repair; sidebar also has Sales Offer; Contacts 403s</td><td><span class="badge fail">Fail</span></td><td>resources/views/backend/tenant/home.blade.php and aside2.blade.php → align menu with routes tenants can actually use.</td></tr>
+        <tr><td>UX-003</td><td>Properties empty state</td><td>Shows landlord copy “No properties yet. Get started by adding your first property.”</td><td><span class="badge fail">Fail</span></td><td>property-list.blade.php empty state → tenant-specific message (controller already has one that this list UI overrode).</td></tr>
+        <tr><td>UX-004</td><td>Tenancy show/create</td><td>Unstyled fragment, missing chrome</td><td><span class="badge fail">Fail</span></td><td>See BUG-006.</td></tr>
+        <tr><td>UX-005</td><td>Login</td><td>Login button sat below the Debugbar; first click hit Remember Me</td><td><span class="badge fail">Fail</span></td><td>Disable Debugbar overlapping the form, or keep the submit button in the first viewport.</td></tr>
+        <tr><td>UX-006</td><td>Repair</td><td>Full staff repair chrome (status filters, lockbox access details) shown to tenant</td><td><span class="badge fail">Fail</span></td><td>PropertyRepairController / repair views → tenant-safe subset of fields and actions.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>7. Performance Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>PF-001</td><td>Login GET</td><td>Debugbar reported ~383ms, 3 queries</td><td><span class="badge pass">Pass</span></td><td>Low</td><td>-</td></tr>
+        <tr><td>PF-002</td><td>Tenant home</td><td>Debugbar reported ~1.72s, 31 queries, 31 gates</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td>aside2.blade.php runs billing/account queries on a blank home. Slim the tenant layout.</td></tr>
+        <tr><td>PF-003</td><td>Repair list</td><td>Debugbar reported ~2.85s, 75 queries, 120 models</td><td><span class="badge fail">Fail</span></td><td>High</td><td>PropertyRepairController.php issue-list → eager-load relations; tenant view should not hydrate staff assignment graphs by default.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>8. SEO Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>SEO Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>SEO-001</td><td>Public login page title</td><td><span class="badge fail">Fail</span></td><td>Title is “Backend Dashboard”. Set a Login title on frontend.login.</td></tr>
+        <tr><td>SEO-002</td><td>Authenticated tenant pages indexability</td><td><span class="badge fail">Fail</span></td><td>Not verified robots/canonical. Tenant pages are behind auth; still should not be titled as a generic dashboard.</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Sitemap, Open Graph, and structured data were not applicable to this authenticated-module pass.</p>
+
+    <h2>9. Content Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Content Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>CT-001</td><td>Resisquare branding on login</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>CT-002</td><td>Remember Me treated as mandatory</td><td><span class="badge fail">Fail</span></td><td>See BUG-002.</td></tr>
+        <tr><td>CT-003</td><td>Sign Up destination</td><td><span class="badge fail">Fail</span></td><td>See BUG-008.</td></tr>
+        <tr><td>CT-004</td><td>Tenant home vs actual menu</td><td><span class="badge fail">Fail</span></td><td>home.blade.php copy omits Sales Offer and over-promises Contacts.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>10. Browser &amp; Device Testing</h2>
+    <table>
+      <thead><tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>Chrome Desktop (Cursor IDE browser)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>Firefox Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Edge Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Safari</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Android Mobile</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>iPhone</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Tablet</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>11. API Testing</h2>
+    <p>Not Tested — this run used browser and database access, not a dedicated API suite.</p>
+
+    <h2>12. Database Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>DB-001</td><td>Users with Spatie role Tenant exist (7 rows)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DB-002</td><td>tenant_members (9) and tenancies (7) exist</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DB-003</td><td>Active tenancy remains after property soft-delete</td><td><span class="badge fail">Fail</span></td><td>Tenancy 15 / property 37 / deleted_at 2026-08-28. Add a constraint or archive hook.</td></tr>
+        <tr><td>DB-004</td><td>account_users.can_login for older tenant memberships 156/157 is empty</td><td><span class="badge fail">Fail</span></td><td>AccountUser rows 15 and 16 on account 18 have blank can_login. Backfill boolean values so portal access is explicit.</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Tenant-role users found: umair3.makent@gmail.com, umair4.makent@gmail.com, tenant@resisquare.test, alex.tenant.20260901@gmail.com, plus three onboarding-test invite/existing/skip addresses. Walkthrough used the staging SaaS tenant only. Passwords are not recorded in this report.</p>
+
+    <h2>13. Production / Deployment Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>DP-001</td><td>Local app reachable at http://127.0.0.1:8000</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DP-002</td><td>APP_DEBUG / Debugbar</td><td><span class="badge fail">Fail</span></td><td>Local only. Do not ship APP_DEBUG=true. Tenant pages leaked query/gate counts in the footer.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>14. Overall Score</h2>
+    <table>
+      <thead><tr><th>Category</th><th>Weight</th><th>Passed / Applicable</th><th>Score</th></tr></thead>
+      <tbody>
+        <tr><td>Functional</td><td>30%</td><td>6 / 14</td><td>43%</td></tr>
+        <tr><td>Security</td><td>20%</td><td>3 / 6</td><td>50%</td></tr>
+        <tr><td>UI/UX</td><td>15%</td><td>1 / 6</td><td>17%</td></tr>
+        <tr><td>Performance</td><td>15%</td><td>1 / 3</td><td>33%</td></tr>
+        <tr><td>SEO</td><td>10%</td><td>0 / 2</td><td>0%</td></tr>
+        <tr><td>Compatibility</td><td>5%</td><td>1 / 1</td><td>100%</td></tr>
+        <tr><td>Content</td><td>5%</td><td>1 / 4</td><td>25%</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Weighted overall score: 41%</strong> (0.30×43 + 0.20×50 + 0.15×17 + 0.15×33 + 0.10×0 + 0.05×100 + 0.05×25). API testing was excluded from the weight. Unresolved Critical authorization defect overrides any higher score.</p>
+
+    <h2>15. Final Status</h2>
+    <p><strong>Final Status:</strong> Not Ready for Production</p>
+    <p><strong>Recommendation:</strong> Tenant login and home routing work, and cross-account tenancy IDs are blocked. The tenant portal is still not a closed product: staff tenancy create/show/list URLs are reachable, Contacts and My Statement 403 from header/sidebar links, and the only staging tenancy hangs off a deleted property so Properties is empty. Fix authorization on TenancyController, make Remember Me optional, and repair tenancy/property lifecycle before treating this module as ready. Retesting is required.</p>
+
+    <h2>16. Testing Limitations</h2>
+    <ul>
+      <li>Only Chromium inside Cursor was used. No Firefox, Safari, or mobile viewports.</li>
+      <li>Only one tenant login was exercised (staging seeder). Other tenant emails were counted, not logged in.</li>
+      <li>Create-tenancy Save was not submitted, to avoid writing extra tenancy rows.</li>
+      <li>Password reset, file uploads, payments, and email delivery were not tested.</li>
+      <li>Staff-side tenancy CRUD (as Landlord/Admin) was not walked in this run.</li>
+      <li>Debugbar timings are local-dev measurements, not production SLAs.</li>
+      <li>No previous QA report was supplied; this is a baseline.</li>
+    </ul>
+
+    <footer>Report generated 2 September 2026 · Resisquare tenant module · software-testing-report.html</footer>
+  </div>
+</body>
+</html>

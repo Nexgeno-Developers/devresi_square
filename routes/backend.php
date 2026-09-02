@@ -19,6 +19,7 @@ use App\Http\Controllers\Backend\InvoiceController;
 use App\Http\Controllers\Backend\JobTypeController;
 use App\Http\Controllers\Backend\TenancyController;
 use App\Http\Controllers\Backend\TenancyNoticeController;
+use App\Http\Controllers\Backend\TenantPortalController;
 use App\Http\Controllers\Backend\WebsiteController;
 use App\Http\Controllers\Backend\NoteTypeController;
 use App\Http\Controllers\Backend\PropertyController;
@@ -155,10 +156,15 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])
         ->middleware(['current.account', 'account.status'])
         ->name('backend.dashboard');
-    // Tenant home — blank landing page after login
-    Route::get('/home', function () {
-        return view('backend.tenant.home');
-    })->middleware('current.account')->name('backend.home');
+    Route::get('/home', [TenantPortalController::class, 'home'])
+        ->middleware('current.account')
+        ->name('backend.home');
+    Route::middleware(['current.account', 'account.status'])->group(function () {
+        Route::get('/portal/tenancy', [TenantPortalController::class, 'tenancy'])->name('tenant.tenancy');
+        Route::get('/portal/rent', [TenantPortalController::class, 'rent'])->name('tenant.rent');
+        Route::get('/portal/maintenance', [TenantPortalController::class, 'maintenance'])->name('tenant.maintenance');
+        Route::get('/portal/documents', [TenantPortalController::class, 'documents'])->name('tenant.documents');
+    });
     // Route::get('/dashboard', [DashboardController::class, 'dashboard'])->middleware('can:view-dashboard')->name('backend.dashboard');
 
     Route::prefix('saas')->name('backend.saas.')->middleware(['auth', 'role:Super Admin'])->group(function () {
@@ -353,24 +359,24 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::post('/update-main/{id}', 'updateMain')->name('updateMain');  // Update main owner group
         });
 
-        // Tenancy
-        Route::prefix('tenancies')->name('tenancies.')->controller(TenancyController::class)->group(function () {
-            Route::get('/create', 'create')->name('create');  // Show create form
-            Route::post('/store', 'store')->name('store');  // Store new tenancy
-            Route::get('/{id}/rent-ledger', 'rentLedger')->name('rent-ledger');
-            Route::get('/{id}', 'show')->name('show');  // Show individual tenancy
-            Route::get('/{id}/edit', 'edit')->name('edit');  // Show edit form
-            Route::post('/{id}/update', 'update')->name('update');  // Update tenancy
-            Route::post('/{id}/delete', 'destroy')->name('delete');  // Delete tenancy
-            Route::put('/{tenancy}/members/{member}/right-to-rent', 'updateRightToRent')->name('right-to-rent.update');
-        });
-        Route::post('/tenancies/{tenancy}/notices', [TenancyNoticeController::class, 'store'])
-            ->name('tenancies.notices.store');
+        // Tenancy (staff management — not the tenant portal)
+        Route::middleware('tenancy.manage')->group(function () {
+            Route::prefix('tenancies')->name('tenancies.')->controller(TenancyController::class)->group(function () {
+                Route::get('/create', 'create')->name('create');  // Show create form
+                Route::post('/store', 'store')->name('store');  // Store new tenancy
+                Route::get('/{id}/rent-ledger', 'rentLedger')->name('rent-ledger');
+                Route::get('/{id}', 'show')->name('show');  // Show individual tenancy
+                Route::get('/{id}/edit', 'edit')->name('edit');  // Show edit form
+                Route::post('/{id}/update', 'update')->name('update');  // Update tenancy
+                Route::post('/{id}/delete', 'destroy')->name('delete');  // Delete tenancy
+                Route::put('/{tenancy}/members/{member}/right-to-rent', 'updateRightToRent')->name('right-to-rent.update');
+            });
+            Route::post('/tenancies/{tenancy}/notices', [TenancyNoticeController::class, 'store'])
+                ->name('tenancies.notices.store');
 
-        // Keeping this route separate since it follows a different URL structure
-        Route::get('/properties/{propertyId}/tenancies', [TenancyController::class, 'index'])->name('tenancies.index');
-        // Global tenancies listing
-        Route::get('/tenancies', [TenancyController::class, 'all'])->name('tenancies.all');
+            Route::get('/properties/{propertyId}/tenancies', [TenancyController::class, 'index'])->name('tenancies.index');
+            Route::get('/tenancies', [TenancyController::class, 'all'])->name('tenancies.all');
+        });
 
         // Offer
         Route::prefix('offers')->name('offers.')->controller(OfferController::class)->group(function () {

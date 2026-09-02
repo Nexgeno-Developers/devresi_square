@@ -286,7 +286,7 @@ class LandlordOnboardingService
      * @param  array{name: string, email: string, phone?: string}  $tenant
      * @return array<string, mixed>
      */
-    public function saveTenancy(Account $account, User $landlord, array $tenant): array
+    public function saveTenancy(Account $account, User $landlord, array $tenant, bool $sendInvite = true): array
     {
         $property = $this->requireProperty($account);
         $name = trim((string) ($tenant['name'] ?? ''));
@@ -299,7 +299,9 @@ class LandlordOnboardingService
             ]);
         }
 
-        $tenancy = DB::transaction(function () use ($account, $landlord, $property, $name, $email, $phone) {
+        $wasNew = User::query()->where('email', $email)->doesntExist();
+
+        [$tenancy, $user] = DB::transaction(function () use ($account, $landlord, $property, $name, $email, $phone) {
             Tenancy::query()
                 ->where('property_id', $property->id)
                 ->where('status', 'Active')
@@ -327,25 +329,77 @@ class LandlordOnboardingService
                 'term_months' => 12,
             ]);
 
-            TenantMember::create([
-                'account_id' => $account->id,
-                'tenancy_id' => $tenancy->id,
-                'user_id' => $user->id,
-                'is_main_person' => true,
-                'group_id' => 'GROUP_'.$tenancy->id,
-                'can_login' => (bool) $user->accountUsers()->where('account_id', $account->id)->value('can_login'),
-            ]);
+            TenantMember::query()->firstOrCreate(
+                [
+                    'account_id' => $account->id,
+                    'tenancy_id' => $tenancy->id,
+                    'user_id' => $user->id,
+                ],
+                [
+                    'is_main_person' => true,
+                    'group_id' => 'GROUP_'.$tenancy->id,
+                    'can_login' => (bool) $user->accountUsers()->where('account_id', $account->id)->value('can_login'),
+                ]
+            );
 
-            $this->sendTenantWelcome($user, $property);
-
-            return $tenancy;
+            return [$tenancy, $user];
         });
+
+        $invite = [
+            'invited' => $sendInvite,
+            'sent' => false,
+            'error' => null,
+        ];
+
+        if ($sendInvite) {
+            $mail = $this->sendTenantInvite($account, $user, $property, $wasNew);
+            $invite['sent'] = $mail['sent'];
+            $invite['error'] = $mail['error'];
+        }
 
         return [
             'id' => $tenancy->id,
             'name' => $name,
             'email' => $email,
             'phone' => $phone,
+            'invited' => $invite['invited'],
+            'sent' => $invite['sent'],
+            'error' => $invite['error'],
+        ];
+    }
+
+    /**
+     * @return array{id: int, name: ?string, email: ?string, phone: ?string}|null
+     */
+    public function latestOnboardingTenancy(Account $account): ?array
+    {
+        $property = $this->onboardingProperty($account);
+
+        if (! $property) {
+            return null;
+        }
+
+        $tenancy = Tenancy::query()
+            ->where('account_id', $account->id)
+            ->where('property_id', $property->id)
+            ->latest('id')
+            ->first();
+
+        if (! $tenancy) {
+            return null;
+        }
+
+        $member = TenantMember::query()
+            ->where('tenancy_id', $tenancy->id)
+            ->orderByDesc('is_main_person')
+            ->first();
+        $tenant = $member ? User::query()->find($member->user_id) : null;
+
+        return [
+            'id' => $tenancy->id,
+            'name' => $tenant?->name,
+            'email' => $tenant?->email,
+            'phone' => $tenant?->phone,
         ];
     }
 
@@ -566,43 +620,63 @@ class LandlordOnboardingService
         );
     }
 
-    private function sendTenantWelcome(User $user, Property $property): void
+    /**
+     * @return array{sent: bool, error: ?string}
+     */
+    private function sendTenantInvite(Account $account, User $user, Property $property, bool $wasNew): array
     {
+        if (! $this->limits->canUseContactLogin($account)) {
+            return [
+                'sent' => false,
+                'error' => 'Tenant login is not included on this plan.',
+            ];
+        }
+
         try {
-            $plainPassword = Str::random(10);
-            $user->update(['password' => Hash::make($plainPassword)]);
-            $resetLink = $user->createResetLink();
             $address = trim(implode(', ', array_filter([
                 $property->line_1,
                 $property->city,
                 $property->postcode,
             ])));
+            $resetLink = $wasNew ? $user->createResetLink() : '';
+            $loginUrl = url('/login');
 
             $placeholders = [
                 'tenant_name' => $user->name ?? $user->email,
                 'tenant_email' => $user->email,
-                'tenant_password' => $plainPassword,
+                'tenant_password' => 'Set via the link below',
                 'property_name' => $property->prop_name ?: $property->line_1,
                 'property_address' => $address !== '' ? $address : '—',
                 'move_in_date' => now()->toFormattedDateString(),
                 'rent' => '—',
                 'reset_link' => $resetLink,
-                'login_url' => url('/admin/login'),
+                'login_url' => $loginUrl,
                 'crm_name' => config('app.name'),
                 'admin_email' => config('mail.from.address'),
             ];
 
-            $template = EmailTemplate::getByIdentifier('tenant_account_created');
+            if ($wasNew) {
+                $template = EmailTemplate::getByIdentifier('tenant_account_created');
+                $subject = 'Welcome to '.config('app.name').' — set your password';
+                $fallback = '<p>Hi '.e($placeholders['tenant_name']).',</p>'
+                    .'<p>Your landlord has set up a tenancy for '.e($placeholders['property_address']).'.</p>'
+                    .'<p>Email: '.e($placeholders['tenant_email']).'</p>'
+                    .'<p><a href="'.e($resetLink).'">Set your password</a> to access your account.</p>';
+                $rawKeys = ['reset_link', 'login_url'];
+            } else {
+                $template = EmailTemplate::getByIdentifier('tenant_welcome');
+                $subject = 'Your tenancy at '.$placeholders['property_name'];
+                $fallback = '<p>Hi '.e($placeholders['tenant_name']).',</p>'
+                    .'<p>You have been added as a tenant at '.e($placeholders['property_address']).'.</p>'
+                    .'<p><a href="'.e($loginUrl).'">Log in</a> to view your tenancy.</p>';
+                $rawKeys = ['login_url'];
+            }
 
             if ($template) {
-                $renderedHtml = $template->replace($placeholders, ['reset_link', 'login_url']);
+                $renderedHtml = $template->replace($placeholders, $rawKeys);
                 $subject = render_template($template->subject, $placeholders);
             } else {
-                $subject = 'Welcome to '.config('app.name').' — Your tenant account';
-                $renderedHtml = '<p>Hi '.e($placeholders['tenant_name']).',</p>'
-                    .'<p>Your landlord has set up a tenancy for '.e($placeholders['property_address']).'.</p>'
-                    .'<p>Email: '.e($placeholders['tenant_email']).' | Password: <strong>'.e($placeholders['tenant_password']).'</strong></p>'
-                    .'<p><a href="'.e($placeholders['login_url']).'">Log in</a> or <a href="'.e($resetLink).'">choose a password</a>.</p>';
+                $renderedHtml = $fallback;
             }
 
             Mail::to($user->email)->send(new MailManager([
@@ -610,11 +684,15 @@ class LandlordOnboardingService
                 'content' => $renderedHtml,
                 'attachments' => [],
             ]));
+
+            return ['sent' => true, 'error' => null];
         } catch (\Throwable $exception) {
-            Log::error('Landlord onboarding tenant welcome email failed: '.$exception->getMessage(), [
+            Log::error('Landlord onboarding tenant invite email failed: '.$exception->getMessage(), [
                 'email' => $user->email,
                 'user_id' => $user->id,
             ]);
+
+            return ['sent' => false, 'error' => $exception->getMessage()];
         }
     }
 

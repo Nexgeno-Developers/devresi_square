@@ -58,6 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'not.portal' => \App\Http\Middleware\DenyPortalUsers::class,
             'account.status' => \App\Http\Middleware\AccountStatusGuard::class,
             'landlord.restricted' => \App\Http\Middleware\RestrictLandlordRoutes::class,
+            'tenancy.manage' => \App\Http\Middleware\RestrictTenancyManagement::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

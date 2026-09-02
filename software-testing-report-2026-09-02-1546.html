@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Landlord, Tenant, Admin Modules — Resisquare</title>
+  <style>
+    :root {
+      --ink: #1a1d23;
+      --muted: #5c6570;
+      --line: #d8dde3;
+      --bg: #f4f6f8;
+      --card: #fff;
+      --pass: #1b7a4a;
+      --pass-bg: #e7f6ee;
+      --fail: #b42318;
+      --fail-bg: #fdecea;
+      --high: #c2410c;
+      --med: #b45309;
+      --nt: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.5; }
+    .header { background: #1a1d23; color: #fff; padding: 32px 24px; }
+    .header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 650; }
+    .header p { margin: 0; color: #c5ccd4; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: -40px; margin-bottom: 24px; }
+    .card { background: var(--card); border: 1px solid var(--line); padding: 16px; }
+    .card h3 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .card .v { font-size: 20px; font-weight: 650; }
+    .badge { display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 650; }
+    .pass { background: var(--pass-bg); color: var(--pass); }
+    .fail { background: var(--fail-bg); color: var(--fail); }
+    .nt { background: #eef1f4; color: var(--nt); }
+    .high { background: #fff4e5; color: var(--high); }
+    .med { background: #fffbeb; color: var(--med); }
+    h2 { font-size: 18px; margin: 32px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 13px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #eef1f4; font-weight: 650; }
+    tbody tr:nth-child(even) { background: #fafbfc; }
+    code { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+    .note { color: var(--muted); font-size: 14px; }
+    footer { color: var(--muted); font-size: 12px; margin: 40px 0 12px; }
+    @media (max-width: 700px) { table { display: block; overflow-x: auto; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Software Testing Report — Landlord, Tenant, Admin</h1>
+    <p>Resisquare · module map + codebase review · tenant portal browser-verified this session</p>
+  </div>
+  <div class="wrap">
+    <div class="meta">
+      <div class="card"><h3>Coverage type</h3><div class="v">Module status</div></div>
+      <div class="card"><h3>Tenant</h3><div class="v"><span class="badge pass">Portal live</span></div></div>
+      <div class="card"><h3>Landlord / Admin</h3><div class="v"><span class="badge high">In progress</span></div></div>
+      <div class="card"><h3>Date</h3><div class="v">2 Sep 2026</div></div>
+    </div>
+
+    <h2>1. Project Information</h2>
+    <table>
+      <tr><th>Project</th><td>Resisquare (devresi_square)</td></tr>
+      <tr><th>Scope</th><td>Landlord workspace, tenant occupant portal, Super Admin platform</td></tr>
+      <tr><th>Testing date</th><td>2 September 2026</td></tr>
+      <tr><th>Method</th><td>Codebase + feature tests + local MySQL counts. Tenant portal walked in Cursor browser. Landlord and Super Admin dashboards were not fully re-walked in the browser for this report.</td></tr>
+      <tr><th>Base URL</th><td>http://127.0.0.1:8000</td></tr>
+      <tr><th>Database snapshot</th><td>60 Landlord users · 11 Tenant users · 2 Super Admin · 62 landlord-type accounts · 26 properties · 7 tenancies</td></tr>
+    </table>
+
+    <h2>2. What each module is</h2>
+    <table>
+      <thead><tr><th>Module</th><th>Actor</th><th>Entry</th><th>Job</th><th>Must not do</th><th>Readiness</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Admin</td>
+          <td>Super Admin</td>
+          <td><code>/admin/dashboard</code></td>
+          <td>Plans, accounts, subscriptions, registrations, login-as</td>
+          <td>Casually edit customer property/tenancy data without an audited support path</td>
+          <td><span class="badge high">In progress</span></td>
+        </tr>
+        <tr>
+          <td>Landlord</td>
+          <td>Paying workspace owner</td>
+          <td><code>/admin/dashboard</code></td>
+          <td>Properties, occupier invite, tenancies, repairs, invoices, documents</td>
+          <td>SaaS of other customers; roles; branches; SMTP; full GL unless entitled</td>
+          <td><span class="badge high">In progress</span></td>
+        </tr>
+        <tr>
+          <td>Tenant</td>
+          <td>Occupier on a tenancy</td>
+          <td><code>/admin/home</code></td>
+          <td>Own lease, rent billed to them, repairs, shared files, profile</td>
+          <td>Create tenancies, contacts, sales offers, notices, other tenants</td>
+          <td><span class="badge pass">Portal live</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="note">All three still share one admin Blade shell. Boundaries are role middleware and <code>@if</code> role checks, not three apps.</p>
+
+    <h2>3. What is wired</h2>
+    <table>
+      <thead><tr><th>Capability</th><th>Admin</th><th>Landlord</th><th>Tenant</th></tr></thead>
+      <tbody>
+        <tr><td>Own dashboard</td><td>Yes — SaaS metrics in <code>DashboardController::superAdminDashboard()</code></td><td>Yes — account dashboard</td><td>Yes — portal home</td></tr>
+        <tr><td>Onboarding</td><td>N/A</td><td>Overlay + Chimnie search + Property Passport wizard</td><td>Invite / welcome only</td></tr>
+        <tr><td>Properties</td><td>Cross-account if Super Admin</td><td>Own created properties (often <code>created_by</code>)</td><td>Address on My Tenancy only</td></tr>
+        <tr><td>Staff tenancy CRUD</td><td>If permitted</td><td>If permitted; MVP blocks SaaS not tenancies</td><td>Forbidden (<code>tenancy.manage</code>)</td></tr>
+        <tr><td>Rent / invoices</td><td>Accounting module</td><td><code>admin.accounting.*</code> blocked for Landlord role</td><td>Own invoices on Rent &amp; Payments</td></tr>
+        <tr><td>Maintenance</td><td>Full repair workspace</td><td>Full repair tree in sidebar</td><td>Status list + report issue</td></tr>
+        <tr><td>Documents</td><td>Workspace docs</td><td>Property documents</td><td>Shared / portal visibility</td></tr>
+        <tr><td>Resisquare billing</td><td>Plans, accounts, Stripe admin</td><td>Own Billing &amp; Plan if membership allows</td><td>No</td></tr>
+        <tr><td>Registrations</td><td>Yes</td><td>Blocked via <code>landlord_mvp</code></td><td>No</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4. Functional findings (honest coverage)</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>FT-001</td><td>Tenant</td><td>Portal home, My Tenancy, Rent, Maintenance, Documents load for Tenant</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-002</td><td>Tenant</td><td>Staff tenancy list/create URLs return 403</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-003</td><td>Tenant</td><td>Sidebar hides Properties, Sales Offer, Contacts</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-004</td><td>Login</td><td>Remember Me is optional</td><td><span class="badge fail">Fail</span></td><td>High</td><td><code>resources/views/frontend/login.blade.php</code> — remove <code>required</code> on Remember Me.</td></tr>
+        <tr><td>FT-005</td><td>Tenant</td><td>Active tenancy with soft-deleted property still surfaces</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td>Align property delete with tenancy lifecycle; portal currently uses <code>withTrashed()</code> so the lease still shows.</td></tr>
+        <tr><td>FT-006</td><td>Landlord</td><td>MVP prefixes (accounting, SaaS, registrations, branches, roles, staff, SMTP) blocked for Landlord-only users</td><td><span class="badge pass">Pass</span></td><td>High</td><td>Code-reviewed in <code>RestrictLandlordRoutes</code> + <code>config/landlord_mvp.php</code>. Full browser walk Not Tested this run.</td></tr>
+        <tr><td>FT-007</td><td>Landlord</td><td>Property list scoped to workspace membership, not only created_by</td><td><span class="badge fail">Fail</span></td><td>High</td><td><code>PropertyController</code> landlord branch still tends to filter by creator. Co-owners/staff may miss the portfolio.</td></tr>
+        <tr><td>FT-008</td><td>Admin</td><td>SaaS routes require Super Admin</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td><code>routes/backend.php</code> <code>role:Super Admin</code> on <code>backend.saas.*</code>. Login-as / dashboard UI Not Tested in browser this run.</td></tr>
+        <tr><td>FT-009</td><td>Shared</td><td>Debugbar / APP_DEBUG off on shared environments</td><td><span class="badge fail">Fail</span></td><td>High</td><td>Local pages still expose queries and session details. Disable Debugbar anywhere that is not a private machine.</td></tr>
+        <tr><td>FT-010</td><td>Landlord UI</td><td>Full onboarding overlay + wizard in browser</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td>Covered by <code>LandlordOnboardingHttpTest</code> / wizard tests. Re-walk in browser before calling landlord MVP done.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. Suggested next order</h2>
+    <ol>
+      <li>Make Remember Me optional on public login.</li>
+      <li>Scope landlord properties by workspace membership, not only <code>created_by</code>.</li>
+      <li>Align the tenancy menu with a permission landlords actually have, or grant <code>manage tenancies</code> to Landlord.</li>
+      <li>Strip staff-only fields from raise-repair when the actor is Tenant.</li>
+      <li>Turn Debugbar off anywhere that is not a private local machine.</li>
+    </ol>
+
+    <h2>6. Limitations</h2>
+    <p class="note">This is a three-module status report, not a full production QA of every admin screen. Tenant portal was browser-verified after the portal build. Landlord and Super Admin conclusions for this file are from routes, middleware, dashboards, and existing Pest tests. API, SEO, and mobile passes were not re-run.</p>
+
+    <footer>Report file: software-testing-report-2026-09-02-1546.html · Earlier tenant-only audit remains in software-testing-report.html</footer>
+  </div>
+</body>
+</html>

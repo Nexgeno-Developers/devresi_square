@@ -105,11 +105,14 @@ class LandlordOnboardingController extends Controller
             'name' => 'required|string|max:120',
             'email' => 'required|email|max:190',
             'phone' => 'nullable|string|max:40',
+            'invite' => 'sometimes|boolean',
         ]);
+
+        $sendInvite = $request->boolean('invite', true);
 
         return response()->json([
             'ok' => true,
-            'data' => $this->onboarding->saveTenancy($account, $user, $validated),
+            'data' => $this->onboarding->saveTenancy($account, $user, $validated, $sendInvite),
         ]);
     }
 
@@ -117,12 +120,19 @@ class LandlordOnboardingController extends Controller
     {
         [$account, $user] = $this->guard($request);
 
+        $inviteMeta = $request->validate([
+            'invited' => 'sometimes|boolean',
+            'sent' => 'sometimes|boolean',
+            'invite_error' => 'sometimes|nullable|string|max:500',
+        ]);
+
         $this->onboarding->complete($account, $user);
         $account->refresh();
         $property = Property::query()
             ->where('account_id', $account->id)
             ->whereKey($account->onboarding_property_id)
             ->first();
+        $tenancy = $this->onboarding->latestOnboardingTenancy($account);
 
         return response()->json([
             'ok' => true,
@@ -135,6 +145,12 @@ class LandlordOnboardingController extends Controller
                         $property->postcode,
                     ]))),
                 ] : null,
+                'tenancy' => $tenancy,
+                'invite' => [
+                    'invited' => (bool) ($inviteMeta['invited'] ?? false),
+                    'sent' => (bool) ($inviteMeta['sent'] ?? false),
+                    'error' => $inviteMeta['invite_error'] ?? null,
+                ],
                 'counts' => [
                     'properties' => Property::query()->where('account_id', $account->id)->count(),
                     'tenancies' => Tenancy::query()

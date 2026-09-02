@@ -212,15 +212,11 @@ class User extends Authenticatable
     {
         $token = Password::broker()->createToken($this);
 
-        // Generate route with token in the path
         $relative = route('password.reset.form', [
             'token' => $token,
         ], false);
 
-        // Append email as query param manually
-        // $relative .= '?email=' . urlencode($this->email);
-
-        return url($relative);
+        return url($relative).'?email='.urlencode((string) $this->email);
     }
 
     // country relationship

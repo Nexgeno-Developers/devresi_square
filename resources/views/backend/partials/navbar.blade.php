@@ -45,6 +45,8 @@
                     <path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/>
                 </svg>
             </div>
+            @auth
+            @unless(auth()->user()->hasRole('Tenant'))
             <div class="d-flex justify-content-around align-items-center align-items-stretch ml-3">
                 <div class="aiz-topbar-item">
                     <div class="d-flex align-items-center">
@@ -55,6 +57,8 @@
                     </div>
                 </div>
             </div>
+            @endunless
+            @endauth
             @auth
                 @if(session()->has('impersonator_user_id'))
                     <div class="d-flex align-items-center ms-3">
@@ -139,7 +143,7 @@
                 <ul class="navbar-nav ms-auto">               
                     @if (Auth::check())                  
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ route('customer.statements') }}">My Statement</a>
+                            <a class="nav-link" href="{{ Auth::user()->hasRole('Tenant') ? route('tenant.rent') : route('customer.statements') }}">My Statement</a>
                         </li>
                         <li class="nav-item">
                             <form action="{{ route('logout') }}" method="POST" class="d-inline">
