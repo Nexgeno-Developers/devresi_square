@@ -443,11 +443,15 @@ class UserController
             ]);
         }
 
-        // If no users at all, redirect to quick-create
+        // Empty list: show Contacts with a prompt instead of bouncing to create.
         if ($users->isEmpty()) {
-            flash("You don't have any users yet!")->error();
+            $tabs = client_facing_contact_tabs();
+            $tabName = $request->query('tabname', 'Contact');
+            $userId = null;
+            $user = null;
+            $content = '<p class="text-muted mb-0">No contacts yet. Add a contact to get started.</p>';
 
-            return redirect()->route('admin.users.create');
+            return view('backend.users.index', compact('users', 'roles', 'tabs', 'tabName', 'userId', 'user', 'content'));
         }
 
         // Decide which user/tab to show
@@ -497,19 +501,18 @@ class UserController
 
         $this->ensureUserAccessible($user);
 
-        // Define your tab list
-        $tabs = [
-            ['name' => 'Contact'],
-            ['name' => 'Appointments'],
-            ['name' => 'Link'],
-            ['name' => 'Bank'],
-            ['name' => 'Contact Owner'],
-            ['name' => 'Letters'],
-            ['name' => 'Compliance'],
-            ['name' => 'Documents'],
-            ['name' => 'Notes'],
-            ['name' => 'Statement'],
-        ];
+        $tabs = client_facing_contact_tabs();
+
+        $requestedTabIsAllowed = collect($tabs)->contains(
+            fn (array $tab) => strtolower($tab['name']) === strtolower($tabName)
+        );
+        if (! $requestedTabIsAllowed) {
+            return redirect()->route('admin.users.index', array_filter([
+                'user_id' => $user->id,
+                'tabname' => 'Contact',
+                'role' => $role,
+            ]));
+        }
 
         if (strtolower($tabName) === 'statement' && $request->query('format') === 'csv') {
             $filters = $this->statementFilters($request);
@@ -646,7 +649,7 @@ class UserController
      */
     public function create(User $user)
     {
-        abort_unless(auth()->user()?->can('create contacts'), 403);
+        abort_unless(can_create_contacts(auth()->user()), 403);
 
         $roles = Role::whereNotIn('name', ['Staff', 'Super Admin'])->get();
 
@@ -658,7 +661,7 @@ class UserController
 
     public function userStore(Request $request)
     {
-        abort_unless($request->user()?->can('create contacts'), 403);
+        abort_unless(can_create_contacts($request->user()), 403);
 
         // Validate data based on the current step
         if ($request->has('step')) {
@@ -878,7 +881,7 @@ class UserController
 
     public function getQuickStepView($step, Request $request)
     {
-        abort_unless($request->user()?->can('create contacts'), 403);
+        abort_unless(can_create_contacts($request->user()), 403);
 
         // Get user_id from the session or request
         $user_id = $request->user_id;
@@ -902,7 +905,7 @@ class UserController
 
     public function quicklyStoreUser(Request $request)
     {
-        abort_unless($request->user()?->can('create contacts'), 403);
+        abort_unless(can_create_contacts($request->user()), 403);
 
         // Validate incoming request
         $validated = $request->validate([

@@ -9,8 +9,39 @@
             <h1>Repair requests</h1>
             <p>Status of issues you have reported. Quotes, costs and contractor notes stay with the office.</p>
         </div>
-        @if($canRaise)
-            <a class="tp-btn" href="{{ route('admin.property_repairs.create') }}">Report an issue</a>
+        @if($canRaise && $tenancies->isNotEmpty())
+            <form class="tp-card mb-3" method="POST" action="{{ route('tenant.maintenance.store') }}">
+                @csrf
+                <p class="tp-metric-label mb-2">Report an issue</p>
+                @if($tenancies->count() > 1)
+                    <label class="d-block mb-2">
+                        Property
+                        <select name="property_id" class="form-control">
+                            @foreach($tenancies as $tenancy)
+                                @if($tenancy->property)
+                                    <option value="{{ $tenancy->property_id }}">{{ $tenancy->property->full_address ?: $tenancy->property->prop_name }}</option>
+                                @endif
+                            @endforeach
+                        </select>
+                    </label>
+                @else
+                    <input type="hidden" name="property_id" value="{{ $tenancies->first()?->property_id }}">
+                @endif
+                <label class="d-block mb-2">
+                    What needs attention?
+                    <textarea name="description" class="form-control" rows="3" required maxlength="2000" placeholder="Leaking tap in the kitchen…"></textarea>
+                </label>
+                <label class="d-block mb-3">
+                    Priority
+                    <select name="priority" class="form-control">
+                        <option value="medium">Normal</option>
+                        <option value="low">Low</option>
+                        <option value="high">High</option>
+                        <option value="critical">Urgent</option>
+                    </select>
+                </label>
+                <button type="submit" class="tp-btn">Send request</button>
+            </form>
         @endif
     </div>
 

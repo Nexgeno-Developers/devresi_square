@@ -118,6 +118,7 @@
                                                     <i class="fas fa-envelope me-1"></i> Email OTP
                                                 </label>
                                             </div>
+                                            @if($smsOtpAvailable ?? false)
                                             <div class="form-check">
                                                 <input class="form-check-input" type="radio"
                                                        name="verify_via" id="via-phone" value="phone">
@@ -125,7 +126,9 @@
                                                     <i class="fas fa-mobile-alt me-1"></i> Phone OTP
                                                 </label>
                                             </div>
+                                            @endif
                                         </div>
+                                        <div class="form-text">We send the code with your configured email (SMTP) settings.</div>
                                     </div>
 
                                 </div>

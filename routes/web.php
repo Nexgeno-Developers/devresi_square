@@ -86,7 +86,7 @@ Route::group(['middleware' => 'web'], function () {
     Route::post('/password/reset/', [PasswordResetController::class, 'reset'])->name('password.reset');
 
     // Customer self-serve statement
-    Route::middleware(['auth', 'current.account', 'account.status'])->group(function () {
+    Route::middleware(['auth', 'current.account', 'account.status', 'landlord.restricted'])->group(function () {
         Route::get('/customer/statements', [CustomerStatementController::class, 'show'])->name('customer.statements');
     });
 

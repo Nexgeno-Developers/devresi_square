@@ -1,4 +1,4 @@
-@foreach ($users as $user)
+@forelse ($users as $user)
     @php
         $nameParts = array_filter([
             $user['first_name'] ?? '',
@@ -18,7 +18,9 @@
         phone="{{ $user['phone'] }}"
         card-style=""
         user-id="{{ $user['id'] }}" />
-@endforeach
+@empty
+    <p class="text-muted p-3 mb-0">No contacts yet.</p>
+@endforelse
 
 @if($users->hasPages())
     <div class="pagination-wrapper p-3">

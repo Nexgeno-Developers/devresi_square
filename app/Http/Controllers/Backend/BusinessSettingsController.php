@@ -98,6 +98,11 @@ class BusinessSettingsController
     {
         foreach ($request->types as $key => $type) {
             $this->overWriteEnvFile($type, $request[$type]);
+
+            // Laravel 11 reads MAIL_MAILER; the SMTP screen still posts MAIL_DRIVER.
+            if ($type === 'MAIL_DRIVER') {
+                $this->overWriteEnvFile('MAIL_MAILER', $request[$type]);
+            }
         }
 
         flash("Settings updated successfully")->success();

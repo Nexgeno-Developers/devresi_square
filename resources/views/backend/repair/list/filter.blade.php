@@ -12,7 +12,7 @@
             <form method="GET" action="{{ route('admin.property_repairs.index') }}">
                 <select name="status" class="form-select" onchange="this.form.submit()">
                     <option value="">-- Filter by Status --</option>
-                    @foreach(['Pending', 'Reported', 'Under Process', 'Work Completed', 'Invoice Received', 'Invoice Paid', 'Closed'] as $status)
+                    @foreach(client_facing_repair_statuses() as $status)
                         <option value="{{ $status }}" {{ request('status') == $status ? 'selected' : '' }}>
                             {{ $status }}
                         </option>

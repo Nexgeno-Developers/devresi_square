@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Models\User;
+use App\Support\PostLoginRedirect;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,22 +15,7 @@ class AuthenticateController
     public function index()
     {
         if (Auth::check()) {
-            $user = User::find(Auth::id());
-
-            if ($user->hasRole('Tenant')) {
-                return redirect()->route('backend.home');
-            }
-
-            $backendRoles = [
-                'Super Admin', 'Owner', 'Property Manager',
-                'Landlord', 'Staff', 'Estate Agent', 'Agent', 'Test', 'Contractor',
-            ];
-
-            if ($user->hasAnyRole($backendRoles)) {
-                return redirect()->route('backend.dashboard');
-            }
-
-            return redirect()->route('home');
+            return PostLoginRedirect::to(User::find(Auth::id()));
         }
 
         return view('backend.login');
@@ -43,22 +29,7 @@ class AuthenticateController
         ]);
 
         if (Auth::attempt($request->only('email','password'), $request->boolean('remember'))) {
-            $user = User::find(Auth::id());
-
-            if ($user->hasRole('Tenant')) {
-                return redirect()->route('backend.home');
-            }
-
-            $backendRoles = [
-                'Super Admin', 'Owner', 'Property Manager',
-                'Landlord', 'Staff', 'Estate Agent', 'Agent', 'Test', 'Contractor',
-            ];
-
-            if ($user->hasAnyRole($backendRoles)) {
-                return redirect()->route('backend.dashboard');
-            }
-
-            return redirect()->route('home');
+            return PostLoginRedirect::to(User::find(Auth::id()));
         }
 
         return back()

@@ -37,14 +37,6 @@
                             </div>
                         @endif
 
-                        @if(!empty($debugOtp))
-                            <div class="alert alert-warning text-start">
-                                <div class="small text-uppercase fw-semibold mb-1">Local debug only</div>
-                                <div>OTP: <strong class="font-monospace" style="font-size:1.25rem;letter-spacing:4px;">{{ $debugOtp }}</strong></div>
-                                <div class="small mt-1 mb-0 text-muted">Shown because APP_ENV=local and APP_DEBUG=true. Also at <code>/_debug/registration-otp?email=...</code></div>
-                            </div>
-                        @endif
-
                         @if ($errors->any())
                             <div class="alert alert-danger text-start">
                                 @foreach ($errors->all() as $error)

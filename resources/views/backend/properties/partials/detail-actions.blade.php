@@ -44,7 +44,9 @@
             @if($primary !== 'repair')
                 <li><a class="dropdown-item" href="{{ route('admin.property_repairs.create') }}?property_id={{ $property->id }}">Add repair</a></li>
             @endif
+            @unless(is_landlord_plan_user())
             <li><a class="dropdown-item" href="{{ route('admin.properties.brochure', $property->id) }}" target="_blank">Brochure</a></li>
+            @endunless
             @can('delete properties')
                 <li><hr class="dropdown-divider"></li>
                 <li>

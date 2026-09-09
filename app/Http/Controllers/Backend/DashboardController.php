@@ -29,8 +29,11 @@ class DashboardController extends Controller
 
         $user = Auth::user();
 
+        app(\App\Services\Onboarding\LandlordOnboardingService::class)
+            ->syncOverlaySessionForPage($user, current_account(), false);
+
         // Tenants don't have a dashboard — send them to their home page
-        if ($user->hasRole('Tenant')) {
+        if (is_tenant_portal_user($user)) {
             return redirect()->route('backend.home');
         }
 

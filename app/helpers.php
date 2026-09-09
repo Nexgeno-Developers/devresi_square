@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use App\Support\AccountMembership;
+use App\Support\AccountType;
 
 if (!function_exists('getPoundSymbol')) {
     function getPoundSymbol()
@@ -1050,20 +1052,179 @@ if (!function_exists('safeAssignRoles')) {
 
 }
 
+if (! function_exists('current_account_membership')) {
+    /**
+     * Active membership of the current user on the selected SaaS account.
+     */
+    function current_account_membership(?\App\Models\User $user = null): ?\App\Models\AccountUser
+    {
+        $user = $user ?? auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user || ! $accountId) {
+            return null;
+        }
+
+        return $user->accountUsers()
+            ->where('account_id', $accountId)
+            ->where('status', 'active')
+            ->first();
+    }
+}
+
+if (! function_exists('is_landlord_plan_user')) {
+    /**
+     * Paying landlord workspace operator (owner/admin on a landlord account).
+     */
+    function is_landlord_plan_user(?\App\Models\User $user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user || $user->isSuperAdmin()) {
+            return false;
+        }
+
+        $account = current_account();
+        $membership = current_account_membership($user);
+
+        if (! $account || ! $membership) {
+            return false;
+        }
+
+        if (AccountMembership::isLandlordWorkspaceOperator(
+            $membership->member_type,
+            $account->account_type
+        )) {
+            return true;
+        }
+
+        return AccountType::isLandlord($account->account_type)
+            && (int) $account->owner_user_id === (int) $user->id
+            && ! AccountMembership::isTenant($membership->member_type)
+            && $membership->member_type !== AccountMembership::CONTRACTOR;
+    }
+}
+
+if (! function_exists('is_tenant_portal_user')) {
+    function is_tenant_portal_user(?\App\Models\User $user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user || $user->isSuperAdmin()) {
+            return false;
+        }
+
+        $membership = current_account_membership($user);
+
+        return ($membership && AccountMembership::isTenant($membership->member_type))
+            || $user->hasRole('Tenant');
+    }
+}
+
+if (! function_exists('can_view_contacts')) {
+    function can_view_contacts(?\App\Models\User $user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return is_landlord_plan_user($user)
+            || $user->can('view contacts')
+            || $user->can('create contacts')
+            || $user->can('edit contacts')
+            || $user->can('delete contacts');
+    }
+}
+
+if (! function_exists('can_create_contacts')) {
+    function can_create_contacts(?\App\Models\User $user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return is_landlord_plan_user($user) || $user->can('create contacts');
+    }
+}
+
+if (! function_exists('client_facing_contact_tabs')) {
+    /**
+     * Contact file tabs. Paying landlords see people + documents, not agency CRM.
+     *
+     * @return list<array{name: string}>
+     */
+    function client_facing_contact_tabs(?\App\Models\User $user = null): array
+    {
+        $tabs = [
+            ['name' => 'Contact'],
+            ['name' => 'Appointments'],
+            ['name' => 'Link'],
+            ['name' => 'Bank'],
+            ['name' => 'Contact Owner'],
+            ['name' => 'Letters'],
+            ['name' => 'Compliance'],
+            ['name' => 'Documents'],
+            ['name' => 'Notes'],
+            ['name' => 'Statement'],
+        ];
+
+        if (! is_landlord_plan_user($user)) {
+            return $tabs;
+        }
+
+        $keep = ['Contact', 'Link', 'Compliance', 'Documents', 'Notes'];
+
+        return array_values(array_filter(
+            $tabs,
+            fn (array $tab) => in_array($tab['name'], $keep, true)
+        ));
+    }
+}
+
+if (! function_exists('client_facing_property_tabs')) {
+    /**
+     * Property screen tabs for paying landlords.
+     *
+     * @return list<array{name: string}>
+     */
+    function client_facing_property_tabs(): array
+    {
+        return [
+            ['name' => 'Property'],
+            ['name' => 'Owners'],
+            ['name' => 'Tenancy'],
+            ['name' => 'Documents'],
+            ['name' => 'Compliance'],
+        ];
+    }
+}
+
+if (! function_exists('client_facing_repair_statuses')) {
+    /**
+     * @return list<string>
+     */
+    function client_facing_repair_statuses(?\App\Models\User $user = null): array
+    {
+        if (is_landlord_plan_user($user)) {
+            return ['Pending', 'Reported', 'Under Process', 'Work Completed', 'Closed'];
+        }
+
+        return ['Pending', 'Reported', 'Under Process', 'Work Completed', 'Invoice Received', 'Invoice Paid', 'Closed'];
+    }
+}
+
 if (! function_exists('property_create_url')) {
     /**
-     * URL for adding a new property — landlords use the Property Passport wizard.
+     * URL for adding a new property — landlords use the onboarding overlay.
      */
     function property_create_url(): string
     {
-        $user = auth()->user();
-
-        if (
-            $user
-            && $user->hasRole('Landlord')
-            && ! $user->hasAnyRole(['Super Admin', 'Property Manager', 'Estate Agent'])
-        ) {
-            return route('admin.properties.landlord_wizard.show');
+        if (is_landlord_plan_user()) {
+            return route('admin.properties.index', ['add_property' => 1]);
         }
 
         return route('admin.properties.quick');

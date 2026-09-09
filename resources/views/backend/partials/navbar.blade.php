@@ -46,7 +46,7 @@
                 </svg>
             </div>
             @auth
-            @unless(auth()->user()->hasRole('Tenant'))
+            @unless(is_tenant_portal_user() || is_landlord_plan_user())
             <div class="d-flex justify-content-around align-items-center align-items-stretch ml-3">
                 <div class="aiz-topbar-item">
                     <div class="d-flex align-items-center">
@@ -142,9 +142,11 @@
             <div class="collapse navbar-collapse" id="navbarAdmin">
                 <ul class="navbar-nav ms-auto">               
                     @if (Auth::check())                  
+                        @unless(is_tenant_portal_user() || is_landlord_plan_user())
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ Auth::user()->hasRole('Tenant') ? route('tenant.rent') : route('customer.statements') }}">My Statement</a>
+                            <a class="nav-link" href="{{ route('customer.statements') }}">My Statement</a>
                         </li>
+                        @endunless
                         <li class="nav-item">
                             <form action="{{ route('logout') }}" method="POST" class="d-inline">
                                 @csrf

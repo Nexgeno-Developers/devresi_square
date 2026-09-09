@@ -1,6 +1,8 @@
 ﻿@php
     $activeType = (string) request('property_type');
-    $statuses = ['for sale','let agreed','available','sold','not available'];
+    $statuses = is_landlord_plan_user()
+        ? ['let agreed', 'available', 'not available']
+        : ['for sale', 'let agreed', 'available', 'sold', 'not available'];
     $activeStatuses = collect(is_array(request('status')) ? request('status') : explode(',', (string) request('status')))
         ->map(fn ($s) => trim((string) $s))
         ->filter();
@@ -15,6 +17,7 @@
             <input type="radio" name="property_type" value="lettings" {{ $activeType === 'lettings' ? 'checked' : '' }}>
             Lettings
         </label>
+        @unless(is_landlord_plan_user())
         <label class="pcc-chip {{ $activeType === 'sales' ? 'is-on' : '' }}">
             <input type="radio" name="property_type" value="sales" {{ $activeType === 'sales' ? 'checked' : '' }}>
             Sales
@@ -23,6 +26,7 @@
             <input type="radio" name="property_type" value="both" {{ $activeType === 'both' ? 'checked' : '' }}>
             Both
         </label>
+        @endunless
     </div>
 
     <div class="pcc-filter-extras">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Mail\MailManager;
+use App\Models\OtpConfiguration;
 use App\Models\Plan;
 use App\Models\Registration;
 use App\Models\User;
@@ -76,11 +77,14 @@ class RegistrationController extends Controller
             $suggestedRegistrationType = self::ACCOUNT_TYPE_TO_REGISTRATION_TYPE[$selectedAccountType] ?? null;
         }
 
+        $smsOtpAvailable = $this->smsOtpProviderIsReady();
+
         return view('frontend.register', compact(
             'selectedPlan',
             'selectedBillingCycle',
             'selectedAccountType',
-            'suggestedRegistrationType'
+            'suggestedRegistrationType',
+            'smsOtpAvailable'
         ));
     }
 
@@ -182,11 +186,26 @@ class RegistrationController extends Controller
             'account_type'   => $selectedPlan?->target_account_type,
         ]);
 
-        // Send OTP
-        if ($request->verify_via === 'email') {
-            $this->sendEmailOtp($registration, $otp);
-        } else {
-            $this->sendPhoneOtp($registration, $otp);
+        // Send OTP through the configured mail/SMS provider (do not swallow failures).
+        try {
+            if ($request->verify_via === 'email') {
+                $this->sendEmailOtp($registration, $otp);
+            } else {
+                $this->sendPhoneOtp($registration, $otp);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to send registration OTP: '.$e->getMessage());
+            $registration->delete();
+
+            $message = $request->verify_via === 'email'
+                ? 'We could not send a verification email. Please try again in a moment.'
+                : 'Phone OTP is not available. Please verify with email instead.';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'errors' => ['verify_via' => [$message]]], 422);
+            }
+
+            return back()->withErrors(['verify_via' => $message])->withInput();
         }
 
         // Store in session for OTP step
@@ -213,11 +232,7 @@ class RegistrationController extends Controller
             return view('frontend.register-pending-approval');
         }
 
-        $debugOtp = DebugRegistrationOtpController::debugOtpEnabled()
-            ? $registration->otp_code
-            : null;
-
-        return view('frontend.register-verify-otp', compact('registration', 'debugOtp'));
+        return view('frontend.register-verify-otp', compact('registration'));
     }
 
     // ─── Step 4: Verify OTP ───────────────────────────────────────────────────
@@ -356,12 +371,22 @@ class RegistrationController extends Controller
             'otp_expires_at' => now()->addMinutes(2),
         ]);
 
-        if ($registration->verify_via === 'email') {
-            $this->sendEmailOtp($registration, $otp);
-            $msg = 'A new OTP has been sent to your email.';
-        } else {
-            $this->sendPhoneOtp($registration, $otp);
-            $msg = 'A new OTP has been sent to your phone.';
+        try {
+            if ($registration->verify_via === 'email') {
+                $this->sendEmailOtp($registration, $otp);
+                $msg = 'A new OTP has been sent to your email.';
+            } else {
+                $this->sendPhoneOtp($registration, $otp);
+                $msg = 'A new OTP has been sent to your phone.';
+            }
+        } catch (\Throwable $e) {
+            Log::error('Failed to resend registration OTP: '.$e->getMessage());
+            $msg = 'We could not send a new code. Please try again.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+
+            return back()->withErrors(['otp' => $msg]);
         }
 
         if ($request->ajax() || $request->wantsJson()) {
@@ -375,12 +400,17 @@ class RegistrationController extends Controller
     // ─── Send OTP via email ───────────────────────────────────────────────────
     private function sendEmailOtp(Registration $registration, string $otp): void
     {
-        try {
-            $name    = $registration->first_name;
-            $appName = config('app.name');
+        $mailer = config('mail.default');
 
-            $subject = "Your {$appName} verification code: {$otp}";
-            $content = "
+        if (! app()->environment('testing') && in_array($mailer, ['log', 'array'], true)) {
+            throw new \RuntimeException('Mailer is '.$mailer.'; SMTP must be configured for email OTP.');
+        }
+
+        $name = $registration->first_name;
+        $appName = config('app.name');
+
+        $subject = "Your {$appName} verification code: {$otp}";
+        $content = "
                 <p>Hi {$name},</p>
                 <p>Your verification code for <strong>{$appName}</strong> is:</p>
                 <p style='text-align:center; margin:24px 0;'>
@@ -396,24 +426,43 @@ class RegistrationController extends Controller
                 </p>
             ";
 
-            Mail::to($registration->email)
-                ->send(new MailManager([
-                    'subject'     => $subject,
-                    'content'     => $content,
-                    'attachments' => [],
-                ]));
+        Mail::mailer($mailer)
+            ->to($registration->email)
+            ->send(new MailManager([
+                'subject' => $subject,
+                'content' => $content,
+                'attachments' => [],
+            ]));
 
-            Log::info("Email OTP sent to {$registration->email}");
-        } catch (\Exception $e) {
-            Log::error("Failed to send email OTP: {$e->getMessage()}");
-        }
+        Log::info("Email OTP sent to {$registration->email} via {$mailer}");
     }
 
-    // ─── Send OTP via SMS — delegates to active provider via SmsUtility ──────
     private function sendPhoneOtp(Registration $registration, string $otp): void
     {
+        if (! $this->smsOtpProviderIsReady()) {
+            throw new \RuntimeException('SMS OTP provider is not configured.');
+        }
+
         $phone = $this->normalizePhone($registration->phone ?? '');
         SmsUtility::phone_number_verification($phone, $otp);
+    }
+
+    private function smsOtpProviderIsReady(): bool
+    {
+        $active = OtpConfiguration::activeProvider();
+
+        if (! $active) {
+            return false;
+        }
+
+        return match ($active->type) {
+            'fast2sms' => filled(env('AUTH_KEY')) || filled(env('FAST2SMS_API_KEY')),
+            'twillo' => filled(env('TWILIO_SID'))
+                && filled(env('TWILIO_AUTH_TOKEN', env('TWILIO_TOKEN')))
+                && filled(env('VALID_TWILLO_NUMBER', env('TWILIO_FROM'))),
+            'nexmo' => filled(env('NEXMO_KEY')) && filled(env('NEXMO_SECRET')),
+            default => false,
+        };
     }
 
     private function logDebugOtp(string $email, string $otp): void

@@ -1,7 +1,7 @@
 @php
     $propertyType = strtolower(trim((string) ($property->property_type ?? '')));
-    $showSalesFields = in_array($propertyType, ['sales', 'both'], true);
-    $showLettingFields = in_array($propertyType, ['lettings', 'both'], true);
+    $showSalesFields = ! is_landlord_plan_user() && in_array($propertyType, ['sales', 'both'], true);
+    $showLettingFields = is_landlord_plan_user() || in_array($propertyType, ['lettings', 'both'], true);
     $salesStatusDescription = $property->sales_status_description ?? '';
     $lettingStatusDescription = $property->letting_status_description ?? '';
     $hasVisibleDescription = ($showSalesFields && filled($salesStatusDescription))

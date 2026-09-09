@@ -142,12 +142,12 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
     // })->name('admin.getUsersByProperty');
     Route::get('/get_users_info_by_property/{propertyId}/users/{roleId}', function ($propertyId, $roleId) {
         return response()->json(get_users_by_property_and_role($propertyId, $roleId));
-    })->name('admin.getUsersByProperty');
+    })->middleware(['current.account', 'account.status'])->name('admin.getUsersByProperty');
 
 
     Route::get('/get_tenants_by_property/{propertyId}', function ($propertyId) {
         return response()->json(get_tenants_by_property($propertyId));
-    })->name('admin.getTenantsByProperty');
+    })->middleware(['current.account', 'account.status'])->name('admin.getTenantsByProperty');
 
     Route::post('/switch-account', [AccountSwitchController::class, 'switch'])->name('backend.accounts.switch');
     Route::post('/leave-account-login', [AccountSwitchController::class, 'leave'])->name('backend.accounts.leave-login');
@@ -157,13 +157,16 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         ->middleware(['current.account', 'account.status'])
         ->name('backend.dashboard');
     Route::get('/home', [TenantPortalController::class, 'home'])
-        ->middleware('current.account')
+        ->middleware(['current.account', 'account.status', 'portal.tenant'])
         ->name('backend.home');
-    Route::middleware(['current.account', 'account.status'])->group(function () {
+    Route::middleware(['current.account', 'account.status', 'portal.tenant'])->group(function () {
         Route::get('/portal/tenancy', [TenantPortalController::class, 'tenancy'])->name('tenant.tenancy');
         Route::get('/portal/rent', [TenantPortalController::class, 'rent'])->name('tenant.rent');
         Route::get('/portal/maintenance', [TenantPortalController::class, 'maintenance'])->name('tenant.maintenance');
+        Route::post('/portal/maintenance', [TenantPortalController::class, 'storeRepair'])->name('tenant.maintenance.store');
         Route::get('/portal/documents', [TenantPortalController::class, 'documents'])->name('tenant.documents');
+        Route::get('/portal/documents/{document}/download', [TenantPortalController::class, 'downloadDocument'])->name('tenant.documents.download');
+        Route::get('/portal/calendar', [TenantPortalController::class, 'calendar'])->name('tenant.calendar');
     });
     // Route::get('/dashboard', [DashboardController::class, 'dashboard'])->middleware('can:view-dashboard')->name('backend.dashboard');
 
@@ -178,7 +181,7 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         Route::post('subscriptions/{subscription}/extend-trial', [\App\Http\Controllers\Backend\Saas\SubscriptionController::class, 'extendTrial'])->name('subscriptions.extend-trial');
     });
 
-    Route::middleware('current.account')->group(function () {
+    Route::middleware(['current.account', 'account.status'])->group(function () {
         Route::get('/billing', [BillingController::class, 'index'])->name('backend.billing.index');
         Route::get('/billing/success', [BillingController::class, 'success'])->name('backend.billing.success');
         Route::get('/billing/cancel', [BillingController::class, 'cancel'])->name('backend.billing.cancel');
@@ -193,6 +196,19 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
     Route::middleware(['current.account', 'account.status'])->name('admin.')->group(function () {
         Route::get('/portal-access', [PortalAccessController::class, 'index'])
             ->name('portal-access.index');
+        Route::post('/portal-access/invite', [PortalAccessController::class, 'invite'])
+            ->name('portal-access.invite');
+        Route::post('/portal-access/{user}/revoke', [PortalAccessController::class, 'revoke'])
+            ->name('portal-access.revoke');
+
+        Route::prefix('finance')->name('finance.')->controller(\App\Http\Controllers\Backend\FinanceController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/create', 'create')->name('create');
+            Route::post('/', 'store')->name('store');
+            Route::get('/{rentInvoice}', 'show')->name('show');
+            Route::post('/{rentInvoice}/payments', 'storePayment')->name('payments.store');
+            Route::post('/{rentInvoice}/void', 'void')->name('void');
+        });
 
         Route::prefix('onboarding/landlord')->name('onboarding.landlord.')->controller(LandlordOnboardingController::class)->group(function () {
             Route::get('/state', 'state')->name('state');
@@ -203,9 +219,10 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::post('/tenancy', 'storeTenancy')->name('tenancy');
             Route::post('/complete', 'complete')->name('complete');
             Route::post('/step', 'saveStep')->name('step');
+            Route::post('/dismiss', 'dismiss')->name('dismiss');
         });
 
-        // Landlord Property Passport wizard (3-step flow)
+        // Landlord Property Passport wizard (kept for restore; gated by landlord_mvp.wizard_enabled)
         Route::prefix('properties/wizard')->name('properties.landlord_wizard.')->controller(LandlordPropertyWizardController::class)->group(function () {
             Route::get('/', 'show')->name('show');
             Route::get('/step/{step}', 'show')->name('step');
@@ -439,12 +456,15 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         });
 
         Route::prefix('documents')->name('documents.')->controller(DocumentsController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
             // List documents (with optional filtering for documentable_type, documentable_id, upload_id)
             Route::get('/list', 'listDocuments')->name('list');
             Route::get('/create', 'create')->name('create');
             Route::get('/{document}/edit', 'edit')->name('edit');
             // Show single document by ID
             Route::get('/show/{id}', 'showDocument')->name('show');
+            Route::get('/{document}/download', 'download')->name('download');
+            Route::post('/{document}/share', 'share')->name('share');
             // Create or update a document (store or update)
             Route::post('/save', 'storeOrUpdate')->name('save');
             // Delete a document by ID

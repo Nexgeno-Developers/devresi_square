@@ -6,8 +6,6 @@ use App\Http\Controllers\Backend\Saas\Concerns\AuthorizesBillingAccess;
 use App\Http\Controllers\Controller;
 use App\Models\Addon;
 use App\Services\Saas\AccountLimitService;
-use App\Services\Saas\StripeCheckoutService;
-use App\Services\Saas\StripeWebhookService;
 use Illuminate\Http\Request;
 
 class BillingController extends Controller
@@ -17,6 +15,9 @@ class BillingController extends Controller
     public function index(Request $request, AccountLimitService $limitService)
     {
         $account = $this->billingAccount($request);
+        $this->authorize('view', $account);
+        app(\App\Services\Onboarding\LandlordOnboardingService::class)
+            ->syncOverlaySessionForPage($request->user(), $account, false);
 
         $subscription = $account->subscriptions()
             ->with(['plan', 'accountSubscriptionAddons.addon'])
@@ -43,38 +44,12 @@ class BillingController extends Controller
         ));
     }
 
-    public function success(
-        Request $request,
-        StripeCheckoutService $checkoutService,
-        StripeWebhookService $webhookService
-    )
+    public function success(Request $request)
     {
         $account = $this->billingAccount($request);
-        // Avoid the conventional `session_id` parameter name: some ModSecurity
-        // rules mistake it for an attempt to set a PHP session identifier.
-        $sessionId = (string) $request->query(
-            'checkout_ref',
-            $request->query('session_id', '')
-        );
+        $this->authorize('view', $account);
 
-        if ($sessionId !== '') {
-            try {
-                $session = $checkoutService->retrieveCheckoutSession($sessionId);
-                $sessionAccountId = (int) ($session->metadata->account_id ?? 0);
-
-                abort_unless($sessionAccountId === (int) $account->id, 403);
-                $webhookService->handleCheckoutSessionCompleted($session);
-            } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
-                throw $exception;
-            } catch (\Throwable $exception) {
-                report($exception);
-
-                return redirect()
-                    ->route('backend.billing.index')
-                    ->with('error', 'Stripe checkout completed, but subscription status is still syncing.');
-            }
-        }
-
+        // Checkout success is a thank-you page only. Stripe webhooks activate the plan.
         $account->refresh();
 
         if (in_array($account->status, ['trialing', 'active'], true)) {
@@ -89,6 +64,7 @@ class BillingController extends Controller
     public function cancel(Request $request)
     {
         $this->billingAccount($request);
+        $this->authorize('view', current_account());
 
         return view('backend.saas.billing.cancel');
     }

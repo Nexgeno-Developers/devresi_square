@@ -24,6 +24,9 @@ class LandlordPropertyWizardController
 
     public function show(Request $request, int $step = 1): View|RedirectResponse
     {
+        if (! config('landlord_mvp.wizard_enabled')) {
+            return redirect()->route('admin.properties.index', ['add_property' => 1]);
+        }
         $account = current_account();
         $user = $request->user();
         if (app(LandlordOnboardingService::class)->shouldShow($user, $account)) {
@@ -70,6 +73,9 @@ class LandlordPropertyWizardController
 
     public function store(LandlordPropertyWizardStepRequest $request): View|RedirectResponse
     {
+        if (! config('landlord_mvp.wizard_enabled')) {
+            return redirect()->route('admin.properties.index', ['add_property' => 1]);
+        }
         $step = (int) $request->input('step');
         $validated = $request->validated();
         unset($validated['confirm']);

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\AccountUser;
 use App\Services\Saas\CurrentAccountService;
+use App\Support\AccountMembership;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -59,7 +60,7 @@ class AccountStatusGuard
 
         return $membership
             && $membership->can_login
-            && in_array($membership->member_type, ['owner', 'admin'], true)
+            && AccountMembership::isWorkspaceAdmin($membership->member_type)
             && $request->routeIs('backend.billing.*');
     }
 }

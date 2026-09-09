@@ -38,6 +38,10 @@ class PropertyRepairController
 {
     public function repairRaise()
     {
+        if (is_tenant_portal_user()) {
+            return redirect()->route('tenant.maintenance');
+        }
+
         $categories = RepairCategory::with(['subCategories', 'parentCategory'])
             ->whereNull('parent_id')
             ->orderBy('level')
@@ -48,7 +52,7 @@ class PropertyRepairController
 
         // For Tenant users: resolve their linked active-tenancy properties
         $tenantProperties = null;
-        if (auth()->user()->hasRole('Tenant')) {
+        if (is_tenant_portal_user()) {
             $tenantProperties = \App\Models\TenantMember::where('user_id', auth()->id())
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
                 ->where('tenancies.status', 'Active')
@@ -179,7 +183,7 @@ class PropertyRepairController
         }
 
         // Tenant: only see repair issues for their linked active-tenancy properties
-        if (auth()->user()->hasRole('Tenant')) {
+        if (is_tenant_portal_user()) {
             $tenantPropertyIds = TenantMember::where('user_id', auth()->id())
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
                 ->where('tenancies.status', 'Active')
@@ -270,7 +274,7 @@ class PropertyRepairController
             $query->where('status', $request->status);
         }
 
-        if (auth()->user()->hasRole('Tenant')) {
+        if (is_tenant_portal_user()) {
             $tenantPropertyIds = TenantMember::where('user_id', auth()->id())
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
                 ->where('tenancies.status', 'Active')
@@ -672,6 +676,7 @@ class PropertyRepairController
             'invoice',
         ])->findOrFail($id);
         ensureModelBelongsToCurrentAccount($repairIssue);
+        \Illuminate\Support\Facades\Gate::authorize('view', $repairIssue);
         $this->ensurePortalCanAccessRepair($repairIssue);
 
         $categories = RepairCategory::all();
@@ -775,7 +780,7 @@ class PropertyRepairController
 
         // For Tenant: resolve their linked active-tenancy properties
         $tenantProperties = null;
-        if (auth()->user()->hasRole('Tenant')) {
+        if (is_tenant_portal_user()) {
             $tenantProperties = \App\Models\TenantMember::where('user_id', auth()->id())
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
                 ->where('tenancies.status', 'Active')
@@ -1396,7 +1401,7 @@ class PropertyRepairController
                     $tenant_id = $request->input('tenant_id');
                    
                 }
-                if (Auth::user()?->hasRole('Tenant')) {
+                if (is_tenant_portal_user()) {
                     $tenant_id = Auth::id();
                 }
                 

@@ -51,6 +51,10 @@ class PropertyController
 
         // Get logged-in user
         $user = auth()->user();
+        $onboarding = app(LandlordOnboardingService::class);
+        if ($user && $user->hasRole('Landlord')) {
+            $onboarding->syncOverlaySessionForPage($user, current_account(), $request->boolean('add_property'));
+        }
         $portalAccessService = app(PortalAccessService::class);
         $accountId = current_account_id();
         $isPortalUser = $accountId && $portalAccessService->isPortalUser($user, $accountId);
@@ -81,8 +85,9 @@ class PropertyController
             $properties = $propertiesQuery->whereIn('id', $propertyIds)
                 ->orderBy('id', 'desc')
                 ->paginate(15);
-        } elseif ($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')  ) {
-            // Landlords see only properties they created
+        } elseif (is_landlord_plan_user($user)) {
+            $properties = $propertiesQuery->orderBy('id', 'desc')->paginate(15);
+        } elseif ($user->hasRole('Staff') || $user->hasRole('Test')) {
             $properties = $propertiesQuery->where('created_by', $user->id)
                 ->orderBy('id', 'desc')
                 ->paginate(15);
@@ -113,7 +118,9 @@ class PropertyController
                 $this->applyListFilters($positionQuery, $request);
                 if ($isPortalUser) {
                     $positionQuery->whereIn('id', $portalAccessService->accessiblePropertyIds($user, $accountId));
-                } elseif ($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')) {
+                } elseif (is_landlord_plan_user($user)) {
+                    // Workspace-scoped via forAccount()
+                } elseif ($user->hasRole('Staff') || $user->hasRole('Test')) {
                     $positionQuery->where('created_by', $user->id);
                 } elseif ($user->hasRole('Estate Agent')) {
                     $createdUserIds = User::where('created_by', $user->id)->pluck('id');
@@ -208,10 +215,11 @@ class PropertyController
                 ]);
             }
             $firstProperty = $properties->first();
-            return redirect()->route('admin.properties.index', [
+            return redirect()->route('admin.properties.index', array_filter([
                 'property_id' => $firstProperty->id,
                 'tabname'     => $tabName,
-            ]);
+                'add_property' => $request->boolean('add_property') ? 1 : null,
+            ]));
         }
 
         $property = Property::find($propertyId);
@@ -251,6 +259,12 @@ class PropertyController
         $requestedTabIsAllowed = collect($tabs)->contains(
             fn (array $tab) => strtolower($tab['name']) === strtolower($tabName)
         );
+        if (! $requestedTabIsAllowed && is_landlord_plan_user($user) && $property) {
+            return redirect()->route('admin.properties.index', [
+                'property_id' => $property->id,
+                'tabname' => 'Property',
+            ]);
+        }
         abort_unless($requestedTabIsAllowed, 403, 'You do not have access to this property tab.');
 
         $content = $this->getTabContent($tabName, $propertyId, $property);
@@ -319,6 +333,10 @@ class PropertyController
 
     private function tabsForUser($user, ?Property $property, bool $isPortalUser, PortalAccessService $portalAccessService): array
     {
+        if (is_landlord_plan_user($user)) {
+            return client_facing_property_tabs();
+        }
+
         if ($isPortalUser) {
             if (! $property) {
                 return [['name' => 'Property']];
@@ -409,7 +427,8 @@ class PropertyController
 
         $isAuthorized = $user->hasRole('Super Admin')
             || $user->hasRole('Property Manager')
-            || ($user->hasRole('Landlord') && $property->created_by === $user->id)
+            || (is_landlord_plan_user($user) && (int) $property->account_id === (int) current_account_id())
+            || ($user->hasRole('Landlord') && ! is_landlord_plan_user($user) && $property->created_by === $user->id)
             || ($user->hasRole('Estate Agent') && ($property->created_by === $user->id || $user->createdUsers()->pluck('id')->contains($property->created_by)))
             || (($user->hasRole('Staff') || $user->hasRole('Test')) && $property->created_by === $user->id)
             || ($user->hasRole('Tenant') && \App\Models\TenantMember::where('user_id', $user->id)
@@ -710,7 +729,7 @@ class PropertyController
         }
 
         if ($this->shouldUseLandlordWizard()) {
-            return redirect()->route('admin.properties.landlord_wizard.show');
+            return redirect()->route('admin.properties.index', ['add_property' => 1]);
         }
 
         $countries = Country::orderBy('name')->get();
@@ -888,7 +907,7 @@ class PropertyController
                         return $response;
                     }
 
-                    // Log the data before creation
+                    $this->abortIfCannotAddProperties(1);
                     // Generate Property Reference Number
                     $PropertyRefNumber = generateReferenceNumber(Property::class, 'prop_ref_no', 'RESISQP');
                     $validatedData['prop_ref_no'] = $PropertyRefNumber;
@@ -973,6 +992,8 @@ class PropertyController
                     if ($response = $this->backIfSaasLimitDenied('property')) {
                         return $response;
                     }
+
+                    $this->abortIfCannotAddProperties(1);
 
                     $PropertyRefNumber = generateReferenceNumber(Property::class, 'prop_ref_no', 'RESISQP');
 
@@ -1326,6 +1347,7 @@ class PropertyController
 
     public function restore($id)
     {
+        $this->abortIfCannotAddProperties(1);
         $property = $this->trashedPropertiesQuery()->findOrFail($id);
         $this->persistProperty(fn () => $property->restore());
 
@@ -1354,6 +1376,8 @@ class PropertyController
             ->get();
 
         abort_unless($properties->count() === $propertyIds->count(), 404);
+
+        $this->abortIfCannotAddProperties($properties->count());
 
         DB::transaction(function () use ($properties) {
             foreach ($properties as $property) {
@@ -2228,7 +2252,11 @@ class PropertyController
             return true;
         }
 
-        if (($user->hasRole('Landlord') || $user->hasRole('Staff') || $user->hasRole('Test')) && (int) $property->created_by === (int) $user->id) {
+        if (is_landlord_plan_user($user)) {
+            return true;
+        }
+
+        if (($user->hasRole('Staff') || $user->hasRole('Test')) && (int) $property->created_by === (int) $user->id) {
             return true;
         }
 
@@ -2675,7 +2703,7 @@ class PropertyController
     private function propertyCreateRoute(): string
     {
         return $this->shouldUseLandlordWizard()
-            ? 'admin.properties.landlord_wizard.show'
+            ? 'admin.properties.index'
             : 'admin.properties.quick';
     }
 

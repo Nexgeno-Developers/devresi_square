@@ -8,7 +8,7 @@
                 ['Portfolio properties', $propertiesCount, 'bi-buildings', 'primary'],
                 ['Active tenancies', $activeTenanciesCount, 'bi-key', 'success'],
                 ['Open repairs', $openRepairsCount, 'bi-tools', 'danger'],
-                ['Work orders', $workOrdersCount, 'bi-clipboard-check', 'warning'],
+                ['Contacts', $usersCount, 'bi-people', 'info'],
             ],
         ],
         'estate_agent' => [
@@ -107,16 +107,16 @@
                     @canany(['view properties', 'create properties', 'edit properties'])
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.properties.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-buildings fs-4 text-info"></i><span class="fw-semibold">View properties</span></a></div>
                     @endcanany
-                    @can('manage tenancies')
+                    @if(auth()->user()->can('manage tenancies') || is_landlord_plan_user())
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.tenancies.all') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-key fs-4 text-success"></i><span class="fw-semibold">Tenancies</span></a></div>
-                    @endcan
-                    @canany(['view property repair', 'edit property repair', 'create property repair'])
+                    @endif
+                    @if(auth()->user()->canAny(['view property repair', 'edit property repair', 'create property repair']) || is_landlord_plan_user())
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.property_repairs.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-tools fs-4 text-danger"></i><span class="fw-semibold">Repair issues</span></a></div>
-                    @endcanany
-                    @if(in_array($dashboardRole, ['estate_agent', 'property_manager'], true))
+                    @endif
+                    @if(in_array($dashboardRole, ['estate_agent', 'property_manager'], true) && ! is_landlord_plan_user())
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.branches.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-diagram-3 fs-4 text-warning"></i><span class="fw-semibold">Branches</span></a></div>
                     @endif
-                    @if(in_array($dashboardRole, ['estate_agent', 'staff'], true))
+                    @if(can_view_contacts())
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.users.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-people fs-4 text-secondary"></i><span class="fw-semibold">Contacts</span></a></div>
                     @endif
                 </div></div>
@@ -126,7 +126,12 @@
             <div class="card dashboard-card h-100">
                 <div class="card-header bg-white border-0 px-4 pt-4"><h5 class="mb-1">Plan usage</h5><div class="text-muted small">{{ $planUsageSummary['plan_name'] }} · {{ ucwords($planUsageSummary['subscription_status'] ?? '') }}</div></div>
                 <div class="card-body px-4">
-                    @foreach(['properties'=>'Properties','branches'=>'Branches','staff'=>'Staff','property_managers'=>'Property managers'] as $key => $label)
+                    @php
+                        $usageMeters = is_landlord_plan_user()
+                            ? ['properties' => 'Properties']
+                            : ['properties' => 'Properties', 'branches' => 'Branches', 'staff' => 'Staff', 'property_managers' => 'Property managers'];
+                    @endphp
+                    @foreach($usageMeters as $key => $label)
                         @php($usage = $planUsageSummary[$key])
                         @php($percent = $usage['limit'] > 0 ? min(100, round(($usage['used'] / $usage['limit']) * 100)) : 100)
                         <div class="mb-3"><div class="d-flex justify-content-between small mb-1"><span>{{ $label }}</span><strong>{{ $usage['used'] }} / {{ $usage['limit'] }}</strong></div><div class="progress usage-bar"><div class="progress-bar {{ $usage['can_add'] ? 'bg-success' : 'bg-danger' }}" style="width:{{ $percent }}%"></div></div></div>

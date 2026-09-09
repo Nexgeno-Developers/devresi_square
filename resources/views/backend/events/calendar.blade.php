@@ -2,6 +2,11 @@
 
 @section('content')
 <div class="container-fluid">
+    @if(is_landlord_plan_user())
+        <div class="mb-3">
+            <p class="text-muted mb-0">Property diary for this account. Events you attach to a let home are also shown to that household in the tenant portal.</p>
+        </div>
+    @endif
     <div class="row h-100">
         <div class="col-6">
             @include('backend.partials.event-list')

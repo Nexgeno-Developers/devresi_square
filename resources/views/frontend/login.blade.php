@@ -30,7 +30,7 @@
                         </div>
 
                         <div class="form-outline form-white mb-4">
-                            <input type="checkbox" class="form-check-input" id="remember" name="remember" required />
+                            <input type="checkbox" class="form-check-input" id="remember" name="remember" />
                             <label class="form-check-label" for="remember">Remember Me</label>
                         </div>
 

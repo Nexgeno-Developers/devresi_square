@@ -21,12 +21,17 @@ use Illuminate\Validation\ValidationException;
 use RRule\RRule;
 use App\Notifications\EventInvitationNotification;
 use App\Enums\CrmNotificationEvent;
+use App\Models\TenantMember;
 use App\Services\Notifications\CrmNotificationService;
 
 class EventController
 {
 
     public function view(){
+        $this->assertStaffCalendarAccess();
+        app(\App\Services\Onboarding\LandlordOnboardingService::class)
+            ->syncOverlaySessionForPage(auth()->user(), current_account(), false);
+
         $filterData = [
             'eventTypes' => EventType::orderBy('name')->get(),
             'eventSubTypes' => EventSubType::orderBy('name')->get(),
@@ -41,6 +46,8 @@ class EventController
 
     public function list(Request $request)
     {
+        $this->assertStaffCalendarAccess();
+
         $query = Event::query()
             ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->with(['type', 'subType', 'diaryOwner', 'properties', 'repairIssues'])
@@ -123,6 +130,8 @@ class EventController
 
     public function index(Request $request)
     {
+        $this->assertStaffCalendarAccess();
+
         $start = Carbon::parse($request->query('start'));
         $end = Carbon::parse($request->query('end'));
 
@@ -206,6 +215,8 @@ class EventController
 
     public function store(Request $request)
     {
+        $this->assertStaffCalendarAccess();
+
         $request->merge([
             'on_behalf_of' => Auth::id(),
             'office' => auth()->user()?->hasRole('Landlord') ? null : $request->input('office'),
@@ -238,6 +249,7 @@ class EventController
             // 'user_ids.*' => 'exists:users,id',
         ]);
         $this->ensureEventRelationsAreAccessible($validated);
+        $validated = $this->attachPropertyHouseholdInvites($validated);
 
         \DB::beginTransaction();
         try {
@@ -366,6 +378,8 @@ class EventController
 
     public function updateInstance(Request $request, $id)
     {
+        $this->assertStaffCalendarAccess();
+
         $event = Event::findOrFail($id); // now $event won't be null
         ensureModelBelongsToCurrentAccount($event);
 
@@ -430,6 +444,8 @@ class EventController
 
     public function updateMaster(Request $request, Event $event)
     {
+        $this->assertStaffCalendarAccess();
+
         ensureModelBelongsToCurrentAccount($event);
         $request->merge([
             'on_behalf_of' => Auth::id(),
@@ -467,6 +483,7 @@ class EventController
             // 'user_ids.*' => 'exists:users,id',
         ]);
         $this->ensureEventRelationsAreAccessible($validated);
+        $validated = $this->attachPropertyHouseholdInvites($validated);
 
         \DB::beginTransaction();
 
@@ -960,6 +977,8 @@ class EventController
 
     public function cancelInstance(Request $request, $id)
     {
+        $this->assertStaffCalendarAccess();
+
         $request->validate([
             'choice_action' => 'in:single,series,future',
             'occurrence_start' => 'required|date',
@@ -1053,6 +1072,8 @@ class EventController
 
     public function deleteInstance(Request $request, $id)
     {
+        $this->assertStaffCalendarAccess();
+
         $request->validate([
             'choice_action' => 'in:single,series,future',
             'occurrence_start' => 'required|date',
@@ -1145,6 +1166,8 @@ class EventController
 
     public function changeStatus(Request $request, $id)
     {
+        $this->assertStaffCalendarAccess();
+
         $request->validate(['status' => 'required|in:confirmed,pending,cancelled,rescheduled,scheduled,completed']);
 
         $event = Event::findOrFail($id);
@@ -1247,6 +1270,39 @@ class EventController
                 $field => ["One or more selected {$label} do not belong to your subscriber account."],
             ]);
         }
+    }
+
+    private function assertStaffCalendarAccess(): void
+    {
+        $user = auth()->user();
+        abort_unless($user, 403);
+        abort_if(is_tenant_portal_user($user) || $user->hasRole('Contractor'), 403);
+    }
+
+    /**
+     * Landlord diary: household members on linked properties see the appointment in the tenant portal.
+     */
+    private function attachPropertyHouseholdInvites(array $validated): array
+    {
+        if (! is_landlord_plan_user(auth()->user()) || empty($validated['property_ids'])) {
+            return $validated;
+        }
+
+        $tenantIds = TenantMember::query()
+            ->where('account_id', current_account_id())
+            ->whereHas('tenancy', function ($query) use ($validated) {
+                $query->whereIn('property_id', $validated['property_ids'])
+                    ->where('status', 'Active');
+            })
+            ->pluck('user_id')
+            ->all();
+
+        $validated['invite_ids'] = array_values(array_unique(array_merge(
+            array_map('intval', $validated['invite_ids'] ?? []),
+            array_map('intval', $tenantIds)
+        )));
+
+        return $validated;
     }
 
 }

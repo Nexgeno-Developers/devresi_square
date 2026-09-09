@@ -56,6 +56,9 @@ trait EnforcesSaasPlanLimits
             'contact_login' => $limits->canUseContactLogin($account)
                 ? null
                 : 'Your current plan does not include contact portal login access.',
+            'portal_user' => $limits->canAddPortalUser($account)
+                ? null
+                : 'Your current plan has reached the tenant portal user limit. Please upgrade your plan.',
             default => null,
         };
     }
@@ -64,6 +67,19 @@ trait EnforcesSaasPlanLimits
     {
         if ($message = $this->saasLimitError($limit)) {
             abort(403, $message);
+        }
+    }
+
+    protected function abortIfCannotAddProperties(int $count = 1): void
+    {
+        if ($this->bypassesSaasPlanLimits()) {
+            return;
+        }
+
+        $account = $this->currentLimitAccount();
+
+        if (! $account || ! app(AccountLimitService::class)->canAddProperties($account, $count)) {
+            abort(403, 'Your current plan has reached the property limit. Please upgrade your plan or buy an extra property addon.');
         }
     }
 

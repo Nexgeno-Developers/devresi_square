@@ -331,11 +331,13 @@
                                     onclick=""
                                     /> --}}
 
+                            @unless(is_landlord_plan_user())
                             <!-- Modal Trigger Button -->
                             <a type="button" class="tab-offers-btn btn btn-sm btn-outline-danger btn-sm d-none" data-bs-toggle="modal"
                                 data-bs-target="#addOfferModal">
                                 Add Offer
                             </a>
+                            @endunless
                             {{-- <a data-url="{{ route('admin.owner-groups.create') }}" class="popup-tab-owners-create btn btn_secondary btn-sm tab-owners-btn d-none">
                                         <span>Add Owner</span>
                                         <span class="icon_btn"></span>
@@ -376,8 +378,10 @@
                 <div class="pvdh_btns_wrapper">
                     <x-backend.forms.mobile_button class='' name='Add Tenacy'
                         link="{{ route('admin.properties.quick') }}" iconName='plus-circle' />
+                    @unless(is_landlord_plan_user())
                     <x-backend.forms.mobile_button class='' name='Add Offer'
                         link="{{ route('admin.properties.quick') }}" iconName='journal-plus' />
+                    @endunless
                     @if ($property)
                         <x-backend.forms.mobile_button class='' name='Edit Property'
                             link="{{ route('admin.properties.edit', ['id' => $property->id]) }}"

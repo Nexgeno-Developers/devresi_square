@@ -6,22 +6,17 @@ use App\Models\Account;
 use App\Models\AccountUser;
 use App\Models\Property;
 use App\Models\PropertyParticipant;
+use App\Models\Tenancy;
+use App\Models\TenantMember;
 use App\Models\User;
+use App\Support\AccountMembership;
+use App\Support\AccountType;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
 class PortalAccessService
 {
-    private const PORTAL_MEMBER_TYPES = [
-        'contact',
-        'landlord',
-        'owner_contact',
-        'tenant',
-        'contractor',
-        'property_manager',
-    ];
-
-    private const ACCOUNT_ADMIN_TYPES = ['owner', 'admin'];
-
     private const ACCESS_LEVELS = [
         'view' => 1,
         'edit' => 2,
@@ -34,15 +29,35 @@ class PortalAccessService
             return false;
         }
 
-        $query = $user->accountUsers()
-            ->where('status', 'active')
-            ->whereIn('member_type', self::PORTAL_MEMBER_TYPES);
+        $accountId = $accountId ?: current_account_id();
 
-        if ($accountId) {
-            $query->where('account_id', $accountId);
+        if (! $accountId) {
+            return false;
         }
 
-        return $query->exists();
+        $membership = $this->activeMembership($user, $accountId);
+
+        if (! $membership) {
+            return false;
+        }
+
+        if (AccountMembership::isWorkspaceAdmin($membership->member_type)) {
+            return false;
+        }
+
+        $account = Account::query()->find($accountId);
+
+        if (
+            $account
+            && AccountType::isLandlord($account->account_type)
+            && (int) $account->owner_user_id === (int) $user->id
+            && ! AccountMembership::isTenant($membership->member_type)
+            && $membership->member_type !== AccountMembership::CONTRACTOR
+        ) {
+            return false;
+        }
+
+        return AccountMembership::isPortalType($membership->member_type);
     }
 
     public function accessiblePropertyIds(User $user, int $accountId): array
@@ -84,11 +99,11 @@ class PortalAccessService
             return false;
         }
 
-        if (in_array($membership->member_type, self::ACCOUNT_ADMIN_TYPES, true)) {
+        if (AccountMembership::isWorkspaceAdmin($membership->member_type)) {
             return true;
         }
 
-        if ($membership->member_type === 'staff' || $user->isStaffAccount()) {
+        if ($membership->member_type === AccountMembership::STAFF || $user->isStaffAccount()) {
             return true;
         }
 
@@ -160,6 +175,14 @@ class PortalAccessService
             throw new InvalidArgumentException('Property does not belong to this account.');
         }
 
+        if (AccountMembership::isPortalType($participantType)
+            && ! app(AccountLimitService::class)->canAddPortalUser($account, $user)
+        ) {
+            throw ValidationException::withMessages([
+                'user' => 'Your current plan has reached the tenant portal user limit.',
+            ]);
+        }
+
         AccountUser::updateOrCreate(
             [
                 'account_id' => $account->id,
@@ -192,6 +215,77 @@ class PortalAccessService
         );
     }
 
+    public function inviteTenant(
+        Account $account,
+        Property $property,
+        User $user,
+        ?Tenancy $tenancy = null,
+        ?User $createdBy = null
+    ): void {
+        DB::transaction(function () use ($account, $property, $user, $tenancy, $createdBy) {
+            $this->grantPropertyAccess(
+                $account,
+                $property,
+                $user,
+                AccountMembership::TENANT,
+                'view',
+                false,
+                true,
+                false,
+                $createdBy
+            );
+
+            if ($tenancy) {
+                if ((int) $tenancy->account_id !== (int) $account->id
+                    || (int) $tenancy->property_id !== (int) $property->id
+                ) {
+                    throw new InvalidArgumentException('Tenancy does not belong to this property.');
+                }
+
+                TenantMember::updateOrCreate(
+                    [
+                        'account_id' => $account->id,
+                        'tenancy_id' => $tenancy->id,
+                        'user_id' => $user->id,
+                    ],
+                    [
+                        'is_main_person' => false,
+                        'can_login' => true,
+                    ]
+                );
+            }
+        });
+    }
+
+    public function revokePortalAccess(Account $account, User $user): void
+    {
+        DB::transaction(function () use ($account, $user) {
+            $membership = AccountUser::query()
+                ->where('account_id', $account->id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if (! $membership || ! AccountMembership::isPortalType($membership->member_type)) {
+                throw new InvalidArgumentException('That person is not a portal user on this account.');
+            }
+
+            $membership->forceFill([
+                'status' => 'disabled',
+                'can_login' => false,
+            ])->save();
+
+            PropertyParticipant::query()
+                ->where('account_id', $account->id)
+                ->where('user_id', $user->id)
+                ->update(['status' => 'inactive']);
+
+            TenantMember::query()
+                ->where('account_id', $account->id)
+                ->where('user_id', $user->id)
+                ->update(['can_login' => false]);
+        });
+    }
+
     public function isAccountOwnerOrAdmin(User $user, int $accountId): bool
     {
         if ($user->isSuperAdmin()) {
@@ -200,7 +294,7 @@ class PortalAccessService
 
         $membership = $this->activeMembership($user, $accountId);
 
-        return $membership && in_array($membership->member_type, self::ACCOUNT_ADMIN_TYPES, true);
+        return $membership && AccountMembership::isWorkspaceAdmin($membership->member_type);
     }
 
     private function activeMembership(User $user, int $accountId): ?AccountUser
@@ -229,11 +323,11 @@ class PortalAccessService
             return false;
         }
 
-        if (in_array($membership->member_type, self::ACCOUNT_ADMIN_TYPES, true)) {
+        if (AccountMembership::isWorkspaceAdmin($membership->member_type)) {
             return true;
         }
 
-        if ($membership->member_type === 'staff' || $user->isStaffAccount()) {
+        if ($membership->member_type === AccountMembership::STAFF || $user->isStaffAccount()) {
             return true;
         }
 
@@ -249,7 +343,14 @@ class PortalAccessService
 
     private function validateParticipantType(string $participantType): void
     {
-        $valid = ['landlord', 'owner', 'tenant', 'contractor', 'property_manager', 'staff'];
+        $valid = [
+            AccountMembership::LANDLORD_CONTACT,
+            AccountMembership::OWNER,
+            AccountMembership::TENANT,
+            AccountMembership::CONTRACTOR,
+            AccountMembership::PROPERTY_MANAGER,
+            AccountMembership::STAFF,
+        ];
 
         if (! in_array($participantType, $valid, true)) {
             throw new InvalidArgumentException('Invalid participant type.');

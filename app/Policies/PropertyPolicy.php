@@ -4,80 +4,58 @@ namespace App\Policies;
 
 use App\Models\Property;
 use App\Models\User;
+use App\Services\Saas\PortalAccessService;
+use App\Support\WorkspaceAccess;
 
 class PropertyPolicy
 {
-    /**
-     * Determine whether the user can view any models.
-     */
     public function viewAny(User $user): bool
     {
-        // Super Admin & Property Manager see all,
-        // Landlord sees only their own properties
-        return $user->hasAnyRole(['Super Admin', 'Property Manager', 'Landlord']);
+        return WorkspaceAccess::canManageCurrentWorkspace($user)
+            || $user->hasRole('Landlord');
     }
 
-    /**
-     * Determine whether the user can view the model.
-     */
     public function view(User $user, Property $property): bool
     {
-        if ($user->hasAnyRole(['Super Admin', 'Property Manager'])) {
-            return true;
-        }
-
-        // Landlord can view only properties they created
-        return $user->hasRole('Landlord') && $property->created_by === $user->id;
+        return app(PortalAccessService::class)->canAccessProperty($user, $property, 'view');
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
     public function create(User $user): bool
     {
-        if ($user->hasAnyRole(['Super Admin', 'Property Manager'])) {
+        if (is_landlord_plan_user($user)) {
             return true;
         }
 
-        return $user->hasRole('Landlord') && $user->can('create properties');
+        return WorkspaceAccess::canManageCurrentWorkspace($user)
+            && $user->can('create properties');
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, Property $property): bool
     {
-        if ($user->hasAnyRole(['Super Admin', 'Property Manager'])) {
+        if (! WorkspaceAccess::belongsToCurrentAccount($property)) {
+            return false;
+        }
+
+        if (is_landlord_plan_user($user)) {
             return true;
         }
 
-        return $user->hasRole('Landlord')
-            && $user->can('edit properties')
-            && (int) $property->created_by === (int) $user->id;
+        return app(PortalAccessService::class)->canAccessProperty($user, $property, 'edit');
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
     public function delete(User $user, Property $property): bool
     {
-        // Only Super Admin
-        return $user->hasRole('Super Admin');
+        return $user->isSuperAdmin()
+            && WorkspaceAccess::belongsToCurrentAccount($property);
     }
 
-    /**
-     * Determine whether the user can restore the model.
-     */
     public function restore(User $user, Property $property): bool
     {
-        return $user->can('delete properties');
+        return $this->update($user, $property);
     }
 
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
     public function forceDelete(User $user, Property $property): bool
     {
-        return $user->can('delete properties');
+        return $this->delete($user, $property);
     }
 }

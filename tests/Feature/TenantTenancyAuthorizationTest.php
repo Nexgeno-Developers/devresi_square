@@ -25,6 +25,45 @@ class TenantTenancyAuthorizationTest extends TestCase
         $this->actingAs($user)->withSession($session)
             ->get(route('admin.tenancies.show', ['id' => 1]))
             ->assertForbidden();
+
+        $this->actingAs($user)->withSession($session)
+            ->get(route('backend.saas.accounts.index'))
+            ->assertForbidden();
+
+        $this->actingAs($user)->withSession($session)
+            ->get(route('backend.billing.index'))
+            ->assertForbidden();
+    }
+
+    public function test_landlord_cannot_view_another_accounts_tenancy(): void
+    {
+        [$userA, $accountA] = $this->createPortalUser('Landlord', 'owner');
+        [, $accountB] = $this->createPortalUser('Landlord', 'owner');
+
+        $propertyId = \DB::table('properties')->insertGetId([
+            'account_id' => $accountB,
+            'line_1' => '1 Isolation Street',
+            'city' => 'London',
+            'postcode' => 'SW1A 1AA',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $tenancyId = \DB::table('tenancies')->insertGetId([
+            'account_id' => $accountB,
+            'property_id' => $propertyId,
+            'status' => 'Active',
+            'move_in' => now()->toDateString(),
+            'rent' => 1000,
+            'deposit' => 1000,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($userA)
+            ->withSession(['current_account_id' => $accountA])
+            ->get(route('admin.tenancies.show', ['id' => $tenancyId]))
+            ->assertForbidden();
     }
 
     public function test_landlord_can_open_the_tenancy_list(): void

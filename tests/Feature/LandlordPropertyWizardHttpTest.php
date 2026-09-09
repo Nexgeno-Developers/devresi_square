@@ -12,6 +12,12 @@ use Tests\TestCase;
 
 class LandlordPropertyWizardHttpTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['landlord_mvp.wizard_enabled' => true]);
+    }
+
     public function test_landlord_can_access_property_passport_wizard_step_one(): void
     {
         [$user, $accountId] = $this->createLandlordUser();
@@ -96,15 +102,26 @@ class LandlordPropertyWizardHttpTest extends TestCase
         $this->assertSame(3, (int) $property->quick_step);
     }
 
-    public function test_property_create_url_points_landlord_to_wizard(): void
+    public function test_property_create_url_points_landlord_to_onboarding_flow(): void
     {
         [$user] = $this->createLandlordUser();
         $this->actingAs($user);
 
         $this->assertStringContainsString(
-            '/admin/properties/wizard',
+            'add_property=1',
             property_create_url()
         );
+    }
+
+    public function test_wizard_redirects_to_onboarding_flow_when_disabled(): void
+    {
+        config(['landlord_mvp.wizard_enabled' => false]);
+        [$user, $accountId] = $this->createLandlordUser();
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('admin.properties.landlord_wizard.show'))
+            ->assertRedirect(route('admin.properties.index', ['add_property' => 1]));
     }
 
     public function test_landlord_can_open_property_tab_without_view_properties_permission(): void

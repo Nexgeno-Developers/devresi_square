@@ -93,6 +93,8 @@ class RoleAndPermissionSeeder extends Seeder
             'send notifications',
             'view communication log',
 
+            'view calendar',
+
             'view all staffs',
             'add staff',
             'edit staff',
@@ -152,6 +154,7 @@ class RoleAndPermissionSeeder extends Seeder
                         'view documents',
                         'view communication log',
                         'view own lease info',
+                        'view calendar',
                     ]);
                     break;
 
@@ -177,6 +180,7 @@ class RoleAndPermissionSeeder extends Seeder
                         'create maintenance requests',
                         'view documents',
                         'view communication log',
+                        'view calendar',
                     ]);
                     break;
 
@@ -220,6 +224,7 @@ class RoleAndPermissionSeeder extends Seeder
 
                         'send notifications',
                         'view communication log',
+                        'view calendar',
                     ]);
                     break;
 

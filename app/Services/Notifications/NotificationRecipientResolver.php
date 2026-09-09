@@ -13,6 +13,7 @@ use App\Models\SysSaleInvoice;
 use App\Models\Tenancy;
 use App\Models\User;
 use App\Models\WorkOrder;
+use App\Support\AccountMembership;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
@@ -72,7 +73,7 @@ class NotificationRecipientResolver
 
         if ($users->filter()->isEmpty() || ($context['include_account_admins'] ?? false)) {
             $adminIds = AccountUser::query()->where('account_id', $accountId)->where('status', 'active')
-                ->whereIn('member_type', ['owner', 'admin'])->pluck('user_id');
+                ->whereIn('member_type', AccountMembership::WORKSPACE_ADMIN_TYPES)->pluck('user_id');
             $users = $users->merge(User::whereKey($adminIds)->get());
         }
 

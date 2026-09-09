@@ -35,15 +35,8 @@
 
             <fieldset class="mb-4">
                 <legend class="form-label fw-semibold">Listing purpose</legend>
-                <div class="lpw-segmented">
-                    @foreach (['lettings' => 'Lettings', 'sales' => 'Sales', 'both' => 'Both'] as $value => $label)
-                        <label class="lpw-segment {{ $selectedListing === $value ? 'is-selected' : '' }}">
-                            <input type="radio" name="property_type" value="{{ $value }}" @checked($selectedListing === $value) required>
-                            <span>{{ $label }}</span>
-                        </label>
-                    @endforeach
-                </div>
-                @error('property_type')<div class="text-danger small">{{ $message }}</div>@enderror
+                <input type="hidden" name="property_type" value="lettings">
+                <p class="text-muted mb-0">This home is recorded as a letting.</p>
             </fieldset>
 
             <div class="row g-3">

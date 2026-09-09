@@ -41,10 +41,18 @@
                     <span class="small text-muted">Added {{ formatDateTime($document->created_at) }}</span>
                     <span class="small text-muted">Updated {{ formatDateTime($document->updated_at) }}</span>
                     <div class="ms-auto d-flex gap-1">
-                        {{-- <button class="btn btn-sm btn-outline-info documents-view me-1" data-id="{{ $document->id }}"
-                            title="View Full document">
-                            <i class="bi bi-eye"> View</i>
-                        </button> --}}
+                        @if($document->upload_ids)
+                            <a href="{{ route('admin.documents.download', $document) }}" class="btn btn-sm btn-outline-primary">Download</a>
+                        @endif
+                        @if(! is_tenant_portal_user())
+                            <form action="{{ route('admin.documents.share', $document) }}" method="POST" class="d-inline">
+                                @csrf
+                                <input type="hidden" name="share_with_tenant" value="{{ $document->isSharedWithTenant() ? 0 : 1 }}">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                    {{ $document->isSharedWithTenant() ? 'Stop sharing' : 'Share with tenant' }}
+                                </button>
+                            </form>
+                        @endif
                         <button class="btn btn-sm btn-outline-danger documents-edit me-1" data-id="{{ $document->id }}"
                             title="Edit document">
                             <i class="bi bi-pencil">Edit</i>

@@ -10,6 +10,9 @@ use App\Models\Branch;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Staff;
+use App\Models\User;
+use App\Support\AccountMembership;
+use Illuminate\Support\Facades\Schema;
 
 class AccountLimitService
 {
@@ -77,7 +80,16 @@ class AccountLimitService
 
     public function canAddProperty(Account $account): bool
     {
-        return $this->getUsedProperties($account) < $this->getPropertyLimit($account);
+        return $this->canAddProperties($account, 1);
+    }
+
+    public function canAddProperties(Account $account, int $count = 1): bool
+    {
+        if ($count < 1) {
+            return true;
+        }
+
+        return ($this->getUsedProperties($account) + $count) <= $this->getPropertyLimit($account);
     }
 
     public function canAddBranch(Account $account): bool
@@ -93,6 +105,64 @@ class AccountLimitService
     public function canAddPropertyManager(Account $account): bool
     {
         return $this->getUsedPropertyManagers($account) < $this->getPropertyManagerLimit($account);
+    }
+
+    public function getPortalUserLimit(Account $account): int
+    {
+        $plan = $this->getPlan($account);
+
+        if (! $plan) {
+            return PHP_INT_MAX;
+        }
+
+        $columnLimit = Schema::hasColumn('plans', 'portal_user_limit')
+            ? max(0, (int) ($plan->portal_user_limit ?? 0))
+            : 0;
+
+        if ($columnLimit > 0) {
+            return $columnLimit;
+        }
+
+        return max(1, $this->getPropertyLimit($account));
+    }
+
+    public function getUsedPortalUsers(Account $account): int
+    {
+        return AccountUser::query()
+            ->where('account_id', $account->id)
+            ->whereIn('member_type', AccountMembership::PORTAL_TYPES)
+            ->where('status', 'active')
+            ->count();
+    }
+
+    public function canAddPortalUser(Account $account, ?User $user = null): bool
+    {
+        return $this->canAddPortalUsers($account, 1, $user);
+    }
+
+    public function canAddPortalUsers(Account $account, int $count = 1, ?User $user = null): bool
+    {
+        if ($count < 1) {
+            return true;
+        }
+
+        if ($user) {
+            $existing = AccountUser::query()
+                ->where('account_id', $account->id)
+                ->where('user_id', $user->id)
+                ->where('status', 'active')
+                ->first();
+
+            if ($existing && AccountMembership::isPortalType($existing->member_type)) {
+                return true;
+            }
+        }
+
+        if (! $this->getPlan($account)) {
+            return true;
+        }
+
+        return ($this->getUsedPortalUsers($account) + $count) <= $this->getPortalUserLimit($account);
     }
 
     public function canUseCompanyProfile(Account $account): bool
@@ -145,6 +215,11 @@ class AccountLimitService
                 $this->getUsedPropertyManagers($account),
                 $this->getPropertyManagerLimit($account),
                 $this->canAddPropertyManager($account)
+            ),
+            'portal_users' => $this->resourceSummary(
+                $this->getUsedPortalUsers($account),
+                $this->getPortalUserLimit($account),
+                $this->canAddPortalUser($account)
             ),
             'features' => [
                 'company_profile' => $this->canUseCompanyProfile($account),

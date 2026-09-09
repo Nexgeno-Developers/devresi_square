@@ -7,6 +7,7 @@ use App\Models\AccountSubscription;
 use App\Models\AccountSubscriptionAddon;
 use App\Models\Addon;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Stripe\Stripe;
@@ -22,6 +23,21 @@ class StripeWebhookService
 
     public function handle(object $event): void
     {
+        $eventId = is_string($event->id ?? null) ? (string) $event->id : '';
+
+        if ($eventId !== '') {
+            $lockKey = 'stripe_webhook_event:'.$eventId;
+
+            if (! Cache::add($lockKey, 1, now()->addDays(30))) {
+                Log::info('Stripe webhook ignored: duplicate event', [
+                    'event_id' => $eventId,
+                    'event_type' => $event->type ?? null,
+                ]);
+
+                return;
+            }
+        }
+
         $object = $event->data->object ?? null;
 
         match ($event->type ?? null) {

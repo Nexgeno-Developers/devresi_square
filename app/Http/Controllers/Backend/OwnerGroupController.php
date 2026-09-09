@@ -35,10 +35,9 @@ class OwnerGroupController
         // Fetch users where category_id is 1
         // $users = User::where('category_id', 1)->get();
 
-        // Only show owners belonging to the current subscriber account.
-        $users = $this->ownersForCurrentAccount()->get();
-
+        $users = $this->ownersForForm();
         $properties = $this->propertiesForCurrentAccount()->get();
+
         return view('backend.owner_groups.create', compact('users', 'properties'));
     }
 
@@ -69,9 +68,26 @@ class OwnerGroupController
         $this->ensurePropertyIsAccessible((int) $validatedData['property_id']);
         $this->ensureOwnersAreAccessible([(int) $validatedData['user_id']]);
 
-        OwnerGroup::create($validatedData);
-        flash("Owner Group created successfully!")->success();
-        return back();
+        $actorId = Auth::id();
+        $ownerGroup = OwnerGroup::create([
+            'property_id' => $validatedData['property_id'],
+            'purchased_date' => $validatedData['purchased_date'],
+            'sold_date' => $validatedData['sold_date'] ?? null,
+            'archived_date' => $validatedData['archived_date'] ?? null,
+            'status' => $validatedData['status'],
+            'added_by' => $actorId,
+        ]);
+
+        OwnerGroupUser::create([
+            'owner_group_id' => $ownerGroup->id,
+            'user_id' => $validatedData['user_id'],
+            'is_main' => 1,
+            'added_by' => $actorId,
+        ]);
+
+        flash('Owner Group created successfully!')->success();
+
+        return redirect()->route('admin.owner-groups.index');
     }
 
     public function storeGroup(Request $request)
@@ -183,21 +199,28 @@ class OwnerGroupController
             ->with('property', 'estateCharges')
             ->findOrFail($id);
 
+        \Illuminate\Support\Facades\Gate::authorize('view', $ownerGroup);
+
         return view('backend.owner_groups.show', compact('ownerGroup'));
     }
 
     /**
      * Show the form for editing the specified OwnerGroup.
      */
-    public function edit($id)
+    public function edit(Request $request, $id)
     {
         $ownerGroup = $this->ownerGroupsForCurrentAccount()
             ->with('ownerGroupUsers.user')
             ->findOrFail($id);
-        $users = $this->ownersForCurrentAccount()->get();
-        $selectedUsers = $ownerGroup->ownerGroupUsers->pluck('user_id')->toArray(); // Get the selected user IDs
+        $users = $this->ownersForForm();
+        $selectedUsers = $ownerGroup->ownerGroupUsers->pluck('user_id')->toArray();
+        $properties = $this->propertiesForCurrentAccount()->get();
 
-        return view('backend.owner_groups.edit-group',compact('ownerGroup', 'users', 'selectedUsers'));
+        if ($request->ajax()) {
+            return view('backend.owner_groups.edit-group', compact('ownerGroup', 'users', 'selectedUsers'));
+        }
+
+        return view('backend.owner_groups.edit', compact('ownerGroup', 'users', 'selectedUsers', 'properties'));
     }
     // public function edit($id)
     // {
@@ -425,54 +448,47 @@ class OwnerGroupController
     /**
      * Update the specified OwnerGroup in storage.
      */
-    // public function update(Request $request, $id)
-    // {
-    //     $ownerGroup = OwnerGroup::findOrFail($id);
+    public function update(Request $request, $ownerGroup)
+    {
+        $ownerGroup = $this->ownerGroupsForCurrentAccount()
+            ->with('ownerGroupUsers')
+            ->findOrFail($ownerGroup);
 
-    //     $validatedData = $request->validate([
-    //         'user_id' => 'required|exists:users,id',
-    //         'property_id' => 'required|exists:properties,id',
-    //         'purchased_date' => 'required|date',
-    //         'sold_date' => 'nullable|date',
-    //         'archived_date' => 'nullable|date',
-    //         'status' => 'required|string|max:255',
-    //     ]);
+        $validated = $request->validate([
+            'user_id' => 'required|exists:users,id',
+            'property_id' => 'required|exists:properties,id',
+            'purchased_date' => 'required|date',
+            'sold_date' => 'nullable|date',
+            'archived_date' => 'nullable|date',
+            'status' => 'required|string|max:255',
+        ]);
 
-    //     $ownerGroup->update($validatedData);
-    //     // $response = [
-    //     //     'status' => true,
-    //     //     'notification' => 'Owner Group Deleted successfully!',
-    //     // ];
+        $this->ensurePropertyIsAccessible((int) $validated['property_id']);
+        $this->ensureOwnersAreAccessible([(int) $validated['user_id']]);
 
-    //     // return response()->json($response);
-    //     // return back()->with('success', 'Owner Group deleted successfully');
+        $actorId = Auth::id();
+        $ownerGroup->update([
+            'property_id' => $validated['property_id'],
+            'purchased_date' => $validated['purchased_date'],
+            'sold_date' => $validated['sold_date'] ?? null,
+            'archived_date' => $validated['archived_date'] ?? null,
+            'status' => $validated['status'],
+            'updated_by' => $actorId,
+        ]);
 
-    //     flash('Owner Group Updated successfully!')->success();
-    //     return back();
+        OwnerGroupUser::where('owner_group_id', $ownerGroup->id)->forceDelete();
+        OwnerGroupUser::create([
+            'owner_group_id' => $ownerGroup->id,
+            'user_id' => $validated['user_id'],
+            'is_main' => 1,
+            'added_by' => $actorId,
+            'updated_by' => $actorId,
+        ]);
 
-    //     // return redirect()->route('owner_groups.index')->with('success', 'Owner Group updated successfully');
-    // }
+        flash('Owner Group updated successfully!')->success();
 
-    /**
-     * Remove the specified OwnerGroup from storage.
-     */
-    // public function destroy($id)
-    // {
-    //     $ownerGroup = OwnerGroup::findOrFail($id);
-    //     $ownerGroup->delete();
-    //     // Return response
-    //     $response = [
-    //         'status' => true,
-    //         'notification' => 'Owner Group Deleted successfully!',
-    //     ];
-
-    //     return response()->json($response);
-    //     // return back()->with('success', 'Owner Group deleted successfully');
-
-    //     // flash('Owner Group deleted successfully!')->success();
-    //     // return back();
-    //     // return redirect()->route('owner_groups.index')->with('success', 'Owner Group deleted successfully');
-    // }
+        return redirect()->route('admin.owner-groups.index');
+    }
 
 
     public function deleteGroup($id)
@@ -592,6 +608,18 @@ class OwnerGroupController
             ->orderBy('name');
     }
 
+    private function ownersForForm()
+    {
+        $owners = $this->ownersForCurrentAccount()->get();
+        $actor = auth()->user();
+
+        if ($actor && ! $owners->contains(fn ($owner) => (int) $owner->id === (int) $actor->id)) {
+            $owners = $owners->prepend($actor);
+        }
+
+        return $owners;
+    }
+
     private function propertiesForCurrentAccount()
     {
         return Property::query()
@@ -636,6 +664,11 @@ class OwnerGroupController
             ->whereKey($ownerIds)
             ->pluck('users.id')
             ->map(fn ($ownerId) => (int) $ownerId);
+
+        $actorId = (int) Auth::id();
+        if ($actorId && $ownerIds->contains($actorId)) {
+            $accessibleOwnerIds = $accessibleOwnerIds->push($actorId)->unique();
+        }
 
         if ($ownerIds->diff($accessibleOwnerIds)->isNotEmpty()) {
             throw ValidationException::withMessages([

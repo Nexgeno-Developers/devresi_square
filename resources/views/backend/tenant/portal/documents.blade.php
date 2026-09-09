@@ -21,6 +21,7 @@
                         <th>Type</th>
                         <th>Updated</th>
                         <th>Visibility</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -28,7 +29,12 @@
                         <tr>
                             <td>{{ $document->documentType?->name ?: 'Document' }}</td>
                             <td>{{ $document->updated_at?->format('d M Y') ?: '—' }}</td>
-                            <td><span class="tp-pill">{{ $document->visibility }}</span></td>
+                            <td><span class="tp-pill">{{ $document->isSharedWithTenant() ? 'Shared' : $document->visibility }}</span></td>
+                            <td>
+                                @if($document->upload_ids)
+                                    <a class="tp-btn" href="{{ route('tenant.documents.download', $document) }}">Download</a>
+                                @endif
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>

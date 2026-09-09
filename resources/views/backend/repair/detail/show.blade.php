@@ -4,8 +4,10 @@
         <i class="fas fa-edit"></i> Edit
     </a>
 
+    @unless(is_landlord_plan_user())
     <a class="btn btn-outline-primary btn-sm"
         href="{{ route('admin.repair.workorder.invoice', $repairIssue->id) }}">{{ $repairIssue->workOrder ? 'Edit Work Order & Invoice' : 'Create Work Order & Invoice' }}</a>
+    @endunless
     <div class="d-flex justify-content-end mb-3">
         <a id="toggleAll" class="pointer underline">Collapse All</a>
     </div>
@@ -23,8 +25,17 @@
             ['key' => 'repair_history', 'title' => 'Repair History', 'order' => 6],
             ['key' => 'work_order_detail', 'title' => 'Work Order Detail', 'order' => 7],
             ['key' => 'invoice_detail', 'title' => 'Invoice Detail', 'order' => 8],
-            // Add more sections with order values as needed
         ];
+
+        if (is_landlord_plan_user()) {
+            $formSections = array_values(array_filter($formSections, function ($section) {
+                return in_array($section['key'], [
+                    'property_details',
+                    'property_issue_details',
+                    'repair_history',
+                ], true);
+            }));
+        }
 
         // Sort by 'order' key
         usort($formSections, function ($a, $b) {

@@ -60,7 +60,11 @@
         'isPortal' => (bool) $isPortalUser,
         'canCreate' => (bool) auth()->user()?->can('create properties'),
         'canDelete' => (bool) auth()->user()?->can('delete properties'),
-        'tabGroups' => [
+        'tabGroups' => is_landlord_plan_user() ? [
+            ['id' => 'overview', 'label' => 'Overview', 'tabs' => ['property']],
+            ['id' => 'occupancy', 'label' => 'Occupancy', 'tabs' => ['tenancy', 'owners']],
+            ['id' => 'operations', 'label' => 'Operations', 'tabs' => ['compliance', 'documents']],
+        ] : [
             ['id' => 'overview', 'label' => 'Overview', 'tabs' => ['property', 'notes', 'media', 'apd', 'appointments', 'teams', 'responsibility']],
             ['id' => 'occupancy', 'label' => 'Occupancy', 'tabs' => ['tenancy', 'owners', 'offers']],
             ['id' => 'operations', 'label' => 'Operations', 'tabs' => ['compliance', 'documents']],

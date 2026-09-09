@@ -2,13 +2,14 @@
 
 namespace App\Services\Onboarding;
 
-use App\Mail\MailManager;
 use App\Models\Account;
 use App\Models\AccountUser;
 use App\Models\Country;
 use App\Models\Document;
 use App\Models\DocumentType;
-use App\Models\EmailTemplate;
+use App\Models\Event;
+use App\Models\EventSubType;
+use App\Models\EventType;
 use App\Models\OwnerGroup;
 use App\Models\OwnerGroupUser;
 use App\Models\Property;
@@ -19,13 +20,16 @@ use App\Models\Upload;
 use App\Models\User;
 use App\Services\Chimnie\ChimnieClient;
 use App\Services\Property\LandlordPropertyWizardService;
+use App\Services\Property\UkOpenDataPropertyEnricher;
+use App\Services\Portal\TenantInviteMailer;
 use App\Services\Saas\AccountLimitService;
+use App\Support\AccountMembership;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
@@ -36,9 +40,14 @@ class LandlordOnboardingService
 
     public const PROOF_OF_ADDRESS = 'Proof of Address';
 
+    public const ADD_SESSION = 'landlord_adding_property';
+
+    public const DRAFT_SESSION = 'landlord_add_draft_property_id';
+
     public function __construct(
         private readonly ChimnieClient $chimnie,
         private readonly LandlordPropertyWizardService $wizard,
+        private readonly UkOpenDataPropertyEnricher $enricher,
         private readonly AccountLimitService $limits,
     ) {
     }
@@ -57,11 +66,87 @@ class LandlordOnboardingService
             return false;
         }
 
-        if ($account->onboarding_completed_at === null) {
-            return true;
+        return $this->hasNoProperties($account);
+    }
+
+    public function shouldIncludeOverlay(?User $user, ?Account $account): bool
+    {
+        return $this->shouldShow($user, $account) || $this->isAddingProperty($user, $account);
+    }
+
+    public function isAddingProperty(?User $user, ?Account $account): bool
+    {
+        if (! session(self::ADD_SESSION)) {
+            return false;
         }
 
-        return $this->hasNoProperties($account);
+        if (! $user || ! $account) {
+            return false;
+        }
+
+        return $user->hasRole('Landlord') && ! $user->hasAnyRole(['Super Admin', 'Property Manager', 'Estate Agent']);
+    }
+
+    public function startAddProperty(): void
+    {
+        session([self::ADD_SESSION => true]);
+    }
+
+    public function dismissAddProperty(): void
+    {
+        session()->forget([self::ADD_SESSION, self::DRAFT_SESSION]);
+    }
+
+    /**
+     * Close add-property mode. If the account already has a home, first-run
+     * overlay does not come back on the next dashboard or billing visit.
+     */
+    public function leaveAddFlow(?Account $account): void
+    {
+        $this->dismissAddProperty();
+
+        if (! $account || $this->hasNoProperties($account) || $account->onboarding_completed_at) {
+            return;
+        }
+
+        $account->update([
+            'onboarding_completed_at' => now(),
+            'onboarding_step' => max(3, (int) $account->onboarding_step),
+        ]);
+    }
+
+    public function syncOverlaySessionForPage(?User $user, ?Account $account, bool $addingProperty = false): void
+    {
+        if (! $user || ! $account) {
+            return;
+        }
+
+        if (! $user->hasRole('Landlord') || $user->hasAnyRole(['Super Admin', 'Property Manager', 'Estate Agent'])) {
+            return;
+        }
+
+        if ($addingProperty) {
+            $this->startAddProperty();
+
+            return;
+        }
+
+        $this->leaveAddFlow($account);
+    }
+
+    public function canMutate(?User $user, ?Account $account): bool
+    {
+        if (! $user || ! $account) {
+            return false;
+        }
+
+        if (! $user->hasRole('Landlord') || $user->hasAnyRole(['Super Admin', 'Property Manager', 'Estate Agent'])) {
+            return false;
+        }
+
+        return $this->shouldShow($user, $account)
+            || $this->isAddingProperty($user, $account)
+            || $account->onboarding_completed_at === null;
     }
 
     /**
@@ -70,7 +155,7 @@ class LandlordOnboardingService
     public function state(Account $account, User $user): array
     {
         $this->reopenIfEmpty($account);
-        $property = $this->onboardingProperty($account);
+        $property = $this->currentDraftProperty($account);
         $owners = $property ? $this->ownerPayload($property) : [];
         $tenancy = $property
             ? Tenancy::query()
@@ -80,25 +165,39 @@ class LandlordOnboardingService
                 ->first()
             : null;
 
-        $tenant = $tenancy?->tenantMembers
+        $leadMember = $tenancy?->tenantMembers
             ->firstWhere('is_main_person', true)
             ?? $tenancy?->tenantMembers->first();
 
+        $occupants = collect($tenancy?->tenantMembers)
+            ->filter(fn (TenantMember $member) => $member->user && ! $member->is_main_person)
+            ->map(fn (TenantMember $member) => [
+                'id' => $member->user->id,
+                'name' => $member->user->name,
+                'email' => $member->user->email,
+                'phone' => $member->user->phone,
+            ])
+            ->values()
+            ->all();
+
         return [
-            'step' => max(1, min(4, (int) ($account->onboarding_step ?: 1))),
+            'step' => $this->normalisedStep($account),
             'completed' => (bool) $account->onboarding_completed_at,
+            'add_mode' => $this->isAddingProperty($user, $account),
             'test_mode' => (bool) config('chimnie.test_mode', true),
             'property' => $property ? $this->propertyPayload($property) : null,
-            'documents' => [
-                'photo_id' => $this->documentPayload($user, self::PHOTO_ID),
-                'proof_of_address' => $this->documentPayload($user, self::PROOF_OF_ADDRESS),
+            'owner' => [
+                'name' => $user->name,
+                'email' => $user->email,
+                'phone' => $user->phone,
             ],
             'owners' => $owners,
-            'tenancy' => $tenant && $tenant->user ? [
+            'tenancy' => $leadMember && $leadMember->user ? [
                 'id' => $tenancy->id,
-                'name' => $tenant->user->name,
-                'email' => $tenant->user->email,
-                'phone' => $tenant->user->phone,
+                'name' => $leadMember->user->name,
+                'email' => $leadMember->user->email,
+                'phone' => $leadMember->user->phone,
+                'occupants' => $occupants,
             ] : null,
         ];
     }
@@ -124,6 +223,8 @@ class LandlordOnboardingService
             ]);
         }
 
+        $record = $this->enricher->enrich($record);
+
         $countryId = Country::query()
             ->whereIn('code', ['UK', 'GB', 'GBR'])
             ->orderByRaw("CASE code WHEN 'UK' THEN 0 WHEN 'GB' THEN 1 ELSE 2 END")
@@ -137,30 +238,10 @@ class LandlordOnboardingService
             ]);
         }
 
-        $payload = [
-            'line_1' => $record['line_1'],
-            'line_2' => $record['line_2'] ?: null,
-            'city' => $record['city'],
-            'county' => $record['county'] ?: null,
-            'postcode' => $record['postcode'],
-            'country' => $countryId,
-            'uprn' => $record['uprn'] ?: null,
-            'prop_name' => $record['line_1'],
-            'specific_property_type' => $record['specific_property_type'] ?: 'flat',
-            'property_type' => 'lettings',
-            'bedroom' => $record['bedroom'] ?: '1',
-            'bathroom' => $record['bathroom'] ?: '1',
-            'reception' => $record['reception'] ?: null,
-            'tenure' => $record['tenure'] ?: null,
-            'epc_rating' => $record['epc_rating'] ?: null,
-            'council_tax_band' => $record['council_tax_band'] ?: null,
-            'square_meter' => $record['square_meter'] ?: null,
-            'floor' => $record['floor'] ?: null,
-            'local_authority' => $record['local_authority'] ?: null,
-        ];
+        $payload = $this->propertyAttributesFromRecord($record, $countryId);
 
         $property = DB::transaction(function () use ($account, $user, $payload) {
-            $existing = $this->onboardingProperty($account);
+            $existing = $this->currentDraftProperty($account);
 
             if ($existing) {
                 $property = $this->wizard->updateStep($existing, $payload, 3);
@@ -182,10 +263,14 @@ class LandlordOnboardingService
                 'onboarding_step' => max(2, (int) $account->onboarding_step),
             ]);
 
+            session([self::DRAFT_SESSION => $property->id]);
+
             return $property;
         });
 
-        return $this->propertyPayload($property->fresh());
+        return array_merge($this->propertyPayload($property->fresh()), [
+            'data_sources' => $record['data_sources'] ?? ['chimnie'],
+        ]);
     }
 
     /**
@@ -234,15 +319,36 @@ class LandlordOnboardingService
     }
 
     /**
+     * @param  array{name?: string, email?: string, phone?: string}  $lead
      * @param  array<int, array{name?: string, email?: string, phone?: string}>  $owners
-     * @return array<int, array<string, mixed>>
+     * @return array<string, mixed>
      */
-    public function saveOwners(Account $account, User $landlord, array $owners): array
+    public function saveOwners(Account $account, User $landlord, array $lead, array $owners): array
     {
         $property = $this->requireProperty($account);
+        $leadName = trim((string) ($lead['name'] ?? $landlord->name));
+        $leadEmail = strtolower(trim((string) ($lead['email'] ?? $landlord->email)));
+        $leadPhone = trim((string) ($lead['phone'] ?? ''));
 
-        DB::transaction(function () use ($property, $landlord, $owners, $account) {
-            $group = $this->ensureOwnerGroup($property, $landlord);
+        if ($leadName === '') {
+            throw ValidationException::withMessages([
+                'owner.name' => 'Confirm the owner name shown on the title.',
+            ]);
+        }
+
+        if ($leadEmail !== strtolower((string) $landlord->email)) {
+            throw ValidationException::withMessages([
+                'owner.email' => 'The lead owner must use your login email. Add other names as co-owners.',
+            ]);
+        }
+
+        DB::transaction(function () use ($property, $landlord, $owners, $account, $leadName, $leadPhone) {
+            $landlord->update([
+                'name' => $leadName,
+                'phone' => $leadPhone !== '' ? $leadPhone : $landlord->phone,
+            ]);
+
+            $group = $this->ensureOwnerGroup($property, $landlord->fresh());
             $existingEmails = OwnerGroupUser::query()
                 ->where('owner_group_id', $group->id)
                 ->with('user')
@@ -262,7 +368,7 @@ class LandlordOnboardingService
 
                 if ($name === '' || $email === '') {
                     throw ValidationException::withMessages([
-                        "owners.$index.email" => 'Each owner needs a name and email.',
+                        "owners.$index.email" => 'Each co-owner needs a name and email.',
                     ]);
                 }
 
@@ -276,14 +382,21 @@ class LandlordOnboardingService
                 $existingEmails[] = $email;
             }
 
-            $account->update(['onboarding_step' => max(4, (int) $account->onboarding_step)]);
+            $account->update(['onboarding_step' => max(3, (int) $account->onboarding_step)]);
         });
 
-        return $this->ownerPayload($property->fresh());
+        return [
+            'owner' => [
+                'name' => $leadName,
+                'email' => $leadEmail,
+                'phone' => $leadPhone !== '' ? $leadPhone : $landlord->fresh()->phone,
+            ],
+            'owners' => $this->ownerPayload($property->fresh()),
+        ];
     }
 
     /**
-     * @param  array{name: string, email: string, phone?: string}  $tenant
+     * @param  array{name: string, email: string, phone?: string, occupants?: array<int, array{name?: string, email?: string, phone?: string}>}  $tenant
      * @return array<string, mixed>
      */
     public function saveTenancy(Account $account, User $landlord, array $tenant, bool $sendInvite = true): array
@@ -292,58 +405,148 @@ class LandlordOnboardingService
         $name = trim((string) ($tenant['name'] ?? ''));
         $email = strtolower(trim((string) ($tenant['email'] ?? '')));
         $phone = trim((string) ($tenant['phone'] ?? ''));
+        $occupants = is_array($tenant['occupants'] ?? null) ? $tenant['occupants'] : [];
+        $rent = round((float) ($tenant['rent'] ?? 0), 2);
+        $deposit = round((float) ($tenant['deposit'] ?? 0), 2);
+        $frequency = in_array($tenant['frequency'] ?? '', ['Monthly', 'Weekly'], true)
+            ? $tenant['frequency']
+            : 'Monthly';
+        $termMonths = max(1, min(36, (int) ($tenant['term_months'] ?? 12)));
+        $moveIn = $tenant['move_in'] ?? now()->toDateString();
 
         if ($email === strtolower((string) $landlord->email)) {
             throw ValidationException::withMessages([
-                'email' => 'Use the tenant’s email, not your own.',
+                'email' => 'Use the lead tenant’s email, not your own.',
             ]);
         }
 
-        $wasNew = User::query()->where('email', $email)->doesntExist();
+        $household = array_merge([[
+            'name' => $name,
+            'email' => $email,
+            'phone' => $phone,
+            'lead' => true,
+        ]], array_map(function (array $row) {
+            return [
+                'name' => trim((string) ($row['name'] ?? '')),
+                'email' => strtolower(trim((string) ($row['email'] ?? ''))),
+                'phone' => trim((string) ($row['phone'] ?? '')),
+                'lead' => false,
+            ];
+        }, $occupants));
 
-        [$tenancy, $user] = DB::transaction(function () use ($account, $landlord, $property, $name, $email, $phone) {
-            Tenancy::query()
+        $invites = [];
+
+        $terms = [
+            'move_in' => $moveIn,
+            'rent' => $rent,
+            'deposit' => $deposit,
+            'frequency' => $frequency,
+            'term_months' => $termMonths,
+        ];
+
+        [$tenancy, $leadUser] = DB::transaction(function () use ($account, $landlord, $property, $household, $terms, &$invites) {
+            $tenancy = Tenancy::query()
                 ->where('property_id', $property->id)
                 ->where('status', 'Active')
-                ->update(['status' => 'Archived']);
+                ->latest('id')
+                ->first();
 
-            $user = $this->findOrCreateContact($landlord, $name, $email, $phone, 'Tenant', 'tenant');
-            $this->attachParticipant($account, $property, $user, 'tenant', $landlord);
-
-            $selected = is_array($user->selected_properties)
-                ? $user->selected_properties
-                : (json_decode($user->selected_properties ?? '[]', true) ?: []);
-            if (! in_array((int) $property->id, array_map('intval', $selected), true)) {
-                $selected[] = (int) $property->id;
-                $user->update(['selected_properties' => json_encode(array_values($selected))]);
+            if (! $tenancy) {
+                $tenancy = Tenancy::create(array_merge($terms, [
+                    'account_id' => $account->id,
+                    'property_id' => $property->id,
+                    'status' => 'Active',
+                ]));
+            } else {
+                $tenancy->update($terms);
             }
 
-            $tenancy = Tenancy::create([
+            $keepUserIds = [];
+            $leadUser = null;
+
+            foreach ($household as $index => $person) {
+                if (($person['name'] ?? '') === '' && ($person['email'] ?? '') === '') {
+                    continue;
+                }
+
+                if (($person['name'] ?? '') === '' || ($person['email'] ?? '') === '') {
+                    $field = $person['lead'] ? 'email' : "occupants.$index.email";
+                    throw ValidationException::withMessages([
+                        $field => 'Each tenant needs a name and email.',
+                    ]);
+                }
+
+                $wasNew = User::query()->where('email', $person['email'])->doesntExist();
+                $user = $this->findOrCreateContact(
+                    $landlord,
+                    $person['name'],
+                    $person['email'],
+                    $person['phone'],
+                    'Tenant',
+                    'tenant'
+                );
+                $this->attachParticipant($account, $property, $user, 'tenant', $landlord);
+
+                $selected = is_array($user->selected_properties)
+                    ? $user->selected_properties
+                    : (json_decode($user->selected_properties ?? '[]', true) ?: []);
+                if (! in_array((int) $property->id, array_map('intval', $selected), true)) {
+                    $selected[] = (int) $property->id;
+                    $user->update(['selected_properties' => json_encode(array_values($selected))]);
+                }
+
+                TenantMember::query()->updateOrCreate(
+                    [
+                        'account_id' => $account->id,
+                        'tenancy_id' => $tenancy->id,
+                        'user_id' => $user->id,
+                    ],
+                    [
+                        'is_main_person' => (bool) $person['lead'],
+                        'group_id' => 'GROUP_'.$tenancy->id,
+                        'can_login' => (bool) $user->accountUsers()->where('account_id', $account->id)->value('can_login'),
+                    ]
+                );
+
+                if ($person['lead']) {
+                    TenantMember::query()
+                        ->where('tenancy_id', $tenancy->id)
+                        ->where('user_id', '!=', $user->id)
+                        ->update(['is_main_person' => false]);
+                    $leadUser = $user;
+                }
+
+                $keepUserIds[] = $user->id;
+                $invites[] = ['user' => $user, 'was_new' => $wasNew];
+            }
+
+            if ($keepUserIds !== []) {
+                TenantMember::query()
+                    ->where('tenancy_id', $tenancy->id)
+                    ->whereNotIn('user_id', $keepUserIds)
+                    ->delete();
+            }
+
+            $property->update(['letting_current_status' => 'let agreed']);
+
+            return [$tenancy, $leadUser];
+        });
+
+        try {
+            $this->scheduleMoveInEvent(
+                $account,
+                $landlord,
+                $property,
+                $tenancy,
+                collect($invites)->map(fn (array $row) => $row['user']->id)->all()
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Landlord overlay could not create a move-in calendar event.', [
                 'account_id' => $account->id,
                 'property_id' => $property->id,
-                'status' => 'Active',
-                'move_in' => now()->toDateString(),
-                'rent' => 0,
-                'deposit' => 0,
-                'frequency' => 'Monthly',
-                'term_months' => 12,
+                'error' => $e->getMessage(),
             ]);
-
-            TenantMember::query()->firstOrCreate(
-                [
-                    'account_id' => $account->id,
-                    'tenancy_id' => $tenancy->id,
-                    'user_id' => $user->id,
-                ],
-                [
-                    'is_main_person' => true,
-                    'group_id' => 'GROUP_'.$tenancy->id,
-                    'can_login' => (bool) $user->accountUsers()->where('account_id', $account->id)->value('can_login'),
-                ]
-            );
-
-            return [$tenancy, $user];
-        });
+        }
 
         $invite = [
             'invited' => $sendInvite,
@@ -352,16 +555,37 @@ class LandlordOnboardingService
         ];
 
         if ($sendInvite) {
-            $mail = $this->sendTenantInvite($account, $user, $property, $wasNew);
-            $invite['sent'] = $mail['sent'];
-            $invite['error'] = $mail['error'];
+            foreach ($invites as $row) {
+                $mail = $this->sendTenantInvite($account, $row['user'], $property, $row['was_new']);
+                if ($mail['sent']) {
+                    $invite['sent'] = true;
+                } elseif ($mail['error'] && $invite['error'] === null) {
+                    $invite['error'] = $mail['error'];
+                }
+            }
         }
+
+        $occupantPayload = collect($household)
+            ->reject(fn (array $person) => $person['lead'] || ($person['email'] === '' && $person['name'] === ''))
+            ->map(fn (array $person) => [
+                'name' => $person['name'],
+                'email' => $person['email'],
+                'phone' => $person['phone'],
+            ])
+            ->values()
+            ->all();
 
         return [
             'id' => $tenancy->id,
             'name' => $name,
             'email' => $email,
             'phone' => $phone,
+            'rent' => $tenancy->rent,
+            'deposit' => $tenancy->deposit,
+            'frequency' => $tenancy->frequency,
+            'term_months' => $tenancy->term_months,
+            'move_in' => optional($tenancy->move_in)?->toDateString(),
+            'occupants' => $occupantPayload,
             'invited' => $invite['invited'],
             'sent' => $invite['sent'],
             'error' => $invite['error'],
@@ -400,6 +624,11 @@ class LandlordOnboardingService
             'name' => $tenant?->name,
             'email' => $tenant?->email,
             'phone' => $tenant?->phone,
+            'rent' => $tenancy->rent,
+            'deposit' => $tenancy->deposit,
+            'frequency' => $tenancy->frequency,
+            'term_months' => $tenancy->term_months,
+            'move_in' => optional($tenancy->move_in)?->toDateString(),
         ];
     }
 
@@ -407,22 +636,18 @@ class LandlordOnboardingService
     {
         $this->requireProperty($account);
 
-        if (! $this->documentPayload($user, self::PHOTO_ID) || ! $this->documentPayload($user, self::PROOF_OF_ADDRESS)) {
-            throw ValidationException::withMessages([
-                'documents' => 'Upload a photo ID and a proof of address before finishing.',
-            ]);
-        }
-
         $account->update([
             'onboarding_completed_at' => now(),
-            'onboarding_step' => 4,
+            'onboarding_step' => 3,
         ]);
+
+        $this->dismissAddProperty();
     }
 
     public function saveStep(Account $account, int $step): void
     {
         $account->update([
-            'onboarding_step' => max(1, min(4, $step)),
+            'onboarding_step' => max(1, min(3, $step)),
         ]);
     }
 
@@ -454,7 +679,7 @@ class LandlordOnboardingService
 
     private function requireProperty(Account $account): Property
     {
-        $property = $this->onboardingProperty($account);
+        $property = $this->currentDraftProperty($account);
 
         if (! $property) {
             throw ValidationException::withMessages([
@@ -463,6 +688,77 @@ class LandlordOnboardingService
         }
 
         return $property;
+    }
+
+    private function currentDraftProperty(Account $account): ?Property
+    {
+        $draftId = session(self::DRAFT_SESSION);
+
+        if ($draftId) {
+            return Property::query()
+                ->where('account_id', $account->id)
+                ->whereKey($draftId)
+                ->first();
+        }
+
+        if ($account->onboarding_completed_at && session(self::ADD_SESSION)) {
+            return null;
+        }
+
+        return $this->onboardingProperty($account);
+    }
+
+    private function normalisedStep(Account $account): int
+    {
+        $step = (int) ($account->onboarding_step ?: 1);
+
+        if ($step >= 4) {
+            return 3;
+        }
+
+        if ($step === 3 && ! $this->currentDraftProperty($account)?->id) {
+            return 1;
+        }
+
+        return max(1, min(3, $step));
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @return array<string, mixed>
+     */
+    private function propertyAttributesFromRecord(array $record, int $countryId): array
+    {
+        $blank = static fn ($value) => $value === null || trim((string) $value) === '';
+
+        return array_filter([
+            'line_1' => $record['line_1'] ?? null,
+            'line_2' => $blank($record['line_2'] ?? null) ? null : $record['line_2'],
+            'city' => $record['city'] ?? null,
+            'county' => $blank($record['county'] ?? null) ? null : $record['county'],
+            'postcode' => $record['postcode'] ?? null,
+            'country' => $countryId,
+            'currency' => $blank($record['currency'] ?? null) ? 'GBP' : $record['currency'],
+            'uprn' => $blank($record['uprn'] ?? null) ? null : $record['uprn'],
+            'prop_name' => $record['line_1'] ?? null,
+            'specific_property_type' => $blank($record['specific_property_type'] ?? null) ? 'flat' : $record['specific_property_type'],
+            'property_type' => $blank($record['property_type'] ?? null) ? 'lettings' : $record['property_type'],
+            'bedroom' => $blank($record['bedroom'] ?? null) ? '1' : (string) $record['bedroom'],
+            'bathroom' => $blank($record['bathroom'] ?? null) ? '1' : (string) $record['bathroom'],
+            'reception' => $blank($record['reception'] ?? null) ? null : (string) $record['reception'],
+            'tenure' => $blank($record['tenure'] ?? null) ? null : $record['tenure'],
+            'epc_rating' => $blank($record['epc_rating'] ?? null) ? null : $record['epc_rating'],
+            'epc_required' => $blank($record['epc_required'] ?? null) ? null : (int) (bool) $record['epc_required'],
+            'council_tax_band' => $blank($record['council_tax_band'] ?? null) ? null : $record['council_tax_band'],
+            'square_meter' => $blank($record['square_meter'] ?? null) ? null : (string) $record['square_meter'],
+            'square_feet' => $blank($record['square_feet'] ?? null) ? null : (string) $record['square_feet'],
+            'floor' => $blank($record['floor'] ?? null) ? null : $record['floor'],
+            'local_authority' => $blank($record['local_authority'] ?? null) ? null : $record['local_authority'],
+            'letting_current_status' => $blank($record['letting_current_status'] ?? null) ? 'available' : $record['letting_current_status'],
+            'useful_information' => isset($record['data_sources']) && is_array($record['data_sources'])
+                ? 'Sources: '.implode(', ', $record['data_sources'])
+                : null,
+        ], fn ($value) => $value !== null && $value !== '');
     }
 
     private function onboardingProperty(Account $account): ?Property
@@ -605,6 +901,15 @@ class LandlordOnboardingService
 
         $canLogin = $this->limits->canUseContactLogin($account);
 
+        if (
+            AccountMembership::isPortalType($memberType)
+            && ! $this->limits->canAddPortalUser($account, $user)
+        ) {
+            throw ValidationException::withMessages([
+                'email' => 'Your current plan has reached the tenant portal user limit.',
+            ]);
+        }
+
         AccountUser::updateOrCreate(
             [
                 'account_id' => $account->id,
@@ -621,6 +926,65 @@ class LandlordOnboardingService
     }
 
     /**
+     * Put move-in on the account diary so the household sees it in the tenant portal.
+     *
+     * @param  array<int, int>  $inviteUserIds
+     */
+    private function scheduleMoveInEvent(Account $account, User $landlord, Property $property, Tenancy $tenancy, array $inviteUserIds): void
+    {
+        $type = EventType::query()->firstOrCreate(
+            ['name' => 'Move-In/Move-Out'],
+            ['slug' => 'move-in-move-out', 'description' => 'Move-in and move-out']
+        );
+        $subType = EventSubType::query()->firstOrCreate(
+            [
+                'event_type_id' => $type->id,
+                'name' => 'Move-In Scheduled',
+            ],
+            ['slug' => 'move-in-scheduled', 'description' => 'Move-in scheduled']
+        );
+
+        $address = trim(implode(', ', array_filter([
+            $property->line_1,
+            $property->city,
+            $property->postcode,
+        ])));
+        $label = 'Move-in — '.($address !== '' ? $address : ($property->prop_name ?: 'Property'));
+
+        $start = Carbon::parse($tenancy->move_in ?: now())->setTime(10, 0);
+        $end = $start->copy()->addHour();
+
+        $event = Event::query()
+            ->forAccount($account->id)
+            ->where('title', $label)
+            ->whereHas('properties', fn ($query) => $query->where('properties.id', $property->id))
+            ->first();
+
+        $payload = [
+            'account_id' => $account->id,
+            'title' => $label,
+            'type_id' => $type->id,
+            'sub_type_id' => $subType->id,
+            'status' => 'Scheduled',
+            'diary_owner' => $landlord->id,
+            'on_behalf_of' => $landlord->id,
+            'location' => $label,
+            'description' => 'Created when the tenancy was set up.',
+            'start_datetime' => $start,
+            'end_datetime' => $end,
+        ];
+
+        if ($event) {
+            $event->update($payload);
+        } else {
+            $event = Event::create($payload);
+        }
+
+        $event->properties()->sync([$property->id]);
+        $event->users()->sync(array_values(array_unique(array_map('intval', $inviteUserIds))));
+    }
+
+    /**
      * @return array{sent: bool, error: ?string}
      */
     private function sendTenantInvite(Account $account, User $user, Property $property, bool $wasNew): array
@@ -632,68 +996,7 @@ class LandlordOnboardingService
             ];
         }
 
-        try {
-            $address = trim(implode(', ', array_filter([
-                $property->line_1,
-                $property->city,
-                $property->postcode,
-            ])));
-            $resetLink = $wasNew ? $user->createResetLink() : '';
-            $loginUrl = url('/login');
-
-            $placeholders = [
-                'tenant_name' => $user->name ?? $user->email,
-                'tenant_email' => $user->email,
-                'tenant_password' => 'Set via the link below',
-                'property_name' => $property->prop_name ?: $property->line_1,
-                'property_address' => $address !== '' ? $address : '—',
-                'move_in_date' => now()->toFormattedDateString(),
-                'rent' => '—',
-                'reset_link' => $resetLink,
-                'login_url' => $loginUrl,
-                'crm_name' => config('app.name'),
-                'admin_email' => config('mail.from.address'),
-            ];
-
-            if ($wasNew) {
-                $template = EmailTemplate::getByIdentifier('tenant_account_created');
-                $subject = 'Welcome to '.config('app.name').' — set your password';
-                $fallback = '<p>Hi '.e($placeholders['tenant_name']).',</p>'
-                    .'<p>Your landlord has set up a tenancy for '.e($placeholders['property_address']).'.</p>'
-                    .'<p>Email: '.e($placeholders['tenant_email']).'</p>'
-                    .'<p><a href="'.e($resetLink).'">Set your password</a> to access your account.</p>';
-                $rawKeys = ['reset_link', 'login_url'];
-            } else {
-                $template = EmailTemplate::getByIdentifier('tenant_welcome');
-                $subject = 'Your tenancy at '.$placeholders['property_name'];
-                $fallback = '<p>Hi '.e($placeholders['tenant_name']).',</p>'
-                    .'<p>You have been added as a tenant at '.e($placeholders['property_address']).'.</p>'
-                    .'<p><a href="'.e($loginUrl).'">Log in</a> to view your tenancy.</p>';
-                $rawKeys = ['login_url'];
-            }
-
-            if ($template) {
-                $renderedHtml = $template->replace($placeholders, $rawKeys);
-                $subject = render_template($template->subject, $placeholders);
-            } else {
-                $renderedHtml = $fallback;
-            }
-
-            Mail::to($user->email)->send(new MailManager([
-                'subject' => $subject,
-                'content' => $renderedHtml,
-                'attachments' => [],
-            ]));
-
-            return ['sent' => true, 'error' => null];
-        } catch (\Throwable $exception) {
-            Log::error('Landlord onboarding tenant invite email failed: '.$exception->getMessage(), [
-                'email' => $user->email,
-                'user_id' => $user->id,
-            ]);
-
-            return ['sent' => false, 'error' => $exception->getMessage()];
-        }
+        return app(TenantInviteMailer::class)->send($user, $property, $wasNew);
     }
 
     /**
@@ -715,6 +1018,12 @@ class LandlordOnboardingService
             'epc_rating' => $property->epc_rating,
             'council_tax_band' => $property->council_tax_band,
             'square_meter' => $property->square_meter,
+            'square_feet' => $property->square_feet,
+            'floor' => $property->floor,
+            'local_authority' => $property->local_authority,
+            'reception' => $property->reception,
+            'letting_current_status' => $property->letting_current_status,
+            'data_sources' => ['chimnie'],
             'label' => trim(implode(', ', array_filter([
                 $property->line_1,
                 $property->city,

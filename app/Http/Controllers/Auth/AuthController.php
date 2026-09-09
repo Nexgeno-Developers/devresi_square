@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Support\PostLoginRedirect;
 
 class AuthController
 {
@@ -33,32 +34,7 @@ class AuthController
         if (Auth::attempt($request->only('email', 'password'), $remember)) {
             $user = Auth::user();
 
-            // Tenant goes to a clean home page
-            if ($user->hasRole('Tenant')) {
-                return redirect()->route('backend.home');
-            }
-
-            // Contractor goes to the same welcome home page
-            if ($user->hasRole('Contractor')) {
-                return redirect()->route('backend.home');
-            }
-
-            if (
-                $user->hasAnyRole([
-                    'Super Admin',
-                    'Owner',
-                    'Property Manager',
-                    'Landlord',
-                    'Estate Agent',
-                    'Agent',
-                    'Staff',
-                    'Test',
-                ])
-            ) {
-                return redirect()->route('backend.dashboard');
-            }
-
-            return redirect()->route('home');
+            return PostLoginRedirect::to($user);
         }
 
         return back()

@@ -15,6 +15,13 @@ class CustomerStatementController extends Controller
     public function show(Request $request, StatementService $service)
     {
         $user = Auth::user();
+
+        if ($user?->hasRole('Tenant') && ! $user->hasAnyRole(['Super Admin', 'Property Manager', 'Estate Agent'])) {
+            return redirect()->route('tenant.rent');
+        }
+
+        abort_if(is_landlord_plan_user($user), 403, 'This area is not available on the landlord plan.');
+
         $accountId = current_account_id();
         $portalAccessService = app(PortalAccessService::class);
 

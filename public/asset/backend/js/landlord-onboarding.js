@@ -13,7 +13,9 @@
     const selectedEl = root.querySelector('[data-lob-selected]');
     const selectedAddress = root.querySelector('[data-lob-selected-address]');
     const selectedFacts = root.querySelector('[data-lob-selected-facts]');
+    const sourcesEl = root.querySelector('[data-lob-sources]');
     const ownerList = root.querySelector('[data-lob-owners]');
+    const occupantList = root.querySelector('[data-lob-occupants]');
     const laterBtns = root.querySelectorAll('[data-lob-later]');
     const postcodeInput = document.getElementById('lob-postcode');
     const doneCopy = root.querySelector('[data-lob-done-copy]');
@@ -22,6 +24,7 @@
     const busyBar = root.querySelector('[data-lob-busybar]');
     const busyLabel = root.querySelector('[data-lob-busy-label]');
     const searchBtn = root.querySelector('[data-lob-search-btn]');
+    const leadOwnerForm = root.querySelector('[data-lob-lead-owner]');
 
     let state = bootstrap;
     let lastPostcode = state.property?.postcode || '';
@@ -96,24 +99,25 @@
             if (el.matches('[data-lob-later], [data-lob-done-close]')) {
                 return;
             }
+            if (el.readOnly) {
+                return;
+            }
             el.disabled = isBusy;
         });
     }
 
-    function setUploadBusy(kind, isUploading, fileName) {
-        const status = root.querySelector(`[data-lob-file-status="${kind}"]`);
-        const nameEl = root.querySelector(`[data-lob-file-name="${kind}"]`);
-        const box = nameEl?.closest('.lob-upload');
-        box?.classList.toggle('is-uploading', isUploading);
-        if (status) {
-            status.hidden = !isUploading;
+    async function closeModal() {
+        if (root.dataset.dismiss) {
+            try {
+                await request(root.dataset.dismiss, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({}),
+                });
+            } catch (error) {
+                // Overlay can still close; next page load will retry the session flag.
+            }
         }
-        if (isUploading && nameEl) {
-            nameEl.textContent = fileName ? `Selected ${fileName}` : 'Uploading…';
-        }
-    }
-
-    function closeModal() {
         document.body.classList.remove('lob-open');
         root.remove();
     }
@@ -134,7 +138,7 @@
     }
 
     function goTo(step, persist) {
-        const next = Math.max(1, Math.min(5, Number(step) || 1));
+        const next = Math.max(1, Math.min(4, Number(step) || 1));
         state.step = next;
         root.querySelectorAll('[data-lob-screen]').forEach((screen) => {
             screen.hidden = Number(screen.dataset.lobScreen) !== next;
@@ -142,15 +146,15 @@
         root.querySelectorAll('[data-lob-step-item]').forEach((item) => {
             const itemStep = Number(item.dataset.lobStepItem);
             item.classList.toggle('is-current', itemStep === next);
-            item.classList.toggle('is-complete', itemStep < next || next === 5);
+            item.classList.toggle('is-complete', itemStep < next || next === 4);
         });
         root.querySelectorAll('[data-lob-actions]').forEach((row) => {
             row.hidden = Number(row.dataset.lobActions) !== next;
         });
         laterBtns.forEach((btn) => {
-            btn.hidden = next === 5;
+            btn.hidden = next === 4;
         });
-        if (persist !== false && next <= 4) {
+        if (persist !== false && next <= 3) {
             request(root.dataset.stepUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -173,58 +177,85 @@
             ['EPC', property.epc_rating],
             ['Tenure', property.tenure],
             ['Band', property.council_tax_band],
+            ['Floor', property.floor],
+            ['m²', property.square_meter],
         ].filter((pair) => pair[1]);
         selectedFacts.innerHTML = facts.map(([label, value]) => (
             `<div><dt>${label}</dt><dd>${value}</dd></div>`
         )).join('');
+
+        const sources = property.data_sources || [];
+        if (sourcesEl) {
+            if (sources.length) {
+                sourcesEl.hidden = false;
+                sourcesEl.textContent = 'Filled from ' + sources.join(' · ');
+            } else {
+                sourcesEl.hidden = true;
+            }
+        }
     }
 
-    function ownerRow(owner) {
+    function personRow(person, kind) {
         const wrap = document.createElement('div');
         wrap.className = 'lob-owner';
         wrap.innerHTML = `
-            <input type="text" name="name" placeholder="Name" value="${owner?.name || ''}">
-            <input type="email" name="email" placeholder="Email" value="${owner?.email || ''}">
-            <input type="tel" name="phone" placeholder="Phone" value="${owner?.phone || ''}">
+            <input type="text" name="name" placeholder="Name" value="${person?.name || ''}">
+            <input type="email" name="email" placeholder="Email" value="${person?.email || ''}">
+            <input type="tel" name="phone" placeholder="Phone" value="${person?.phone || ''}">
             <button type="button" class="lob-owner-remove">Remove</button>
         `;
         wrap.querySelector('.lob-owner-remove').addEventListener('click', () => wrap.remove());
         return wrap;
     }
 
-    function ensureOwnerRow() {
-        if (!ownerList.children.length) {
-            ownerList.appendChild(ownerRow());
-        }
+    function collectPeople(list) {
+        return Array.from(list.querySelectorAll('.lob-owner')).map((row) => ({
+            name: row.querySelector('[name="name"]').value.trim(),
+            email: row.querySelector('[name="email"]').value.trim(),
+            phone: row.querySelector('[name="phone"]').value.trim(),
+        })).filter((person) => person.name || person.email || person.phone);
     }
 
-    function renderDocuments() {
-        ['photo_id', 'proof_of_address'].forEach((kind) => {
-            const doc = state.documents?.[kind];
-            const nameEl = root.querySelector(`[data-lob-file-name="${kind}"]`);
-            const box = nameEl?.closest('.lob-upload');
-            if (doc && nameEl) {
-                nameEl.textContent = doc.name;
-                box?.classList.add('is-ready');
-            }
-        });
+    function renderLeadOwner() {
+        if (!leadOwnerForm || !state.owner) {
+            return;
+        }
+        leadOwnerForm.name.value = state.owner.name || '';
+        leadOwnerForm.email.value = state.owner.email || '';
+        leadOwnerForm.phone.value = state.owner.phone || '';
     }
 
     function renderTenancy() {
-        if (!state.tenancy) {
+        const form = root.querySelector('[data-lob-tenancy]');
+        if (!form) {
             return;
         }
-        const form = root.querySelector('[data-lob-tenancy]');
-        form.name.value = state.tenancy.name || '';
-        form.email.value = state.tenancy.email || '';
-        form.phone.value = state.tenancy.phone || '';
+        form.name.value = state.tenancy?.name || '';
+        form.email.value = state.tenancy?.email || '';
+        form.phone.value = state.tenancy?.phone || '';
+        if (form.rent) {
+            form.rent.value = state.tenancy?.rent || '';
+        }
+        if (form.deposit) {
+            form.deposit.value = state.tenancy?.deposit || '';
+        }
+        if (form.frequency) {
+            form.frequency.value = state.tenancy?.frequency || 'Monthly';
+        }
+        if (form.term_months) {
+            form.term_months.value = state.tenancy?.term_months || 12;
+        }
+        if (form.move_in) {
+            form.move_in.value = state.tenancy?.move_in || '';
+        }
+        occupantList.innerHTML = '';
+        (state.tenancy?.occupants || []).forEach((person) => occupantList.appendChild(personRow(person)));
     }
 
     function hydrate() {
         renderFacts(state.property);
-        renderDocuments();
-        (state.owners || []).forEach((owner) => ownerList.appendChild(ownerRow(owner)));
-        ensureOwnerRow();
+        renderLeadOwner();
+        (state.owners || []).forEach((owner) => ownerList.appendChild(personRow(owner)));
         renderTenancy();
         if (state.property?.postcode && postcodeInput) {
             postcodeInput.value = state.property.postcode;
@@ -302,49 +333,24 @@
         }
     });
 
-    root.querySelectorAll('[data-lob-file]').forEach((input) => {
-        input.addEventListener('change', async () => {
-            if (!input.files[0]) {
-                return;
-            }
-            showAlert('');
-            setUploadBusy(input.dataset.lobFile, true, input.files[0].name);
-            const body = new FormData();
-            body.append('kind', input.dataset.lobFile);
-            body.append('file', input.files[0]);
-            setBusy(true, { label: 'Uploading document…' });
-            try {
-                const payload = await request(root.dataset.document, { method: 'POST', body });
-                state.documents = state.documents || {};
-                state.documents[input.dataset.lobFile] = payload.data;
-                renderDocuments();
-            } catch (error) {
-                input.value = '';
-                const nameEl = root.querySelector(`[data-lob-file-name="${input.dataset.lobFile}"]`);
-                if (nameEl && !state.documents?.[input.dataset.lobFile]) {
-                    nameEl.textContent = 'No file yet';
-                }
-                showAlert(error.message);
-            } finally {
-                setUploadBusy(input.dataset.lobFile, false);
-                setBusy(false);
-            }
-        });
-    });
-
     root.querySelector('[data-lob-add-owner]').addEventListener('click', () => {
-        ownerList.appendChild(ownerRow());
+        ownerList.appendChild(personRow());
     });
 
-    async function saveOwnersAndContinue() {
-        const owners = Array.from(ownerList.querySelectorAll('.lob-owner')).map((row) => ({
-            name: row.querySelector('[name="name"]').value.trim(),
-            email: row.querySelector('[name="email"]').value.trim(),
-            phone: row.querySelector('[name="phone"]').value.trim(),
-        })).filter((owner) => owner.name || owner.email || owner.phone);
+    root.querySelector('[data-lob-add-occupant]').addEventListener('click', () => {
+        occupantList.appendChild(personRow());
+    });
 
-        if (!owners.length) {
-            goTo(4);
+    async function saveOwnersAndContinue(skipExtras) {
+        const owner = {
+            name: leadOwnerForm.name.value.trim(),
+            email: leadOwnerForm.email.value.trim(),
+            phone: leadOwnerForm.phone.value.trim(),
+        };
+        const owners = skipExtras ? [] : collectPeople(ownerList);
+
+        if (!owner.name) {
+            showAlert('Confirm the lead owner name to continue.');
             return;
         }
 
@@ -357,10 +363,11 @@
             const payload = await request(root.dataset.owners, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ owners }),
+                body: JSON.stringify({ owner, owners }),
             });
-            state.owners = payload.data;
-            goTo(4);
+            state.owner = payload.data.owner || owner;
+            state.owners = payload.data.owners || owners;
+            goTo(3);
         } catch (error) {
             showAlert(error.message);
         } finally {
@@ -376,7 +383,7 @@
             return 'Tenancy saved, but the email did not send.';
         }
         if (tenancyData) {
-            return 'Tenancy saved without sending an invite.';
+            return 'Household saved without sending invites.';
         }
         if (completeData?.property?.label) {
             return `${completeData.property.label} is on your portfolio.`;
@@ -389,17 +396,34 @@
         const name = form.name.value.trim();
         const email = form.email.value.trim();
         const phone = form.phone.value.trim();
+        const occupants = collectPeople(occupantList);
 
-        if (!withTenancy && (name || email)) {
+        const rent = parseFloat(form.rent?.value || '0');
+        const deposit = parseFloat(form.deposit?.value || '0');
+        const frequency = form.frequency?.value || 'Monthly';
+        const termMonths = parseInt(form.term_months?.value || '12', 10);
+        const moveIn = form.move_in?.value || '';
+
+        if (!withTenancy && (name || email || occupants.length)) {
             if (!name || !email) {
-                showAlert('Add both a tenant name and email, or clear the form to skip.');
+                showAlert('Add both a lead tenant name and email, or clear the household to skip.');
                 return;
             }
         }
 
+        if ((withTenancy || name || email) && !(rent > 0)) {
+            showAlert('Enter the rent for this tenancy.');
+            return;
+        }
+
+        if (withTenancy && occupants.length && (!name || !email)) {
+            showAlert('Add the lead tenant before extra occupants.');
+            return;
+        }
+
         showAlert('');
         setBusy(true, {
-            label: withTenancy ? 'Inviting tenant…' : 'Finishing setup…',
+            label: withTenancy ? 'Inviting household…' : 'Finishing setup…',
             button: root.querySelector(withTenancy ? '[data-lob-save-tenancy]' : '[data-lob-skip-complete]'),
         });
         try {
@@ -412,6 +436,12 @@
                         name,
                         email,
                         phone,
+                        occupants,
+                        rent,
+                        deposit: Number.isFinite(deposit) ? deposit : 0,
+                        frequency,
+                        term_months: Number.isFinite(termMonths) ? termMonths : 12,
+                        move_in: moveIn || null,
                         invite: withTenancy,
                     }),
                 });
@@ -436,7 +466,7 @@
                 url.searchParams.set('tabname', 'property');
                 openProperty.href = url.toString();
             }
-            goTo(5, false);
+            goTo(4, false);
         } catch (error) {
             showAlert(error.message);
         } finally {
@@ -444,27 +474,21 @@
         }
     }
 
-    root.querySelector('[data-lob-next="3"]').addEventListener('click', () => {
-        if (!state.documents?.photo_id || !state.documents?.proof_of_address) {
-            showAlert('Upload both a photo ID and a proof of address to continue.');
-            return;
-        }
-        showAlert('');
-        goTo(3);
-    });
-
-    root.querySelector('[data-lob-save-owners]').addEventListener('click', saveOwnersAndContinue);
-    root.querySelector('[data-lob-skip="4"]').addEventListener('click', () => goTo(4));
+    root.querySelector('[data-lob-save-owners]').addEventListener('click', () => saveOwnersAndContinue(false));
+    root.querySelector('[data-lob-skip="3"]').addEventListener('click', () => saveOwnersAndContinue(true));
     root.querySelector('[data-lob-save-tenancy]').addEventListener('click', () => finish(true));
     root.querySelector('[data-lob-skip-complete]').addEventListener('click', () => finish(false));
-    root.querySelector('[data-lob-done-close]').addEventListener('click', closeModal);
+    root.querySelector('[data-lob-done-close]').addEventListener('click', () => {
+        document.body.classList.remove('lob-open');
+        root.remove();
+    });
 
     root.querySelectorAll('[data-lob-back]').forEach((button) => {
         button.addEventListener('click', () => goTo(Math.max(1, (state.step || 2) - 1)));
     });
 
     laterBtns.forEach((button) => {
-        button.addEventListener('click', closeModal);
+        button.addEventListener('click', () => closeModal());
     });
 
     document.addEventListener('keydown', (event) => {

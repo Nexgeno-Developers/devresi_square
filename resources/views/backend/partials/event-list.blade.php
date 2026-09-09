@@ -29,7 +29,7 @@
         </div>
 
         <div class="row g-2 mt-1">
-            <div class="col-6">
+            <div class="{{ is_landlord_plan_user() ? 'col-12' : 'col-6' }}">
                 <select name="status" class="form-control form-control-sm calendar-filter">
                     <option value="all">All Statuses</option>
                     @foreach($filterData['statuses'] as $status)
@@ -37,6 +37,7 @@
                     @endforeach
                 </select>
             </div>
+            @unless(is_landlord_plan_user())
             <div class="col-6">
                 <select name="office" class="form-control form-control-sm calendar-filter">
                     <option value="all">All Offices</option>
@@ -45,9 +46,11 @@
                     @endforeach
                 </select>
             </div>
+            @endunless
         </div>
 
         <div class="row g-2 mt-1">
+            @unless(is_landlord_plan_user())
             <div class="col-6">
                 <select name="diary_owner" class="form-control form-control-sm calendar-filter">
                     <option value="all">All Diary Owners</option>
@@ -56,7 +59,8 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-6">
+            @endunless
+            <div class="{{ is_landlord_plan_user() ? 'col-12' : 'col-6' }}">
                 <select name="property_id" class="form-control form-control-sm calendar-filter">
                     <option value="all">All Properties</option>
                     @foreach($filterData['properties'] as $property)

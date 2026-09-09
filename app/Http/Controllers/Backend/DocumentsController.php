@@ -8,12 +8,33 @@ use App\Models\Property;
 use App\Models\Upload;
 use App\Models\User;
 use App\Services\Saas\PortalAccessService;
+use App\Support\WorkspaceAccess;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class DocumentsController 
-{   
+{
+    public function index()
+    {
+        $user = auth()->user();
+
+        abort_unless(
+            $user && ($user->isSuperAdmin() || WorkspaceAccess::canManageCurrentWorkspace($user)),
+            403
+        );
+
+        $documents = Document::query()
+            ->with(['documentType', 'documentable'])
+            ->forAccount(current_account_id())
+            ->orderByDesc('updated_at')
+            ->paginate(20);
+
+        return view('backend.documents.index', compact('documents'));
+    }
+
     /**
      * Render the “create new document” form.
      */
@@ -77,6 +98,7 @@ class DocumentsController
             $document->update([
                 'upload_ids'       => $data['upload_ids'],
                 'document_type_id' => $data['document_type_id'] ?? null,
+                'visibility'       => $data['visibility'] ?? $document->visibility,
             ]);
         } else {
             $documentable = $data['documentable_type']::findOrFail($data['documentable_id']);
@@ -90,6 +112,7 @@ class DocumentsController
                 'documentable_id'     => $data['documentable_id'],
                 'upload_ids'          => $data['upload_ids'],
                 'document_type_id'    => $data['document_type_id'] ?? null,
+                'visibility'          => $data['visibility'] ?? 'private',
                 'created_by'          => auth()->id(),
             ]);
         }
@@ -107,8 +130,14 @@ class DocumentsController
             'upload_ids'          => ['required', 'string'], // comma-separated IDs
             'document_type_id'    => ['nullable', 'integer', Rule::exists('document_types', 'id')],
             'document_id'         => ['nullable', 'integer', Rule::exists('documents', 'id')],
+            'share_with_tenant'   => ['nullable', 'boolean'],
+            'visibility'          => ['nullable', Rule::in(['private', 'shared', 'portal'])],
         ]);
         $this->ensureUploadsAreAccessible($data['upload_ids']);
+
+        if ($request->has('share_with_tenant')) {
+            $data['visibility'] = $request->boolean('share_with_tenant') ? 'portal' : 'private';
+        }
 
         $document = $this->saveDocumentData($data);
 
@@ -144,6 +173,10 @@ class DocumentsController
         $this->ensureDocumentableIsAccessible($documentable);
         $this->authorizeDocumentableView($documentable);
 
+        if (is_tenant_portal_user() && Schema::hasColumn('documents', 'visibility')) {
+            $q->whereIn('visibility', Document::TENANT_VISIBILITIES);
+        }
+
         if (! empty($data['document_type_id'])) {
             $q->where('document_type_id', $data['document_type_id']);
         }
@@ -166,6 +199,43 @@ class DocumentsController
         return response()->json(['html' => $html]);
     }
 
+    public function download(Document $document)
+    {
+        ensureModelBelongsToCurrentAccount($document);
+        Gate::authorize('download', $document);
+        $this->ensureDocumentableIsAccessible($document->documentable);
+        $this->authorizeDocumentableView($document->documentable);
+
+        return $document->downloadResponse();
+    }
+
+    public function share(Request $request, Document $document)
+    {
+        ensureModelBelongsToCurrentAccount($document);
+        Gate::authorize('share', $document);
+        $this->ensureDocumentableIsAccessible($document->documentable);
+        $this->authorizeDocumentableUpload($document->documentable);
+
+        $share = $request->boolean('share_with_tenant');
+        $document->update([
+            'visibility' => $share ? 'portal' : 'private',
+        ]);
+
+        flash($share
+            ? 'This file is now visible to the tenant.'
+            : 'This file is no longer shared with the tenant.'
+        )->success();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'status' => true,
+                'visibility' => $document->visibility,
+            ]);
+        }
+
+        return back();
+    }
+
     /**
      * AJAX: Show a single document’s full content in a modal.
      */
@@ -173,6 +243,7 @@ class DocumentsController
     {
         $document = Document::with('documentType')->findOrFail($id);
         ensureModelBelongsToCurrentAccount($document);
+        Gate::authorize('view', $document);
         $this->ensureDocumentableIsAccessible($document->documentable);
         $this->authorizeDocumentableView($document->documentable);
 

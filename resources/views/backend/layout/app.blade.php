@@ -87,7 +87,7 @@
         </div>
     </main>
     @yield('modal')
-    @if(auth()->check() && app(\App\Services\Onboarding\LandlordOnboardingService::class)->shouldShow(auth()->user(), current_account()))
+    @if(auth()->check() && app(\App\Services\Onboarding\LandlordOnboardingService::class)->shouldIncludeOverlay(auth()->user(), current_account()))
         @include('backend.onboarding.landlord-overlay')
     @endif
     {{-- Include the scripts partial to push these scripts to the 'scripts' stack --}}

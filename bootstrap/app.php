@@ -59,6 +59,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'account.status' => \App\Http\Middleware\AccountStatusGuard::class,
             'landlord.restricted' => \App\Http\Middleware\RestrictLandlordRoutes::class,
             'tenancy.manage' => \App\Http\Middleware\RestrictTenancyManagement::class,
+            'portal.tenant' => \App\Http\Middleware\EnsureTenantPortal::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -45,6 +45,8 @@ class DebugRegistrationOtpController extends Controller
 
     public static function debugOtpEnabled(): bool
     {
-        return app()->environment('local') && (bool) config('app.debug');
+        return app()->environment('local')
+            && (bool) config('app.debug')
+            && filter_var(env('REGISTRATION_OTP_DEBUG', false), FILTER_VALIDATE_BOOLEAN);
     }
 }

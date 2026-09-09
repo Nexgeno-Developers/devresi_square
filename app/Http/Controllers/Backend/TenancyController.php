@@ -21,6 +21,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Enums\CrmNotificationEvent;
 use App\Services\Notifications\CrmNotificationService;
+use Illuminate\Support\Facades\Gate;
 
 class TenancyController
 {
@@ -49,6 +50,8 @@ class TenancyController
         $property = Property::findOrFail($propertyId);
         ensureModelBelongsToCurrentAccount($property);
 
+        Gate::authorize('viewAny', Tenancy::class);
+
         $tenancies = Tenancy::where('property_id', $propertyId)
             ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->where('status', 'Active')
@@ -60,6 +63,8 @@ class TenancyController
     // Global tenancies listing
     public function all(Request $request)
     {
+        Gate::authorize('viewAny', Tenancy::class);
+
         $query = Tenancy::with(['property', 'tenantMembers.user', 'tenancySubStatus'])
             ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->orderByDesc('id');
@@ -75,6 +80,8 @@ class TenancyController
     // Show the form for creating a new tenancy
     public function create(Request $request)
     {
+        Gate::authorize('create', Tenancy::class);
+
         $tenants = $this->usersWithRoleForCurrentAccount('Tenant')->get();
         $property_managers = $this->usersWithRoleForCurrentAccount('Property Manager')->get();
         $tenancyTypes = TenancyType::all();
@@ -92,6 +99,8 @@ class TenancyController
     // Store a newly created tenancy
     public function store(Request $request)
     {
+        Gate::authorize('create', Tenancy::class);
+
         // Validate the incoming request
         $validated = $request->validate([
             'property_id' => 'required|exists:properties,id',
@@ -147,7 +156,7 @@ class TenancyController
 
         $property = Property::findOrFail($validated['property_id']);
         ensureModelBelongsToCurrentAccount($property);
-        $validated['account_id'] = $property->account_id ?: current_account_id();
+        $validated['account_id'] = current_account_id();
         $this->ensureRoleUsersAreAccessible($validated['user_id'], 'Tenant', 'user_id');
         $this->ensureRoleUsersAreAccessible($validated['property_manager'] ?? [], 'Property Manager', 'property_manager');
         $this->ensureOfferMatchesProperty($validated['offer_id'] ?? null, $property);
@@ -295,6 +304,7 @@ class TenancyController
             ),
         ])->findOrFail($id);
         ensureModelBelongsToCurrentAccount($tenancy);
+        Gate::authorize('view', $tenancy);
 
         return view('backend.tenancies.show', compact('tenancy'));
     }
@@ -415,6 +425,7 @@ class TenancyController
         // Find the tenancy by its ID
         $tenancy = Tenancy::findOrFail($id);
         ensureModelBelongsToCurrentAccount($tenancy);
+        Gate::authorize('update', $tenancy);
 
         // Fetch related data needed for the edit form
 
@@ -518,10 +529,11 @@ class TenancyController
         // Find the existing tenancy record
         $tenancy = Tenancy::findOrFail($id);
         ensureModelBelongsToCurrentAccount($tenancy);
+        Gate::authorize('update', $tenancy);
 
         $property = Property::findOrFail($validated['property_id']);
         ensureModelBelongsToCurrentAccount($property);
-        $validated['account_id'] = $property->account_id ?: $tenancy->account_id ?: current_account_id();
+        $validated['account_id'] = current_account_id();
         $this->ensureRoleUsersAreAccessible($validated['user_id'], 'Tenant', 'user_id');
         $this->ensureRoleUsersAreAccessible($validated['property_manager'] ?? [], 'Property Manager', 'property_manager');
         $this->ensureOfferMatchesProperty($validated['offer_id'] ?? null, $property);
@@ -586,6 +598,7 @@ class TenancyController
     {
         $tenancy = Tenancy::findOrFail($id);
         ensureModelBelongsToCurrentAccount($tenancy);
+        Gate::authorize('delete', $tenancy);
         $propertyId = $tenancy->property_id;
         $tenancy->delete();
 

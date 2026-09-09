@@ -31,11 +31,22 @@ use App\Models\PropertyParticipant;
 use App\Models\Offer;
 use App\Models\ComplianceRecord;
 use App\Models\RepairIssue;
+use App\Models\RentInvoice;
 use App\Models\WorkOrder;
 use App\Models\TenantMember;
 use App\Models\TenancyNotice;
 use App\Models\NotificationLog;
+use App\Models\Document;
+use App\Models\OwnerGroup;
 use App\Observers\EventObserver;
+use App\Policies\AccountUserPolicy;
+use App\Policies\BillingPolicy;
+use App\Policies\DocumentPolicy;
+use App\Policies\FinancePolicy;
+use App\Policies\OwnerGroupPolicy;
+use App\Policies\PropertyPolicy;
+use App\Policies\RepairIssuePolicy;
+use App\Policies\TenancyPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -45,6 +56,16 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(AuditorContract::class, Auditor::class);
+
+        $debugbarExplicit = env('DEBUGBAR_ENABLED');
+        $debugbarOff = $this->app->environment('production')
+            || $debugbarExplicit === false
+            || $debugbarExplicit === 'false'
+            || $debugbarExplicit === '0';
+
+        if ($debugbarOff) {
+            $this->app['config']->set('debugbar.enabled', false);
+        }
     }
 
     /**
@@ -60,15 +81,20 @@ class AppServiceProvider extends ServiceProvider
         Paginator::useBootstrapFive();
         //Paginator::useBootstrap(); // Enables Bootstrap 4 styling
 
-        // Super Admin check – this runs before all Gate checks
+        // Super Admin still bypasses Gates so platform screens keep working.
+        // Customer records stay account-scoped in queries and policies for everyone else.
         Gate::before(function ($user, $ability) {
             return $user->isSuperAdmin() ? true : null;
-            // Option 1: check by email
-            // return $user->email === 'superadmin@example.com' ? true : null;
-
-            // Option 2: check by role
-            // return $user->hasRole('Super Admin') ? true : null;
         });
+
+        Gate::policy(Property::class, PropertyPolicy::class);
+        Gate::policy(Tenancy::class, TenancyPolicy::class);
+        Gate::policy(RepairIssue::class, RepairIssuePolicy::class);
+        Gate::policy(Document::class, DocumentPolicy::class);
+        Gate::policy(OwnerGroup::class, OwnerGroupPolicy::class);
+        Gate::policy(RentInvoice::class, FinancePolicy::class);
+        Gate::policy(AccountUser::class, AccountUserPolicy::class);
+        Gate::policy(Account::class, BillingPolicy::class);
         
         // $permissions = cache()->remember('all_permissions', 3600, fn() => Permission::all());
         $permissions = collect();

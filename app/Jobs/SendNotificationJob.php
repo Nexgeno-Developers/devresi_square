@@ -17,6 +17,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use App\Support\AccountMembership;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
@@ -272,7 +273,7 @@ class SendNotificationJob implements ShouldQueue
         $adminIds = DB::table('account_users')
             ->where('account_id', $log->account_id)
             ->where('status', 'active')
-            ->whereIn('member_type', ['owner', 'admin'])
+            ->whereIn('member_type', AccountMembership::WORKSPACE_ADMIN_TYPES)
             ->pluck('user_id');
         $adminIds->push(DB::table('accounts')->where('id', $log->account_id)->value('owner_user_id'));
 

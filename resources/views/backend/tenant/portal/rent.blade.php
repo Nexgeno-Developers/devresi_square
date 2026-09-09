@@ -38,7 +38,7 @@
                             <td>{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d M Y') : '—' }}</td>
                             <td>£{{ number_format((float) ($invoice->total_amount ?? 0), 2) }}</td>
                             <td>£{{ number_format((float) ($invoice->balance_amount ?? $invoice->total_amount ?? 0), 2) }}</td>
-                            <td><span class="tp-pill">{{ $invoice->status ?: 'Issued' }}</span></td>
+                            <td><span class="tp-pill">{{ ucfirst((string) ($invoice->status ?: 'issued')) }}</span></td>
                         </tr>
                     @endforeach
                 </tbody>

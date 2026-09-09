@@ -50,7 +50,7 @@
                     </div>
                     <div class="text-end">
                         <p>£{{ number_format((float) ($invoice->total_amount ?? 0), 2) }}</p>
-                        <span class="tp-pill">{{ $invoice->status ?: 'Issued' }}</span>
+                        <span class="tp-pill">{{ ucfirst((string) ($invoice->status ?: 'issued')) }}</span>
                     </div>
                 </div>
             @empty
@@ -75,9 +75,24 @@
             @endforelse
             <div class="mt-3 d-flex gap-2 flex-wrap">
                 <a class="tp-btn tp-btn-ghost" href="{{ route('tenant.maintenance') }}">View repairs</a>
-                @can('create property repair')
-                    <a class="tp-btn" href="{{ route('admin.property_repairs.create') }}">Report an issue</a>
-                @endcan
+                <a class="tp-btn" href="{{ route('tenant.maintenance') }}">Report an issue</a>
+            </div>
+        </div>
+        <div class="tp-card">
+            <h2>Upcoming appointments</h2>
+            @forelse($upcomingEvents as $event)
+                <div class="tp-row">
+                    <div>
+                        <p>{{ $event->title }}</p>
+                        <p class="tp-muted">{{ $event->start_datetime?->format('d M Y, H:i') }}</p>
+                    </div>
+                    <span class="tp-pill">{{ $event->status ?: 'Scheduled' }}</span>
+                </div>
+            @empty
+                <p class="tp-empty">No appointments yet. Inspections and move-in dates will appear here.</p>
+            @endforelse
+            <div class="mt-3">
+                <a class="tp-btn tp-btn-ghost" href="{{ route('tenant.calendar') }}">View calendar</a>
             </div>
         </div>
     </div>

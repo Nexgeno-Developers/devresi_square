@@ -36,10 +36,10 @@
             <h5 class="pcc-detail-name">{{ $property->prop_name ?: $property->line_1 }}</h5>
             <div class="pcc-detail-address">{{ $address }}</div>
             <div class="pcc-detail-meta">
-                @if($property->property_type)
+                @if($property->property_type && ! is_landlord_plan_user())
                     <span>{{ $property->property_type }}</span>
                 @endif
-                @if($property->sales_current_status)
+                @if($property->sales_current_status && ! is_landlord_plan_user())
                     <span class="pcc-status">{{ $property->sales_current_status }}</span>
                 @endif
                 @if($property->letting_current_status)

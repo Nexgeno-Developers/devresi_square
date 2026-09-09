@@ -12,7 +12,7 @@
 
         if ($billingAccount && $authUser->hasRole('Super Admin')) {
             $canViewBilling = true;
-        } elseif ($billingAccount) {
+        } elseif ($billingAccount && (int) $billingAccount->owner_user_id === (int) $authUser->id) {
             $billingMembership = \App\Models\AccountUser::query()
                 ->where('account_id', $billingAccount->id)
                 ->where('user_id', $authUser->id)
@@ -21,8 +21,7 @@
 
             $canViewBilling = $billingMembership
                 && $billingMembership->can_login
-                && in_array($billingMembership->member_type, ['owner', 'admin'], true)
-                && $billingMembership->access_level === 'full';
+                && in_array($billingMembership->member_type, ['owner', 'admin'], true);
         }
     }
 @endphp
@@ -37,7 +36,7 @@
     </div>
 
     <ul class="nav flex-column mb-auto pt-2">
-        @unless(auth()->user()->hasRole('Tenant') || auth()->user()->hasRole('Contractor'))
+        @unless(is_tenant_portal_user() || auth()->user()->hasRole('Contractor'))
          <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('backend.dashboard') ? 'active' : '' }}"
                 href="{{ route('backend.dashboard') }}" >
@@ -46,7 +45,7 @@
         </li>
         @endunless
 
-        @if(auth()->user()->hasRole('Tenant'))
+        @if(is_tenant_portal_user())
          <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('backend.home') ? 'active' : '' }}"
                 href="{{ route('backend.home') }}">
@@ -63,6 +62,12 @@
             <a class="nav-link {{ request()->routeIs('tenant.rent') ? 'active' : '' }}"
                 href="{{ route('tenant.rent') }}">
                 <span class="icon_wrapper"><i class="fa-solid fa-file-invoice-dollar"></i>Rent &amp; Payments</span>
+            </a>
+        </li>
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('tenant.calendar') ? 'active' : '' }}"
+                href="{{ route('tenant.calendar') }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-calendar-check"></i>Calendar</span>
             </a>
         </li>
          <li class="nav-item">
@@ -85,7 +90,9 @@
         </li>
         @endif
 
-        @can('view calendar')
+        @unless(is_tenant_portal_user())
+        @unless(is_tenant_portal_user() || auth()->user()->hasRole('Contractor'))
+        @if(auth()->user()->can('view calendar') || is_landlord_plan_user())
         {{-- Calendar --}}
          <li class="nav-item">
             <a class=" nav-link {{ request()->routeIs('backend.events.calendar') ? 'active' : ''  }}"
@@ -93,9 +100,10 @@
                 <span class="icon_wrapper"><i class="fa-solid fa-calendar-check"></i>Calendar</span>
             </a>
         </li>
-        @endcan
+        @endif
+        @endunless
         
-        @unless(auth()->user()->hasRole('Tenant'))
+        @unless(is_tenant_portal_user())
         @canany(['view properties', 'edit properties', 'create properties'])
         {{-- Properties --}}
          <li class="nav-item">
@@ -133,7 +141,7 @@
         @endcanany
         @endunless
 
-        @can('manage tenancies')
+        @if((auth()->user()->can('manage tenancies') || is_landlord_plan_user()) && ! is_tenant_portal_user() && ! auth()->user()->hasRole('Contractor'))
         {{-- Tenancies --}}
          <li class="nav-item">
             <a href="#tenanciesSubmenu" data-bs-toggle="collapse"
@@ -175,9 +183,30 @@
                 @endcomponent
             </ul>
         </li>
-        @endcan
+        @endif
 
-        @unless(auth()->user()->hasRole('Tenant'))
+        @if(is_landlord_plan_user())
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('admin.owner-groups.*') ? 'active' : '' }}"
+                href="{{ route('admin.owner-groups.index') }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-people-group"></i>Owner Groups</span>
+            </a>
+        </li>
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('admin.portal-access.*') ? 'active' : '' }}"
+                href="{{ route('admin.portal-access.index') }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-user-lock"></i>Portal Access</span>
+            </a>
+        </li>
+         <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('admin.finance.*') ? 'active' : '' }}"
+                href="{{ route('admin.finance.index') }}">
+                <span class="icon_wrapper"><i class="fa-solid fa-file-invoice-dollar"></i>Finance</span>
+            </a>
+        </li>
+        @endif
+
+        @unless(is_tenant_portal_user() || is_landlord_plan_user())
         @canany(['view properties', 'create properties'])
         {{-- Sales Offer --}}
          <li class="nav-item">
@@ -211,8 +240,11 @@
         @endcanany
         @endunless
 
-        @unless(auth()->user()->hasRole('Tenant'))
-        @canany(['view contacts', 'create contacts', 'edit contacts', 'delete contacts'])
+        @php
+            $canViewContacts = can_view_contacts();
+        @endphp
+        @unless(is_tenant_portal_user())
+        @if($canViewContacts)
         {{-- Contacts --}}
          <li class="nav-item">
             <a href="#contactsSubmenu" data-bs-toggle="collapse"
@@ -242,7 +274,7 @@
                 @endcomponent
             </ul>
         </li>
-        @endcanany
+        @endif
         @endunless
         @if($canViewBilling)
          <li class="nav-item">
@@ -303,8 +335,8 @@
         </li>
         @endif
 
-        @unless(auth()->user()->hasRole('Tenant'))
-        @canany(['view property repair', 'edit property repair', 'create property repair'])
+        @unless(is_tenant_portal_user())
+        @if(auth()->user()->canAny(['view property repair', 'edit property repair', 'create property repair']) || is_landlord_plan_user())
          <li class="nav-item">
             <a href="#repairSubmenu" data-bs-toggle="collapse"
                 aria-expanded="{{ request()->routeIs('admin.property_repairs.*') ? 'true' : 'false' }}"
@@ -315,15 +347,15 @@
             <ul class="nav-second-level collapse list-unstyled submenu {{ request()->routeIs('admin.property_repairs.*') ? 'show' : '' }}"
                 id="repairSubmenu">
                 <!-- Raise Repair Issue -->
-                @can('create property repair')
+                @if(auth()->user()->can('create property repair') || is_landlord_plan_user())
                 @component('components.backend.common.sidebar-sublink')
                     @slot('class') {{ request()->routeIs('admin.property_repairs.create') || request()->routeIs('admin.property_repairs.edit') ? 'active submenu-link' : 'submenu-link' }} @endslot
                     @slot('link') {{ route('admin.property_repairs.create') }} @endslot
                     @slot('link_name') Raise Repair Issue @endslot
                 @endcomponent
-                @endcan
+                @endif
 
-                @can('view property repair')
+                @if(auth()->user()->can('view property repair') || is_landlord_plan_user())
                 <!-- Repair Issues Section -->
                 <li class="sidebar-sub-list-item py-0 ">
                     <a href="#repairIssuesSubmenu" data-bs-toggle="collapse"
@@ -341,14 +373,16 @@
                             @slot('link_name') All @endslot
                         @endcomponent
 
+                        @unless(is_landlord_plan_user())
                         @component('components.backend.common.sidebar-sublink')
                             @slot('class') {{ request()->routeIs('admin.property_repairs.index_tabbed') ? 'active submenu-link' : 'submenu-link' }} @endslot
                             @slot('link') {{ route('admin.property_repairs.index_tabbed') }} @endslot
                             @slot('link_name') Issue List (Tabbed) @endslot
                         @endcomponent
+                        @endunless
 
                         @php
-                            $statuses = ['Pending', 'Reported', 'Under Process', 'Work Completed', 'Invoice Received', 'Invoice Paid', 'Closed'];
+                            $statuses = client_facing_repair_statuses();
                             $currentStatus = request('status');
                         @endphp
 
@@ -362,10 +396,10 @@
                         @endforeach
                     </ul>
                 </li>
-                @endcan
+                @endif
             </ul>
         </li>
-        @endcanany
+        @endif
         @endunless
 
         {{-- -- Contractor: only sees Repair Issues -- --}}
@@ -406,6 +440,7 @@
         @endif
 
         @can('view invoices')
+        @unless(is_landlord_plan_user())
         @php
             $invoiceStatuses = [
                 'all' => 'All Invoices',
@@ -436,18 +471,20 @@
                 @endforeach
             </ul>
         </li>
+        @endunless
         @endcan
 
-        @can('Manage Document Types')
+        @if(is_landlord_plan_user() || auth()->user()->can('Manage Document Types'))
          <li class="nav-item">
-            <a href="#" class="nav-link">
+            <a href="{{ route('admin.documents.index') }}" class="nav-link {{ request()->routeIs('admin.documents.*') ? 'active' : '' }}">
                 <span class="icon_wrapper"><i class="fa-solid fa-file-alt"></i>Documents</span>
             </a>
         </li>
-        @endcan
+        @endif
         
         <!-- Transactions -->
         @canany(['view transactions'])
+        @unless(is_landlord_plan_user())
              <li class="nav-item">
                 <a href="#transactionsSubmenu" data-bs-toggle="collapse"
                     aria-expanded="{{ areActiveRoutes(['backend.transactions.index'], 'true') }}"
@@ -470,6 +507,7 @@
                     @endcan
                 </ul>
             </li>
+        @endunless
         @endcanany
 
 
@@ -875,7 +913,7 @@
                 </ul>
             </li>
         @endcanany
-        @unless(auth()->user()->hasRole('Tenant') || auth()->user()->hasRole('Contractor'))
+        @unless(is_tenant_portal_user() || auth()->user()->hasRole('Contractor') || is_landlord_plan_user())
          <li class="nav-item">
             <a href="#accountingSubmenu" data-bs-toggle="collapse"
                 aria-expanded="{{ request()->routeIs('backend.accounting.*') ? 'true' : 'false' }}"
@@ -1077,33 +1115,7 @@
             </li>
         @endif --}}
 
-        @hasanyrole('Super Admin|Property Manager')
-         <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="icon_wrapper"><i class="fa-solid fa-users"></i>Users</span> 
-            </a>
-        </li>
-         <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="icon_wrapper"><i class="fa-solid fa-cogs"></i>Settings</span> 
-            </a>
-        </li>
-         <li class="nav-item">
-            <a href="#" class="nav-link">
-                <span class="icon_wrapper"><i class="fa-solid fa-chart-bar"></i>Reports</span> 
-            </a>
-        </li>
-        {{-- removed by Altamash ----  <li class="nav-item">
-            <form action="{{ route('logout') }}" method="POST">
-                @csrf
-                <a href="#" class="logout_btn_wrapper">
-                    <button type="submit" class="logout_btn border-0 background-none">
-                        <i class="fa-solid fa-sign-out-alt"></i> Logout
-                    </button>
-                </a>
-            </form>
-        </li> --}}
-        @endhasanyrole
+        @endunless
     </ul>
      <div class="footer_user_profile_menu position-relative">
     

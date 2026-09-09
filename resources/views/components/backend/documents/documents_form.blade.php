@@ -40,6 +40,16 @@
         </div>
     </div>
 
+    <div class="mb-3">
+        <div class="form-check">
+            <input type="hidden" name="share_with_tenant" value="0">
+            <input class="form-check-input" type="checkbox" name="share_with_tenant" id="shareWithTenant" value="1"
+                {{ isset($document) && $document->isSharedWithTenant() ? 'checked' : '' }}>
+            <label class="form-check-label" for="shareWithTenant">Share with tenant</label>
+        </div>
+        <div class="form-text">Tenants can download shared files from their portal. Private files stay on this account only.</div>
+    </div>
+
     <button type="submit" class="btn btn-primary float-end">
         {{ $document ? 'Update' : 'Save' }}
     </button>
