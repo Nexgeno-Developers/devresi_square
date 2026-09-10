@@ -85,8 +85,9 @@ class ComplianceController
         // Pass the complianceDetails data to the view to pre-fill form fields
         $complianceDetails = $complianceRecord ? $complianceRecord->complianceDetails->keyBy('key') : [];
 
-        $heading = $complianceRecord ? 'EDIT ' . convert_to_uppercase(beautify_string($complianceType->alias))
-                                     : 'ADD ' . convert_to_uppercase(beautify_string($complianceType->alias));
+        $heading = $complianceRecord
+            ? (is_landlord_plan_user() ? 'Update certificate' : 'EDIT ' . convert_to_uppercase(beautify_string($complianceType->alias)))
+            : (is_landlord_plan_user() ? 'Upload certificate' : 'ADD ' . convert_to_uppercase(beautify_string($complianceType->alias)));
         $responsibleUsers = current_account()?->users()->orderBy('name')->get() ?? collect();
 
         $content = view('backend.compliance.' . $complianceType->alias . '._form', compact('complianceType', 'complianceRecord', 'complianceDetails', 'responsibleUsers'))->render();

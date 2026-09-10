@@ -183,5 +183,14 @@
 
 
 @else
-    <p>No data available</p>
+    @if(is_landlord_plan_user())
+        <div class="lw-empty">
+            <div class="lw-empty-icon"><i class="bi bi-people"></i></div>
+            <div class="lw-empty-title">No owners linked</div>
+            <p class="mb-3">Owner groups from onboarding appear here. Add one if the title is shared.</p>
+            <a href="{{ route('admin.owner-groups.create') }}" class="btn pcc-btn-ink">Add owner group</a>
+        </div>
+    @else
+        <p>No data available</p>
+    @endif
 @endif

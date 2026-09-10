@@ -2,54 +2,43 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use Illuminate\Database\Seeder;
 use Database\Seeders\CurrencySeeder;
-use Database\Seeders\RoleSeeder;
+use Database\Seeders\RoleAndPermissionSeeder;
 use Database\Seeders\UserSeeder;
 use Database\Seeders\GlAccountSeeder;
-use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Seed the application's database.
+     * Seed lookup data. SaaS demo accounts are created separately via
+     * `php artisan saas:create-staging-test-data`.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        // Call multiple seeders in one line
         $this->call([
-            RoleSeeder::class,
+            RoleAndPermissionSeeder::class,
+            TenantPermissionsSeeder::class,
             UserSeeder::class,
             NoteTypeSeeder::class,
             DesignationSeeder::class,
-            BranchesTableSeeder::class,
             StationNamesTableSeeder::class,
             SchoolNamesTableSeeder::class,
             ReligiousPlacesTableSeeder::class,
-            EstateChargesItemsSeeder::class,
-            EstateChargesSeeder::class,
-            OwnerGroupSeeder::class,
             UserCategorySeeder::class,
             CurrencySeeder::class,
-            PropertiesTableSeeder::class,
-            PropertyResponsibilitySeeder::class,
             ComplianceTypeSeeder::class,
             JobTypesSeeder::class,
             LocalAuthoritySeeder::class,
             CountrySeeder::class,
             NationalitySeeder::class,
             EventTypeSeeder::class,
+            TenancyTypeSeeder::class,
+            TenancySubStatusSeeder::class,
             GlAccountSeeder::class,
             SysAccountingSeeder::class,
             CrmNotificationTemplatesSeeder::class,
+            SaasPlanSeeder::class,
         ]);
-
-        // User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
     }
 }

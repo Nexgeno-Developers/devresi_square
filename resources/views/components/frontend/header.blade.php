@@ -4,7 +4,7 @@
         <div class="frontend_top_header tw-ml-1">
             <div class="rs_logo">
                 <a href="{{ route('home') }}" class="navbar-brand">
-                    <img src="{{ uploaded_asset(get_setting('header_logo')) }}" alt="Resisquare logo">
+                    <img src="{{ site_header_logo_url() }}" alt="Resisquare logo">
                 </a>
                 {{-- <img src="{{ asset('asset/images/resisquare-logo.svg') }}" alt="Resisquare logo"> --}}
             </div>

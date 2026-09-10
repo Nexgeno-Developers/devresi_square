@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use RRule\RRule;
 use App\Notifications\EventInvitationNotification;
@@ -33,8 +34,8 @@ class EventController
             ->syncOverlaySessionForPage(auth()->user(), current_account(), false);
 
         $filterData = [
-            'eventTypes' => EventType::orderBy('name')->get(),
-            'eventSubTypes' => EventSubType::orderBy('name')->get(),
+            'eventTypes' => EventType::query()->visibleToCurrentUser()->orderBy('name')->get(),
+            'eventSubTypes' => EventSubType::query()->visibleToCurrentUser()->orderBy('name')->get(),
             'statuses' => ['Confirmed', 'Pending', 'Cancelled', 'Rescheduled', 'Scheduled'],
             'offices' => Event::whereNotNull('office')->where('office', '!=', '')->distinct()->orderBy('office')->pluck('office'),
             'users' => User::forAccount(current_account_id())->orderBy('name')->get(),
@@ -223,8 +224,7 @@ class EventController
         ]);
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'type_id' => 'required|exists:event_types,id',
-            'sub_type_id' => 'required|exists:event_sub_types,id',
+            ...$this->calendarTypeRules(),
             'office' => 'nullable|string|max:100',
             'status' => 'nullable|in:Confirmed,Pending,Cancelled,Rescheduled,Scheduled',
             'diary_owner' => 'nullable|integer|exists:users,id',
@@ -454,8 +454,7 @@ class EventController
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'type_id' => 'required|exists:event_types,id',
-            'sub_type_id' => 'required|exists:event_sub_types,id',
+            ...$this->calendarTypeRules(),
             'office' => 'nullable|string|max:100',
             'status' => 'nullable|in:Confirmed,Pending,Cancelled,Rescheduled,Scheduled',
             'diary_owner' => 'nullable|integer|exists:users,id',
@@ -1270,6 +1269,20 @@ class EventController
                 $field => ["One or more selected {$label} do not belong to your subscriber account."],
             ]);
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function calendarTypeRules(): array
+    {
+        $typeIds = EventType::query()->visibleToCurrentUser()->pluck('id')->all();
+        $subTypeIds = EventSubType::query()->visibleToCurrentUser()->pluck('id')->all();
+
+        return [
+            'type_id' => ['required', 'integer', Rule::in($typeIds)],
+            'sub_type_id' => ['required', 'integer', Rule::in($subTypeIds)],
+        ];
     }
 
     private function assertStaffCalendarAccess(): void

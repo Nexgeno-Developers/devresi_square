@@ -47,7 +47,10 @@ class ComplianceTypeSeeder extends Seeder
         ];
 
         foreach ($complianceTypes as $type) {
-            ComplianceType::create($type); // Use the model to insert records
+            ComplianceType::firstOrCreate(
+                ['alias' => $type['alias']],
+                $type
+            );
         }
     }
 }

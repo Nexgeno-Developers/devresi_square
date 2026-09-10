@@ -72,6 +72,21 @@ if (!function_exists('get_setting')) {
 //     }
 // }
 
+if (!function_exists('site_header_logo_url')) {
+    function site_header_logo_url(): string
+    {
+        $id = get_setting('header_logo');
+        if (! empty($id)) {
+            $asset = \App\Models\Upload::find($id);
+            if ($asset) {
+                return $asset->external_link ?: my_asset($asset->file_name);
+            }
+        }
+
+        return static_asset('asset/images/resisquare-logo.svg');
+    }
+}
+
 if (!function_exists('uploaded_asset')) {
     function uploaded_asset($id)
     {
@@ -1194,11 +1209,11 @@ if (! function_exists('client_facing_property_tabs')) {
     function client_facing_property_tabs(): array
     {
         return [
-            ['name' => 'Property'],
-            ['name' => 'Owners'],
+            ['name' => 'Property', 'label' => 'Overview'],
             ['name' => 'Tenancy'],
+            ['name' => 'Owners'],
+            ['name' => 'Compliance', 'label' => 'Certificates'],
             ['name' => 'Documents'],
-            ['name' => 'Compliance'],
         ];
     }
 }

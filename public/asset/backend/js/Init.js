@@ -103,10 +103,16 @@ function initValidate(selector) {
 
 //select2
 function initSelect2(selector) {
+    if (typeof $ === 'undefined' || typeof $.fn.select2 !== 'function') {
+        return;
+    }
     $(selector).select2();
 }
 
 function initSelect3(selector) {
+    if (typeof $ === 'undefined' || typeof $.fn.select2 !== 'function') {
+        return;
+    }
     $(selector).select2({
         minimumInputLength: 3,
         minimumResultsForSearch: 0,

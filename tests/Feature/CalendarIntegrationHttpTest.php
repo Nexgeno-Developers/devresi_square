@@ -23,7 +23,11 @@ class CalendarIntegrationHttpTest extends TestCase
             ->get(route('backend.events.calendar'))
             ->assertOk()
             ->assertSee('Appointments', false)
-            ->assertDontSee('All Offices', false);
+            ->assertDontSee('All Offices', false)
+            ->assertDontSee('Buyer Viewing', false)
+            ->assertDontSee('Valuation', false)
+            ->assertDontSee('Mortgage Appointment', false)
+            ->assertSee('Inspection', false);
     }
 
     public function test_landlord_event_on_property_is_visible_to_household_in_portal(): void

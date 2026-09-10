@@ -1,5 +1,7 @@
 @extends('frontend.layout.app')
 
+@section('title', 'Login | Resisquare')
+
 @section('content')
 <section class="vh-80 gradient-custom">
     <div class="container py-5 h-100">

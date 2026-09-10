@@ -1,20 +1,34 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="container-fluid pt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4>All Tenancies</h4>
-        <form method="GET" class="d-flex gap-2">
-            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">All Statuses</option>
-                <option value="Active"   {{ request('status') === 'Active'   ? 'selected' : '' }}>Active</option>
-                <option value="Archived" {{ request('status') === 'Archived' ? 'selected' : '' }}>Archived</option>
-            </select>
-        </form>
+<div class="container-fluid pt-4 lw-page">
+    <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
+        <div>
+            <h4>
+                @if(request('status') === 'Active') Active tenancies
+                @elseif(request('status') === 'Archived') Archived tenancies
+                @elseif(request('status') === 'Inactive') Inactive tenancies
+                @elseif(request('status') === 'Terminated') Terminated tenancies
+                @else Tenancies
+                @endif
+            </h4>
+            <p>Lets on your properties. Link any tenancy that has no property before inviting or issuing rent.</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <form method="GET" class="d-flex gap-2">
+                <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All statuses</option>
+                    <option value="Active"   {{ request('status') === 'Active'   ? 'selected' : '' }}>Active</option>
+                    <option value="Archived" {{ request('status') === 'Archived' ? 'selected' : '' }}>Archived</option>
+                </select>
+            </form>
+            <a href="{{ route('admin.tenancies.create') }}" class="btn btn-light btn-sm">Add tenancy</a>
+        </div>
     </div>
 
-    <div class="table-responsive">
-        <table class="table rs_table">
+    <div class="card lw-card">
+        <div class="card-body table-responsive">
+        <table class="table align-middle">
             <thead>
                 <tr>
                     <th>#</th>
@@ -36,7 +50,10 @@
                             {{ $tenancy->property->prop_name ?: $tenancy->property->line_1 }},
                             {{ $tenancy->property->city }}
                         @else
-                            N/A
+                            <span class="text-warning">No property</span>
+                            @can('manage tenancies')
+                                <a href="{{ route('admin.tenancies.edit', $tenancy->id) }}" class="small d-block">Link property</a>
+                            @endcan
                         @endif
                     </td>
                     <td>
@@ -61,10 +78,20 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="8" class="text-center text-muted">No tenancies found.</td></tr>
+                <tr>
+                    <td colspan="8">
+                        <div class="lw-empty">
+                            <div class="lw-empty-icon"><i class="bi bi-key"></i></div>
+                            <div class="lw-empty-title">No tenancies yet</div>
+                            <p class="mb-3">Add a let on a property, then invite the tenant and issue rent.</p>
+                            <a href="{{ route('admin.tenancies.create') }}" class="btn lw-btn-primary">Add tenancy</a>
+                        </div>
+                    </td>
+                </tr>
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 
     <div class="mt-3">

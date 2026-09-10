@@ -31,6 +31,24 @@ Production must use HTTPS for `APP_URL` and all Stripe redirect/webhook URLs.
 - Confirm local plan/addon Stripe price IDs match live Stripe prices.
 - Do not expose `STRIPE_SECRET` or `STRIPE_WEBHOOK_SECRET` to frontend code.
 
+## Client-money rent (separate Stripe / bank)
+
+US/client-money rules: subscriptions stay on the **operating** Stripe account (`STRIPE_SECRET`). Tenant rent must use a **client/trust** Stripe account whose payouts go to the client bank.
+
+```text
+STRIPE_RENT_KEY=
+STRIPE_RENT_SECRET=
+STRIPE_RENT_WEBHOOK_SECRET=
+STRIPE_RENT_CONNECTED_ACCOUNT_ID=
+RENT_PAYMENT_FEE_PERCENT=0
+RENT_PAYMENT_FEE_FIXED=0
+```
+
+- Point `STRIPE_RENT_*` at the client-money Stripe account. Do not reuse live `STRIPE_SECRET`.
+- Webhook for that account: `/stripe/rent/webhook` (`checkout.session.completed`, `checkout.session.async_payment_succeeded`).
+- Optional Connect: set `STRIPE_RENT_CONNECTED_ACCOUNT_ID` to the client-money account. Checkout then uses the business secret with a direct charge so **rent** lands in the client account and `RENT_PAYMENT_FEE_*` is taken as `application_fee` on the operating account.
+- Without Connect, the tenant still pays rent + fee on the client Stripe account; sweep the fee to the operating bank separately.
+
 ## Deployment Commands
 
 Run in staging first:

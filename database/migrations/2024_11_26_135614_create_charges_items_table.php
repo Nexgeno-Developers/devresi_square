@@ -6,42 +6,39 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up()
     {
-        Schema::create('estate_charges_items', function (Blueprint $table) {
-            $table->id();
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
-            $table->bigInteger('charge_id')->unsigned();   // Use unsigned bigInteger to match the id of charges
-            $table->decimal('amount', 65, 2);
-            $table->decimal('tax', 10, 2);
-            $table->decimal('tax_amount', 65, 2);
-            $table->longText('charge_attachment')->nullable();
-            $table->string('status', 155);
-            $table->timestamps();
+        if (! Schema::hasTable('estate_charges_items')) {
+            Schema::create('estate_charges_items', function (Blueprint $table) {
+                $table->id();
+                $table->date('start_date')->nullable();
+                $table->date('end_date')->nullable();
+                $table->unsignedBigInteger('charge_id');
+                $table->decimal('amount', 65, 2);
+                $table->decimal('tax', 10, 2);
+                $table->decimal('tax_amount', 65, 2);
+                $table->longText('charge_attachment')->nullable();
+                $table->string('status', 155);
+                $table->timestamps();
+            });
+        }
 
-            // Foreign key reference to charges
-            $table->foreign('charge_id')
-                ->references('id')
-                ->on('charges')
-                ->onDelete('cascade');
-        });
+        $foreignKeys = collect(Schema::getForeignKeys('estate_charges_items'))
+            ->pluck('name')
+            ->all();
+
+        if (! in_array('estate_charges_items_charge_id_foreign', $foreignKeys, true)) {
+            Schema::table('estate_charges_items', function (Blueprint $table) {
+                $table->foreign('charge_id')
+                    ->references('id')
+                    ->on('estate_charges')
+                    ->onDelete('cascade');
+            });
+        }
     }
-
-    /**
-     * Reverse the migrations.
-     */
 
     public function down()
     {
-        Schema::table('charges_items', function (Blueprint $table) {
-            // Drop foreign key constraint before dropping the column
-            $table->dropForeign(['charge_id']);
-        });
-
-        Schema::dropIfExists('charges_items');
+        Schema::dropIfExists('estate_charges_items');
     }
 };

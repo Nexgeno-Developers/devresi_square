@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
 Route::post('/stripe/webhook', [\App\Http\Controllers\Webhook\StripeWebhookController::class, 'handle'])->name('stripe.webhook');
+Route::post('/stripe/rent/webhook', [\App\Http\Controllers\Webhook\StripeRentWebhookController::class, 'handle'])->name('stripe.rent.webhook');
 
 // Route::get('/test-pdf', function() {
 //     $pdf = PDF::loadHTML('<h1>Hello World</h1>');

@@ -16,8 +16,8 @@ return new class extends Migration {
             $table->foreignId('repair_issue_id')->constrained()->onDelete('cascade');
             // $table->foreignId('supplier_id')->nullable()->constrained('suppliers')->onDelete('set null');
             // $table->foreignId('supplier_id')->nullable()->constrained('users')->onDelete('set null');
-            $table->foreignId('job_type_id')->nullable()->constrained('job_types')->onDelete('set null');
-            $table->foreignId('job_sub_type_id')->nullable()->constrained('job_types')->onDelete('set null');
+            $table->unsignedBigInteger('job_type_id')->nullable();
+            $table->unsignedBigInteger('job_sub_type_id')->nullable();
             $table->string('job_status')->nullable();
             $table->text('job_scope')->nullable();
             $table->dateTime('date_time')->nullable();
@@ -33,7 +33,7 @@ return new class extends Migration {
             $table->decimal('estimated_cost', 10, 2)->nullable(); // Estimated Cost
             $table->text('extra_notes')->nullable();
             $table->string('status')->nullable();
-            $table->foreignId('invoices')->constrained()->onDelete('set null');
+            $table->unsignedBigInteger('invoices')->nullable();
             $table->dateTime('invoiced_date')->nullable();
 
             $table->unsignedBigInteger('created_by')->nullable();

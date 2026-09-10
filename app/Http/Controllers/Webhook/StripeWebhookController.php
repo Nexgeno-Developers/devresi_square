@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Webhook;
 
 use App\Http\Controllers\Controller;
+use App\Services\Finance\RentStripeCheckoutService;
 use App\Services\Saas\StripeWebhookService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -12,7 +13,7 @@ use UnexpectedValueException;
 
 class StripeWebhookController extends Controller
 {
-    public function handle(Request $request, StripeWebhookService $service)
+    public function handle(Request $request, StripeWebhookService $service, RentStripeCheckoutService $rentCheckout)
     {
         $webhookSecret = config('services.stripe.webhook_secret');
         if (! $webhookSecret) {
@@ -35,7 +36,12 @@ class StripeWebhookController extends Controller
         }
 
         try {
-            $service->handle($event);
+            $metadataType = data_get($event, 'data.object.metadata.type');
+            if ($metadataType === 'rent_payment') {
+                $rentCheckout->fulfillSession($event->data->object ?? null);
+            } else {
+                $service->handle($event);
+            }
         } catch (\Throwable $exception) {
             Log::error('Stripe webhook processing failed', [
                 'event_id' => $event->id ?? null,

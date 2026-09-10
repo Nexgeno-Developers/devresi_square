@@ -107,19 +107,23 @@
     }
 
     async function closeModal() {
-        if (root.dataset.dismiss) {
-            try {
-                await request(root.dataset.dismiss, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({}),
-                });
-            } catch (error) {
-                // Overlay can still close; next page load will retry the session flag.
-            }
-        }
+        const dismissUrl = root.dataset.dismiss;
         document.body.classList.remove('lob-open');
         root.remove();
+
+        if (!dismissUrl) {
+            return;
+        }
+
+        try {
+            await request(dismissUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            });
+        } catch (error) {
+            // Overlay is already gone; next page load will retry the session flag.
+        }
     }
 
     function updateDashboard(data) {

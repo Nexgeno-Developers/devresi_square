@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>{{ get_setting('website_name') }} - Backend Dashboard</title>
+    <title>{{ get_setting('website_name') ?: 'Resisquare' }}</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-url" content="{{ getBaseURL() }}">
     <meta name="file-base-url" content="{{ getFileBaseURL() }}">
@@ -16,7 +16,6 @@
 
     <!-- Favicon -->
     <link rel="icon" href="{{ uploaded_asset(get_setting('site_icon')) }}">
-    <title>{{ get_setting('website_name') . ' | ' . get_setting('site_motto') }}</title>
 
     <!-- Use asset() to generate the correct URL -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -36,11 +35,14 @@
 
 
     <link href="{{ asset('asset/backend/css/aiz-main.css') }}" rel="stylesheet">
+    @if(auth()->check() && is_landlord_plan_user())
+        <link href="{{ asset('asset/backend/css/landlord-workspace.css') }}?v={{ filemtime(public_path('asset/backend/css/landlord-workspace.css')) }}" rel="stylesheet">
+    @endif
     {{-- <link href="{{ asset('asset/backend/css/media.css') }}" rel="stylesheet"> --}}
     {{-- <link href="{{ asset('asset/backend/css/vendors.css') }}" rel="stylesheet"> --}}
 </head>
 
-<body class="show-sidebar">
+<body class="show-sidebar{{ auth()->check() && is_landlord_plan_user() ? ' landlord-workspace' : '' }}">
     <header id="header" class="">
         <div class="container-fluid">
             <div class="top_header tw-ml-1">
@@ -176,7 +178,7 @@
             });
 
             function restoreMenu() {
-                $menuItems.show();
+                $menuItems.removeClass('is-menu-hidden').show();
                 $collapses.each(function () {
                     $(this).toggleClass('show', Boolean($(this).data('menu-search-was-open')));
                 });
@@ -190,7 +192,7 @@
                     return;
                 }
 
-                $menuItems.hide();
+                $menuItems.addClass('is-menu-hidden');
                 $collapses.removeClass('show');
 
                 $sidebar.find('ul.nav.flex-column a').each(function () {
@@ -202,12 +204,12 @@
                     }
 
                     const $item = $link.closest('li');
-                    $item.show();
-                    $item.parentsUntil($sidebar, 'li').show();
+                    $item.removeClass('is-menu-hidden').show();
+                    $item.parentsUntil($sidebar, 'li').removeClass('is-menu-hidden').show();
                     $item.parentsUntil($sidebar, '.collapse').addClass('show');
 
                     // When a parent menu itself matches, expose its available children.
-                    $item.children('ul').addClass('show').find('li').show();
+                    $item.children('ul').addClass('show').find('li').removeClass('is-menu-hidden').show();
                 });
             }
 

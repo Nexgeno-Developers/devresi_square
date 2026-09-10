@@ -14,5 +14,6 @@ class VerifyCsrfToken extends Middleware
     protected $except = [
         'backend/trumbowyg/upload',
         'stripe/webhook',
+        'stripe/rent/webhook',
     ];
 }

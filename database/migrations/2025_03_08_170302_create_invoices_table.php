@@ -11,31 +11,29 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('invoices', function (Blueprint $table) {
-            $table->id();
-            $table->string('invoice_number')->unique();
-            $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('cascade');
-            $table->foreignId('property_id')->nullable()->constrained('properties')->onDelete('set null');
-            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
+        if (! Schema::hasTable('invoices')) {
+            Schema::create('invoices', function (Blueprint $table) {
+                $table->id();
+                $table->string('invoice_number')->unique();
+                $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('cascade');
+                $table->foreignId('property_id')->nullable()->constrained('properties')->onDelete('set null');
+                $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('set null');
 
-            $table->date('invoice_date');
-            $table->date('due_date')->nullable();
-            $table->decimal('subtotal', 10, 2);
-            $table->decimal('tax_amount', 10, 2)->default(0);
-            $table->decimal('total_amount', 10, 2);
-            $table->foreignId('status_id')->nullable()->constrained('invoice_statuses')->onDelete('set null');
-            $table->text('notes')->nullable();
+                $table->date('invoice_date');
+                $table->date('due_date')->nullable();
+                $table->decimal('subtotal', 10, 2);
+                $table->decimal('tax_amount', 10, 2)->default(0);
+                $table->decimal('total_amount', 10, 2);
+                $table->unsignedBigInteger('status_id')->nullable();
+                $table->text('notes')->nullable();
 
-            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
-            $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
-            // $table->foreignId('deleted_by')->nullable()->constrained('users')->onDelete('set null');
+                $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
+                $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
+                $table->dateTime('invoiced_date_time')->nullable();
 
-            // $table->softDeletes();
-            // $table->dateTime('deleted_at')->nullable();
-            $table->dateTime('invoiced_date_time')->nullable();
-
-            $table->timestamps();
-        });
+                $table->timestamps();
+            });
+        }
     }
 
     /**

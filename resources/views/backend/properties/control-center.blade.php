@@ -61,9 +61,11 @@
         'canCreate' => (bool) auth()->user()?->can('create properties'),
         'canDelete' => (bool) auth()->user()?->can('delete properties'),
         'tabGroups' => is_landlord_plan_user() ? [
-            ['id' => 'overview', 'label' => 'Overview', 'tabs' => ['property']],
-            ['id' => 'occupancy', 'label' => 'Occupancy', 'tabs' => ['tenancy', 'owners']],
-            ['id' => 'operations', 'label' => 'Operations', 'tabs' => ['compliance', 'documents']],
+            ['id' => 'property', 'label' => 'Overview', 'tabs' => ['property']],
+            ['id' => 'tenancy', 'label' => 'Tenancy', 'tabs' => ['tenancy']],
+            ['id' => 'owners', 'label' => 'Owners', 'tabs' => ['owners']],
+            ['id' => 'compliance', 'label' => 'Certificates', 'tabs' => ['compliance']],
+            ['id' => 'documents', 'label' => 'Documents', 'tabs' => ['documents']],
         ] : [
             ['id' => 'overview', 'label' => 'Overview', 'tabs' => ['property', 'notes', 'media', 'apd', 'appointments', 'teams', 'responsibility']],
             ['id' => 'occupancy', 'label' => 'Occupancy', 'tabs' => ['tenancy', 'owners', 'offers']],
@@ -74,7 +76,7 @@
 @endphp
 
 @section('content')
-<div id="property-control-center" class="pcc-root">
+<div id="property-control-center" class="pcc-root{{ is_landlord_plan_user() ? ' pcc-landlord' : '' }}">
     @include('backend.properties.partials.control-toolbar')
 
     <div class="pcc-split">
@@ -108,9 +110,9 @@
                 </div>
             </div>
             <div class="pcc-empty-state" id="pccEmptyState" @if(!empty($property)) hidden @endif>
-                <i class="bi bi-building display-4 text-muted"></i>
-                <h5 class="mt-3 text-muted">Select a property</h5>
-                <p class="text-muted">Choose one from the list to see details.</p>
+                <div class="pcc-empty-icon"><i class="bi bi-building"></i></div>
+                <h5>Select a property</h5>
+                <p>Choose one from the list to see overview, tenancy, certificates and documents.</p>
             </div>
         </main>
     </div>
@@ -120,6 +122,39 @@
 @include('backend.components.modal')
 @include('backend.events.modal')
 @include('backend.partials._calendar_modals')
+
+@if(is_landlord_plan_user())
+<div class="modal" id="complianceModal" tabindex="-1" aria-labelledby="complianceModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="complianceModalLabel">Certificate</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="complianceModalBody"></div>
+            <div class="modal-footer">
+                <button type="submit" form="" class="btn pcc-btn-ink" id="submitComplianceForm">Save</button>
+                <button type="button" class="btn pcc-btn-ghost" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="certificateDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Remove certificate</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">Remove this certificate from the property?</div>
+            <div class="modal-footer">
+                <button type="button" class="btn pcc-btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmCertificateDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 @endsection
 
 @push('styles')
@@ -131,5 +166,8 @@
     window.pccState = @json($pccState);
     window.pccCommandItems = @json($commandItems);
 </script>
+<script src="{{ asset('asset/backend/js/common-notes.js') }}"></script>
+<script src="{{ asset('asset/backend/js/common-documents.js') }}"></script>
 <script src="{{ asset('asset/backend/js/property-control-center.js') }}?v={{ filemtime(public_path('asset/backend/js/property-control-center.js')) }}"></script>
+@include('backend.properties.partials.compliance-scripts')
 @endsection

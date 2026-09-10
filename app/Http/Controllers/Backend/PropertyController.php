@@ -175,20 +175,17 @@ class PropertyController
                 ]);
             }
             if ($this->shouldUseLandlordWizard()) {
-                $account = current_account();
-                if (app(LandlordOnboardingService::class)->shouldShow($user, $account)) {
-                    $tabs = $this->tabsForUser($user, null, $isPortalUser, $portalAccessService);
+                $tabs = $this->tabsForUser($user, null, $isPortalUser, $portalAccessService);
 
-                    return view('backend.properties.control-center', [
-                        'properties' => $properties,
-                        'tabs'       => $tabs,
-                        'propertyId' => null,
-                        'tabName'    => 'property',
-                        'content'    => '',
-                        'property'   => null,
-                        'isPortalUser' => $isPortalUser,
-                    ]);
-                }
+                return view('backend.properties.control-center', [
+                    'properties' => $properties,
+                    'tabs'       => $tabs,
+                    'propertyId' => null,
+                    'tabName'    => 'property',
+                    'content'    => '',
+                    'property'   => null,
+                    'isPortalUser' => $isPortalUser,
+                ]);
             }
             flash("You don't have any properties yet!")->error();
             return redirect()->route($this->propertyCreateRoute());
@@ -482,6 +479,10 @@ class PropertyController
                 $schools = SchoolName::whereIn('id', $schoolIds)->pluck('name', 'id');
 
                 // Pass only the selected property details
+                if (is_landlord_plan_user()) {
+                    return view('backend.properties.tabs.property-landlord', compact('propertyId', 'property', 'stations', 'schools'))->render();
+                }
+
                 return view('backend.properties.tabs.property', compact('propertyId', 'tabname', 'property', 'allstations', 'allschools', 'stations', 'schools'))->render();
             case 'owners':
                 // Fetch the owner groups for the given propertyId, along with related users and properties.
@@ -551,6 +552,10 @@ class PropertyController
                     ->latest()
                     ->get()
                     ->groupBy('compliance_type_id'); // Group by compliance type
+
+                if (is_landlord_plan_user()) {
+                    return view('backend.properties.tabs.compliance-landlord', compact('propertyId', 'property', 'complianceTypes', 'complianceRecords'))->render();
+                }
 
                 return view('backend.properties.tabs.compliance', compact('propertyId', 'complianceTypes', 'complianceRecords'))->render();
 

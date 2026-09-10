@@ -4,10 +4,15 @@ namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use App\Models\RentInvoice;
+use App\Services\Finance\RentStripeCheckoutService;
 use App\Services\Portal\TenantPortalService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
+use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
 
 class TenantPortalController extends Controller
 {
@@ -43,18 +48,88 @@ class TenantPortalController extends Controller
         ]);
     }
 
-    public function rent(Request $request, TenantPortalService $portal): View
+    public function rent(Request $request, TenantPortalService $portal, RentStripeCheckoutService $rentCheckout): View
     {
         $user = $request->user();
         $accountId = current_account_id();
         $tenancies = $portal->tenanciesFor($user, $accountId);
         $invoices = $portal->invoicesFor($user, $accountId, $tenancies);
+        $outstanding = $invoices->sum(fn ($invoice) => (float) ($invoice->balance_amount ?? $invoice->total_amount ?? 0));
+        $cardReady = $rentCheckout->isConfigured();
+        $fees = [];
+        if ($cardReady) {
+            foreach ($invoices as $invoice) {
+                if ($invoice->isOpen()) {
+                    $fees[$invoice->id] = $rentCheckout->feeBreakdown((float) $invoice->balance);
+                }
+            }
+        }
 
         return view('backend.tenant.portal.rent', [
             'tenancies' => $tenancies,
             'invoices' => $invoices,
-            'outstanding' => $invoices->sum(fn ($invoice) => (float) ($invoice->balance_amount ?? $invoice->total_amount ?? 0)),
+            'outstanding' => $outstanding,
+            'cardReady' => $cardReady,
+            'fees' => $fees,
+            'checkoutCancelled' => $request->query('checkout') === 'cancelled',
         ]);
+    }
+
+    public function pay(Request $request, TenantPortalService $portal, RentStripeCheckoutService $rentCheckout, RentInvoice $rentInvoice): Response
+    {
+        $user = $request->user();
+        $accountId = current_account_id();
+        $this->assertTenantInvoice($portal, $user, $accountId, $rentInvoice);
+
+        try {
+            $url = $rentCheckout->createCheckoutUrl($user, $rentInvoice);
+        } catch (ValidationException $exception) {
+            flash(collect($exception->errors())->flatten()->first() ?: 'Unable to start card payment.')->error();
+
+            return redirect()->route('tenant.rent');
+        } catch (RuntimeException $exception) {
+            flash($exception->getMessage())->error();
+
+            return redirect()->route('tenant.rent');
+        }
+
+        return redirect()->away($url);
+    }
+
+    public function paid(Request $request, RentStripeCheckoutService $rentCheckout): RedirectResponse
+    {
+        $sessionId = (string) $request->query('session_id', '');
+        if ($sessionId === '' || ! str_starts_with($sessionId, 'cs_')) {
+            flash('We could not confirm that payment. If you were charged, it will show on this page shortly.')->error();
+
+            return redirect()->route('tenant.rent');
+        }
+
+        try {
+            $payment = $rentCheckout->fulfillCheckoutSessionId($sessionId);
+        } catch (\Throwable $exception) {
+            report($exception);
+            flash('Your card payment is processing. Refresh this page in a moment if the invoice is still open.')->warning();
+
+            return redirect()->route('tenant.rent');
+        }
+
+        if ($payment) {
+            flash('Rent payment received. Thank you.')->success();
+        } else {
+            flash('Your card payment is processing. Refresh this page in a moment if the invoice is still open.')->warning();
+        }
+
+        return redirect()->route('tenant.rent');
+    }
+
+    private function assertTenantInvoice(TenantPortalService $portal, $user, ?int $accountId, RentInvoice $invoice): void
+    {
+        $tenancies = $portal->tenanciesFor($user, $accountId);
+        $visible = $portal->invoicesFor($user, $accountId, $tenancies)
+            ->contains(fn (RentInvoice $visible) => (int) $visible->id === (int) $invoice->id);
+
+        abort_unless($visible, 404);
     }
 
     public function maintenance(Request $request, TenantPortalService $portal): View

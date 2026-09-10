@@ -1,10 +1,10 @@
 @props(['documentableType', 'documentableId', 'documentTypes', 'initialDocuments' => null, 'canUploadDocuments' => true])
-<div class="documents-component" data-documentable-type="{{ $documentableType }}" data-documentable-id="{{ $documentableId }}">
+<div class="documents-component{{ is_landlord_plan_user() ? ' documents-component--landlord' : '' }}" data-documentable-type="{{ $documentableType }}" data-documentable-id="{{ $documentableId }}">
 
     {{-- ADD NEW --}}
     @if($canUploadDocuments)
     <div class="mb-3">
-        <button type="button" class="btn btn-outline-primary documents-add">Add New Document</button>
+        <button type="button" class="btn btn-outline-primary documents-add">Add document</button>
     </div>
     @endif
     {{-- FILTER FORM --}}
@@ -17,12 +17,14 @@
                 @endforeach
             </select>
         </div>
+        @unless(is_landlord_plan_user())
         <div class="col-md-2">
             <input type="date" name="from_date" class="form-control">
         </div>
         <div class="col-md-2">
             <input type="date" name="to_date" class="form-control">
         </div>
+        @endunless
         <div class="col-md-2 d-flex gap-1">
             <button type="submit" class="btn btn-primary">Filter</button>
             <button type="button" class="btn btn-secondary documents-reset">Reset</button>
@@ -43,7 +45,7 @@
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="documentsModalLabel">documents</h5>
+                    <h5 class="modal-title" id="documentsModalLabel">Document</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">

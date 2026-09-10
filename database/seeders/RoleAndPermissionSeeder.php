@@ -79,6 +79,9 @@ class RoleAndPermissionSeeder extends Seeder
             'view documents',
             'download documents',
             'delete documents',
+            'view property owners',
+            'view property tenancy',
+            'view property documents',
 
             // Finance
             'view rent payments',
@@ -142,6 +145,9 @@ class RoleAndPermissionSeeder extends Seeder
                         'edit properties',
                         'delete properties',
                         'assign properties to landlord',
+                        'view property owners',
+                        'view property tenancy',
+                        'view property documents',
 
                         'view tenants',
                         'create tenants',

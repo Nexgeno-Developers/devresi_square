@@ -37,8 +37,8 @@ return new class extends Migration
             $table->foreignId('final_contractor_id')->constrained('users');
             $table->string('reference_number', 255);
 
-            $table->unsignedBigInteger('created_by')->nullable()->after('reference_number');
-            $table->unsignedBigInteger('updated_by')->nullable()->after('created_by');
+            $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
 
             $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
             $table->foreign('updated_by')->references('id')->on('users')->onDelete('set null');

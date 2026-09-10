@@ -31,6 +31,9 @@
             <p class="tp-metric-label">Outstanding rent</p>
             <p class="tp-metric-value">£{{ number_format((float) $outstanding, 2) }}</p>
             <p class="tp-muted mt-2 mb-0">From invoices billed to you</p>
+            @if($outstanding > 0)
+                <a class="tp-btn mt-3" href="{{ route('tenant.rent') }}">Pay rent</a>
+            @endif
         </div>
         <div class="tp-card">
             <p class="tp-metric-label">Open repairs</p>

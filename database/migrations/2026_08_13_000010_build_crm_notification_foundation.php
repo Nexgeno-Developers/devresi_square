@@ -39,7 +39,8 @@ return new class extends Migration
             $table->index(['subject_type', 'subject_id'], 'notification_logs_subject_idx');
         });
 
-        Schema::create('notification_preferences', function (Blueprint $table) {
+        if (! Schema::hasTable('notification_preferences')) {
+            Schema::create('notification_preferences', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('account_id');
             $table->unsignedBigInteger('user_id')->nullable();
@@ -49,7 +50,8 @@ return new class extends Migration
             $table->timestamps();
             $table->index(['account_id', 'event_key']);
             $table->unique(['account_id', 'user_id', 'event_key'], 'notification_preferences_unique');
-        });
+            });
+        }
 
         if (! Schema::hasTable('email_templates')) {
             Schema::create('email_templates', function (Blueprint $table) {

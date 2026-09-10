@@ -69,7 +69,15 @@
         </div>
     @empty
         <div class="col-12">
-            <div class="alert alert-info">No documents found.</div>
+            @if(is_landlord_plan_user())
+                <div class="lw-empty">
+                    <div class="lw-empty-icon"><i class="bi bi-folder2-open"></i></div>
+                    <div class="lw-empty-title">No files on this property</div>
+                    <p class="mb-0">Add a tenancy agreement, inventory or other file, then share it with the tenant.</p>
+                </div>
+            @else
+                <div class="alert alert-info">No documents found.</div>
+            @endif
         </div>
     @endforelse
 </div>

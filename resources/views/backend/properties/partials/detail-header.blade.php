@@ -11,8 +11,16 @@
         $property->postcode,
     ])));
     $priceLabel = '';
-    if (!empty($property->letting_price)) {
-        $priceLabel = '£' . number_format((float) $property->letting_price, 0) . '/mo';
+    $headerRent = $property->letting_price;
+    if (empty($headerRent) && is_landlord_plan_user()) {
+        $headerRent = \App\Models\Tenancy::query()
+            ->where('property_id', $property->id)
+            ->where('status', 'Active')
+            ->orderByDesc('move_in')
+            ->value('rent');
+    }
+    if (!empty($headerRent)) {
+        $priceLabel = '£' . number_format((float) $headerRent, 0) . '/mo';
     } elseif (!empty($property->price)) {
         $priceLabel = '£' . number_format((float) $property->price, 0);
     }
@@ -43,7 +51,7 @@
                     <span class="pcc-status">{{ $property->sales_current_status }}</span>
                 @endif
                 @if($property->letting_current_status)
-                    <span class="pcc-status">{{ $property->letting_current_status }}</span>
+                    <span class="pcc-status" data-status="{{ strtolower($property->letting_current_status) }}">{{ $property->letting_current_status }}</span>
                 @endif
                 @if($priceLabel)
                     <span class="pcc-detail-price">{{ $priceLabel }}</span>
@@ -53,3 +61,6 @@
         @include('backend.properties.partials.detail-actions', ['property' => $property])
     </div>
 </div>
+@if(is_landlord_plan_user())
+    @include('backend.properties.partials.detail-stats', ['property' => $property])
+@endif

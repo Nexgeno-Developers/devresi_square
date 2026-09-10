@@ -8,6 +8,7 @@
         ->filter();
 @endphp
 <div class="pcc-filter-rail" id="pccFilterRail">
+    @unless(is_landlord_plan_user())
     <div class="pcc-view-chips" role="tablist" aria-label="Property type">
         <label class="pcc-chip {{ $activeType === '' ? 'is-on' : '' }}">
             <input type="radio" name="property_type" value="" {{ $activeType === '' ? 'checked' : '' }}>
@@ -17,7 +18,6 @@
             <input type="radio" name="property_type" value="lettings" {{ $activeType === 'lettings' ? 'checked' : '' }}>
             Lettings
         </label>
-        @unless(is_landlord_plan_user())
         <label class="pcc-chip {{ $activeType === 'sales' ? 'is-on' : '' }}">
             <input type="radio" name="property_type" value="sales" {{ $activeType === 'sales' ? 'checked' : '' }}>
             Sales
@@ -26,8 +26,8 @@
             <input type="radio" name="property_type" value="both" {{ $activeType === 'both' ? 'checked' : '' }}>
             Both
         </label>
-        @endunless
     </div>
+    @endunless
 
     <div class="pcc-filter-extras">
         <select name="status" id="pccFilterStatusSelect" class="pcc-quiet-select" aria-label="Status">
@@ -49,7 +49,9 @@
         </label>
 
         @if(Route::has('admin.properties.soft_deleted'))
+            @unless(is_landlord_plan_user())
             <a href="{{ route('admin.properties.soft_deleted') }}" class="pcc-chip-link">Deleted</a>
+            @endunless
         @endif
 
         <button class="pcc-filter-rail-reset" id="pccFilterReset" title="Clear filters" type="button">

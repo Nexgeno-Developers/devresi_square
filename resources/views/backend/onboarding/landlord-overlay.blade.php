@@ -51,7 +51,7 @@
             <div class="lob-screen" data-lob-screen="1">
                 <div class="lob-intro">
                     <h2>Find the property</h2>
-                    <p class="lob-help">Search by postcode. We match Chimnie with free UK open data (postcodes, local authority, EPC where available) so the property record is complete.</p>
+                    <p class="lob-help">Search by postcode. We match UK open data (postcodes, local authority, EPC where available) so the property record is complete.</p>
                 </div>
 
                 <form data-lob-search class="lob-search">

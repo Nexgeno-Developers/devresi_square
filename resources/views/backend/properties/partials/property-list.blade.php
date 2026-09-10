@@ -30,7 +30,7 @@
             if (!empty($listProperty['bathroom'])) {
                 $metaBits[] = $listProperty['bathroom'] . ' bath';
             }
-            if (!empty($listProperty['property_type'])) {
+            if (!empty($listProperty['property_type']) && ! is_landlord_plan_user()) {
                 $metaBits[] = $listProperty['property_type'];
             }
 
@@ -71,7 +71,7 @@
                 <div class="pcc-hcard-sub" title="{{ $fullAddress }}">{{ $fullAddress }}</div>
                 <div class="pcc-hcard-meta">
                     @if($displayStatus)
-                        <span class="pcc-status">{{ $displayStatus }}</span>
+                        <span class="pcc-status" data-status="{{ strtolower($displayStatus) }}">{{ $displayStatus }}</span>
                     @endif
                     @if($metaBits)
                         <span>{{ implode(' · ', $metaBits) }}</span>

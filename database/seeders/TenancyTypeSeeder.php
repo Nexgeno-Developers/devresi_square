@@ -14,12 +14,15 @@ class TenancyTypeSeeder extends Seeder
      */
     public function run(): void
     {
-        DB::table('tenancy_types')->insert([
-            ['name' => 'APT'],
-            ['name' => 'Common Law'],
-            ['name' => 'Company'],
-            ['name' => 'Short Let - AST'],
-        ]);
+        foreach ([
+            'APT',
+            'Common Law',
+            'Company',
+            'Short Let - AST',
+            'Assured Shorthold Tenancy',
+        ] as $name) {
+            TenancyType::firstOrCreate(['name' => $name]);
+        }
 
         // Tenancytype::factory()->count(12)->create();
     }

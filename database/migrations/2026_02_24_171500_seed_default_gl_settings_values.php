@@ -7,6 +7,9 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('business_settings')) {
+            return;
+        }
         $map = [
             'default_ar_account_id' => '1100',
             'default_ap_account_id' => '2000',

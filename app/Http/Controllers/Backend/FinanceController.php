@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use App\Models\RentInvoice;
 use App\Models\RentPayment;
+use App\Models\Tenancy;
 use App\Services\Finance\RentFinanceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,14 @@ class FinanceController extends Controller
         return view('backend.finance.index', [
             'invoices' => $invoices,
             'canCreate' => $finance->billableTenancies((int) current_account_id())->isNotEmpty(),
+            'orphanTenancies' => Tenancy::query()
+                ->forAccount((int) current_account_id())
+                ->where(function ($query) {
+                    $query->whereNull('property_id')->orWhere('property_id', 0);
+                })
+                ->where('status', 'Active')
+                ->orderByDesc('id')
+                ->get(),
         ]);
     }
 
@@ -70,6 +79,7 @@ class FinanceController extends Controller
         return view('backend.finance.show', [
             'invoice' => $rentInvoice,
             'methods' => RentPayment::METHODS,
+            'manualMethods' => RentPayment::MANUAL_METHODS,
         ]);
     }
 
@@ -81,7 +91,7 @@ class FinanceController extends Controller
         $validated = $request->validate([
             'amount' => ['required', 'numeric', 'min:0.01', 'max:99999999.99'],
             'paid_at' => ['required', 'date'],
-            'method' => ['required', 'in:'.implode(',', array_keys(RentPayment::METHODS))],
+            'method' => ['required', 'in:'.implode(',', array_keys(RentPayment::MANUAL_METHODS))],
             'reference' => ['nullable', 'string', 'max:120'],
         ]);
 

@@ -236,7 +236,7 @@
             ? `<div class="pcc-tab-subs">${subTabs.map((t) => {
                 const key = String(t.name).toLowerCase();
                 return `<a href="#" class="pcc-tab-link ${key === state.tabName ? 'active' : ''}"
-                    data-tab="${key}" role="button">${t.name}</a>`;
+                    data-tab="${key}" role="button">${t.label || t.name}</a>`;
             }).join('')}</div>`
             : '';
 

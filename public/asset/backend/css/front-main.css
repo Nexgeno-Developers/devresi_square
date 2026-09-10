@@ -55,6 +55,48 @@ body.hide-sidebar{
     position: relative;
     z-index: 99;
     border-bottom: 1px solid var(--primary-200);
+    overflow: visible;
+}
+
+#header .navbar {
+    display: block;
+    width: 100%;
+    padding: 0;
+}
+
+.rs-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    width: 100%;
+    min-height: 56px;
+    gap: 12px;
+}
+
+.rs-topbar-left,
+.rs-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.rs-topbar-right {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+#header .navbar .rs_logo {
+    margin-right: 0;
+}
+
+#header .navbar .rs_logo img,
+.navbar .rs_logo img {
+    display: block;
+    max-height: 36px;
+    width: auto;
+    object-fit: contain;
 }
 
 

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Software Testing Report — Resisquare landlord golden path</title>
+  <style>
+    :root {
+      --ink: #1a1d23;
+      --muted: #5c6570;
+      --line: #d8dde3;
+      --bg: #f4f6f8;
+      --card: #fff;
+      --pass: #1b7a4a;
+      --pass-bg: #e7f6ee;
+      --fail: #b42318;
+      --fail-bg: #fdecea;
+      --crit: #7a1010;
+      --high: #c2410c;
+      --med: #b45309;
+      --low: #475569;
+      --blocked: #c2410c;
+      --nt: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.5; }
+    .header { background: #0b1220; color: #fff; padding: 32px 24px; }
+    .header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 650; }
+    .header p { margin: 0; color: #c5ccd4; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: -40px; margin-bottom: 24px; }
+    .card { background: var(--card); border: 1px solid var(--line); padding: 16px; }
+    .card h3 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .card .v { font-size: 20px; font-weight: 650; }
+    .badge { display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 650; }
+    .pass { background: var(--pass-bg); color: var(--pass); }
+    .fail { background: var(--fail-bg); color: var(--fail); }
+    .blocked { background: #fff4e5; color: var(--blocked); }
+    .nt { background: #eef1f4; color: var(--nt); }
+    .crit { background: #fdecea; color: var(--crit); }
+    .high { background: #fff4e5; color: var(--high); }
+    .med { background: #fffbeb; color: var(--med); }
+    .low { background: #eef2ff; color: var(--low); }
+    .open { background: var(--fail-bg); color: var(--fail); }
+    .fixed { background: var(--pass-bg); color: var(--pass); }
+    .accepted { background: #eef1f4; color: var(--nt); }
+    h2 { font-size: 18px; margin: 32px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 13px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #eef1f4; font-weight: 650; }
+    tbody tr:nth-child(even) { background: #fafbfc; }
+    code, .path { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+    .note { color: var(--muted); font-size: 14px; }
+    footer { color: var(--muted); font-size: 12px; margin: 40px 0 12px; }
+    .shot { margin: 20px 0 28px; }
+    .shot img { display: block; width: 100%; max-width: 100%; border: 1px solid var(--line); background: #fff; }
+    .shot figcaption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media print { body { background: #fff; } .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    @media (max-width: 900px) { .pair { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { table { display: block; overflow-x: auto; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Software Testing Report — Landlord golden path</h1>
+    <p>Resisquare local Laravel app · live browser walkthrough as Lara Landlord, then Tina Tenant · code changes in this pass were retested</p>
+  </div>
+  <div class="wrap">
+    <div class="meta">
+      <div class="card"><h3>Overall score</h3><div class="v">82%</div></div>
+      <div class="card"><h3>Final status</h3><div class="v"><span class="badge pass">Passed with Minor Issues</span></div></div>
+      <div class="card"><h3>Quality rating</h3><div class="v">Average</div></div>
+      <div class="card"><h3>Environment</h3><div class="v">Local · 127.0.0.1:8001</div></div>
+    </div>
+
+    <h2>1. Project Information</h2>
+    <table>
+      <tbody>
+        <tr><th>Project</th><td>Resisquare (devresi_square)</td></tr>
+        <tr><th>Application type</th><td>Laravel property workspace · landlord MVP under <code>/admin</code></td></tr>
+        <tr><th>Test date</th><td>10 Sep 2026, 15:35 IST</td></tr>
+        <tr><th>Tester</th><td>Cursor agent · live Chrome via Cursor browser</td></tr>
+        <tr><th>Base URL</th><td>http://127.0.0.1:8001</td></tr>
+        <tr><th>Accounts used</th><td>Landlord <code>landlord.owner@resisquare.test</code> (Lara). Tenant <code>tenant@resisquare.test</code> (Tina). Passwords not recorded.</td></tr>
+        <tr><th>Scope</th><td>Golden path: add property overlay, tenancy, invite, rent invoice, documents, repair, calendar, overlay Later. Landlord UI polish. Regression of prior BUG-002 to BUG-006.</td></tr>
+        <tr><th>Out of scope</th><td>Live Stripe, trial lockout (left open for staging demo), Accounting, SEO, Firefox/Safari/mobile devices, full file-upload security fuzzing.</td></tr>
+        <tr><th>Prior report</th><td><code>software-testing-report-2026-09-09-1730.html</code> (63%, not production-ready)</td></tr>
+      </tbody>
+    </table>
+
+    <h2>2. Testing Summary</h2>
+    <table>
+      <thead><tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Functional Testing</td><td>16</td><td>15</td><td>1</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>Security Testing</td><td>4</td><td>3</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>UI/UX Testing</td><td>12</td><td>8</td><td>4</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Performance Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+        <tr><td>SEO Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+        <tr><td>Content Testing</td><td>3</td><td>2</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Compatibility Testing</td><td>1</td><td>1</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>API Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+        <tr><td>Database Testing</td><td>2</td><td>2</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>Production / Deployment Testing</td><td>2</td><td>2</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+      </tbody>
+    </table>
+    <p class="note">Totals exclude Blocked / Not Tested rows from pass rate. Performance and SEO were not scored. PHPUnit <code>LandlordMvpRouteRestrictionTest</code> (6 tests) passed after the empty-properties redirect fix.</p>
+
+    <h2>3. Functional Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>FT-001</td><td>Auth</td><td>Landlord login reaches dashboard</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-002</td><td>Dashboard</td><td>Metrics, quick actions (Finance, Invite tenant, Documents, Calendar), account chip</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-003</td><td>Onboarding</td><td>Add property overlay opens; Later removes overlay</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-004</td><td>Tenancy</td><td>Create page: property select, Select2 tenants, Quick add tenant, no Property Manager</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-005</td><td>Tenancy</td><td>Tenancy #15 linked to property 85 (1 The Mall) so invite and finance unlock</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-006</td><td>Portal</td><td>Invite form lists tenancy #15 on 1 The Mall</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-007</td><td>Portal</td><td>Invite POST + email delivery</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td>Form was filled; submit was interrupted by a logout during automation. Retest Invite tenant end to end.</td></tr>
+        <tr><td>FT-008</td><td>Finance</td><td>New invoice form lists tenancy 15; tenant auto-fills Tina Tenant</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-009</td><td>Finance</td><td>Issue invoice creates RENT-0001 £1,250.00</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-010</td><td>Documents</td><td>Account documents empty state CTA; property Documents tab Add document modal opens with Type and Share with tenant</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-011</td><td>Documents</td><td>Upload a file and share</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td>Modal opened; a real file was not attached. <span class="path">resources/views/backend/properties/control-center.blade.php</span> now loads <span class="path">common-documents.js</span>.</td></tr>
+        <tr><td>FT-012</td><td>Repair</td><td>Landlord property dropdown; Next enables; category step shows</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-013</td><td>Calendar</td><td>Add event button opens Create / Edit Event modal; week starts Monday</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-014</td><td>Tenant portal</td><td>Tina logs in; Rent page shows RENT-0001 Paid £1,250.00</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-015</td><td>Access</td><td>Landlord blocked from Accounting / Sales Offer / Clear Cache (PHPUnit)</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-016</td><td>Subscription</td><td>Expired trial still allows full landlord use (plan shows Trialing, trial ended 03 Sep 2026)</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>Accepted for staging demo. See BUG-001. Do not ship live without enforcing trial/subscription end.</td></tr>
+        <tr><td>FT-017</td><td>Properties</td><td>Empty landlord portfolio no longer 302-loops; PHPUnit dashboard+properties is 200</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+      </tbody>
+    </table>
+    <p class="note">FT-007 and FT-011 are excluded from the functional pass rate (Not Tested). Applicable: 15 passed / 16 = 94%.</p>
+
+    <h2>4. Bug / Issue Report</h2>
+    <table>
+      <thead><tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>BUG-001</td><td>Billing</td><td>Trial ended 03 Sep 2026; account still Trialing and fully usable</td><td><span class="badge crit">Critical</span></td><td><span class="badge accepted">Accepted Risk</span></td><td>Leave open on staging so Lara’s demo works. Enforce before live Stripe.</td></tr>
+        <tr><td>BUG-002</td><td>Tenancy</td><td>Tenancy 15 pointed at missing property 37</td><td><span class="badge crit">Critical</span></td><td><span class="badge fixed">Fixed</span></td><td>Relinked to property 85. Edit tenancy still allows linking if this happens again.</td></tr>
+        <tr><td>BUG-004</td><td>Documents</td><td>Add document did nothing on control-center (script only on old index view)</td><td><span class="badge high">High</span></td><td><span class="badge fixed">Fixed</span></td><td><span class="path">control-center.blade.php → page.scripts → include common-documents.js</span></td></tr>
+        <tr><td>BUG-005</td><td>Calendar</td><td>No Add event / date click</td><td><span class="badge high">High</span></td><td><span class="badge fixed">Fixed</span></td><td>Add event opens modal. Agency event types remain in filters (BUG-016).</td></tr>
+        <tr><td>BUG-006</td><td>Onboarding</td><td>Later did not close overlay</td><td><span class="badge high">High</span></td><td><span class="badge fixed">Fixed</span></td><td>Later removed overlay in this pass.</td></tr>
+        <tr><td>BUG-007</td><td>Portal</td><td>Invite hidden without property</td><td><span class="badge high">High</span></td><td><span class="badge fixed">Fixed</span></td><td>Invite form lists tenancy 15 after relink.</td></tr>
+        <tr><td>BUG-009</td><td>Repair</td><td>3-character property search</td><td><span class="badge high">High</span></td><td><span class="badge fixed">Fixed</span></td><td>Landlord dropdown; Next enabled after select.</td></tr>
+        <tr><td>BUG-015</td><td>Chrome</td><td>Logout was a tiny header text link</td><td><span class="badge med">Medium</span></td><td><span class="badge fixed">Fixed</span></td><td>Header account chip: Profile, Notifications, Billing, Logout.</td></tr>
+        <tr><td>BUG-016</td><td>Calendar</td><td>Filters still include Buyer Viewing, Mortgage, Valuation and other agency types</td><td><span class="badge med">Medium</span></td><td><span class="badge open">Open</span></td><td><span class="path">resources/views/backend/partials/event-list.blade.php</span> → Filter event types for landlords.</td></tr>
+        <tr><td>BUG-017</td><td>Login</td><td>Document title is “Backend Dashboard”</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Login / layout title → “Login | Resisquare”.</td></tr>
+        <tr><td>BUG-018</td><td>Sidebar</td><td>Email still wraps mid-word (resisquare.te / st)</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td><span class="path">aside2.blade.php</span> / landlord-workspace.css → smaller type or tooltip-only, avoid wrapping inside the local-part.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. Security Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Security Check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>ST-001</td><td>Login and workspace forms include CSRF tokens</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>ST-002</td><td>Landlord cannot open Accounting / Sales Offer / Clear Cache</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>ST-003</td><td>Expired trial still allows authenticated landlord use</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>See BUG-001. Accepted on staging only.</td></tr>
+        <tr><td>ST-004</td><td>Tenant portal shows rent invoices only; no agency Accounting chrome</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>ST-005</td><td>File upload type/size limits</td><td><span class="badge nt">Not Tested</span></td><td>-</td><td>Modal opened; upload not completed.</td></tr>
+        <tr><td>ST-006</td><td>XSS / SQLi payloads</td><td><span class="badge nt">Not Tested</span></td><td>-</td><td>Non-destructive pass only; not run.</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Applicable security: 3 passed / 4 = 75%.</p>
+
+    <h2>6. UI/UX Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>UX-001</td><td>Dashboard</td><td>Teal hero, linked metrics, landlord quick actions, account chip with initials</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-002</td><td>Tenancy create</td><td>Hero, rounded controls, Select2, no agency Property Manager / Sub Status / Agent holding</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-003</td><td>Finance</td><td>Hero, New invoice CTA, invoice row for RENT-0001</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-004</td><td>Documents</td><td>Empty state with Open properties CTA</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-005</td><td>Repair</td><td>Hero + property dropdown instead of 3-char search</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-006</td><td>Calendar</td><td>Add event CTA; Monday-first month headers</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-007</td><td>Onboarding</td><td>Vendor name Chimnie removed from help copy</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-008</td><td>Header</td><td>Account menu replaces raw Logout for landlords</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-009</td><td>Login</td><td>Document title remains “Backend Dashboard”</td><td><span class="badge fail">Fail</span></td><td>See BUG-017.</td></tr>
+        <tr><td>UX-010</td><td>Calendar</td><td>Agency types still in filters</td><td><span class="badge fail">Fail</span></td><td>See BUG-016.</td></tr>
+        <tr><td>UX-011</td><td>Properties</td><td>Overview still shows N/A for empty facts</td><td><span class="badge fail">Fail</span></td><td>Use muted “Not set” instead of N/A.</td></tr>
+        <tr><td>UX-012</td><td>Sidebar</td><td>Email wraps mid-word</td><td><span class="badge fail">Fail</span></td><td>See BUG-018.</td></tr>
+      </tbody>
+    </table>
+    <p class="note">UI/UX: 8 passed / 12 = 67%.</p>
+
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-10/qa-dashboard.png" alt="Landlord dashboard with teal hero and account chip">
+        <figcaption>Dashboard — landlord workspace, account chip, linked metrics.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-10/qa-tenancy-create.png" alt="Add tenancy page with hero and Select2">
+        <figcaption>Add tenancy — working Select2, property required, landlord copy.</figcaption>
+      </figure>
+    </div>
+
+    <h2>7. Performance Testing</h2>
+    <p class="note">Not Tested - Measurement unavailable in current environment. No timings were captured beyond qualitative page loads on local PHP.</p>
+    <table>
+      <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>PT-001</td><td>Page load</td><td>Numeric TTFB / LCP</td><td><span class="badge nt">Not Tested</span></td><td>Medium</td><td>Not Tested - Measurement unavailable in current environment.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>8. SEO Testing</h2>
+    <p class="note">Not Tested. This pass covered authenticated landlord/tenant workspace only. Public marketing SEO was out of scope.</p>
+    <table>
+      <thead><tr><th>ID</th><th>SEO Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>SEO-001</td><td>Public page titles / meta</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>9. Content Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Content Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>CT-001</td><td>Onboarding help no longer names Chimnie</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>CT-002</td><td>Landlord tenancy form uses sentence case (Quick add tenant, Tenancy type)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>CT-003</td><td>Calendar filters still list agency event names (Buyer Viewing, Mortgage Appointment)</td><td><span class="badge fail">Fail</span></td><td>See BUG-016.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>10. Browser &amp; Device Testing</h2>
+    <table>
+      <thead><tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>Chrome Desktop (Cursor embedded browser)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>Firefox Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Edge Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Safari</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Android Mobile</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>iPhone</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Tablet</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>11. API Testing</h2>
+    <p>Not Tested. No standalone API client pass in this run. Overlay search and document create were exercised as browser XHR only.</p>
+    <table>
+      <thead><tr><th>ID</th><th>API / Feature</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>API-001</td><td>REST suite</td><td>Dedicated API cases</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>12. Database Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>DB-001</td><td>Tenancy 15 property_id updated from dangling 37 to 85; Tina Tenant selected_properties includes 85</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DB-002</td><td>Rent invoice RENT-0001 stored and visible to tenant</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>13. Production / Deployment Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>DEP-001</td><td>Local app reachable on :8001</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DEP-002</td><td>Database connection for landlord + tenant logins</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DEP-003</td><td>HTTPS / production env</td><td><span class="badge nt">Not Tested</span></td><td>This is local HTTP.</td></tr>
+        <tr><td>DEP-004</td><td>Live Stripe</td><td><span class="badge nt">Not Tested</span></td><td>Demo/test keys by product lock.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>14. Overall Score</h2>
+    <table>
+      <thead><tr><th>Category</th><th>Weight</th><th>Score</th><th>Included</th></tr></thead>
+      <tbody>
+        <tr><td>Functional</td><td>30%</td><td>94%</td><td>Yes</td></tr>
+        <tr><td>Security</td><td>20%</td><td>75%</td><td>Yes</td></tr>
+        <tr><td>UI/UX</td><td>15%</td><td>67%</td><td>Yes</td></tr>
+        <tr><td>Performance</td><td>15%</td><td>—</td><td>No (not tested)</td></tr>
+        <tr><td>SEO</td><td>10%</td><td>—</td><td>No (not tested)</td></tr>
+        <tr><td>Compatibility</td><td>5%</td><td>100%</td><td>Yes (Chrome only)</td></tr>
+        <tr><td>Content</td><td>5%</td><td>67%</td><td>Yes</td></tr>
+      </tbody>
+    </table>
+    <p>Weighted score on tested categories (75% of default weight): (94×30 + 75×20 + 67×15 + 100×5 + 67×5) / 75 = <strong>82%</strong>.</p>
+    <p>Quality rating for 80–89%: Average. Critical trial defect is Accepted Risk on staging, so production-ready is still not claimed.</p>
+
+    <h2>15. Final Status</h2>
+    <p><strong>Final Status:</strong> <span class="badge pass">Passed with Minor Issues</span></p>
+    <p><strong>Recommendation:</strong> The landlord golden path is usable for stakeholder demo. Overlay Later closes. Tenancy create works (Select2 + Quick add). Tenancy 15 sits on 1 The Mall, so Portal Access and Finance work. RENT-0001 issued and shown as Paid on Tina’s Rent page. Add document modal opens. Repair uses a property dropdown. Calendar Add event opens. Remaining work: finish invite email retest, complete a file upload, slim calendar types for landlords, and keep trial enforcement off until after the demo.</p>
+
+    <h2>16. Testing Limitations</h2>
+    <ul>
+      <li>Only Chrome via the Cursor browser was used. Firefox, Safari, Edge, and phones were not tested.</li>
+      <li>Invite tenant submit was not confirmed (automation logged out mid-form).</li>
+      <li>Document upload was not completed; only the Add document modal was proven.</li>
+      <li>No numeric performance, SEO, or destructive security testing.</li>
+      <li>Local HTTP on port 8001, not production HTTPS.</li>
+      <li>Trial lockout was deliberately left open for Lara’s staging demo.</li>
+      <li>Stripe live payments were out of scope.</li>
+    </ul>
+
+    <footer>Report generated 10 Sep 2026 15:35 IST · Resisquare landlord golden path · standalone HTML</footer>
+  </div>
+</body>
+</html>

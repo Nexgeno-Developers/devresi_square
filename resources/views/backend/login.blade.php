@@ -1,5 +1,7 @@
 @extends('frontend.layout.app')
 
+@section('title', 'Login | Resisquare')
+
 @section('content')
 <div class="row justify-content-center">
     <div class="col-md-6">

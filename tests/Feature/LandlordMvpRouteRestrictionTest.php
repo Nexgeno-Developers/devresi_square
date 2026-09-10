@@ -89,6 +89,25 @@ class LandlordMvpRouteRestrictionTest extends TestCase
             ->get(route('admin.finance.index'))
             ->assertOk()
             ->assertSee('Finance', false);
+
+        $this->actingAs($user)->withSession($session)
+            ->get(route('admin.tenancies.create'))
+            ->assertOk()
+            ->assertSee('Add tenancy', false)
+            ->assertSee('Search menu', false)
+            ->assertSee('asset/js/select2.min.js', false)
+            ->assertSee('Quick add tenant', false)
+            ->assertDontSee('Property Manager', false);
+
+        $this->actingAs($user)->withSession($session)
+            ->get(route('backend.events.calendar'))
+            ->assertOk()
+            ->assertSee('Add event', false);
+
+        $this->actingAs($user)->withSession($session)
+            ->get(route('admin.property_repairs.create'))
+            ->assertOk()
+            ->assertSee('Which property needs the repair?', false);
     }
 
     public function test_landlord_dashboard_hides_agency_chrome(): void

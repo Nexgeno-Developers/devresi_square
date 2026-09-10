@@ -197,7 +197,7 @@ class LandlordOnboardingController extends Controller
 
     public function dismiss(Request $request): JsonResponse
     {
-        $this->guard($request, false);
+        [$account] = $this->guard($request, false);
         $this->onboarding->leaveAddFlow($account);
 
         return response()->json(['ok' => true]);

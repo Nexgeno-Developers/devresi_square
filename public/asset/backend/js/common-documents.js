@@ -19,12 +19,20 @@
   // Open add/edit document form
   function loadForm(url, title) {
     $.get(url, function(html){
-      $('#documentsModal .modal-title').text(title);
-      $('#documentsModal .modal-body').html(html);
-      AIZ.uploader.previewGenerate();
-      $('#documentsModal').modal('show');
+      var $modal = $('#documentsModal');
+      if ($modal.parent()[0] !== document.body) {
+        $modal.appendTo('body');
+      }
+      $modal.find('.modal-title').text(title || 'Add document');
+      $modal.find('.modal-body').html(html);
+      try {
+        if (window.AIZ && AIZ.uploader && typeof AIZ.uploader.previewGenerate === 'function') {
+          AIZ.uploader.previewGenerate();
+        }
+      } catch (e) {}
+      $modal.modal('show');
     }).fail(function(){
-      alert('Failed to load form.');
+      alert('Could not open the document form. Refresh and try again.');
     });
   }
 
@@ -84,12 +92,20 @@
     const documentId = $(this).data('id');
     const url    = `${api}/show/${documentId}`;
     $.get(url, function(res){
-      $('#documentsModal .modal-title').text('View document');
-      $('#documentsModal .modal-body').html(res.html || res);
-      AIZ.uploader.previewGenerate();
-      $('#documentsModal').modal('show');
+      var $modal = $('#documentsModal');
+      if ($modal.parent()[0] !== document.body) {
+        $modal.appendTo('body');
+      }
+      $modal.find('.modal-title').text('View document');
+      $modal.find('.modal-body').html(res.html || res);
+      try {
+        if (window.AIZ && AIZ.uploader && typeof AIZ.uploader.previewGenerate === 'function') {
+          AIZ.uploader.previewGenerate();
+        }
+      } catch (e) {}
+      $modal.modal('show');
     }).fail(function(){
-      alert('Failed to load document.');
+      alert('Could not open that document.');
     });
   });
 

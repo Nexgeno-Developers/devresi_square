@@ -20,7 +20,7 @@ return new class extends Migration
     {
         if (!Schema::hasColumn('users', 'role_id')) {
             Schema::table('users', function (Blueprint $table) {
-                $table->bigInteger('role_id')->unsigned()->after('id');
+                $table->unsignedBigInteger('role_id')->nullable();
             });
         }
     }

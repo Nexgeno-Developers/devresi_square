@@ -41,22 +41,12 @@ return new class extends Migration
                 'all'
             ])->default('all');
             
-            // Accrue
-            $table->boolean('accrue')->default(false)->after('transaction_between');
-
-            // Bank reference (nullable, in case no bank is required)
-            $table->unsignedBigInteger('bank_id')->nullable()->after('accrue');
-            $table->foreign('bank_id')->references('id')->on('banks')->onDelete('set null');
-
-            // Penalty Calculation
-            $table->enum('penalty_frequency', ['annual','monthly'])->nullable()->after('bank_id');
-
-            // Penalty Due
-            $table->enum('penalty_due_type', ['instant','days_after_invoice','custom'])->nullable()->after('penalty_frequency');
-            $table->integer('penalty_due_days')->nullable()->after('penalty_due_type');
-
-            // Tenancy Period Inclusion
-            $table->boolean('include_tenancy_period')->default(false)->after('penalty_due_days');
+            $table->boolean('accrue')->default(false);
+            $table->unsignedBigInteger('bank_id')->nullable();
+            $table->enum('penalty_frequency', ['annual', 'monthly'])->nullable();
+            $table->enum('penalty_due_type', ['instant', 'days_after_invoice', 'custom'])->nullable();
+            $table->integer('penalty_due_days')->nullable();
+            $table->boolean('include_tenancy_period')->default(false);
 
             // Metadata
             $table->boolean('active')->default(true);

@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Software Testing Report — Resisquare Super Admin</title>
+  <style>
+    :root {
+      --ink: #1a1d23;
+      --muted: #5c6570;
+      --line: #d8dde3;
+      --bg: #f4f6f8;
+      --card: #fff;
+      --pass: #1b7a4a;
+      --pass-bg: #e7f6ee;
+      --fail: #b42318;
+      --fail-bg: #fdecea;
+      --crit: #7a1010;
+      --high: #c2410c;
+      --med: #b45309;
+      --low: #475569;
+      --blocked: #c2410c;
+      --nt: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.5; }
+    .header { background: #0b1220; color: #fff; padding: 32px 24px; }
+    .header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 650; }
+    .header p { margin: 0; color: #c5ccd4; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: -40px; margin-bottom: 24px; }
+    .card { background: var(--card); border: 1px solid var(--line); padding: 16px; }
+    .card h3 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .card .v { font-size: 20px; font-weight: 650; }
+    .badge { display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 650; }
+    .pass { background: var(--pass-bg); color: var(--pass); }
+    .fail { background: var(--fail-bg); color: var(--fail); }
+    .blocked { background: #fff4e5; color: var(--blocked); }
+    .nt { background: #eef1f4; color: var(--nt); }
+    .crit { background: #fdecea; color: var(--crit); }
+    .high { background: #fff4e5; color: var(--high); }
+    .med { background: #fffbeb; color: var(--med); }
+    .low { background: #eef2ff; color: var(--low); }
+    .open { background: var(--fail-bg); color: var(--fail); }
+    h2 { font-size: 18px; margin: 32px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 13px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #eef1f4; font-weight: 650; }
+    tbody tr:nth-child(even) { background: #fafbfc; }
+    code, .path { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+    .note { color: var(--muted); font-size: 14px; }
+    footer { color: var(--muted); font-size: 12px; margin: 40px 0 12px; }
+    .shot { margin: 20px 0 28px; }
+    .shot img { display: block; width: 100%; max-width: 100%; border: 1px solid var(--line); background: #fff; }
+    .shot figcaption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media print { body { background: #fff; } .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    @media (max-width: 900px) { .pair { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { table { display: block; overflow-x: auto; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Software Testing Report — Super Admin</h1>
+    <p>Resisquare local Laravel app · live browser walkthrough as Staging Super Admin · SaaS command centre, plans, accounts, impersonation, and authorization</p>
+  </div>
+  <div class="wrap">
+    <div class="meta">
+      <div class="card"><h3>Overall score</h3><div class="v">78%</div></div>
+      <div class="card"><h3>Final status</h3><div class="v"><span class="badge fail">Needs Fixes and Retesting</span></div></div>
+      <div class="card"><h3>Quality rating</h3><div class="v">Poor</div></div>
+      <div class="card"><h3>Environment</h3><div class="v">Local · 127.0.0.1:8001</div></div>
+    </div>
+
+    <h2>1. Project Information</h2>
+    <table>
+      <tbody>
+        <tr><th>Project</th><td>Resisquare (devresi_square)</td></tr>
+        <tr><th>Application type</th><td>Laravel SaaS property platform · Super Admin under <code>/admin</code></td></tr>
+        <tr><th>Test date</th><td>10 Sep 2026, 17:55 IST</td></tr>
+        <tr><th>Tester</th><td>Cursor agent · live Chrome via Cursor browser</td></tr>
+        <tr><th>Base URL</th><td>http://127.0.0.1:8001</td></tr>
+        <tr><th>Account used</th><td>Super Admin <code>admin@resisquare.test</code> (Staging Super Admin). Impersonation used landlord owner Lara. Passwords not recorded.</td></tr>
+        <tr><th>Scope</th><td>Super Admin login, SaaS Command Centre, Plans, Addons, Accounts, Subscriptions, Registrations, Login as account, Return to Super Admin, landlord SaaS 403, Billing &amp; Plan as Super Admin, Properties (agency UI), Roles, My Statement.</td></tr>
+        <tr><th>Out of scope</th><td>Live Stripe checkout, Extend Trial submit, plan/addon save, registration approve/reject (empty queue), estate-agent impersonation, website setup, accounting journals, SEO, Firefox/Safari/mobile, destructive role deletes.</td></tr>
+        <tr><th>Prior reports</th><td><code>software-testing-report-2026-09-09-1730.html</code>, <code>software-testing-report-2026-09-10-1535.html</code> (landlord golden path)</td></tr>
+      </tbody>
+    </table>
+
+    <h2>2. Testing Summary</h2>
+    <table>
+      <thead><tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Functional Testing</td><td>19</td><td>17</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Security Testing</td><td>5</td><td>4</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>UI/UX Testing</td><td>12</td><td>7</td><td>5</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Performance Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+        <tr><td>SEO Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+        <tr><td>Content Testing</td><td>5</td><td>2</td><td>3</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Compatibility Testing</td><td>1</td><td>1</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>API Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+        <tr><td>Database Testing</td><td>2</td><td>2</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>Production / Deployment Testing</td><td>2</td><td>2</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+      </tbody>
+    </table>
+    <p class="note">Totals exclude Blocked / Not Tested rows from pass rate. Performance and SEO were not scored. Super Admin SaaS list/show/edit screens work. Billing as Super Admin is the main product gap: it either shows a customer’s plan with Activate Subscription, or 403s with “No current SaaS account is selected.”</p>
+
+    <h2>3. Functional Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>FT-001</td><td>Auth</td><td>Invalid Super Admin login is rejected</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-002</td><td>Auth</td><td>Valid login as <code>admin@resisquare.test</code> reaches the admin app</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-003</td><td>Dashboard</td><td>SaaS Command Centre: 2 accounts, 2 trialing, MRR £0, 2 plans, 0 pending registrations, trials ending 17 Sep 2026</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-004</td><td>Plans</td><td>Plans list shows Landlord Basic and Estate Agent Company with Edit / Add Plan</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-005</td><td>Plans</td><td>Edit Landlord Basic loads prices, limits, Stripe ID fields, Update Plan</td><td><span class="badge pass">Pass</span></td><td>High</td><td>Form was not submitted, to avoid mutating staging plans.</td></tr>
+        <tr><td>FT-006</td><td>Addons</td><td>Addons list: Extra Property, Extra Branch, Extra Staff, Property Manager</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-007</td><td>Accounts</td><td>Accounts list: Staging Landlord + Staging Estate Agent, both trialing, View + Login as account</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-008</td><td>Accounts</td><td>Account show for Staging Landlord Account: owner Lara, limits, members, Login as account</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-009</td><td>Subscriptions</td><td>Subscriptions list shows landlord monthly and estate annual, both trialing, Stripe IDs “-”</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-010</td><td>Subscriptions</td><td>Subscription #1 show: trial dates, Extend Trial, View account, Property Manager addon</td><td><span class="badge pass">Pass</span></td><td>High</td><td>Extend Trial was not submitted.</td></tr>
+        <tr><td>FT-011</td><td>Registrations</td><td>Empty verified registrations: “No verified registrations found.”</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-012</td><td>Impersonation</td><td>Login as account opens Lara’s landlord workspace with “Viewing Staging Landlord Account”</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-013</td><td>Impersonation</td><td>Return to Super Admin restores Command Centre as Staging Super Admin</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-014</td><td>Authz</td><td>While impersonating Lara, <code>/admin/saas/plans</code> returns 403 landlord-plan lockout</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-015</td><td>Billing</td><td>With a customer account selected in session, Super Admin Billing &amp; Plan shows that customer’s trial and Activate Subscription</td><td><span class="badge fail">Fail</span></td><td>High</td><td><span class="path">AuthorizesBillingAccess.php → billingAccount()</span> returns <code>current()</code> for Super Admin. Hide customer billing chrome from Super Admin, or open a read-only account billing view from SaaS Accounts instead of Activate Subscription.</td></tr>
+        <tr><td>FT-016</td><td>Billing</td><td>After Return to Super Admin (session account cleared), <code>/admin/billing</code> 403 “No current SaaS account is selected.”</td><td><span class="badge fail">Fail</span></td><td>High</td><td><span class="path">AccountSwitchController.php → leave()</span> calls <code>clearCurrentAccount()</code>. Super Admin should land on Accounts, not a 403. Same root as FT-015.</td></tr>
+        <tr><td>FT-017</td><td>Properties</td><td>Super Admin properties uses agency control centre and lists all 3 staging properties</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>Expected: Super Admin is not a landlord-plan user, so agency UI is shown.</td></tr>
+        <tr><td>FT-018</td><td>Roles</td><td>Roles index lists Super Admin, Owner, Property Manager, Tenant, and others (15 total)</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-019</td><td>Accounting</td><td>My Statement loads empty ledger with company filter</td><td><span class="badge pass">Pass</span></td><td>Low</td><td>-</td></tr>
+        <tr><td>FT-020</td><td>Subscriptions</td><td>Extend Trial POST</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td>UI present; submit left for a controlled retest.</td></tr>
+        <tr><td>FT-021</td><td>Plans</td><td>Update Plan save</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-022</td><td>Registrations</td><td>Approve / reject a public signup</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td>Queue was empty after staging seed.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4. Bug / Issue Report</h2>
+    <table>
+      <thead><tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>BUG-SA-001</td><td>Billing</td><td>Super Admin Billing &amp; Plan is customer checkout, not a platform billing home. With a session account it showed Staging Landlord Account + Activate Subscription. After leave, the same URL 403s.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td><span class="path">AuthorizesBillingAccess.php → billingAccount()</span> and <span class="path">aside2.blade.php → $canViewBilling</span>: do not treat Super Admin as the customer. Keep billing on SaaS Account / Subscription show. Redirect Super Admin away from <code>backend.billing.index</code>.</td></tr>
+        <tr><td>BUG-SA-002</td><td>Impersonation</td><td>Landlord-plan 403 during Login as account has no “Return to Super Admin” control. The banner only exists on workspace chrome.</td><td><span class="badge med">Medium</span></td><td><span class="badge open">Open</span></td><td>Include the impersonation banner on the branded 403, or add a leave-login link on that error page.</td></tr>
+        <tr><td>BUG-SA-003</td><td>Accounts</td><td>Owner Status on account show prints raw <code>1</code> instead of Active.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td><span class="path">resources/views/backend/saas/accounts/show.blade.php</span> line 41: format boolean status as Active/Inactive.</td></tr>
+        <tr><td>BUG-SA-004</td><td>Navbar</td><td>Super Admin chrome shows Clear Cache + My Statement. My Statement is an accounting customer ledger, not SaaS billing.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td><span class="path">navbar.blade.php</span> around the <code>is_landlord_plan_user()</code> else branch: hide My Statement for Super Admin, or rename it to platform accounting.</td></tr>
+        <tr><td>BUG-SA-005</td><td>Registrations</td><td>Filter row: Reset sits in a leftover input-width column and looks like a blank field.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td><span class="path">resources/views/backend/registrations/index.blade.php</span> filter grid: align Reset as a button, not an empty <code>col-md-2</code> control.</td></tr>
+        <tr><td>BUG-SA-006</td><td>Roles</td><td>Page heading is “All Role” (grammar).</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Change heading to “All roles”.</td></tr>
+        <tr><td>BUG-SA-007</td><td>Navigation</td><td>Super Admin sidebar is the full agency CRM (Sales Offer, Invoices, Accounting, Website Setup) plus SaaS. Usable for platform inspection, but noisy next to Command Centre.</td><td><span class="badge med">Medium</span></td><td><span class="badge open">Open</span></td><td>Product decision: keep agency tools for Super Admin inspection, or slim the SA menu to Dashboard + SaaS + Registrations + Roles + Website Setup. Do not restore this CRM for landlords.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. Security Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Security Check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>ST-001</td><td>Invalid credentials rejected</td><td><span class="badge pass">Pass</span></td><td>-</td><td>-</td></tr>
+        <tr><td>ST-002</td><td>Landlord (impersonated) cannot open SaaS plan admin; branded 403</td><td><span class="badge pass">Pass</span></td><td>-</td><td>-</td></tr>
+        <tr><td>ST-003</td><td>Login as account is POST + CSRF; controller aborts unless Super Admin</td><td><span class="badge pass">Pass</span></td><td>-</td><td><span class="path">AccountSwitchController.php → loginAs()</span> uses <code>abort_unless($superAdmin?-&gt;isSuperAdmin(), 403)</code>.</td></tr>
+        <tr><td>ST-004</td><td>Super Admin can open customer Billing &amp; Plan and see Activate Subscription for that customer</td><td><span class="badge fail">Fail</span></td><td>High</td><td>Same as BUG-SA-001. Super Admin should not start Stripe checkout as if they were the landlord.</td></tr>
+        <tr><td>ST-005</td><td>Return to Super Admin restores the original user (session <code>impersonator_user_id</code>)</td><td><span class="badge pass">Pass</span></td><td>-</td><td>-</td></tr>
+        <tr><td>ST-006</td><td>HTTPS, rate limiting, SQLi/XSS fuzzing</td><td><span class="badge nt">Not Tested</span></td><td>-</td><td>Local HTTP. No destructive probes.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>6. UI/UX Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>UX-001</td><td>Dashboard</td><td>Command Centre layout, metrics, recent accounts, health chart</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-002</td><td>Logo</td><td>Resisquare wordmark in header (no gray placeholder)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-003</td><td>Impersonation</td><td>Yellow Return to Super Admin + viewing banner on landlord dashboard</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-004</td><td>403</td><td>Landlord SaaS 403 copy: “This area is not available on the landlord plan.”</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-005</td><td>Registrations</td><td>Empty state copy is clear</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-006</td><td>Accounts</td><td>Filter + table + Login as account actions</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-007</td><td>Properties</td><td>Agency control centre for Super Admin, all staging properties visible</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-008</td><td>Navbar</td><td>My Statement on Super Admin top bar</td><td><span class="badge fail">Fail</span></td><td>BUG-SA-004</td></tr>
+        <tr><td>UX-009</td><td>Accounts</td><td>Owner status shows “1”</td><td><span class="badge fail">Fail</span></td><td>BUG-SA-003</td></tr>
+        <tr><td>UX-010</td><td>Registrations</td><td>Reset control looks like an empty input</td><td><span class="badge fail">Fail</span></td><td>BUG-SA-005</td></tr>
+        <tr><td>UX-011</td><td>403</td><td>No return-to-admin control while impersonating</td><td><span class="badge fail">Fail</span></td><td>BUG-SA-002</td></tr>
+        <tr><td>UX-012</td><td>Billing</td><td>403 after leave, or customer checkout before leave</td><td><span class="badge fail">Fail</span></td><td>BUG-SA-001</td></tr>
+      </tbody>
+    </table>
+
+    <h2>7. Performance Testing</h2>
+    <p class="note">Not Tested — Measurement unavailable in current environment.</p>
+
+    <h2>8. SEO Testing</h2>
+    <p class="note">Not Applicable — authenticated Super Admin app. Public SEO was not in scope. Page titles were uniformly “Resisquare”.</p>
+
+    <h2>9. Content Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Content Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>CT-001</td><td>Dashboard metric labels match staging data (2 accounts, £0 MRR, 0 pending registrations)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>CT-002</td><td>Registrations empty copy</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>CT-003</td><td>Owner Status “1”</td><td><span class="badge fail">Fail</span></td><td>BUG-SA-003</td></tr>
+        <tr><td>CT-004</td><td>“All Role” heading</td><td><span class="badge fail">Fail</span></td><td>BUG-SA-006</td></tr>
+        <tr><td>CT-005</td><td>My Statement company dropdown includes leftover faker name Hodkiewicz-Swaniawski alongside Staging Estate Agent Ltd</td><td><span class="badge fail">Fail</span></td><td>Staging seed left a companies row with faker data. Clean seed or hide that company from Super Admin statements.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>10. Browser &amp; Device Testing</h2>
+    <table>
+      <thead><tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>Chrome Desktop (Cursor browser)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>Firefox Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Edge Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Safari</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Android / iPhone / Tablet</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>11. API Testing</h2>
+    <p class="note">Not Tested — Super Admin work was HTML routes, not a public API.</p>
+
+    <h2>12. Database Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>DB-001</td><td>Staging seed visible in UI: 2 SaaS accounts, 2 plans, addons, members on account 1</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DB-002</td><td>Subscription #1 matches landlord monthly trial; Stripe IDs empty as seeded</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>13. Production / Deployment Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>DEP-001</td><td>Local app reachable on :8001</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DEP-002</td><td>Super Admin login against rebuilt DB</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DEP-003</td><td>HTTPS / production env</td><td><span class="badge nt">Not Tested</span></td><td>This is local HTTP.</td></tr>
+        <tr><td>DEP-004</td><td>Live Stripe for Activate Subscription / plan price IDs</td><td><span class="badge nt">Not Tested</span></td><td>Staging Stripe IDs are blank (“-”).</td></tr>
+      </tbody>
+    </table>
+
+    <h2>14. Overall Score</h2>
+    <table>
+      <thead><tr><th>Category</th><th>Weight</th><th>Score</th><th>Included</th></tr></thead>
+      <tbody>
+        <tr><td>Functional</td><td>30%</td><td>89%</td><td>Yes (17/19)</td></tr>
+        <tr><td>Security</td><td>20%</td><td>80%</td><td>Yes (4/5)</td></tr>
+        <tr><td>UI/UX</td><td>15%</td><td>58%</td><td>Yes (7/12)</td></tr>
+        <tr><td>Performance</td><td>15%</td><td>—</td><td>No (not tested)</td></tr>
+        <tr><td>SEO</td><td>10%</td><td>—</td><td>No (not applicable)</td></tr>
+        <tr><td>Compatibility</td><td>5%</td><td>100%</td><td>Yes (Chrome only)</td></tr>
+        <tr><td>Content</td><td>5%</td><td>40%</td><td>Yes (2/5)</td></tr>
+      </tbody>
+    </table>
+    <p>Weighted score on tested categories (75% of default weight): (89×30 + 80×20 + 58×15 + 100×5 + 40×5) / 75 = <strong>78%</strong>.</p>
+    <p>Quality rating for 70–79%: Poor. No Critical defect. One High billing/authorization issue blocks calling this production-ready for Super Admin.</p>
+
+    <h2>15. Final Status</h2>
+    <p><strong>Final Status:</strong> <span class="badge fail">Needs Fixes and Retesting</span></p>
+    <p><strong>Recommendation:</strong> Super Admin can run the platform: Command Centre, plans, addons, accounts, subscriptions, login-as landlord, and return. Landlord users cannot open SaaS admin routes. Fix Billing &amp; Plan for Super Admin first (do not show Activate Subscription on a customer account; do not 403 after leave). Then add Return to Super Admin on impersonation 403s, and clean the low-severity labels (owner status, All Role, My Statement, registrations Reset). Agency CRM in the Super Admin sidebar is a product choice, not a landlord regression.</p>
+
+    <h2>16. Testing Limitations</h2>
+    <ul>
+      <li>Only Chrome via the Cursor browser was used. Firefox, Safari, Edge, and phones were not tested.</li>
+      <li>Extend Trial, Update Plan, addon delete, and registration approve were not submitted.</li>
+      <li>Login as the estate-agent account was not run.</li>
+      <li>Activate Subscription / Stripe checkout was not clicked (would have mutated billing).</li>
+      <li>No numeric performance, public SEO, or destructive security testing.</li>
+      <li>Local HTTP on port 8001, not production HTTPS.</li>
+      <li>First login after credentials landed on <code>/admin/saas/accounts</code> (intended URL), then Command Centre was opened at <code>/admin/dashboard</code>.</li>
+    </ul>
+
+    <h2>Evidence</h2>
+    <figure class="shot">
+      <img src="qa-evidence/superadmin-2026-09-10/qa-sa-return-dashboard.png" alt="Super Admin SaaS Command Centre after returning from impersonation">
+      <figcaption>Command Centre — 2 accounts, 2 trialing, MRR £0, 0 registrations awaiting approval.</figcaption>
+    </figure>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/superadmin-2026-09-10/qa-sa-plans.png" alt="SaaS plans list">
+        <figcaption>Plans list.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/superadmin-2026-09-10/qa-sa-addons.png" alt="SaaS addons list">
+        <figcaption>Addons list.</figcaption>
+      </figure>
+    </div>
+    <figure class="shot">
+      <img src="qa-evidence/superadmin-2026-09-10/qa-sa-accounts.png" alt="SaaS accounts table">
+      <figcaption>SaaS Accounts — landlord and estate agent, both trialing, Login as account.</figcaption>
+    </figure>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/superadmin-2026-09-10/qa-sa-account-show.png" alt="Landlord account detail">
+        <figcaption>Account show — Staging Landlord Account.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/superadmin-2026-09-10/qa-sa-subscription-show.png" alt="Subscription detail with extend trial">
+        <figcaption>Subscription #1 with Extend Trial.</figcaption>
+      </figure>
+    </div>
+    <figure class="shot">
+      <img src="qa-evidence/superadmin-2026-09-10/qa-sa-impersonate-dashboard.png" alt="Landlord workspace while Super Admin is logged in as Lara">
+      <figcaption>Login as account — Lara landlord workspace, Return to Super Admin in the header.</figcaption>
+    </figure>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/superadmin-2026-09-10/qa-sa-plans-403.png" alt="403 landlord plan lockout">
+        <figcaption>Impersonated landlord hitting /admin/saas/plans.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/superadmin-2026-09-10/qa-sa-billing-403.png" alt="403 no current SaaS account">
+        <figcaption>Super Admin /admin/billing after leave — no current account.</figcaption>
+      </figure>
+    </div>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/superadmin-2026-09-10/qa-sa-registrations.png" alt="Empty registrations list">
+        <figcaption>Registrations empty state; Reset column looks blank.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/superadmin-2026-09-10/qa-sa-properties.png" alt="Super Admin properties agency UI">
+        <figcaption>Properties — agency control centre, all three staging properties.</figcaption>
+      </figure>
+    </div>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/superadmin-2026-09-10/qa-sa-plan-edit.png" alt="Edit SaaS plan form">
+        <figcaption>Edit Landlord Basic.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/superadmin-2026-09-10/qa-sa-roles.png" alt="Roles list">
+        <figcaption>Roles — “All Role”, 15 results.</figcaption>
+      </figure>
+    </div>
+    <figure class="shot">
+      <img src="qa-evidence/superadmin-2026-09-10/qa-sa-my-statement.png" alt="My Statement empty ledger">
+      <figcaption>My Statement from Super Admin navbar — empty accounting ledger.</figcaption>
+    </figure>
+
+    <footer>Report generated 10 Sep 2026 17:55 IST · Resisquare Super Admin · standalone HTML</footer>
+  </div>
+</body>
+</html>

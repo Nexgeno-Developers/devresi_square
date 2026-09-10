@@ -52,6 +52,7 @@
     $accessArrangement = $property->access_arrangement ?? '';
     $keyHighlights = $property->key_highlights ?? '';
     $usefulInformation = $property->useful_information ?? '';
+    $unset = is_landlord_plan_user() ? 'Not set' : 'N/A';
 @endphp
 
 <div class="property-overview-dashboard">
@@ -62,19 +63,21 @@
                 <div class="fact-icon"><i class="bi bi-building"></i></div>
                 <div class="fact-content">
                     <div class="fact-label">Property Type</div>
-                    <div class="fact-value text-capitalize">{{ $propertyType ?: 'N/A' }}</div>
+                    <div class="fact-value text-capitalize">{{ $propertyType ?: $unset }}</div>
                 </div>
             </div>
         </div>
+        @unless(is_landlord_plan_user())
         <div class="col-md-3 col-6">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-tag"></i></div>
                 <div class="fact-content">
                     <div class="fact-label">Category</div>
-                    <div class="fact-value text-capitalize">{{ $transactionType ?: 'N/A' }}</div>
+                    <div class="fact-value text-capitalize">{{ $transactionType ?: $unset }}</div>
                 </div>
             </div>
         </div>
+        @endunless
         <div class="col-md-2 col-6">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-door-closed"></i></div>
@@ -120,7 +123,7 @@
                 </div>
                 <div class="card-body">
                     <div class="description-section">
-                        @if($salesDescription)
+                        @if($salesDescription && ! is_landlord_plan_user())
                             <div class="mb-2">
                                 <strong>Sales:</strong>
                                 <x-toggle-description :text="$salesDescription" :limit="180" />
@@ -128,7 +131,9 @@
                         @endif
                         @if($lettingDescription)
                             <div>
+                                @unless(is_landlord_plan_user())
                                 <strong>Lettings:</strong>
+                                @endunless
                                 <x-toggle-description :text="$lettingDescription" :limit="180" />
                             </div>
                         @endif
@@ -176,13 +181,13 @@
                         <div class="col-md-6">
                             <div class="status-item">
                                 <span class="status-label">Available From:</span>
-                                <span class="status-value">{{ $availableFrom ?: 'N/A' }}</span>
+                                <span class="status-value">{{ $availableFrom ?: $unset }}</span>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="status-item">
                                 <span class="status-label">Tenure:</span>
-                                <span class="status-value text-capitalize">{{ $tenure ?: 'N/A' }}</span>
+                                <span class="status-value text-capitalize">{{ $tenure ?: $unset }}</span>
                             </div>
                         </div>
                         @if($lengthOfLease)
@@ -196,7 +201,7 @@
                         <div class="col-md-6">
                             <div class="status-item">
                                 <span class="status-label">Local Authority:</span>
-                                <span class="status-value">{{ $property->localAuthority->display_name ?? 'N/A' }}</span>
+                                <span class="status-value">{{ $property->localAuthority->display_name ?? $unset }}</span>
                             </div>
                         </div>
                     </div>
@@ -226,7 +231,7 @@
                         @if($lettingPrice)
                         <div class="col-md-6">
                             <div class="pricing-item">
-                                <span class="pricing-label">Letting Price:</span>
+                                <span class="pricing-label">{{ is_landlord_plan_user() ? 'Rent:' : 'Letting Price:' }}</span>
                                 <span class="pricing-value">£{{ number_format($lettingPrice, 2) }}/mo</span>
                             </div>
                         </div>
@@ -370,11 +375,11 @@
                     <div class="features-grid">
                         <div class="feature-item">
                             <span class="feature-label">Service:</span>
-                            <span class="feature-value">{{ $service ?: 'N/A' }}</span>
+                            <span class="feature-value">{{ $service ?: $unset }}</span>
                         </div>
                         <div class="feature-item">
                             <span class="feature-label">Pets Allowed:</span>
-                            <span class="feature-value">{{ in_array($propertyType, ['lettings', 'both']) ? $petsAllowed : 'N/A' }}</span>
+                            <span class="feature-value">{{ in_array($propertyType, ['lettings', 'both']) ? $petsAllowed : $unset }}</span>
                         </div>
                         <div class="feature-item">
                             <span class="feature-label">Collecting Rent:</span>
@@ -389,33 +394,45 @@
             {{-- Compliance & Media Quick View --}}
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="card-title mb-0">Compliance</span>
-                    @can('edit properties')
-                    <button class="btn btn-sm btn-outline-primary editForm" data-form="property_compliance" data-id="{{ $property->id }}">
-                        <i class="bi bi-pencil"></i> Edit
-                    </button>
-                    @endcan
+                    <span class="card-title mb-0">{{ is_landlord_plan_user() ? 'Certificates' : 'Compliance' }}</span>
+                    @if(is_landlord_plan_user())
+                        <a href="{{ route('admin.properties.index', ['property_id' => $property->id, 'tabname' => 'compliance']) }}" class="btn btn-sm btn-outline-primary">View</a>
+                    @else
+                        @can('edit properties')
+                        <button class="btn btn-sm btn-outline-primary editForm" data-form="property_compliance" data-id="{{ $property->id }}">
+                            <i class="bi bi-pencil"></i> Edit
+                        </button>
+                        @endcan
+                    @endif
                 </div>
                 <div class="card-body">
                     <div class="features-grid">
                         <div class="feature-item">
+                            <span class="feature-label">EPC:</span>
+                            <span class="feature-value">{{ $epcRating ?: $unset }}</span>
+                        </div>
+                        @unless(is_landlord_plan_user())
+                        <div class="feature-item">
                             <span class="feature-label">EPC Required:</span>
                             <span class="feature-value">{{ $epcRequired }}</span>
                         </div>
-                        @if($epcRequired === 'Yes')
+                        @endunless
+                        @if($epcRequired === 'Yes' && ! is_landlord_plan_user())
                         <div class="feature-item">
                             <span class="feature-label">EPC Rating:</span>
-                            <span class="feature-value">{{ $epcRating ?: 'N/A' }}</span>
+                            <span class="feature-value">{{ $epcRating ?: $unset }}</span>
                         </div>
                         @endif
                         <div class="feature-item">
                             <span class="feature-label">Gas:</span>
                             <span class="feature-value">{{ $isGas }}</span>
                         </div>
+                        @unless(is_landlord_plan_user())
                         <div class="feature-item">
                             <span class="feature-label">Market On:</span>
-                            <span class="feature-value">{{ $marketOn ? implode(', ', $marketOn) : 'N/A' }}</span>
+                            <span class="feature-value">{{ $marketOn ? implode(', ', $marketOn) : $unset }}</span>
                         </div>
+                        @endunless
                     </div>
                 </div>
             </div>
@@ -438,11 +455,11 @@
                 <div class="card-body">
                     <div class="mb-3">
                         <strong>Access Arrangement:</strong>
-                        <p class="text-muted mb-0">{{ $accessArrangement ?: 'N/A' }}</p>
+                        <p class="text-muted mb-0">{{ $accessArrangement ?: $unset }}</p>
                     </div>
                     <div class="mb-3">
                         <strong>Key Highlights:</strong>
-                        <p class="text-muted mb-0">{{ $keyHighlights ?: 'N/A' }}</p>
+                        <p class="text-muted mb-0">{{ $keyHighlights ?: $unset }}</p>
                     </div>
                     <div class="row g-2">
                         <div class="col-md-6">
@@ -451,7 +468,7 @@
                                 @if($stations->isNotEmpty())
                                     {{ implode(', ', $stations->toArray()) }}
                                 @else
-                                    N/A
+                                    {{ $unset }}
                                 @endif
                             </p>
                         </div>
@@ -461,7 +478,7 @@
                                 @if($schools->isNotEmpty())
                                     {{ implode(', ', $schools->toArray()) }}
                                 @else
-                                    N/A
+                                    {{ $unset }}
                                 @endif
                             </p>
                         </div>

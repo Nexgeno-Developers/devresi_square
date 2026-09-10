@@ -95,12 +95,26 @@ body:has(.pcc-root) #wrapper.main_content {
     flex-shrink: 0;
     flex-wrap: wrap;
 }
+.pcc-toolbar-brand {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    flex-shrink: 0;
+}
 .pcc-toolbar-title {
     font-weight: 600;
     font-size: 1.15rem;
     letter-spacing: -0.02em;
     white-space: nowrap;
     color: var(--pcc-ink);
+    line-height: 1.15;
+}
+.pcc-toolbar-kicker {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--pcc-muted);
+    white-space: nowrap;
 }
 .pcc-toolbar-search {
     display: flex;
@@ -918,6 +932,26 @@ body:has(.pcc-root) #wrapper.main_content {
     color: #6c757d;
     text-align: center;
     padding: 2rem;
+}
+.pcc-empty-state h5 {
+    margin: 0.85rem 0 0.35rem;
+    color: var(--pcc-ink);
+    font-size: 1.05rem;
+    font-weight: 650;
+}
+.pcc-empty-state p {
+    margin: 0;
+    max-width: 28rem;
+}
+.pcc-empty-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: var(--pcc-sand);
+    color: var(--pcc-muted);
+    display: grid;
+    place-items: center;
+    font-size: 1.45rem;
 }
 
 /* ── Loading overlay ─────────────────────── */

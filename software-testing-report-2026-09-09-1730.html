@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Landlord Journey QA Report — Resisquare</title>
+  <style>
+    :root {
+      --ink: #1a1d23;
+      --muted: #5c6570;
+      --line: #d8dde3;
+      --bg: #f4f6f8;
+      --card: #fff;
+      --pass: #1b7a4a;
+      --pass-bg: #e7f6ee;
+      --fail: #b42318;
+      --fail-bg: #fdecea;
+      --crit: #7a1010;
+      --high: #c2410c;
+      --med: #b45309;
+      --low: #475569;
+      --blocked: #c2410c;
+      --nt: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.5; }
+    .header { background: #1a1d23; color: #fff; padding: 32px 24px; }
+    .header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 650; }
+    .header p { margin: 0; color: #c5ccd4; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: -40px; margin-bottom: 24px; }
+    .card { background: var(--card); border: 1px solid var(--line); padding: 16px; }
+    .card h3 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .card .v { font-size: 20px; font-weight: 650; }
+    .badge { display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 650; }
+    .pass { background: var(--pass-bg); color: var(--pass); }
+    .fail { background: var(--fail-bg); color: var(--fail); }
+    .blocked { background: #fff4e5; color: var(--blocked); }
+    .nt { background: #eef1f4; color: var(--nt); }
+    .crit { background: #fdecea; color: var(--crit); }
+    .high { background: #fff4e5; color: var(--high); }
+    .med { background: #fffbeb; color: var(--med); }
+    .low { background: #eef2ff; color: var(--low); }
+    .open { background: var(--fail-bg); color: var(--fail); }
+    h2 { font-size: 18px; margin: 32px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 13px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #eef1f4; font-weight: 650; }
+    tbody tr:nth-child(even) { background: #fafbfc; }
+    code, .path { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+    .note { color: var(--muted); font-size: 14px; }
+    footer { color: var(--muted); font-size: 12px; margin: 40px 0 12px; }
+    .shot { margin: 20px 0 28px; }
+    .shot img { display: block; width: 100%; max-width: 100%; border: 1px solid var(--line); background: #fff; }
+    .shot figcaption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .review { background: var(--card); border: 1px solid var(--line); padding: 16px 18px; margin: 0 0 20px; }
+    .review h3 { margin: 0 0 8px; font-size: 16px; }
+    .review ul { margin: 8px 0 0; padding-left: 20px; }
+    .works { color: var(--pass); font-weight: 650; }
+    .fix { color: var(--high); font-weight: 650; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media print { body { background: #fff; } .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    @media (max-width: 900px) { .pair { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { table { display: block; overflow-x: auto; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Software Testing Report — Landlord Journeys</h1>
+    <p>Resisquare local Laravel application · interactive browser walkthrough as paying landlord · no code fixes applied</p>
+  </div>
+  <div class="wrap">
+    <div class="meta">
+      <div class="card"><h3>Overall score</h3><div class="v">63%</div></div>
+      <div class="card"><h3>Final status</h3><div class="v"><span class="badge fail">Not Ready for Production</span></div></div>
+      <div class="card"><h3>Quality rating</h3><div class="v">Critical</div></div>
+      <div class="card"><h3>Environment</h3><div class="v">Local · 127.0.0.1:8001</div></div>
+    </div>
+
+    <h2>1. Project Information</h2>
+    <table>
+      <tr><th>Project</th><td>Resisquare (devresi_square)</td></tr>
+      <tr><th>Scope</th><td>Full paying-landlord workspace: login, dashboard, calendar, properties, add-property overlay, tenancies, owner groups, portal access, finance, contacts, billing, repairs, documents, profile, notifications, blocked agency routes</td></tr>
+      <tr><th>Testing date</th><td>9 September 2026</td></tr>
+      <tr><th>Tester</th><td>Cursor Agent (interactive Chromium + codebase inspection)</td></tr>
+      <tr><th>Base URL</th><td>http://127.0.0.1:8001 (Resisquare). Port 8000 was a different app (Pharm Vet Easy) and was not used.</td></tr>
+      <tr><th>Login URL</th><td>http://127.0.0.1:8001/login</td></tr>
+      <tr><th>Dashboard URL</th><td>http://127.0.0.1:8001/admin/dashboard</td></tr>
+      <tr><th>Browser used</th><td>Cursor IDE browser (Chromium desktop)</td></tr>
+      <tr><th>Test account</th><td>landlord.owner@resisquare.test · Lara Landlord · Staging Landlord Account · Landlord Basic</td></tr>
+      <tr><th>Portfolio observed</th><td>3 properties (Flat 12 1 Baltimore Wharf, 1 The Mall, Testing now) · 1 Active tenancy (#15, Tina Tenant) · 2 open repairs</td></tr>
+      <tr><th>Code fixes in this run</th><td>None. Issues, suggested fixes, and UX suggestions are logged only.</td></tr>
+    </table>
+    <p class="note">Password is the documented staging seeder password and is not repeated here. Screenshots were captured during the live session for login, dashboard, calendar, properties, add-property overlay, tenancies, owner groups, portal access, finance, contacts, billing, Stripe Checkout, repairs, documents, profile, 403, notifications, and rent ledger.</p>
+
+    <h2>2. Testing Summary</h2>
+    <table>
+      <thead><tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Functional Testing</td><td>40</td><td>27</td><td>13</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Security Testing</td><td>6</td><td>5</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>UI/UX Testing</td><td>27</td><td>8</td><td>19</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Performance Testing</td><td>4</td><td>2</td><td>0</td><td><span class="badge nt">Incomplete</span></td></tr>
+        <tr><td>SEO Testing</td><td>2</td><td>0</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Content Testing</td><td>9</td><td>3</td><td>6</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Compatibility Testing</td><td>7</td><td>1</td><td>0</td><td><span class="badge nt">Incomplete</span></td></tr>
+        <tr><td>API Testing</td><td>1</td><td>1</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>Database Testing</td><td>3</td><td>1</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Production / Deployment Testing</td><td>3</td><td>1</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+      </tbody>
+    </table>
+
+    <h2>3. Functional Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>FT-001</td><td>Login</td><td>Login with valid landlord credentials</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-002</td><td>Login</td><td>Login with unknown email/password shows a clear error</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-003</td><td>Dashboard</td><td>Landlord dashboard loads with portfolio metrics and landlord-only sidebar</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-004</td><td>Dashboard</td><td>Metric cards (properties / tenancies / repairs / contacts) are clickable</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td>resources/views/backend/dashboard/account.blade.php → metric cards → Wrap each metric in a link to the matching index (properties, tenancies, repairs, contacts).</td></tr>
+        <tr><td>FT-005</td><td>Billing</td><td>Expired trial still shows Trialing and grants full workspace access (trial ended 03 Sep 2026; tested 09 Sep 2026)</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>Account status / subscription services → Enforce trial_ends_at. After expiry, restrict the workspace or force checkout. Do not keep status as Trialing.</td></tr>
+        <tr><td>FT-006</td><td>Calendar</td><td>Calendar month view loads for the account</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-007</td><td>Calendar</td><td>Week view switch works</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-008</td><td>Calendar</td><td>Clicking a day (or any visible CTA) opens create-event</td><td><span class="badge fail">Fail</span></td><td>High</td><td>resources/views/backend/partials/calendar.blade.php → FullCalendar select() opens the modal on drag-select, not single click. Add dateClick plus a visible Add event button.</td></tr>
+        <tr><td>FT-009</td><td>Properties</td><td>Active properties list and detail pane load</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-010</td><td>Properties</td><td>Occupancy → Tenancy tab loads</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-011</td><td>Properties</td><td>Occupancy → Owners tab shows owner group with Edit/Delete</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-012</td><td>Properties</td><td>Operations → Compliance shows Add EPC / GAS / EICR / registration</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-013</td><td>Properties</td><td>Operations → Documents empty state</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-014</td><td>Documents</td><td>Add New Document on a property opens a form</td><td><span class="badge fail">Fail</span></td><td>High</td><td>public/asset/backend/js/common-documents.js → .documents-add click + #documentsModal. Confirm the script is loaded on the property tab and AIZ.uploader does not throw before modal show. Modal title currently says “documents”.</td></tr>
+        <tr><td>FT-015</td><td>Onboarding</td><td>Add property overlay opens from ?add_property=1</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-016</td><td>Onboarding</td><td>Postcode search SW1A 1AA returns address results</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-017</td><td>Onboarding</td><td>Selecting an address already in the account is blocked</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-018</td><td>Onboarding</td><td>Later / Finish later dismisses the overlay</td><td><span class="badge fail">Fail</span></td><td>High</td><td>public/asset/backend/js/landlord-onboarding.js → dismiss handler. Later stayed focused and the overlay remained. Confirm POST admin.onboarding.landlord.dismiss succeeds and hides #lob-root.</td></tr>
+        <tr><td>FT-019</td><td>Tenancies</td><td>Active tenancies list loads</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-020</td><td>Tenancies</td><td>List shows the linked property address for Active tenancy #15</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>resources/views/backend/tenancies/index.blade.php → $tenancy->property is null. Repair staging tenancy 15 property_id and prevent saving a tenancy without a property.</td></tr>
+        <tr><td>FT-021</td><td>Tenancies</td><td>View opens tenancy detail</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-022</td><td>Tenancies</td><td>Add tenancy form loads with landlord properties</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-023</td><td>Tenancies</td><td>Submit empty add-tenancy form shows validation errors</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-024</td><td>Tenancies</td><td>Empty submit reports missing Property even though Property is marked required</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td>Tenancy store validation → Include property_id required in the same error list as tenants/rent/move-in.</td></tr>
+        <tr><td>FT-025</td><td>Tenancies</td><td>Rent ledger for tenancy 15 loads</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-026</td><td>Owner Groups</td><td>Owner groups index lists groups with Edit/Delete</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-027</td><td>Portal Access</td><td>Portal members table loads</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-028</td><td>Portal Access</td><td>Invite a tenant form is usable (tenancy exists)</td><td><span class="badge fail">Fail</span></td><td>High</td><td>resources/views/backend/saas/portal_access/index.blade.php → Invite form is hidden because the tenancy has no property. Show a specific “link this tenancy to a property” message, or allow invite when a tenant member exists.</td></tr>
+        <tr><td>FT-029</td><td>Finance</td><td>Landlord can issue rent from Finance for the Active tenancy</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>app/Services/Finance/RentFinanceService.php → billableTenancies() uses whereHas('property'). Tenancy 15 is Active with a tenant but no property, so $canCreate is false. Attach the property or surface the orphan tenancy as a data error with a fix path.</td></tr>
+        <tr><td>FT-030</td><td>Contacts</td><td>Contacts list and detail pane load</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-031</td><td>Billing</td><td>Billing &amp; Plan page shows plan, trial dates, usage, addons</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-032</td><td>Billing</td><td>Activate Subscription opens Stripe Checkout in test mode</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-033</td><td>Repair</td><td>Raise Repair Issue wizard loads</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-034</td><td>Repair</td><td>Property search on raise-repair returns selectable properties</td><td><span class="badge fail">Fail</span></td><td>High</td><td>Repair create property autocomplete → Typing “Mall” produced no selectable result. Check the landlord search endpoint and that Next stays disabled until a property is chosen.</td></tr>
+        <tr><td>FT-035</td><td>Repair</td><td>Repair issues list loads existing issues</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-036</td><td>Documents</td><td>Account documents index empty state</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-037</td><td>Profile</td><td>My Profile page loads</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-038</td><td>Notifications</td><td>Notifications page and filters load</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-039</td><td>Authorization</td><td>Landlord GET /admin/offers returns 403</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-040</td><td>Navigation</td><td>Sidebar Search menu filters items (typed Finance)</td><td><span class="badge fail">Fail</span></td><td>Low</td><td>resources/views/backend/layout/app.blade.php → menuSearch() → After typing Finance, every sidebar item remained visible. Verify #menu-search input events fire and $menuItems.hide() matches the live DOM.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4. Bug / Issue Report</h2>
+    <table>
+      <thead><tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>BUG-001</td><td>Billing / access</td><td>Trial ended 03 Sep 2026; on 09 Sep 2026 the account still shows Trialing and the landlord retains full access. Banner still says add a payment method after trial.</td><td><span class="badge crit">Critical</span></td><td><span class="badge open">Open</span></td><td>Subscription / account status services → Compare now() to trial_ends_at. Expire or restrict the account and stop labelling it Trialing.</td></tr>
+        <tr><td>BUG-002</td><td>Tenancies / Finance</td><td>Active tenancy #15 has Property N/A / “Property not available”. Finance cannot create invoices. Portal invite form is hidden. Occupancy on the selected property shows no tenancies.</td><td><span class="badge crit">Critical</span></td><td><span class="badge open">Open</span></td><td>Fix tenancy 15 property_id in data. TenancyController store/update → require property_id. RentFinanceService::billableTenancies() is correct to require a property; the product still needs a landlord-facing repair path for orphan tenancies.</td></tr>
+        <tr><td>BUG-003</td><td>Tenancies</td><td>Term shows “0 months, 0 days” while Move In is 2026-01-01 and Move Out is 2026-12-31.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>Tenancy term calculation on show/rent-ledger → Derive months/days from move_in/move_out when stored term fields are 0.</td></tr>
+        <tr><td>BUG-004</td><td>Documents</td><td>Add New Document on the property Documents tab focuses the button and does not open a modal.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>common-documents.js → .documents-add and #documentsModal. Ensure the JS bundle and AIZ.uploader exist on the property tab; handle $.get failure visibly. resources/views/components/backend/documents/documents.blade.php → modal title “documents”.</td></tr>
+        <tr><td>BUG-005</td><td>Calendar</td><td>No Add event control. Clicking today did not open Create / Edit Event. Landlord cannot schedule from the diary.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>calendar.blade.php → Add dateClick and an Add event button. Keep select() for drag ranges.</td></tr>
+        <tr><td>BUG-006</td><td>Onboarding</td><td>Later did not close the add-property overlay. Duplicate-address alert exists in the accessibility tree but was easy to miss above the fold.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>landlord-onboarding.js → dismiss. Scroll/pin the alert at the top of the overlay.</td></tr>
+        <tr><td>BUG-007</td><td>Portal Access</td><td>Heading “Invite a tenant” with copy to pick a tenancy, but no invite fields. Tenants exist with 0 assigned properties and Can Login = Yes (www / Test Tenant Quickadd).</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>portal_access/index.blade.php → Show invite when a billable tenancy exists; otherwise explain the blocker. Do not grant login to contacts with zero properties unless that is intended.</td></tr>
+        <tr><td>BUG-008</td><td>Repair</td><td>Issue detail: “Navigation: Unknown Category (ID: Bathroom and Toilet)” and “No property selected” while an issue is shown.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>Repair issue detail views → Resolve category by name/id and bind the selected issue’s property into the detail pane.</td></tr>
+        <tr><td>BUG-009</td><td>Repair</td><td>Raise-repair property search for “Mall” did not present a result to select. Next stayed disabled.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>Repair property search AJAX → Confirm landlord-scoped results for existing properties.</td></tr>
+        <tr><td>BUG-010</td><td>Onboarding UI</td><td>Overlay intro is clipped to “EPC where available) so the property record is complete.”</td><td><span class="badge med">Medium</span></td><td><span class="badge open">Open</span></td><td>landlord-onboarding.css / overlay header layout → Stop the selected-address block covering the Find the property help text.</td></tr>
+        <tr><td>BUG-011</td><td>Profile</td><td>Full Address renders as “, , N/A, ,”. Label ZIP Code on a UK product. Phone is +440000000000.</td><td><span class="badge med">Medium</span></td><td><span class="badge open">Open</span></td><td>Profile view → Join only non-empty address parts; use Postcode; do not show comma-only strings.</td></tr>
+        <tr><td>BUG-012</td><td>Authorization UX</td><td>/admin/offers returns a bare Laravel 403 with no app chrome and no way back except the browser.</td><td><span class="badge med">Medium</span></td><td><span class="badge open">Open</span></td><td>403 view for landlord.restricted → Keep layout, explain the block, and link to dashboard.</td></tr>
+        <tr><td>BUG-013</td><td>Billing / Stripe</td><td>Checkout opened in INR (₹3,888.97) with a conversion fee, while the plan is £29 GBP. Plan copy still says “one property” while usage is 3/5.</td><td><span class="badge med">Medium</span></td><td><span class="badge open">Open</span></td><td>Stripe Checkout Session → Lock currency to GBP. Plan description in seed/admin → Match the real property_limit.</td></tr>
+        <tr><td>BUG-014</td><td>Navigation</td><td>Sidebar Search menu did not hide non-matching items when Finance was typed.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>layout/app.blade.php → menuSearch() input binding.</td></tr>
+        <tr><td>BUG-015</td><td>Contacts</td><td>Add Contact is styled as a danger/red button. First contact is named “www”. Address pane shows a stray comma.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Contacts header button → Use primary styling. Contact detail address join. Staging data hygiene for “www”.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. Security Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Security Check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>ST-001</td><td>Invalid credentials rejected</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>ST-002</td><td>Login form includes CSRF</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>ST-003</td><td>Landlord cannot open Sales Offer (/admin/offers → 403)</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>ST-004</td><td>Landlord sidebar hides Accounting, Sales Offer, Clear Cache, SaaS admin</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>ST-005</td><td>Expired trial still allows full authenticated landlord use</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>Account status middleware → Enforce trial/subscription end. See BUG-001.</td></tr>
+        <tr><td>ST-006</td><td>Authenticated session reaches /admin/dashboard after login</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>ST-007</td><td>IDOR across accounts</td><td><span class="badge nt">Not Tested</span></td><td>-</td><td>-</td></tr>
+        <tr><td>ST-008</td><td>XSS / SQLi payloads</td><td><span class="badge nt">Not Tested</span></td><td>-</td><td>Non-destructive only; not run in this pass.</td></tr>
+        <tr><td>ST-009</td><td>File upload security</td><td><span class="badge nt">Not Tested</span></td><td>-</td><td>Blocked by Add Document failure.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>6. UI/UX Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>UX-001</td><td>Login</td><td>Clean card, error alert, Remember Me, Forgot password</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-002</td><td>Login</td><td>Document title is “Backend Dashboard”</td><td><span class="badge fail">Fail</span></td><td>Login view / layout title → Use “Login | Resisquare”.</td></tr>
+        <tr><td>UX-003</td><td>Dashboard</td><td>Landlord workspace hero, metrics, quick actions, plan usage</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-004</td><td>Dashboard</td><td>Sidebar email truncated; metric cards not linked</td><td><span class="badge fail">Fail</span></td><td>aside2 profile + dashboard metrics. See FT-004.</td></tr>
+        <tr><td>UX-005</td><td>Calendar</td><td>Agency event types (Buyer Viewing, Mortgage, Valuation) on a landlord diary; US date headers (Sun 9/6); Fri 9/11 spacing</td><td><span class="badge fail">Fail</span></td><td>Filter event types for landlords; locale en-GB.</td></tr>
+        <tr><td>UX-006</td><td>Calendar</td><td>No Add event CTA; filters dominate an empty diary</td><td><span class="badge fail">Fail</span></td><td>See BUG-005. Collapse filters on empty state.</td></tr>
+        <tr><td>UX-007</td><td>Properties</td><td>Split view, Overview / Occupancy / Operations are clear</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-008</td><td>Properties</td><td>Reception stat clipped; Deleted filter visible without a deleted-properties sidebar item</td><td><span class="badge fail">Fail</span></td><td>Overview stat row overflow; confirm Deleted is intended for landlords.</td></tr>
+        <tr><td>UX-009</td><td>Compliance</td><td>“Add LANDLORD REGISTRATION” is shouty</td><td><span class="badge fail">Fail</span></td><td>Use title case: Add landlord registration.</td></tr>
+        <tr><td>UX-010</td><td>Onboarding</td><td>Three-step overlay is the right model; Search/Later hierarchy is weak; help text clipped</td><td><span class="badge fail">Fail</span></td><td>See BUG-010. Primary action after results should be selecting a card, with Later secondary.</td></tr>
+        <tr><td>UX-011</td><td>Tenancies</td><td>Heading “All Tenancies” on Active filter; raw timestamps; agency sub-statuses on create (Admin To Approve, Accounts To Process)</td><td><span class="badge fail">Fail</span></td><td>Match heading to filter. Format dates as d M Y. Slim landlord create form.</td></tr>
+        <tr><td>UX-012</td><td>Finance</td><td>Empty state has no New invoice CTA because $canCreate is false</td><td><span class="badge fail">Fail</span></td><td>Explain the orphan tenancy and link to it. See BUG-002.</td></tr>
+        <tr><td>UX-013</td><td>Contacts</td><td>Red Add Contact; stray comma in address</td><td><span class="badge fail">Fail</span></td><td>See BUG-015.</td></tr>
+        <tr><td>UX-014</td><td>Billing</td><td>Trial messaging repeated three times; Stripe IDs shown as dashes to the landlord</td><td><span class="badge fail">Fail</span></td><td>One trial banner. Hide Stripe IDs from landlord UI.</td></tr>
+        <tr><td>UX-015</td><td>Repair</td><td>Previous/Next far from the search field; kebab menus unlabelled</td><td><span class="badge fail">Fail</span></td><td>Place Next near the property picker; aria-label on icon buttons.</td></tr>
+        <tr><td>UX-016</td><td>Documents</td><td>Account documents empty state is clear</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-017</td><td>Profile</td><td>Layout is clean; empty address rendering is not</td><td><span class="badge fail">Fail</span></td><td>See BUG-011.</td></tr>
+        <tr><td>UX-018</td><td>Notifications</td><td>Empty state works; Filter and Clear misaligned; unlabeled date inputs</td><td><span class="badge fail">Fail</span></td><td>Align Clear with Filter; label From/To.</td></tr>
+        <tr><td>UX-019</td><td>403</td><td>Bare full-page forbidden</td><td><span class="badge fail">Fail</span></td><td>See BUG-012.</td></tr>
+        <tr><td>UX-020</td><td>Onboarding</td><td>Vendor name “Chimnie” in landlord copy</td><td><span class="badge fail">Fail</span></td><td>landlord-overlay.blade.php → Replace with product language.</td></tr>
+        <tr><td>UX-021</td><td>Rent ledger</td><td>Create Rent Invoice is visible even when Finance index is empty — two different mental models</td><td><span class="badge fail">Fail</span></td><td>Align Finance index with rent-ledger capability, or hide Create until a property is linked.</td></tr>
+        <tr><td>UX-022</td><td>Sidebar</td><td>Landlord menu matches the MVP allowlist</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-023</td><td>Design system</td><td>One primary CTA colour and weight across landlord screens</td><td><span class="badge fail">Fail</span></td><td>See UI-FIX-001. Five competing primaries: orange outline Login, solid black Add property, solid blue Filter/Activate, red Add Contact, orange outline compliance.</td></tr>
+        <tr><td>UX-024</td><td>Chrome</td><td>Account control is a tiny Logout text link; no avatar menu</td><td><span class="badge fail">Fail</span></td><td>See UI-FIX-002. Move Logout into a header account menu with Profile, Billing, Notifications.</td></tr>
+        <tr><td>UX-025</td><td>Typography</td><td>All-caps section titles (LOGIN, LANDLORD WORKSPACE, ADD PROPERTY, LANDLORD REGISTRATION)</td><td><span class="badge fail">Fail</span></td><td>See UI-FIX-003. Sentence case for headings; reserve caps for badges only.</td></tr>
+        <tr><td>UX-026</td><td>Empty states</td><td>Calendar, Finance, Occupancy, Documents, Notifications are text-only with no next action</td><td><span class="badge fail">Fail</span></td><td>See UI-FIX-004. Each empty state needs an icon, one sentence, and one primary CTA.</td></tr>
+        <tr><td>UX-027</td><td>Dates</td><td>Four date formats in one product (US calendar, ISO billing, dd-mm-yyyy inputs, d M Y tables)</td><td><span class="badge fail">Fail</span></td><td>See UI-FIX-005. Locale en-GB everywhere: 9 Sep 2026 in display, dd/mm/yyyy in inputs.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>6A. Frontend design review (from screenshots)</h2>
+    <p>The 30 screenshots were taken to judge layout, hierarchy, colour, spacing, and affordance — not only whether a click worked. This section is the visual review that was missing from the first pass. <strong>No CSS or markup was changed.</strong> Open the HTML from the repo root so images resolve from <code>qa-evidence/landlord-2026-09-09/</code>.</p>
+
+    <h3>Cross-cutting design debt</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Theme</th><th>What the screenshots show</th><th>Recommended fix (plan, do not implement yet)</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr><td>UI-FIX-001</td><td>Button system</td><td>Login is an orange outline. Properties use solid black. Billing/Filter/Next use solid blue. Add Contact is red (danger). Compliance uses orange outline. Portal actions stack blue + red outlines.</td><td>Define three tokens: Primary (solid brand orange or navy, one only), Secondary (outline), Destructive (red, revoke/delete only). Map every landlord CTA to one of those. Never use red for Create.</td><td>Shared button classes / Bootstrap overrides used by landlord views</td></tr>
+        <tr><td>UI-FIX-002</td><td>Header chrome</td><td>Every authenticated shot: logo + hamburger + bell + tiny “Logout” text. No user chip. Bell sits next to the hamburger, far from the account.</td><td>Top bar: logo | spacer | notifications | account menu (name, plan, Profile, Billing, Logout). Remove Logout as a raw text link.</td><td>resources/views/backend/layout/ + header partial</td></tr>
+        <tr><td>UI-FIX-003</td><td>Type + case</td><td>LOGIN, LANDLORD WORKSPACE, ADD PROPERTY, Add LANDLORD REGISTRATION. Mixed heading sizes; page titles fight in-page H1s (Repair: “Report a Repair” vs giant “Where is the problem?”).</td><td>Sentence case. One page H1. Eyebrow labels in small muted text, not all caps. Wizard step title should not outrank the page title.</td><td>Login, dashboard hero, overlay, compliance buttons, repair wizard</td></tr>
+        <tr><td>UI-FIX-004</td><td>Empty states</td><td>Calendar “No events found” lives in the filter column. Occupancy is two grey lines. Finance is a sentence in a table. Documents and Notifications are a pale box. None have a button.</td><td>Shared empty-state component: illustration or icon, short copy, one CTA (Add event / Add tenancy / Add document / Invite tenant).</td><td>Calendar, occupancy tab, finance/index, documents, notifications, portal invite</td></tr>
+        <tr><td>UI-FIX-005</td><td>Dates + locale</td><td>Calendar week headers “Sun 9/6”. Billing “2026-08-27”. Filters “dd-mm-yyyy”. Tenancy table “01 Jan 2026”.</td><td>Force en-GB on FullCalendar and Carbon display. Same formatter helper for all tables. Label date inputs From / To.</td><td>calendar.blade.php, billing view, notification filters, tenancy/property dates</td></tr>
+        <tr><td>UI-FIX-006</td><td>Radius + density</td><td>Sidebar search is a pill. Property cards and dashboard tiles are generously rounded. Billing tables are sharp admin grids. Filter rows wrap awkwardly (Notifications Clear sits under Filter).</td><td>One radius scale (e.g. 8px controls, 12px cards). Filter toolbars as a single flex row with wrap + 8px gap; Clear inline with Filter.</td><td>Global backend CSS + notifications + calendar filters</td></tr>
+        <tr><td>UI-FIX-007</td><td>Sidebar profile</td><td>Email truncated to landlord.owner@resisquare.t… on every page. Generic grey avatar. Search menu does not filter.</td><td>Tooltip with full email; wrap or two-line email. Initials avatar from “Lara Landlord”. Fix menuSearch() (BUG-014).</td><td>aside2.blade.php, layout/app.blade.php</td></tr>
+        <tr><td>UI-FIX-008</td><td>N/A and empty data</td><td>Overview Category / Available From / Local Authority as “N/A” in the same weight as real values. Contact address blank vs correspondence “—”. Profile “, , N/A, ,”. Tenancy Property “N/A”.</td><td>Muted “Not set” with optional Add/Edit. Never join empty address parts with commas. Treat missing property as an error chip, not N/A.</td><td>Property overview, contact detail, profile, tenancy index</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Login</h3>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-01-login.png" alt="Resisquare login card with outline Login button">
+        <figcaption>01 — Default login. Primary action is an outline, not a filled button.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-02-invalid-login.png" alt="Login failed alert on the login card">
+        <figcaption>02 — Invalid credentials. Error alert is the strongest part of this screen.</figcaption>
+      </figure>
+    </div>
+    <div class="review">
+      <h3>Login — design notes</h3>
+      <p><span class="works">Works:</span> Quiet card, clear error (“Login failed” + records message), dismiss on the alert.</p>
+      <ul>
+        <li><span class="fix">Fill the Login button</span> — outline orange on white has weak affordance. Solid brand fill, full width. File: login view / auth CSS.</li>
+        <li><span class="fix">Persistent labels</span> — placeholders “Email” / “Password” disappear on type. Use label above field.</li>
+        <li><span class="fix">Contrast</span> — header Login/Register, Remember Me, Forgot password are light grey. Aim 4.5:1.</li>
+        <li><span class="fix">Public chrome</span> — hamburger on an unauthenticated login page is leftover app chrome. Drop it or replace with marketing links.</li>
+        <li><span class="fix">Copy</span> — “Please enter your login and password!” is generic. “Sign in to your landlord account” + sentence-case heading, not LOGIN.</li>
+        <li>Document title is “Backend Dashboard” (UX-002) — change to “Sign in | Resisquare”.</li>
+      </ul>
+    </div>
+
+    <h3>Dashboard</h3>
+    <figure class="shot">
+      <img src="qa-evidence/landlord-2026-09-09/qa-landlord-03-dashboard.png" alt="Landlord dashboard with green hero, four metric cards, quick actions, plan usage">
+      <figcaption>03 — Landlord workspace. Strong hero; metrics look clickable but are not; trial copy duplicated in Plan usage.</figcaption>
+    </figure>
+    <div class="review">
+      <h3>Dashboard — design notes</h3>
+      <p><span class="works">Works:</span> Role-specific hero, four stats with colour-coded icons, Quick actions, Plan usage bar (3/5).</p>
+      <ul>
+        <li><span class="fix">Make metric cards links</span> — they already look like tiles. Properties → properties index, tenancies, repairs, contacts. account.blade.php.</li>
+        <li><span class="fix">Hero height</span> — “LANDLORD WORKSPACE” plus large title plus empty green field. Shrink padding; sentence case; put plan chip in the header, not a second dark box.</li>
+        <li><span class="fix">Do not duplicate destinations</span> — metric “3 properties” and Quick action “View properties” compete. Either clickable metrics or a shorter action row, not both at the same visual weight.</li>
+        <li>Trial ends 03 Sep 2026 shown as if the trial is current (BUG-001). When expired, the chip must read Expired, not Trialing, and the banner must force checkout — visual as well as logic.</li>
+      </ul>
+    </div>
+
+    <h3>Calendar</h3>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-04-calendar.png" alt="Month calendar with dense appointment filters and no add event button">
+        <figcaption>04 — Month view. Filters dominate; empty diary has no Add event.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-05-calendar-week.png" alt="Week calendar with US-style date headers">
+        <figcaption>05 — Week view. US headers (Sun 9/6) on a UK product; toolbar is cramped.</figcaption>
+      </figure>
+    </div>
+    <div class="review">
+      <h3>Calendar — design notes</h3>
+      <ul>
+        <li><span class="fix">Primary action missing</span> — a diary without “Add event” in the toolbar is unfinished. Place it top-right of the calendar, not buried in a drag-select gesture.</li>
+        <li><span class="fix">Collapse filters when empty</span> — six dropdowns + two dates + Clear/Apply for “No events found” is agency density. Default: collapsed “Filters”, search + Add event visible.</li>
+        <li><span class="fix">Empty state in the grid</span> — move “No events found” into the calendar body with Add event. The left column should not be the only empty message.</li>
+        <li><span class="fix">Toolbar layout</span> — title, arrows, today, month/week/day fight for one row. Standard: title left, view switcher + today + Add event right.</li>
+        <li>Landlord event types should not include Buyer Viewing / Mortgage / Valuation. Locale en-GB. Kill the idle inner scrollbar on the month grid.</li>
+      </ul>
+    </div>
+
+    <h3>Properties workspace</h3>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-06-properties.png" alt="Properties split view with overview stats, Reception card clipped">
+        <figcaption>06 — Overview. Split view is the right model; Reception card is clipped; N/A looks like data.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-07-property-occupancy.png" alt="Occupancy tab showing no active or archived tenancies">
+        <figcaption>07 — Occupancy. Empty tenancy lists with no Create tenancy CTA in the pane.</figcaption>
+      </figure>
+    </div>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-08-property-owners.png" alt="Property owners tab">
+        <figcaption>08 — Owners tab. Clearer than Occupancy; keep this density.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-09-property-operations.png" alt="Compliance operations with Add EPC GAS EICR and LANDLORD REGISTRATION buttons">
+        <figcaption>09 — Compliance. Orange outline Adds vs black Edit; “Add LANDLORD REGISTRATION” shouts.</figcaption>
+      </figure>
+    </div>
+    <figure class="shot">
+      <img src="qa-evidence/landlord-2026-09-09/qa-landlord-10-property-documents.png" alt="Property documents tab empty with Add New Document and filters">
+      <figcaption>10 — Property Documents. Filters for zero files; Add New Document looks secondary and did nothing when clicked.</figcaption>
+    </figure>
+    <div class="review">
+      <h3>Properties — design notes</h3>
+      <p><span class="works">Works:</span> Master–detail, orange selected rail, Overview / Occupancy / Operations tabs, search + Ctrl+K, solid Add property.</p>
+      <ul>
+        <li><span class="fix">Stat row overflow</span> — wrap the five overview chips or use a 3+2 grid so Reception is never clipped.</li>
+        <li><span class="fix">Occupancy empty</span> — “No Active tenancies found” should be “No tenancy on this property” + Add tenancy (this also surfaces BUG-002 visually).</li>
+        <li><span class="fix">Compliance labels</span> — “Add landlord registration” in title case; same button style as Add EPC.</li>
+        <li><span class="fix">Documents empty</span> — hide Type/date filters until there is at least one file. Make Add New Document the filled primary in that pane (and make it work — BUG-004).</li>
+        <li>Deleted filter in the list chrome is agency leftover unless landlords can soft-delete.</li>
+      </ul>
+    </div>
+
+    <h3>Add property overlay</h3>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-11-add-property-overlay.png" alt="Add another property overlay step 1 postcode search">
+        <figcaption>11 — Step 1. Clean stepper; Later sits where Next usually sits.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-12-postcode-results.png" alt="Postcode results with clipped help text and address cards">
+        <figcaption>12 — Results. Help sentence clipped to “EPC where available)…”; result meta is a grey run-on string.</figcaption>
+      </figure>
+    </div>
+    <figure class="shot">
+      <img src="qa-evidence/landlord-2026-09-09/qa-landlord-13-duplicate-property.png" alt="Duplicate property address warning in add-property overlay">
+      <figcaption>13 — Duplicate address. The guard works; the alert is easy to miss above the fold.</figcaption>
+    </figure>
+    <div class="review">
+      <h3>Overlay — design notes</h3>
+      <p><span class="works">Works:</span> Three-step model, postcode + Search, selectable result cards, duplicate blocked.</p>
+      <ul>
+        <li><span class="fix">Stop clipping the intro</span> — selected-address / results must not cover “Find the property” copy. landlord-overlay layout / CSS.</li>
+        <li><span class="fix">Footer actions</span> — Later is secondary (text or outline left). After a search, primary is choosing a card, not Later on the right.</li>
+        <li><span class="fix">Result meta</span> — “house 240 bed 78 bath EPC G Freehold” needs chips: Type · Beds · Baths · EPC · Tenure. Buckingham Palace as 240-bed is a data joke; still format it.</li>
+        <li>Replace “Chimnie” with “UK property data”. Pin duplicate alerts to the top of the modal. Hide “Test mode: try SW1A…” in production.</li>
+      </ul>
+    </div>
+
+    <h3>Tenancies</h3>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-14-tenancies.png" alt="All Tenancies table with Property N/A">
+        <figcaption>14 — Active list titled “All Tenancies”; Property is N/A for the only row.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-15-tenancy-detail.png" alt="Tenancy detail">
+        <figcaption>15 — Detail. Dates as timestamps / term 0 months (see BUG-003) belong in a definition list, not raw dumps.</figcaption>
+      </figure>
+    </div>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-16-add-tenancy.png" alt="Add tenancy form">
+        <figcaption>16 — Add tenancy. Agency Sub status on a landlord form; large unused right gutter.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-17-tenancy-validation.png" alt="Add tenancy validation errors">
+        <figcaption>17 — Validation. Messages are clear; keep this pattern on other forms.</figcaption>
+      </figure>
+    </div>
+    <div class="review">
+      <h3>Tenancies — design notes</h3>
+      <ul>
+        <li><span class="fix">Title matches filter</span> — Active filter → “Active tenancies”, not “All Tenancies”.</li>
+        <li><span class="fix">Missing property</span> — N/A is too quiet for a broken let. Use a warning chip “No property linked” + Fix.</li>
+        <li><span class="fix">Slim the create form</span> — Property, tenants, type, rent, dates. Hide Admin To Approve / Accounts To Process from landlords. Cap form width (~720px) instead of stretching.</li>
+        <li>Outline View / Rent Ledger are tight; 8px gap minimum. Prefer one primary View and a overflow for ledger.</li>
+      </ul>
+    </div>
+
+    <h3>Portal, finance, contacts</h3>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-18-owner-groups.png" alt="Owner groups page">
+        <figcaption>18 — Owner groups. One of the calmer list pages; reuse this header + table pattern.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-19-portal-access.png" alt="Portal Access invite heading without a form">
+        <figcaption>19 — Portal Access. “Invite a tenant” is a heading without a form; action buttons stack and inflate rows.</figcaption>
+      </figure>
+    </div>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-20-finance.png" alt="Finance empty invoices table">
+        <figcaption>20 — Finance. Correct empty copy, but no button to the stated next step.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-21-contacts.png" alt="Contacts list with red Add Contact and contact named www">
+        <figcaption>21 — Contacts. Red Add Contact reads as delete. Address empty vs “—” vs stray comma.</figcaption>
+      </figure>
+    </div>
+    <div class="review">
+      <h3>Portal / Finance / Contacts — design notes</h3>
+      <ul>
+        <li><span class="fix">Portal invite</span> — if the form is hidden, do not keep the “Invite a tenant” heading. Show a blocker card + Add tenancy. Put View/Edit and Revoke in one row or a kebab.</li>
+        <li><span class="fix">Finance empty</span> — add a primary “Add tenancy” or “Open tenancy #15” so the instruction is actionable. Align with Rent Ledger (UX-021).</li>
+        <li><span class="fix">Add Contact = primary</span> — same as + Add property (black/navy/orange solid). Red is revoke only. Tabs Link/Compliance need stronger contrast. One empty glyph (“Not set”), not blank / dash / comma.</li>
+      </ul>
+    </div>
+
+    <h3>Billing and Stripe</h3>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-22-billing.png" alt="Billing and Plan page with two admin tables and Activate Subscription">
+        <figcaption>22 — Billing. Activate Subscription is the right CTA; the rest is an admin data dump (Stripe IDs, ISO dates, trial said three times).</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-23-stripe-checkout.png" alt="Stripe Checkout in INR for Landlord Basic">
+        <figcaption>23 — Checkout. Plan is £29; UI shows ₹3,888.97, country India, copy “one property” vs 3/5 usage.</figcaption>
+      </figure>
+    </div>
+    <div class="review">
+      <h3>Billing — design notes</h3>
+      <ul>
+        <li><span class="fix">Replace the two tables with a plan card</span> — plan name, £29/month, property usage 3/5, trial/expiry, Activate. Hide Stripe subscription/price IDs from landlords.</li>
+        <li><span class="fix">One trial message</span> — hero chip or banner, not title + banner + status + dates all repeating Trialing.</li>
+        <li><span class="fix">Checkout currency</span> — lock GBP; default country GB. Plan description must match property_limit (BUG-013).</li>
+      </ul>
+    </div>
+
+    <h3>Repair, documents, profile, 403, notifications</h3>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-24-raise-repair.png" alt="Report a Repair wizard step select property">
+        <figcaption>24 — Raise repair. Previous/Next live in the corner; the search is centred in a sea of empty space; Next looks enabled with no property.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-25-repair-list.png" alt="Repair issues list">
+        <figcaption>25 — Repair list. Functional, but category/property display is broken in detail (BUG-008).</figcaption>
+      </figure>
+    </div>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-26-documents.png" alt="Account documents empty state">
+        <figcaption>26 — Account documents. Copy is honest; still no Add on this page while property Add is a no-op.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-27-profile.png" alt="My Profile page">
+        <figcaption>27 — Profile. Layout is calm; Full Address “, , N/A, ,” and ZIP Code are the failures.</figcaption>
+      </figure>
+    </div>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-28-403-offers.png" alt="Bare 403 forbidden page">
+        <figcaption>28 — Restricted route. Leaves the product. No logo, no Back to dashboard, all-caps Laravel-style 403.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/landlord-2026-09-09/qa-landlord-29-notifications.png" alt="Notifications empty with misaligned Clear link">
+        <figcaption>29 — Notifications. Clear sits under Filter; Mark all read / Preferences stack; dates unlabelled; empty copy is filter-speak.</figcaption>
+      </figure>
+    </div>
+    <figure class="shot">
+      <img src="qa-evidence/landlord-2026-09-09/qa-landlord-30-rent-ledger.png" alt="Rent ledger for tenancy">
+      <figcaption>30 — Rent ledger. Create invoice exists here while Finance index is empty — two mental models for the same job.</figcaption>
+    </figure>
+    <div class="review">
+      <h3>Repair → Notifications — design notes</h3>
+      <ul>
+        <li><span class="fix">Repair wizard</span> — step indicator (1 of n). Stick Previous/Next under the search. Disable Next until a property is selected. Page title owns hierarchy; “Where is the problem?” becomes the field legend.</li>
+        <li><span class="fix">403</span> — keep app shell. Title: “This page is not on the landlord plan.” Buttons: Back to dashboard, View billing. resources/views errors / RestrictLandlordRoutes response.</li>
+        <li><span class="fix">Notifications toolbar</span> — one row: filters + From/To labels + Filter + Clear. Mark all read and Preferences side by side. Empty: “You’re up to date” when unfiltered, not “No notifications match these filters.”</li>
+        <li>Profile: join address parts; label Postcode not ZIP Code. Documents index: either add upload here or drop the implication that this page is only a dump of property files.</li>
+      </ul>
+    </div>
+
+    <h3>Suggested UI fix order (after functional blockers)</h3>
+    <p>Do not start these until BUG-001 and BUG-002 are planned. Then:</p>
+    <ol>
+      <li>Button tokens (UI-FIX-001) so later screens do not keep inventing CTAs.</li>
+      <li>Header account menu (UI-FIX-002) + sidebar email/avatar (UI-FIX-007).</li>
+      <li>Empty-state component (UI-FIX-004) on calendar, occupancy, finance, documents, portal, notifications.</li>
+      <li>Add-property overlay layout (clipping, Later, alerts, result chips).</li>
+      <li>Repair wizard geometry + 403 branded page.</li>
+      <li>Billing plan card + en-GB dates (UI-FIX-005) + sentence case (UI-FIX-003).</li>
+      <li>Contacts/profile empty-data rendering (UI-FIX-008) and N/A treatment.</li>
+    </ol>
+
+    <h2>7. Performance Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>PF-001</td><td>Login</td><td>Resisquare login on :8001 rendered without timeout</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>PF-002</td><td>Dashboard / module pages</td><td>Landlord pages rendered in the browser session</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>PF-003</td><td>Timing</td><td>Numeric TTFB / LCP</td><td><span class="badge nt">Not Tested</span></td><td>-</td><td>Not Tested - Measurement unavailable in current environment.</td></tr>
+        <tr><td>PF-004</td><td>N+1 / payload size</td><td>Code/runtime profiling</td><td><span class="badge nt">Not Tested</span></td><td>-</td><td>Not Tested - Measurement unavailable in current environment.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>8. SEO Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>SEO Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>SEO-001</td><td>Login page title</td><td><span class="badge fail">Fail</span></td><td>Title is “Backend Dashboard”. Set a public login title.</td></tr>
+        <tr><td>SEO-002</td><td>403 page</td><td><span class="badge fail">Fail</span></td><td>Bare “Forbidden” document. Use a branded error page. Authenticated SEO is otherwise Not Applicable.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>9. Content Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Content Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>CT-001</td><td>Invalid login message</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>CT-002</td><td>Duplicate property message</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>CT-003</td><td>Add-tenancy validation messages</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>CT-004</td><td>Onboarding help text clipped / Chimnie</td><td><span class="badge fail">Fail</span></td><td>See BUG-010 and UX-020.</td></tr>
+        <tr><td>CT-005</td><td>Plan description “one property” vs 3/5 usage</td><td><span class="badge fail">Fail</span></td><td>StagingSaasTestDataSeeder / plan description → Match property_limit.</td></tr>
+        <tr><td>CT-006</td><td>Profile Full Address “, , N/A, ,”</td><td><span class="badge fail">Fail</span></td><td>See BUG-011.</td></tr>
+        <tr><td>CT-007</td><td>ZIP Code label</td><td><span class="badge fail">Fail</span></td><td>Use Postcode.</td></tr>
+        <tr><td>CT-008</td><td>Documents modal title “documents”</td><td><span class="badge fail">Fail</span></td><td>documents.blade.php → Capitalise title.</td></tr>
+        <tr><td>CT-009</td><td>Confirm Status Change template “change status to ?”</td><td><span class="badge fail">Fail</span></td><td>Fill the target status in the confirm copy.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>10. Browser &amp; Device Testing</h2>
+    <table>
+      <thead><tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>Chrome Desktop (Cursor Chromium)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>Firefox Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Edge Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Safari</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Android Mobile</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>iPhone</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Tablet</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>11. API Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>API / Feature</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>API-001</td><td>Onboarding postcode search</td><td>GET admin.onboarding.landlord.search for SW1A 1AA returned address cards</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>API-002</td><td>Documents create form</td><td>GET /admin/documents/create from Add New Document</td><td><span class="badge nt">Not Tested</span></td><td>UI click never opened the form. See BUG-004.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>12. Database Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>DB-001</td><td>Duplicate property address rejected</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DB-002</td><td>Active tenancy without property_id</td><td><span class="badge fail">Fail</span></td><td>Tenancy 15 violates expected tenancy–property integrity. Add a non-null/required property_id for landlord tenancies or a cleanup job. See BUG-002.</td></tr>
+        <tr><td>DB-003</td><td>Trial end vs account status</td><td><span class="badge fail">Fail</span></td><td>trial_ends_at 2026-09-03 with status still Trialing on 2026-09-09. See BUG-001.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>13. Production / Deployment Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>PD-001</td><td>Local app reachable on :8001</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>PD-002</td><td>Stripe Checkout sandbox reachable</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>PD-003</td><td>Trial expiry enforced</td><td><span class="badge fail">Fail</span></td><td>See BUG-001. Not production-ready while expired trials stay open.</td></tr>
+        <tr><td>PD-004</td><td>HTTPS / production headers</td><td><span class="badge nt">Not Tested</span></td><td>Local HTTP only.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>14. Overall Score</h2>
+    <table>
+      <thead><tr><th>Category</th><th>Weight</th><th>Passed / Applicable</th><th>Score</th></tr></thead>
+      <tbody>
+        <tr><td>Functional</td><td>30%</td><td>27 / 40</td><td>68%</td></tr>
+        <tr><td>Security</td><td>20%</td><td>5 / 6</td><td>83%</td></tr>
+        <tr><td>UI/UX</td><td>15%</td><td>8 / 27</td><td>30%</td></tr>
+        <tr><td>Performance</td><td>15%</td><td>2 / 2 (2 Not Tested excluded)</td><td>100%</td></tr>
+        <tr><td>SEO</td><td>10%</td><td>0 / 2</td><td>0%</td></tr>
+        <tr><td>Compatibility</td><td>5%</td><td>1 / 1 (others excluded)</td><td>100%</td></tr>
+        <tr><td>Content</td><td>5%</td><td>3 / 9</td><td>33%</td></tr>
+      </tbody>
+    </table>
+    <p>Weighted overall: 68×0.30 + 83×0.20 + 30×0.15 + 100×0.15 + 0×0.10 + 100×0.05 + 33×0.05 = <strong>63%</strong>.</p>
+    <p class="note">Performance and compatibility scores only reflect the two observed page-load checks and one Chromium desktop pass. They should not be read as a full performance or cross-browser result. Critical trial and tenancy-property defects override any “ready” rating.</p>
+
+    <h2>15. Final Status</h2>
+    <p><strong>Final Status:</strong> <span class="badge fail">Not Ready for Production</span></p>
+    <p><strong>Quality rating:</strong> Critical (&lt;70%, and unresolved Critical business defects).</p>
+    <h3>Recommendation</h3>
+    <ul>
+      <li><strong>Working:</strong> Landlord login, landlord-only sidebar, dashboard, property split view and tabs, postcode search, duplicate-address guard, tenancy list/view/create validation, owner groups, contacts, billing page, Stripe Checkout, repair list, documents empty state, profile, notifications, 403 on Sales Offer.</li>
+      <li><strong>Must fix before calling the landlord MVP complete:</strong> expired trial still open (BUG-001); Active tenancy with no property blocking Finance and portal invite (BUG-002); Add Document no-op (BUG-004); calendar cannot create events (BUG-005).</li>
+      <li><strong>Critical/High remaining:</strong> BUG-001 to BUG-009.</li>
+      <li><strong>Retesting required</strong> after data repair of tenancy 15, trial enforcement, document modal, calendar dateClick, overlay dismiss, and repair search.</li>
+      <li><strong>Production deployment is not recommended</strong> until those Critical/High items are fixed and retested.</li>
+    </ul>
+    <p><strong>Suggested fix order (do not start until planned):</strong> 1) Tenancy–property integrity + Finance/Portal. 2) Trial expiry enforcement. 3) Documents add modal. 4) Calendar create-event. 5) Overlay dismiss + alert visibility. 6) Repair category/search. 7) Design system: button tokens, header account menu, empty states (UI-FIX-001 to 004). 8) Overlay, repair wizard, 403, and billing visual polish. Screenshot-backed notes are in section 6A.</p>
+
+    <h2>16. Testing Limitations</h2>
+    <ul>
+      <li>No production credentials. Staging landlord on local :8001 only.</li>
+      <li>Port 8000 served a different application (Pharm Vet Easy) and was excluded.</li>
+      <li>Did not complete Stripe payment (sandbox Checkout opened only).</li>
+      <li>Did not complete a new property save (stopped after duplicate-address on 1 The Mall).</li>
+      <li>Did not complete raise-repair after property search failed to return a selectable result.</li>
+      <li>Did not click Logout, Forgot password, Edit Profile save, Revoke portal access, or Delete property (destructive / session-ending).</li>
+      <li>Did not test mobile/tablet/Firefox/Safari/Edge.</li>
+      <li>Did not run numeric performance profiling or N+1 analysis.</li>
+      <li>Did not run IDOR, XSS, or SQLi beyond observing 403 on /admin/offers.</li>
+      <li>No code was changed. This report is a log for later planning.</li>
+    </ul>
+
+    <footer>Report generated 9 September 2026 · Landlord journey QA · no application code modified</footer>
+  </div>
+</body>
+</html>

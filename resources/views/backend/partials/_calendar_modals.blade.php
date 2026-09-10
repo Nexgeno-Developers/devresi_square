@@ -186,7 +186,7 @@
                             <label class="form-label">Type *</label>
                             <select name="type_id" id="type_id" class="form-select" required>
                                 <option value="">— Select Type —</option>
-                                @foreach(\App\Models\EventType::orderBy('name')->get() as $type)
+                                @foreach(\App\Models\EventType::query()->visibleToCurrentUser()->orderBy('name')->get() as $type)
                                     <option value="{{ $type->id }}">{{ $type->name }}</option>
                                 @endforeach
                             </select>

@@ -1,10 +1,14 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="container-fluid">
+<div class="container-fluid lw-page">
     @if(is_landlord_plan_user())
-        <div class="mb-3">
-            <p class="text-muted mb-0">Property diary for this account. Events you attach to a let home are also shown to that household in the tenant portal.</p>
+        <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
+            <div>
+                <h4>Calendar</h4>
+                <p>Click a day to add an appointment. Events on a let home also show in the tenant portal.</p>
+            </div>
+            <button type="button" class="btn btn-light" onclick="window.openLandlordCalendarEvent && window.openLandlordCalendarEvent()">Add event</button>
         </div>
     @endif
     <div class="row h-100">

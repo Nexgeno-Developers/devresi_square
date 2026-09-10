@@ -1,18 +1,27 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex align-items-center justify-content-between mb-3">
+<div class="container-fluid lw-page">
+    <div class="lw-hero d-flex align-items-center justify-content-between gap-3 flex-wrap">
         <div>
-            <h4 class="mb-1">Finance</h4>
-            <div class="text-muted">Rent invoices for this account. Tenants see these on their Rent page.</div>
+            <h4>Finance</h4>
+            <p>Rent invoices for this account. Tenants see these on their Rent page.</p>
         </div>
         @if($canCreate)
-            <a href="{{ route('admin.finance.create') }}" class="btn btn-outline-danger btn-sm">New invoice</a>
+            <a href="{{ route('admin.finance.create') }}" class="btn btn-light">New invoice</a>
         @endif
     </div>
 
-    <div class="card">
+    @if(! $canCreate && ($orphanTenancies ?? collect())->isNotEmpty())
+        <div class="alert alert-lw mb-3">
+            A tenancy is missing its property, so rent cannot be issued yet.
+            @foreach($orphanTenancies as $orphan)
+                <a class="alert-link" href="{{ route('admin.tenancies.edit', $orphan->id) }}">Link tenancy #{{ $orphan->id }} to a property</a>@if(! $loop->last), @endif
+            @endforeach
+        </div>
+    @endif
+
+    <div class="card lw-card">
         <div class="card-body table-responsive">
             <table class="table align-middle">
                 <thead>
@@ -43,12 +52,18 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-4">
-                                @if($canCreate)
-                                    No rent invoices yet. Issue one for a tenancy.
-                                @else
-                                    Add a tenancy on a property and invite a tenant before issuing rent.
-                                @endif
+                            <td colspan="8">
+                                <div class="lw-empty">
+                                    @if($canCreate)
+                                        <div class="lw-empty-title">No rent invoices yet</div>
+                                        <p class="mb-3">Issue one for a tenancy that has a property and a tenant.</p>
+                                        <a href="{{ route('admin.finance.create') }}" class="btn lw-btn-primary">New invoice</a>
+                                    @else
+                                        <div class="lw-empty-title">Nothing to invoice yet</div>
+                                        <p class="mb-3">Add a tenancy on a property, then you can issue rent here.</p>
+                                        <a href="{{ route('admin.tenancies.create') }}" class="btn lw-btn-primary">Add tenancy</a>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @endforelse

@@ -1,8 +1,12 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="container">
-    <h1>Report a Repair</h1>
+<div class="container lw-page">
+    <div class="lw-hero mb-3">
+        <h4>Report a repair</h4>
+        <p>Choose the property, then the area of the home that needs work.</p>
+    </div>
+    <h1 class="visually-hidden">Report a repair</h1>
 
     <!-- Main Form -->
     <form method="POST" action="{{ route('admin.property_repairs.store') }}" id="repair-form-page">
@@ -57,8 +61,23 @@
                                     <input type="hidden" id="selected_properties" name="property_id" value="">
                                 </div>
                             @endif
+                        @elseif(isset($landlordProperties) && $landlordProperties !== null)
+                            <div class="form-group text-center mt-lg-0 mt-4">
+                                <label class="mb-2" for="landlord_property_select">Which property needs the repair?</label>
+                                <select id="landlord_property_select" class="form-select">
+                                    <option value="">Select a property</option>
+                                    @foreach($landlordProperties as $lp)
+                                        <option value="{{ $lp->id }}">
+                                            {{ trim(implode(', ', array_filter([$lp->line_1, $lp->city, $lp->postcode]))) ?: ($lp->prop_name ?: 'Property #'.$lp->id) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <input type="hidden" id="selected_properties" name="property_id" value="">
+                                @if($landlordProperties->isEmpty())
+                                    <div class="form-text mt-2">Add a property first, then you can raise a repair.</div>
+                                @endif
+                            </div>
                         @else
-                            {{-- NON-TENANT: original search UI --}}
                             <div class="form-group text-center mt-lg-0 mt-4">
                                 <label class="mb-2" for="search_property1">Search And Select Property</label>
                                 <div class="form-group">
@@ -230,6 +249,19 @@
         selectedProperty = {{ $tenantProperties->first()->id }};
         enableNextButton();
         @endif
+
+        $(document).on('change', '#landlord_property_select', function() {
+            var val = $(this).val();
+            if (val) {
+                selectedProperty = parseInt(val);
+                $('#selected_properties').val(JSON.stringify([selectedProperty]));
+                enableNextButton();
+            } else {
+                selectedProperty = null;
+                $('#selected_properties').val('');
+                disableNextButton();
+            }
+        });
 
         // Tenant multi-property dropdown handler
         $(document).on('change', '#tenant_property_select', function() {

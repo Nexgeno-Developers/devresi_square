@@ -11,6 +11,7 @@
             value="{{ isset($complianceRecord) && $complianceRecord->expiry_date ? $complianceRecord->expiry_date : '' }}" required>
     </div>
 
+    @unless(is_landlord_plan_user())
     <div class="row g-2 mb-3">
         <div class="col-md-4">
             <label for="responsible_user_id" class="form-label">Responsible person</label>
@@ -30,13 +31,14 @@
             <input type="datetime-local" id="completed_at" name="completed_at" class="form-control" value="{{ old('completed_at', isset($complianceRecord) && $complianceRecord->completed_at ? $complianceRecord->completed_at->format('Y-m-d\\TH:i') : '') }}">
         </div>
     </div>
+    @endunless
 
     <!-- Image Upload Field -->
     <div class="form-group rs_upload_btn">
-        <h6 class="sub_title mt-4">{{ $uploadHeading ?? 'Upload Image' }}</h6>
+        <h6 class="sub_title mt-4">{{ is_landlord_plan_user() ? 'Certificate file' : ($uploadHeading ?? 'Upload Image') }}</h6>
         <div class="media_wrapper2">
             <div class="input-group" data-toggle="aizuploader" data-type="all" data-multiple="true">
-                <label class="col-form-label">{{ $uploadLabel ?? 'Photos' }}</label>
+                <label class="col-form-label">{{ is_landlord_plan_user() ? 'File' : ($uploadLabel ?? 'Photos') }}</label>
                 <div class="d-none input-group-prepend">
                     <div class="input-group-text bg-soft-secondary font-weight-medium">Browse</div>
                 </div>

@@ -1,13 +1,13 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="container">
-    <div class="d-flex align-items-center justify-content-between mb-3">
+<div class="container lw-page">
+    <div class="lw-hero d-flex align-items-center justify-content-between gap-3 flex-wrap mb-3">
         <div>
-            <h2 class="mb-1">{{ $invoice->invoice_no }}</h2>
-            <div class="text-muted">{{ ucfirst($invoice->status) }} · balance £{{ number_format((float) $invoice->balance, 2) }}</div>
+            <h4>{{ $invoice->invoice_no }}</h4>
+            <p>{{ ucfirst($invoice->status) }} · balance £{{ number_format((float) $invoice->balance, 2) }}</p>
         </div>
-        <a href="{{ route('admin.finance.index') }}" class="btn btn-outline-secondary">Back</a>
+        <a href="{{ route('admin.finance.index') }}" class="btn btn-light">Back</a>
     </div>
 
     <div class="card mb-3">
@@ -49,7 +49,7 @@
                         <div class="col-md-3 mb-3">
                             <label for="method">Method</label>
                             <select name="method" id="method" class="form-control @error('method') is-invalid @enderror" required>
-                                @foreach($methods as $value => $label)
+                                @foreach($manualMethods as $value => $label)
                                     <option value="{{ $value }}" @selected(old('method', 'bank_transfer') === $value)>{{ $label }}</option>
                                 @endforeach
                             </select>
@@ -61,7 +61,7 @@
                             @error('reference')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-secondary">Save payment</button>
+                    <button type="submit" class="btn lw-btn-primary">Save payment</button>
                 </form>
             </div>
         </div>
@@ -82,6 +82,7 @@
                     <tr>
                         <th>Date</th>
                         <th>Amount</th>
+                        <th>Fee</th>
                         <th>Method</th>
                         <th>Reference</th>
                     </tr>
@@ -91,12 +92,13 @@
                         <tr>
                             <td>{{ $payment->paid_at?->format('d M Y') }}</td>
                             <td>£{{ number_format((float) $payment->amount, 2) }}</td>
+                            <td>{{ (float) $payment->fee_amount > 0 ? '£'.number_format((float) $payment->fee_amount, 2) : '—' }}</td>
                             <td>{{ $methods[$payment->method] ?? ucfirst(str_replace('_', ' ', $payment->method)) }}</td>
                             <td>{{ $payment->reference ?: '—' }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="text-muted">No payments recorded.</td>
+                            <td colspan="5" class="text-muted">No payments recorded.</td>
                         </tr>
                     @endforelse
                 </tbody>

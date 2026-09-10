@@ -162,6 +162,8 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
     Route::middleware(['current.account', 'account.status', 'portal.tenant'])->group(function () {
         Route::get('/portal/tenancy', [TenantPortalController::class, 'tenancy'])->name('tenant.tenancy');
         Route::get('/portal/rent', [TenantPortalController::class, 'rent'])->name('tenant.rent');
+        Route::get('/portal/rent/paid', [TenantPortalController::class, 'paid'])->name('tenant.rent.paid');
+        Route::post('/portal/rent/{rentInvoice}/pay', [TenantPortalController::class, 'pay'])->name('tenant.rent.pay');
         Route::get('/portal/maintenance', [TenantPortalController::class, 'maintenance'])->name('tenant.maintenance');
         Route::post('/portal/maintenance', [TenantPortalController::class, 'storeRepair'])->name('tenant.maintenance.store');
         Route::get('/portal/documents', [TenantPortalController::class, 'documents'])->name('tenant.documents');

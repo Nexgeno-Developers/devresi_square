@@ -82,9 +82,17 @@ class EventSubTypeController
      */
     public function byType($typeId)
     {
-        $subs = EventSubType::where('event_type_id', $typeId)
-                             ->orderBy('name')
-                             ->pluck('name','id');
+        $allowed = EventType::query()->visibleToCurrentUser()->whereKey($typeId)->exists();
+        if (! $allowed) {
+            return response()->json([]);
+        }
+
+        $subs = EventSubType::query()
+            ->visibleToCurrentUser()
+            ->where('event_type_id', $typeId)
+            ->orderBy('name')
+            ->pluck('name', 'id');
+
         return response()->json($subs);
     }
 }

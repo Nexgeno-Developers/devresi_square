@@ -18,6 +18,9 @@ DB_PASSWORD=
 STRIPE_KEY=
 STRIPE_SECRET=
 STRIPE_WEBHOOK_SECRET=
+STRIPE_RENT_KEY=
+STRIPE_RENT_SECRET=
+STRIPE_RENT_WEBHOOK_SECRET=
 MAIL_MAILER=
 MAIL_HOST=
 MAIL_PORT=
@@ -33,12 +36,13 @@ Checks:
 
 - `APP_URL` must be HTTPS.
 - Stripe keys must be test-mode keys in staging.
-- Stripe webhook endpoint must be `https://<staging-host>/stripe/webhook`.
+- Stripe subscription webhook: `https://<staging-host>/stripe/webhook`.
+- Tenant rent webhook (client-money account): `https://<staging-host>/stripe/rent/webhook`. Staging may reuse test keys; production must not.
 - Mail credentials must send to real or sandbox staging mail.
 - Queue driver must be configured. This app uses queued mail, notifications, `repair-quotes`, and `repair-assignments`.
 - Scheduler/cron must be configured because recurring invoices, reminders, notifications retry, and penalties are scheduled in `bootstrap/app.php`.
 - Storage link must exist for uploads: `public/storage -> storage/app/public`.
-- `.env.example` currently does not include Stripe keys and still shows local/debug defaults; staging must override them.
+- `.env.example` includes Stripe and rent Stripe keys; staging must use test-mode values.
 
 ## Deploy
 

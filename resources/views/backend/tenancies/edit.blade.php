@@ -34,8 +34,28 @@
     <form id="editTenancyForm" action="{{ route('admin.tenancies.update', $tenancy->id) }}" method="POST"
         enctype="multipart/form-data">
         @csrf
-        <input type="hidden" name="property_id" class="form-control" value="{{ $tenancy->property_id }}">
-        <input type="hidden" name="property_id" class="form-control" value="{{ $tenancy->property_id }}">
+        @php $isLandlord = is_landlord_plan_user(); @endphp
+        @if($isLandlord || empty($tenancy->property_id) || ($properties ?? collect())->isNotEmpty())
+            <div class="form-group mb-3">
+                <label for="property_id">Property <span class="text-danger">*</span></label>
+                <select name="property_id" id="property_id" class="form-control" required>
+                    <option value="">Select a property</option>
+                    @foreach(($properties ?? collect()) as $property)
+                        <option value="{{ $property->id }}" @selected((string) old('property_id', $tenancy->property_id) === (string) $property->id)>
+                            {{ $property->full_address ?: ($property->line_1 ?: 'Property #'.$property->id) }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('property_id')
+                    <div class="text-danger small mt-1">{{ $message }}</div>
+                @enderror
+                @if(empty($tenancy->property_id))
+                    <div class="form-text text-warning">This tenancy is not linked to a property. Choose one so you can invite the tenant and issue rent.</div>
+                @endif
+            </div>
+        @else
+            <input type="hidden" name="property_id" value="{{ $tenancy->property_id }}">
+        @endif
 
         <div class="form-group">
             <button type="button" class="btn btn-outline-primary btn-sm" id="addUserBtn">

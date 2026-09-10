@@ -1,21 +1,32 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <div>
-            <h4 class="mb-1">Portal Access</h4>
-            <div class="text-muted">{{ $account->account_name ?? 'Current account' }}</div>
-        </div>
+<div class="container-fluid lw-page">
+    <div class="lw-hero">
+        <h4>Portal Access</h4>
+        <p>Invite a tenant to their own portal. They only see their tenancy, rent, documents and repairs.</p>
     </div>
 
-    <div class="card mb-3">
+    <div class="card lw-card mb-3">
         <div class="card-body">
             <h5 class="mb-3">Invite a tenant</h5>
-            <p class="text-muted mb-3">Give someone login access to their tenancy portal. Pick the tenancy, then their name and email.</p>
+            <p class="text-muted mb-3">Pick the tenancy, then their name and email.</p>
+
+            @if(($orphanTenancies ?? collect())->isNotEmpty() && $tenancies->isEmpty())
+                <div class="alert alert-lw mb-3">
+                    Your active tenancy is not linked to a property, so the invite form is hidden.
+                    @foreach($orphanTenancies as $orphan)
+                        <a class="alert-link" href="{{ route('admin.tenancies.edit', $orphan->id) }}">Link tenancy #{{ $orphan->id }}</a>@if(! $loop->last), @endif
+                    @endforeach
+                </div>
+            @endif
 
             @if($tenancies->isEmpty())
-                <p class="mb-0">Add a tenancy on a property first, then you can invite the tenant here.</p>
+                <div class="lw-empty pt-2">
+                    <div class="lw-empty-title">Add a tenancy on a property first</div>
+                    <p class="mb-3">Then you can invite the tenant here.</p>
+                    <a href="{{ route('admin.tenancies.create') }}" class="btn lw-btn-primary">Add tenancy</a>
+                </div>
             @else
                 <form action="{{ route('admin.portal-access.invite') }}" method="POST" class="row g-3">
                     @csrf
@@ -52,14 +63,14 @@
                         @enderror
                     </div>
                     <div class="col-12">
-                        <button type="submit" class="btn btn-primary">Invite tenant</button>
+                        <button type="submit" class="btn lw-btn-primary">Invite tenant</button>
                     </div>
                 </form>
             @endif
         </div>
     </div>
 
-    <div class="card">
+    <div class="card lw-card">
         <div class="card-body table-responsive">
             <table class="table align-middle">
                 <thead>

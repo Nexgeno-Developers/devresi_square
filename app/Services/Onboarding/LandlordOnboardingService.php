@@ -44,6 +44,8 @@ class LandlordOnboardingService
 
     public const DRAFT_SESSION = 'landlord_add_draft_property_id';
 
+    public const DEFER_SESSION = 'landlord_onboarding_deferred';
+
     public function __construct(
         private readonly ChimnieClient $chimnie,
         private readonly LandlordPropertyWizardService $wizard,
@@ -63,6 +65,10 @@ class LandlordOnboardingService
         }
 
         if (! in_array($account->status, ['trialing', 'active', 'past_due'], true)) {
+            return false;
+        }
+
+        if (session(self::DEFER_SESSION)) {
             return false;
         }
 
@@ -89,6 +95,7 @@ class LandlordOnboardingService
 
     public function startAddProperty(): void
     {
+        session()->forget(self::DEFER_SESSION);
         session([self::ADD_SESSION => true]);
     }
 
@@ -105,7 +112,17 @@ class LandlordOnboardingService
     {
         $this->dismissAddProperty();
 
-        if (! $account || $this->hasNoProperties($account) || $account->onboarding_completed_at) {
+        if (! $account) {
+            return;
+        }
+
+        if ($this->hasNoProperties($account)) {
+            session([self::DEFER_SESSION => true]);
+
+            return;
+        }
+
+        if ($account->onboarding_completed_at) {
             return;
         }
 

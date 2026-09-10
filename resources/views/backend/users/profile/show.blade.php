@@ -152,13 +152,22 @@
                     </div>
 
                     <div class="mb-4">
-                        <label class="form-label text-muted small fw-medium">ZIP Code</label>
-                        <p class="fw-medium mb-0">{{ $authUser->zip ?? 'N/A' }}</p>
+                        <label class="form-label text-muted small fw-medium">Postcode</label>
+                        <p class="fw-medium mb-0">{{ $authUser->zip ?: 'Not set' }}</p>
                     </div>
 
                     <div class="mb-4">
                         <label class="form-label text-muted small fw-medium">Full Address</label>
-                        <p class="fw-medium mb-0">{{ $authUser->address_line_1 }}, {{ $authUser->address_line_2 }}, {{ $countryName }}, {{ $authUser->city }}, {{ $authUser->zip }}</p>
+                        @php
+                            $profileAddress = implode(', ', array_filter([
+                                $authUser->address_line_1,
+                                $authUser->address_line_2,
+                                $authUser->city,
+                                $countryName ?? null,
+                                $authUser->zip,
+                            ], fn ($part) => filled($part) && $part !== 'N/A'));
+                        @endphp
+                        <p class="fw-medium mb-0">{{ $profileAddress !== '' ? $profileAddress : 'Not set' }}</p>
                     </div>
                 </div>
             </div>

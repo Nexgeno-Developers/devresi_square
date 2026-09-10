@@ -12,11 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('repair_issues', function (Blueprint $table) {
-            $table->unsignedBigInteger('created_by')->nullable()->after('reference_number');
-            $table->unsignedBigInteger('updated_by')->nullable()->after('created_by');
-
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('updated_by')->references('id')->on('users')->onDelete('set null');
+            if (! Schema::hasColumn('repair_issues', 'created_by')) {
+                $table->unsignedBigInteger('created_by')->nullable();
+                $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
+            }
+            if (! Schema::hasColumn('repair_issues', 'updated_by')) {
+                $table->unsignedBigInteger('updated_by')->nullable();
+                $table->foreign('updated_by')->references('id')->on('users')->onDelete('set null');
+            }
         });
     }
 

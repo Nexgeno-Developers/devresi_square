@@ -31,11 +31,7 @@ class TenancySubStatusSeeder extends Seeder
         ];
 
         foreach ($statuses as $status) {
-            DB::table('tenancy_sub_statuses')->insert([
-                'name' => $status,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            TenancySubStatus::firstOrCreate(['name' => $status]);
         }
 
         // TenancySubStatus::factory()->count(12)->create();

@@ -51,7 +51,16 @@ class PortalAccessController
             ->orderByDesc('id')
             ->get();
 
-        return view('backend.saas.portal_access.index', compact('account', 'portalUsers', 'tenancies'));
+        $orphanTenancies = Tenancy::query()
+            ->forAccount($account->id)
+            ->where(function ($query) {
+                $query->whereNull('property_id')->orWhere('property_id', 0);
+            })
+            ->where('status', 'Active')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('backend.saas.portal_access.index', compact('account', 'portalUsers', 'tenancies', 'orphanTenancies'));
     }
 
     public function invite(Request $request)

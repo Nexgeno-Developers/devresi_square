@@ -22,8 +22,8 @@
                             </div>
                             @can('create properties')
                             <div class="pv_btn">
-                                <a href="{{ route('admin.properties.quick') }}" class="btn mt-2 btn-sm btn-outline-danger">
-                                    Add Property
+                                <a href="{{ property_create_url() }}" class="btn mt-2 btn-sm {{ is_landlord_plan_user() ? 'lw-btn-primary' : 'btn-outline-danger' }}">
+                                    Add property
                                 </a>
                             </div>
                             @endcan
@@ -43,20 +43,24 @@
                                 <label class="form-label small text-muted mb-1">Property Type</label>
                                 <select name="property_type" id="filterPropertyType" class="form-select form-select-sm">
                                     <option value="">All Types</option>
-                                    <option value="sales" {{ request('property_type') == 'sales' ? 'selected' : '' }}>Sales</option>
                                     <option value="lettings" {{ request('property_type') == 'lettings' ? 'selected' : '' }}>Lettings</option>
+                                    @unless(is_landlord_plan_user())
+                                    <option value="sales" {{ request('property_type') == 'sales' ? 'selected' : '' }}>Sales</option>
                                     <option value="both" {{ request('property_type') == 'both' ? 'selected' : '' }}>Both</option>
+                                    @endunless
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small text-muted mb-1">Status</label>
                                 <select name="status" id="filterStatus" class="form-select form-select-sm">
                                     <option value="">All Statuses</option>
-                                    <option value="for sale" {{ request('status') == 'for sale' ? 'selected' : '' }}>For Sale</option>
                                     <option value="let agreed" {{ request('status') == 'let agreed' ? 'selected' : '' }}>Let Agreed</option>
                                     <option value="available" {{ request('status') == 'available' ? 'selected' : '' }}>Available</option>
-                                    <option value="sold" {{ request('status') == 'sold' ? 'selected' : '' }}>Sold</option>
                                     <option value="not available" {{ request('status') == 'not available' ? 'selected' : '' }}>Not Available</option>
+                                    @unless(is_landlord_plan_user())
+                                    <option value="for sale" {{ request('status') == 'for sale' ? 'selected' : '' }}>For Sale</option>
+                                    <option value="sold" {{ request('status') == 'sold' ? 'selected' : '' }}>Sold</option>
+                                    @endunless
                                 </select>
                             </div>
                         </div>

@@ -92,7 +92,18 @@ class TenancyController
             ensureModelBelongsToCurrentAccount($property);
         }
 
-        return view('backend.tenancies.create', compact('tenants', 'property_managers', 'tenancyTypes', 'tenancySubStatuses', 'propertyId'));
+        $properties = Property::query()
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->orderBy('line_1')
+            ->get();
+
+        $payload = compact('tenants', 'property_managers', 'tenancyTypes', 'tenancySubStatuses', 'propertyId', 'properties');
+
+        if ($request->ajax()) {
+            return view('backend.tenancies._create-form', $payload);
+        }
+
+        return view('backend.tenancies.create', $payload);
     }
 
 
@@ -280,8 +291,8 @@ class TenancyController
         if (request()->ajax()) {
             return response()->json(['success' => true, 'message' => 'Tenancy Added successfully!']);
         }
-        
-        return back();
+
+        return redirect()->route('admin.tenancies.all');
     }
 
     // Display the specified tenancy
@@ -461,8 +472,26 @@ class TenancyController
         // Find the main person from the tenant members
         $mainPersonId = $tenantMembers->where('is_main_person', true)->pluck('user_id')->first();
 
-        // Pass all data to the edit view
-        return view('backend.tenancies.edit', compact(
+        $properties = Property::query()
+            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->orderBy('line_1')
+            ->get();
+
+        if (request()->ajax()) {
+            return view('backend.tenancies.edit', compact(
+                'tenancy',
+                'tenants',
+                'property_managers',
+                'tenancyTypes',
+                'tenancySubStatuses',
+                'currentPropertyManagers',
+                'tenantMembers',
+                'mainPersonId',
+                'properties'
+            ));
+        }
+
+        return view('backend.tenancies.edit-page', compact(
             'tenancy',
             'tenants',
             'property_managers',
@@ -470,7 +499,8 @@ class TenancyController
             'tenancySubStatuses',
             'currentPropertyManagers',
             'tenantMembers',
-            'mainPersonId'
+            'mainPersonId',
+            'properties'
         ));
     }
 

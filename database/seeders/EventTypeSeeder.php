@@ -86,15 +86,28 @@ class EventTypeSeeder extends Seeder
         ];
 
         foreach ($eventTypes as $typeName => $subTypes) {
-            $eventTypeId = DB::table('event_types')->insertGetId([
-                'name' => $typeName,
-                'slug' => Str::slug($typeName),
-                'description' => $typeName . ' related events',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            $eventTypeId = DB::table('event_types')->where('name', $typeName)->value('id');
+
+            if (! $eventTypeId) {
+                $eventTypeId = DB::table('event_types')->insertGetId([
+                    'name' => $typeName,
+                    'slug' => Str::slug($typeName),
+                    'description' => $typeName . ' related events',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
             foreach ($subTypes as $subTypeName) {
+                $exists = DB::table('event_sub_types')
+                    ->where('event_type_id', $eventTypeId)
+                    ->where('name', $subTypeName)
+                    ->exists();
+
+                if ($exists) {
+                    continue;
+                }
+
                 DB::table('event_sub_types')->insert([
                     'event_type_id' => $eventTypeId,
                     'name' => $subTypeName,

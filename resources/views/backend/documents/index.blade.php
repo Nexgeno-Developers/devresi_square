@@ -1,15 +1,13 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-flex align-items-center justify-content-between mb-3">
-        <div>
-            <h4 class="mb-1">Documents</h4>
-            <div class="text-muted">Files stored on this account. You can also add documents from a property page.</div>
-        </div>
+<div class="container-fluid lw-page">
+    <div class="lw-hero">
+        <h4>Documents</h4>
+        <p>Files stored on this account. Add them from a property, then share with the tenant from here.</p>
     </div>
 
-    <div class="card">
+    <div class="card lw-card">
         <div class="card-body table-responsive">
             <table class="table align-middle">
                 <thead>
@@ -51,7 +49,14 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="text-center text-muted py-4">No documents on this account yet. Add files from a property page, then share them with the tenant here.</td>
+                            <td colspan="5">
+                                <div class="lw-empty">
+                                    <div class="lw-empty-icon"><i class="bi bi-folder2-open"></i></div>
+                                    <div class="lw-empty-title">No documents yet</div>
+                                    <p class="mb-3">Open a property and use Add document, then share it with the tenant here.</p>
+                                    <a href="{{ route('admin.properties.index') }}" class="btn lw-btn-primary">Open properties</a>
+                                </div>
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>

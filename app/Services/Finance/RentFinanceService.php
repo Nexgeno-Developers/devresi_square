@@ -112,13 +112,26 @@ class RentFinanceService
                 ]);
             }
 
+            $sessionId = $data['stripe_checkout_session_id'] ?? null;
+            if ($sessionId) {
+                $existing = RentPayment::query()
+                    ->where('stripe_checkout_session_id', $sessionId)
+                    ->first();
+                if ($existing) {
+                    return $existing;
+                }
+            }
+
             $payment = RentPayment::create([
                 'account_id' => $locked->account_id,
                 'rent_invoice_id' => $locked->id,
                 'amount' => $amount,
+                'fee_amount' => $this->money($data['fee_amount'] ?? 0),
                 'paid_at' => $data['paid_at'],
                 'method' => $data['method'],
                 'reference' => $data['reference'] ?? null,
+                'stripe_checkout_session_id' => $sessionId,
+                'stripe_payment_intent_id' => $data['stripe_payment_intent_id'] ?? null,
                 'recorded_by_user_id' => $recordedByUserId,
             ]);
 

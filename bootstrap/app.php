@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'backend/trumbowyg/upload',
             'stripe/webhook',
+            'stripe/rent/webhook',
         ]);
 
         // Define middleware for the API group

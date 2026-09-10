@@ -1,0 +1,788 @@
+/* Landlord workspace — teal/navy tokens over the agency chrome. */
+:root {
+    --lw-ink: #0b1220;
+    --lw-muted: #5b6573;
+    --lw-line: #e6e9ef;
+    --lw-wash: #f4f6f8;
+    --lw-card: #fff;
+    --lw-accent: #0f766e;
+    --lw-accent-2: #064e3b;
+    --lw-radius: 12px;
+    --lw-radius-lg: 16px;
+}
+
+body.landlord-workspace {
+    background: var(--lw-wash);
+}
+
+body.landlord-workspace #wrapper.main_content {
+    background: var(--lw-wash);
+}
+
+body.landlord-workspace #header {
+    overflow: visible;
+    background: #fff;
+    border-bottom: 1px solid var(--lw-line);
+}
+
+body.landlord-workspace #header .navbar {
+    display: block;
+    width: 100%;
+    padding: 0.2rem 0;
+}
+
+body.landlord-workspace .rs-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    width: 100%;
+    min-height: 56px;
+    gap: 12px;
+}
+
+body.landlord-workspace .rs-topbar-left,
+body.landlord-workspace .rs-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+body.landlord-workspace .rs-topbar-right {
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+body.landlord-workspace #header .navbar .rs_logo {
+    margin-right: 0;
+}
+
+body.landlord-workspace #header .navbar .rs_logo img {
+    display: block;
+    max-height: 36px;
+    width: auto;
+    object-fit: contain;
+}
+
+.lw-account-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    max-width: min(280px, 46vw);
+    border: 1px solid var(--lw-line);
+    background: #fff;
+    border-radius: 999px;
+    padding: 0.28rem 0.7rem 0.28rem 0.32rem;
+    color: var(--lw-ink);
+    text-decoration: none;
+}
+
+.lw-account-chip:hover,
+.lw-account-chip:focus {
+    border-color: #99f6e4;
+    color: var(--lw-ink);
+}
+
+.lw-account-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--lw-accent);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+}
+
+.lw-account-copy {
+    min-width: 0;
+    text-align: left;
+}
+
+.lw-account-name {
+    display: block;
+    font-size: 0.86rem;
+    font-weight: 600;
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lw-account-plan {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--lw-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.landlord-workspace .footer_user_profile_menu .user-info {
+    min-width: 0;
+}
+
+body.landlord-workspace .footer_user_profile_menu .user-info h6,
+body.landlord-workspace .footer_user_profile_menu .user-info small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body.landlord-workspace .lw-initials {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--lw-accent);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+
+.lw-page {
+    --lw-ink: #0b1220;
+    --lw-muted: #5b6573;
+    --lw-line: #e6e9ef;
+    --lw-wash: #f4f6f8;
+    --lw-card: #fff;
+    --lw-accent: #0f766e;
+    padding-bottom: 2rem;
+}
+
+.lw-page .lw-hero {
+    background: linear-gradient(120deg, #064e3b, #0f766e);
+    color: #fff;
+    border-radius: var(--lw-radius-lg);
+    padding: 1.35rem 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 12px 30px rgba(6, 78, 59, 0.18);
+}
+
+.lw-page .lw-hero h1,
+.lw-page .lw-hero h4 {
+    margin: 0 0 0.25rem;
+    font-weight: 650;
+    color: #fff;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.lw-page .lw-hero p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.95rem;
+}
+
+.lw-page .lw-card {
+    background: var(--lw-card);
+    border: 1px solid var(--lw-line);
+    border-radius: var(--lw-radius-lg);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.lw-page .lw-card .card-body {
+    padding: 1.25rem 1.5rem;
+}
+
+.lw-page .lw-btn-primary,
+.lw-page .btn.lw-btn-primary,
+body.landlord-workspace .btn.lw-btn-primary {
+    background: var(--lw-ink);
+    border-color: var(--lw-ink);
+    color: #fff;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.lw-page .lw-btn-primary:hover,
+.lw-page .btn.lw-btn-primary:hover,
+body.landlord-workspace .btn.lw-btn-primary:hover {
+    background: #1a2233;
+    border-color: #1a2233;
+    color: #fff;
+}
+
+.lw-page .btn-light {
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.lw-page .lw-empty {
+    text-align: center;
+    padding: 2.75rem 1.25rem;
+    color: var(--lw-muted);
+}
+
+.lw-page .lw-empty .lw-empty-icon {
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 0.85rem;
+    border-radius: 14px;
+    background: #ecfdf5;
+    color: var(--lw-accent);
+    display: grid;
+    place-items: center;
+    font-size: 1.35rem;
+}
+
+.lw-page .lw-empty .lw-empty-title {
+    color: var(--lw-ink);
+    font-weight: 650;
+    margin-bottom: 0.35rem;
+    font-size: 1.05rem;
+}
+
+.lw-page .form-label,
+.lw-page .control-label {
+    font-weight: 600;
+    color: var(--lw-ink);
+}
+
+.lw-page .form-control,
+.lw-page .form-select {
+    border-radius: 10px;
+    border-color: var(--lw-line);
+    min-height: 42px;
+}
+
+.lw-page .form-control:focus,
+.lw-page .form-select:focus {
+    border-color: #5eead4;
+    box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+}
+
+.lw-page .select2-container .select2-selection {
+    border-radius: 10px;
+    min-height: 42px;
+    border-color: var(--lw-line);
+}
+
+.lw-page .alert-lw {
+    border-radius: 12px;
+    border: 1px solid #f6d6a8;
+    background: #fff8eb;
+    color: #7a4b00;
+}
+
+.lw-page .table {
+    --bs-table-bg: transparent;
+}
+
+.lw-page .table thead th {
+    color: var(--lw-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 650;
+    border-bottom-color: var(--lw-line);
+}
+
+.lw-page .badge.bg-success {
+    background: #d1fae5 !important;
+    color: #065f46 !important;
+}
+
+.lw-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1.25rem;
+    margin: 0.35rem 0 1rem;
+}
+
+.lw-chip-row label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    font-weight: 500;
+    color: var(--lw-ink);
+}
+
+.lw-section-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--lw-ink);
+    margin: 1.25rem 0 0.75rem;
+}
+
+.lw-metric-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+
+.lw-metric-link:hover .dashboard-card {
+    border-color: #99f6e4;
+    transform: translateY(-1px);
+}
+
+body.landlord-workspace .account-dashboard .quick-action:hover {
+    border-color: #99f6e4;
+    background: #f0fdfa;
+}
+
+body.landlord-workspace .view_properties .btn-outline-danger {
+    background: var(--lw-ink);
+    border-color: var(--lw-ink);
+    color: #fff;
+}
+
+body.landlord-workspace .view_properties .btn-outline-danger:hover {
+    background: #1a2233;
+    border-color: #1a2233;
+    color: #fff;
+}
+
+body.landlord-workspace .steps_wrapper {
+    background: #fff;
+    border: 1px solid var(--lw-line);
+    border-radius: var(--lw-radius-lg);
+    padding: 1.25rem 1.5rem 1.75rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+body.landlord-workspace .steps_wrapper h2 {
+    font-size: 1.35rem;
+    font-weight: 650;
+    color: var(--lw-ink);
+}
+
+body.landlord-workspace .is-menu-hidden {
+    display: none !important;
+}
+
+/* Property control center — landlord tokens over the agency sand/orange chrome */
+body.landlord-workspace .pcc-root {
+    --pcc-ink: #0b1220;
+    --pcc-muted: #5b6573;
+    --pcc-line: #e6e9ef;
+    --pcc-paper: #ffffff;
+    --pcc-canvas: #f4f6f8;
+    --pcc-sand: #ecfdf5;
+    --pcc-accent: #0f766e;
+    background: var(--lw-wash);
+}
+
+body.landlord-workspace .pcc-toolbar {
+    background: linear-gradient(120deg, #064e3b, #0f766e);
+    border-bottom: none;
+    padding: 0.95rem 1.2rem;
+    gap: 0.85rem;
+}
+
+body.landlord-workspace .pcc-toolbar-title {
+    color: #fff;
+}
+
+body.landlord-workspace .pcc-toolbar-kicker {
+    color: rgba(255, 255, 255, 0.78);
+}
+
+body.landlord-workspace .pcc-toolbar-search {
+    background: rgba(255, 255, 255, 0.14);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: rgba(255, 255, 255, 0.85);
+    border-radius: 10px;
+}
+
+body.landlord-workspace .pcc-toolbar-search input {
+    color: #fff;
+}
+
+body.landlord-workspace .pcc-toolbar-search input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+body.landlord-workspace .pcc-icon-ghost {
+    color: rgba(255, 255, 255, 0.88);
+}
+
+body.landlord-workspace .pcc-icon-ghost:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+}
+
+body.landlord-workspace .pcc-kbd {
+    border-color: rgba(255, 255, 255, 0.28);
+    background: rgba(11, 18, 32, 0.22);
+    color: rgba(255, 255, 255, 0.88);
+}
+
+body.landlord-workspace .pcc-back-btn {
+    color: #fff;
+}
+
+body.landlord-workspace .pcc-back-btn:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+body.landlord-workspace .pcc-btn-ink,
+body.landlord-workspace .pcc-root .btn-primary {
+    background: var(--lw-ink);
+    border-color: var(--lw-ink);
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+body.landlord-workspace .pcc-btn-ink:hover,
+body.landlord-workspace .pcc-root .btn-primary:hover {
+    background: #1a2233;
+    border-color: #1a2233;
+}
+
+body.landlord-workspace .pcc-left-pane,
+body.landlord-workspace .pcc-right-pane,
+body.landlord-workspace .pcc-filter-rail,
+body.landlord-workspace .pcc-list-footer {
+    background: #fff;
+    border-color: var(--lw-line);
+}
+
+body.landlord-workspace .pcc-chip {
+    border: 1px solid var(--lw-line);
+    background: #fff;
+}
+
+body.landlord-workspace .pcc-chip.is-on {
+    background: #ecfdf5;
+    border-color: #99f6e4;
+    color: #0f766e;
+}
+
+body.landlord-workspace .pcc-quiet-select {
+    border-radius: 10px;
+    border-color: var(--lw-line);
+}
+
+body.landlord-workspace .pcc-hcard {
+    border-radius: 12px;
+    margin: 0.1rem 0.15rem;
+}
+
+body.landlord-workspace .pcc-hcard:hover {
+    background: #f0fdfa;
+}
+
+body.landlord-workspace .pcc-hcard.current {
+    background: #ecfdf5;
+    box-shadow: inset 3px 0 0 var(--pcc-accent);
+}
+
+body.landlord-workspace .pcc-hcard-thumb {
+    border-radius: 10px;
+    background: #ecfdf5;
+    color: #0f766e;
+}
+
+body.landlord-workspace .pcc-status[data-status="let agreed"]::before,
+body.landlord-workspace .pcc-status[data-status="let_agreed"]::before {
+    background: #0f766e;
+}
+
+body.landlord-workspace .pcc-status[data-status="available"]::before {
+    background: #d97706;
+}
+
+body.landlord-workspace .pcc-status[data-status="not available"]::before,
+body.landlord-workspace .pcc-status[data-status="not_available"]::before {
+    background: #94a3b8;
+}
+
+body.landlord-workspace .pcc-detail-header {
+    background: #fff;
+    border-bottom-color: var(--lw-line);
+}
+
+body.landlord-workspace .pcc-thumb-placeholder {
+    background: #ecfdf5;
+    border: 1px solid #99f6e4;
+    color: #0f766e;
+    border-radius: 12px;
+}
+
+body.landlord-workspace .pcc-thumb-img {
+    border-radius: 12px;
+}
+
+body.landlord-workspace .pcc-stats-bar {
+    background: #f8fafc;
+    border-bottom-color: var(--lw-line);
+    flex-wrap: wrap;
+    overflow: visible;
+}
+
+body.landlord-workspace .pcc-stat-pill {
+    border-color: var(--lw-line);
+    border-radius: 12px;
+    color: inherit;
+    min-width: 0;
+    flex: 1 1 148px;
+}
+
+body.landlord-workspace .pcc-stat-pill:hover {
+    border-color: #99f6e4;
+    box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+}
+
+body.landlord-workspace .pcc-stat-icon {
+    background: #ecfdf5;
+    color: #0f766e;
+    border-radius: 10px;
+}
+
+body.landlord-workspace .pcc-tab-groups {
+    gap: 0.35rem 1.25rem;
+}
+
+body.landlord-workspace .pcc-tab-group {
+    font-size: 0.9rem;
+}
+
+body.landlord-workspace .pcc-tab-link.active {
+    background: #ecfdf5;
+    color: #0f766e;
+    font-weight: 600;
+}
+
+body.landlord-workspace .pcc-empty-icon {
+    background: #ecfdf5;
+    color: #0f766e;
+}
+
+body.landlord-workspace .pcc-empty-list h5,
+body.landlord-workspace .pcc-empty-state h5 {
+    color: var(--lw-ink);
+}
+
+body.landlord-workspace .pcc-resizer:hover,
+body.landlord-workspace .pcc-resizer.active {
+    background: #99f6e4;
+}
+
+body.landlord-workspace .pcc-tab-content .btn-outline-primary {
+    border-color: var(--lw-line);
+    color: var(--lw-ink);
+    border-radius: 10px;
+}
+
+body.landlord-workspace .pcc-tab-content .btn-outline-primary:hover {
+    background: #0f766e;
+    border-color: #0f766e;
+    color: #fff;
+}
+
+body.landlord-workspace .pcc-tab-content .btn-outline-danger,
+body.landlord-workspace .pcc-tab-content .btn-outline-warning,
+body.landlord-workspace .pcc-tab-content .btn-outline-info {
+    border-color: var(--lw-line);
+    color: var(--lw-ink);
+    background: #fff;
+    border-radius: 10px;
+}
+
+body.landlord-workspace .pcc-tab-content .btn-outline-danger:hover,
+body.landlord-workspace .pcc-tab-content .btn-outline-warning:hover,
+body.landlord-workspace .pcc-tab-content .btn-outline-info:hover {
+    background: var(--lw-ink);
+    border-color: var(--lw-ink);
+    color: #fff;
+}
+
+body.landlord-workspace .pcc-tab-content .btn_secondary,
+body.landlord-workspace .pcc-tab-content a.btn_secondary,
+body.landlord-workspace .pcc-tab-content .btn_outline_secondary,
+body.landlord-workspace .pcc-tab-content a.btn_outline_secondary {
+    background: var(--lw-ink) !important;
+    border-color: var(--lw-ink) !important;
+    color: #fff !important;
+    border-radius: 10px;
+}
+
+body.landlord-workspace .pcc-tab-content .btn_secondary:hover,
+body.landlord-workspace .pcc-tab-content a.btn_secondary:hover,
+body.landlord-workspace .pcc-tab-content .btn_outline_secondary:hover,
+body.landlord-workspace .pcc-tab-content a.btn_outline_secondary:hover {
+    background: #1a2233 !important;
+    border-color: #1a2233 !important;
+    color: #fff !important;
+}
+
+body.landlord-workspace .property-overview-dashboard .fact-card,
+body.landlord-workspace .property-overview-dashboard .card {
+    border-color: var(--lw-line);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+body.landlord-workspace .property-overview-dashboard .card-header {
+    background: #fff;
+    border-bottom-color: var(--lw-line);
+}
+
+body.landlord-workspace .property-overview-dashboard .fact-icon {
+    background: #ecfdf5;
+    color: #0f766e;
+    border-radius: 10px;
+}
+
+body.landlord-workspace .property-overview-dashboard .feature-item,
+body.landlord-workspace .property-overview-dashboard .pricing-item,
+body.landlord-workspace .property-overview-dashboard .status-item {
+    background: #f8fafc;
+    border-radius: 10px;
+}
+
+body.landlord-workspace .pcc-command-item:hover,
+body.landlord-workspace .pcc-command-item:focus {
+    background: #ecfdf5;
+}
+
+body.landlord-workspace .pcc-tab-content .documents-add {
+    background: var(--lw-ink);
+    border-color: var(--lw-ink);
+    color: #fff;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+body.landlord-workspace .pcc-tab-content .lw-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--lw-muted);
+}
+
+body.landlord-workspace .pcc-tab-content .lw-empty .lw-empty-icon {
+    width: 52px;
+    height: 52px;
+    margin: 0 auto 0.85rem;
+    border-radius: 14px;
+    background: #ecfdf5;
+    color: var(--lw-accent);
+    display: grid;
+    place-items: center;
+    font-size: 1.35rem;
+}
+
+body.landlord-workspace .pcc-tab-content .lw-empty .lw-empty-title {
+    color: var(--lw-ink);
+    font-weight: 650;
+    margin-bottom: 0.35rem;
+    font-size: 1.05rem;
+}
+
+.pcc-cert-board {
+    max-width: 920px;
+}
+
+.pcc-cert-lead {
+    color: var(--lw-muted, #5b6573);
+    margin: 0 0 1.15rem;
+    font-size: 0.92rem;
+}
+
+.pcc-cert-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 0.85rem;
+}
+
+.pcc-cert-card {
+    background: #fff;
+    border: 1px solid var(--lw-line, #e6e9ef);
+    border-radius: 14px;
+    padding: 1rem 1.05rem 1.1rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.pcc-cert-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.pcc-cert-card h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--lw-ink, #0b1220);
+}
+
+.pcc-cert-value {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 650;
+    color: var(--lw-ink, #0b1220);
+}
+
+.pcc-cert-meta {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--lw-muted, #5b6573);
+    line-height: 1.4;
+    flex: 1 1 auto;
+}
+
+.pcc-cert-pill {
+    display: inline-flex;
+    align-items: center;
+    height: 22px;
+    padding: 0 0.55rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.pcc-cert-pill.is-ok {
+    background: #ecfdf5;
+    color: #065f46;
+}
+
+.pcc-cert-pill.is-due {
+    background: #fff8eb;
+    color: #7a4b00;
+}
+
+.pcc-cert-pill.is-expired,
+.pcc-cert-pill.is-missing {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.pcc-cert-extra {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--lw-line, #e6e9ef);
+}
+
+.pcc-cert-extra h3 {
+    font-size: 0.92rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 767.98px) {
+    .lw-page .lw-hero {
+        padding: 1.1rem 1.15rem;
+    }
+
+    .lw-account-plan {
+        display: none;
+    }
+
+    body.landlord-workspace .pcc-toolbar-kicker {
+        display: none;
+    }
+}

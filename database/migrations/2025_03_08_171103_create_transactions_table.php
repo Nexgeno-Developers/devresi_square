@@ -18,10 +18,6 @@ return new class extends Migration
             $table->unsignedBigInteger('payment_method_id')->nullable();
             $table->unsignedBigInteger('bank_account_id')->nullable();
 
-            // FKs
-            $table->foreign('payment_method_id')->references('id')->on('payment_methods')->onDelete('set null');
-            $table->foreign('bank_account_id')->references('id')->on('bank_accounts')->onDelete('set null');
-
             $table->string('transaction_number')->unique();
             $table->string('transaction_type')->nullable(); // Refund, Income, Expense, Adjustment, etc.
             $table->foreignId('invoice_id')->nullable()->constrained('invoices')->onDelete('cascade');

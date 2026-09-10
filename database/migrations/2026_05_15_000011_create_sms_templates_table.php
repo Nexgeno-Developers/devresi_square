@@ -8,14 +8,16 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('sms_templates', function (Blueprint $table) {
-            $table->id();
-            $table->string('identifier')->unique();
-            $table->text('sms_body');
-            $table->string('template_id')->nullable(); // DLT template ID for India
-            $table->tinyInteger('status')->default(1);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('sms_templates')) {
+            Schema::create('sms_templates', function (Blueprint $table) {
+                $table->id();
+                $table->string('identifier')->unique();
+                $table->text('sms_body');
+                $table->string('template_id')->nullable();
+                $table->tinyInteger('status')->default(1);
+                $table->timestamps();
+            });
+        }
 
         // Seed default templates
         $templates = [
@@ -40,6 +42,10 @@ return new class extends Migration {
         ];
 
         foreach ($templates as $t) {
+            if (DB::table('sms_templates')->where('identifier', $t['identifier'])->exists()) {
+                continue;
+            }
+
             DB::table('sms_templates')->insert(array_merge($t, [
                 'created_at' => now(),
                 'updated_at' => now(),

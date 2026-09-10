@@ -181,10 +181,22 @@
     vertical-align: top;
 }
 
-.tp-empty {
-    color: var(--tp-muted);
-    margin: 0;
-    font-size: 14px;
+.tp-table-action {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.tp-table-action .tp-btn {
+    width: auto;
+}
+
+.tp-banner {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin: 0 0 16px;
 }
 
 .tp-dl {

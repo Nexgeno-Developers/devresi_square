@@ -112,11 +112,10 @@ class UserSeeder extends Seeder
                 [
                     'name'              => $u['name'],
                     'email_verified_at' => now(),
-                    'password'          => Hash::make('password'), // change to secure default
+                    'password'          => Hash::make('Password123!'),
                     'remember_token'    => Str::random(10),
-                    
-                    // New columns
-                    // 'category_id'       => $u['category_id'],
+                    'user_type'         => $u['user_type'],
+                    'can_login'         => true,
                     'first_name'        => $u['first_name'],
                     'middle_name'       => $u['middle_name'],
                     'last_name'         => $u['last_name'],

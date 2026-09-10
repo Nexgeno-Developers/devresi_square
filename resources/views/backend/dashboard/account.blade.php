@@ -86,12 +86,26 @@
     </div>
 
     <div class="row g-3 mb-4">
+        @php
+            $metricHrefs = [
+                'Portfolio properties' => route('admin.properties.index'),
+                'Active tenancies' => route('admin.tenancies.all', ['status' => 'Active']),
+                'Open repairs' => route('admin.property_repairs.index'),
+                'Contacts' => route('admin.users.index'),
+            ];
+        @endphp
         @foreach($roleUi['metrics'] as [$label, $value, $icon, $colour])
             <div class="col-sm-6 col-xl-3">
+                @if(! empty($metricHrefs[$label]))
+                    <a href="{{ $metricHrefs[$label] }}" class="lw-metric-link">
+                @endif
                 <div class="card dashboard-card h-100"><div class="card-body d-flex justify-content-between align-items-center gap-3">
                     <div><div class="text-muted small mb-2">{{ $label }}</div><div class="metric-number" data-dash-label="{{ $label }}">{{ number_format($value) }}</div></div>
                     <div class="metric-icon bg-{{ $colour }} bg-opacity-10 text-{{ $colour }}"><i class="bi {{ $icon }}"></i></div>
                 </div></div>
+                @if(! empty($metricHrefs[$label]))
+                    </a>
+                @endif
             </div>
         @endforeach
     </div>
@@ -112,6 +126,12 @@
                     @endif
                     @if(auth()->user()->canAny(['view property repair', 'edit property repair', 'create property repair']) || is_landlord_plan_user())
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.property_repairs.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-tools fs-4 text-danger"></i><span class="fw-semibold">Repair issues</span></a></div>
+                    @endif
+                    @if(is_landlord_plan_user())
+                        <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.finance.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-receipt fs-4 text-success"></i><span class="fw-semibold">Finance</span></a></div>
+                        <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.portal-access.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-person-plus fs-4 text-primary"></i><span class="fw-semibold">Invite tenant</span></a></div>
+                        <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.documents.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-folder2-open fs-4 text-warning"></i><span class="fw-semibold">Documents</span></a></div>
+                        <div class="col-sm-6 col-lg-4"><a href="{{ route('backend.events.calendar') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-calendar-event fs-4 text-info"></i><span class="fw-semibold">Calendar</span></a></div>
                     @endif
                     @if(in_array($dashboardRole, ['estate_agent', 'property_manager'], true) && ! is_landlord_plan_user())
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.branches.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-diagram-3 fs-4 text-warning"></i><span class="fw-semibold">Branches</span></a></div>

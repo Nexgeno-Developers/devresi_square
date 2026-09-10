@@ -50,8 +50,8 @@ class PropertyRepairController
 
         $maxLevel = RepairCategory::max('level');
 
-        // For Tenant users: resolve their linked active-tenancy properties
         $tenantProperties = null;
+        $landlordProperties = null;
         if (is_tenant_portal_user()) {
             $tenantProperties = \App\Models\TenantMember::where('user_id', auth()->id())
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
@@ -60,9 +60,14 @@ class PropertyRepairController
                 ->select('properties.id', 'properties.prop_name', 'properties.prop_ref_no',
                          'properties.line_1', 'properties.line_2', 'properties.city', 'properties.postcode')
                 ->get();
+        } elseif (is_landlord_plan_user()) {
+            $landlordProperties = Property::query()
+                ->forAccount(current_account_id())
+                ->orderBy('line_1')
+                ->get(['id', 'prop_name', 'prop_ref_no', 'line_1', 'line_2', 'city', 'postcode']);
         }
 
-        return view('backend.repair.create_raise_issue', compact('categories', 'maxLevel', 'tenantProperties'));
+        return view('backend.repair.create_raise_issue', compact('categories', 'maxLevel', 'tenantProperties', 'landlordProperties'));
     }
 
     public function getSubCategories($categoryId)

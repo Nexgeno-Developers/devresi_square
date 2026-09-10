@@ -34,6 +34,7 @@
     if ($property->created_at) {
         $daysListed = max(0, (int) $property->created_at->copy()->startOfDay()->diffInDays(now()->startOfDay()));
     }
+    $isLandlord = is_landlord_plan_user();
 @endphp
 <div class="pcc-stats-bar" id="pccDetailStats">
     <a href="{{ route('admin.tenancies.index', ['propertyId'=>$property->id]) }}" class="pcc-stat-pill">
@@ -46,7 +47,7 @@
     <div class="pcc-stat-pill">
         <div class="pcc-stat-icon"><i class="bi bi-currency-pound"></i></div>
         <div class="pcc-stat-content">
-            <div class="pcc-stat-value">£{{ number_format($property->letting_price ?? 0, 0) }}</div>
+            <div class="pcc-stat-value">£{{ number_format((float) ($property->letting_price ?: ($activeTenancy->rent ?? 0)), 0) }}</div>
             <div class="pcc-stat-label">Rent/mo</div>
         </div>
     </div>
@@ -67,17 +68,19 @@
         </div>
     </a>
     <div class="pcc-stat-pill">
+        <div class="pcc-stat-icon"><i class="bi bi-clock"></i></div>
+        <div class="pcc-stat-content">
+            <div class="pcc-stat-value">{{ $nextRentDue === '-' && $isLandlord ? 'Not set' : $nextRentDue }}</div>
+            <div class="pcc-stat-label">Next Rent Due</div>
+        </div>
+    </div>
+    @unless($isLandlord)
+    <div class="pcc-stat-pill">
         <div class="pcc-stat-icon"><i class="bi bi-calendar"></i></div>
         <div class="pcc-stat-content">
             <div class="pcc-stat-value">{{ $daysListed }}</div>
             <div class="pcc-stat-label">Days Listed</div>
         </div>
     </div>
-    <div class="pcc-stat-pill">
-        <div class="pcc-stat-icon"><i class="bi bi-clock"></i></div>
-        <div class="pcc-stat-content">
-            <div class="pcc-stat-value">{{ $nextRentDue }}</div>
-            <div class="pcc-stat-label">Next Rent Due</div>
-        </div>
-    </div>
+    @endunless
 </div>

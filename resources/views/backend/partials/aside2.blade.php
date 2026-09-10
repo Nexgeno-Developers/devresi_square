@@ -1122,6 +1122,15 @@
         <div class="pointer" data-bs-toggle="dropdown" aria-expanded="false">
              @if(auth()->user()->profile_picture)
                 <img src="{{ asset('storage/' . auth()->user()->profile_picture) }}" alt="Profile" class="rounded-circle profile-img" />
+            @elseif(is_landlord_plan_user())
+                @php
+                    $lwSideInitials = collect(preg_split('/\s+/', trim((string) $authUser->name)))
+                        ->filter()
+                        ->take(2)
+                        ->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))
+                        ->implode('');
+                @endphp
+                <div class="lw-initials" aria-hidden="true">{{ $lwSideInitials ?: 'LL' }}</div>
             @else
                 <div class="bg-secondary rounded-circle d-flex justify-content-center align-items-center default-profile-icon">
                     <i class="fa-solid fa-user text-white"></i>

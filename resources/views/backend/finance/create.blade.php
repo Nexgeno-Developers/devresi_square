@@ -1,13 +1,29 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="container">
-    <h2>New rent invoice</h2>
-    <a href="{{ route('admin.finance.index') }}" class="btn btn-outline-secondary mb-3">Back</a>
+<div class="container lw-page">
+    <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+        <div>
+            <h4>New rent invoice</h4>
+            <p>This invoice appears on the tenant’s Rent page.</p>
+        </div>
+        <a href="{{ route('admin.finance.index') }}" class="btn btn-light">Back</a>
+    </div>
 
     @if($tenancies->isEmpty())
-        <p class="text-muted">Add a tenancy on a property and invite a tenant before issuing rent.</p>
+        <div class="card lw-card">
+            <div class="card-body">
+                <div class="lw-empty pt-2">
+                    <div class="lw-empty-icon"><i class="bi bi-receipt"></i></div>
+                    <div class="lw-empty-title">Nothing to invoice yet</div>
+                    <p class="mb-3">Add a tenancy on a property, then you can issue rent here.</p>
+                    <a href="{{ route('admin.tenancies.create') }}" class="btn lw-btn-primary">Add tenancy</a>
+                </div>
+            </div>
+        </div>
     @else
+        <div class="card lw-card">
+            <div class="card-body">
         <form action="{{ route('admin.finance.store') }}" method="POST">
             @csrf
 
@@ -79,8 +95,10 @@
                 @error('note')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
-            <button type="submit" class="btn btn-secondary">Issue invoice</button>
+            <button type="submit" class="btn lw-btn-primary">Issue invoice</button>
         </form>
+            </div>
+        </div>
     @endif
 </div>
 

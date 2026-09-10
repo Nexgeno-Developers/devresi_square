@@ -87,17 +87,6 @@ class User extends Authenticatable
         });
     }
 
-    // Optional: define the roles() relationship manually (if needed elsewhere)
-    public function roles()
-    {
-        return $this->belongsToMany(
-            \Spatie\Permission\Models\Role::class,
-            'model_has_roles',
-            'model_id',
-            'role_id'
-        );
-    }
-
     public function creditReceipts()
     {
         return $this->hasMany(SysReceipt::class, 'receiptable_id')

@@ -563,8 +563,54 @@
             });
 
             var calendarEl = document.getElementById('calendar');
+            function openCreateEvent(startStr, endStr) {
+                    $('input[name="instance_id"]').val('');
+                    $('input[name="master_id"]').val('');
+                    $('input[name="form_action"]').val('create');
+                    $('#eventForm')[0].reset();
+                    $('.text-danger').remove();
+                    $('#eventModal .modal-footer .js-single-delete-btn').remove();
+                    var start = startStr || '';
+                    var end = endStr || start;
+                    if (start && start.indexOf('T') === -1) {
+                        $("input[name='start_datetime']").val(start + 'T09:00');
+                        $("input[name='end_datetime']").val((end || start) + 'T10:00');
+                    } else {
+                        $("input[name='start_datetime']").val(start);
+                        $("input[name='end_datetime']").val(end || start);
+                    }
+                    updateEndMin();
+                    $('#rruleInput').val('');
+                    $('#exdatesInput').val('');
+                    $('#rruleSummary').text('No recurrence');
+                    $('#freqSelect').val('DAILY');
+                    $('#intervalInput').val(1);
+                    onFrequencyChange();
+                    $endType.val('NEVER');
+                    $endAfterC.addClass('d-none');
+                    $endByDateC.addClass('d-none');
+                    $exdateList.empty();
+                    $('#type_id').val('');
+                    $('#sub_type_id').html('<option value="">— Select Sub-Type —</option>');
+                    $('#reminderList').empty();
+                    $('.select-entity').each(function () {
+                        $(this).val(null).trigger('change');
+                        $(this).empty();
+                        initEntitySelect($(this));
+                    });
+                    $eventModal.modal('show');
+            }
+            window.openLandlordCalendarEvent = function () {
+                var today = new Date();
+                var y = today.getFullYear();
+                var m = String(today.getMonth() + 1).padStart(2, '0');
+                var d = String(today.getDate()).padStart(2, '0');
+                openCreateEvent(y + '-' + m + '-' + d);
+            };
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
+                locale: 'en-gb',
+                firstDay: 1,
                 headerToolbar: {
                     right: 'prev,next today',
                     center: 'title',
@@ -573,58 +619,13 @@
                 events: '{{ route("backend.events.index") }}',
                 editable: true,
                 selectable: true,
+                dateClick: function (info) {
+                    openCreateEvent(info.dateStr);
+                },
                 select: function (info) {
-                    // Prepare modal for “Create New”:
-                    $('input[name="instance_id"]').val('');
-                    $('input[name="master_id"]').val('');
-                    $('input[name="form_action"]').val('create');
-                    $('#eventForm')[0].reset();
-                    $('.text-danger').remove();
-
-                    // ❗Remove any previous Delete button
-                    $('#eventModal .modal-footer .js-single-delete-btn').remove();
-
-                    // Pre-fill start/end times
-                    $("input[name='start_datetime']").val(info.startStr + 'T09:00');
-                    $("input[name='end_datetime']").val(info.startStr + 'T10:00');
-                    updateEndMin();
-
-                    $('#rruleInput').val('');
-                    $('#exdatesInput').val('');
-                    $('#rruleSummary').text('No recurrence');
-
-                    $('#freqSelect').val('DAILY');
-                    $('#intervalInput').val(1);
-                    onFrequencyChange();
-                    $endType.val('NEVER');
-                    $endAfterC.addClass('d-none');
-                    $endByDateC.addClass('d-none');
-                    $exdateList.empty();
-
-                    // Clear Type/Sub‐Type
-                    $('#type_id').val('');
-                    $('#sub_type_id').html('<option value="">— Select Sub-Type —</option>');
-
-                    // Clear previous reminders
-                    $('#reminderList').empty();
-                    
-                    // Reset Select2s safely
-                    $('.select-entity').each(function () {
-                        $(this).val(null).trigger('change'); // clear value
-                        $(this).empty(); // clear previous options
-                        initEntitySelect($(this)); // reinitialize with placeholder etc.
-                    });
-                    
-                    // $('.select-entity').each(function () {
-                    //     initEntitySelect($(this));
-                    // });
-
-                    // initEntitySelect($('#property-select'));
-                    // initEntitySelect($('#repair-select'));
-                    // initEntitySelect($('#user-select'));
-
-                    // eventModal.show();
-                    $eventModal.modal('show');
+                    var start = info.startStr ? info.startStr.substring(0, 10) : '';
+                    var end = info.endStr ? info.endStr.substring(0, 10) : start;
+                    openCreateEvent(start, end);
                 },
                 eventClick: function (info) {
                     // When clicking an existing instance, load data into modal to “Edit Instance”

@@ -36,6 +36,7 @@ return [
     ],
 
     'stripe' => [
+        // Operating / business Stripe account — subscriptions and platform fees.
         'key' => env('STRIPE_KEY', env('STRIPE_PUBLISHABLE_TEST')),
         'secret' => env('STRIPE_SECRET', env('STRIPE_TEST_SECRET')),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
@@ -43,6 +44,23 @@ return [
         // Kept for the existing accounting invoice test checkout flow.
         'test_key' => env('STRIPE_PUBLISHABLE_TEST'),
         'test_secret' => env('STRIPE_TEST_SECRET'),
+
+        // Client-money Stripe account — tenant rent. Production must use a
+        // separate Stripe account whose payouts go to the client/trust bank,
+        // not the operating account. Staging may reuse the test keys above.
+        'rent' => [
+            'key' => env('STRIPE_RENT_KEY', env('STRIPE_KEY', env('STRIPE_PUBLISHABLE_TEST'))),
+            'secret' => env('STRIPE_RENT_SECRET', env('STRIPE_SECRET', env('STRIPE_TEST_SECRET'))),
+            'webhook_secret' => env('STRIPE_RENT_WEBHOOK_SECRET'),
+            'currency' => env('STRIPE_RENT_CURRENCY', 'gbp'),
+            // Optional Connect: client-money account ID. Direct charges land
+            // rent there; RENT_PAYMENT_FEE_* is taken as application_fee on the
+            // business account. Leave empty for two independent Stripe accounts.
+            'connected_account_id' => env('STRIPE_RENT_CONNECTED_ACCOUNT_ID'),
+            'fee_percent' => env('RENT_PAYMENT_FEE_PERCENT', 0),
+            'fee_fixed' => env('RENT_PAYMENT_FEE_FIXED', 0),
+            'fee_label' => env('RENT_PAYMENT_FEE_LABEL', 'Card payment fee'),
+        ],
     ],
 
 ];

@@ -360,6 +360,61 @@ class LandlordOnboardingHttpTest extends TestCase
         $this->assertSame('available', $property->letting_current_status);
     }
 
+    public function test_landlord_compliance_tab_shows_register_status_not_agency_add_buttons(): void
+    {
+        [$user, $accountId] = $this->createConfirmedLandlord();
+        $this->seedOnboardingProperty($user, $accountId);
+        $property = \App\Models\Property::query()->where('account_id', $accountId)->first();
+        $this->assertNotNull($property);
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('admin.properties.tabs-all', $property));
+
+        $response->assertOk();
+        $compliance = (string) $response->json('compliance');
+        $documents = (string) $response->json('documents');
+
+        $this->assertStringNotContainsString('Add EPC', $compliance);
+        $this->assertStringNotContainsString('Add GAS', $compliance);
+        $this->assertStringNotContainsString('Add EICR', $compliance);
+        $this->assertStringNotContainsString('Add LANDLORD REGISTRATION', $compliance);
+        $this->assertStringContainsString('On the register', $compliance);
+        $this->assertStringContainsString('Rating '.$property->epc_rating, $compliance);
+        $this->assertStringContainsString('Upload needed', $compliance);
+        $this->assertStringContainsString('Certificates tab', $documents);
+        $this->assertStringNotContainsString('<h1>Documents</h1>', $documents);
+    }
+
+    public function test_landlord_property_tabs_are_flat_and_overview_hides_agency_fields(): void
+    {
+        [$user, $accountId] = $this->createConfirmedLandlord();
+        $this->seedOnboardingProperty($user, $accountId);
+        $property = \App\Models\Property::query()->where('account_id', $accountId)->first();
+        $this->assertNotNull($property);
+
+        $page = $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('admin.properties.index', ['property_id' => $property->id]));
+        $page->assertOk();
+        $page->assertSee('Overview', false);
+        $page->assertSee('Certificates', false);
+        $page->assertDontSee('Occupancy', false);
+        $page->assertDontSee('Operations', false);
+
+        $tabs = $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('admin.properties.tabs-all', $property))
+            ->assertOk();
+        $overview = (string) $tabs->json('property');
+        $this->assertStringNotContainsString('Property Type', $overview);
+        $this->assertStringNotContainsString('Collecting Rent', $overview);
+        $this->assertStringNotContainsString('Market On', $overview);
+        $this->assertStringNotContainsString('Access Arrangement', $overview);
+        $this->assertStringNotContainsString('Sources:', $overview);
+        $this->assertStringNotContainsString('editForm', $overview);
+    }
+
     public function test_tenancy_without_rent_is_rejected(): void
     {
         [$user, $accountId] = $this->createConfirmedLandlord();
@@ -373,6 +428,18 @@ class LandlordOnboardingHttpTest extends TestCase
                 'invite' => false,
             ])
             ->assertStatus(422);
+    }
+
+    public function test_dismiss_add_flow_returns_ok(): void
+    {
+        [$user, $accountId] = $this->createConfirmedLandlord();
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->postJson(route('admin.onboarding.landlord.dismiss'))
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertSessionHas(\App\Services\Onboarding\LandlordOnboardingService::DEFER_SESSION, true);
     }
 
     public function test_landlord_sees_workspace_properties_they_did_not_create(): void
