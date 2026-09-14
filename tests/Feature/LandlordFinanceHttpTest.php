@@ -41,7 +41,7 @@ class LandlordFinanceHttpTest extends TestCase
             ->assertOk()
             ->assertSee('RENT-0001', false)
             ->assertSee('1,200.00', false)
-            ->assertSee('Issued', false);
+            ->assertSee('Unpaid', false);
 
         $this->actingAs($tenant)->withSession($session)
             ->get(route('backend.home'))

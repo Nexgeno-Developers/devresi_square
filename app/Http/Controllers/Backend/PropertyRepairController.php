@@ -896,8 +896,16 @@ class PropertyRepairController
             // Get the comma-separated list of photo IDs
             $photoIds = $request->input('repair_photos');
 
-            // Assuming you want to update the 'photos' column in the repair_photos table
-            $repairIssue->repairPhotos()->update(['photos' => $photoIds]);
+            $existingPhoto = $repairIssue->repairPhotos()->first();
+            if ($existingPhoto) {
+                $existingPhoto->update(['photos' => $photoIds]);
+            } elseif (filled($photoIds)) {
+                RepairPhoto::create([
+                    'photos' => $photoIds,
+                    'repair_issue_id' => $repairIssue->id,
+                    'photo_type' => 'jpg',
+                ]);
+            }
         }
 
         // dd($propertyId);
@@ -925,7 +933,7 @@ class PropertyRepairController
         $previousPropertyId = (int) $repairIssue->property_id;
 
         // Update the main repair issue record.
-        $repairIssue->update([
+        $repairUpdate = [
             'property_id' => $propertyId,
             'account_id' => $property->account_id ?: $repairIssue->account_id ?: current_account_id(),
             'repair_navigation' => $repairNavigation,  // using new value if provided or original value
@@ -937,9 +945,12 @@ class PropertyRepairController
             'access_details' => $validated['access_details'] ?? null,
             'estimated_price' => $validated['estimated_price'],
             'vat_type' => $validated['vat_type'],
-            'vat_percentage' => $validated['vat_percentage'],
             'final_contractor_id' => $finalContractorId,
-        ]);
+        ];
+        if (\Illuminate\Support\Facades\Schema::hasColumn('repair_issues', 'vat_percentage')) {
+            $repairUpdate['vat_percentage'] = $validated['vat_percentage'] ?? null;
+        }
+        $repairIssue->update($repairUpdate);
 
         if ($previousPropertyId !== (int) $propertyId) {
             $this->syncRepairIssuePropertyManagers(
@@ -1444,12 +1455,23 @@ class PropertyRepairController
                     // Get the comma-separated list of photo IDs
                     $photoIds = $request->input('repair_photos');
 
-                    // Assuming you want to update the 'photos' column in the repair_photos table
-                    $repairIssue->repairPhotos()->update(['photos' => $photoIds]);
+                    $existingPhoto = $repairIssue->repairPhotos()->first();
+                    if ($existingPhoto) {
+                        $existingPhoto->update(['photos' => $photoIds]);
+                    } elseif (filled($photoIds)) {
+                        RepairPhoto::create([
+                            'photos' => $photoIds,
+                            'repair_issue_id' => $repairIssue->id,
+                            'photo_type' => 'jpg',
+                        ]);
+                    }
                 }
                 
                 $user = Auth::user();
-                $canEditRepairAdminFields = $user && $user->hasAnyRole(['Super Admin', 'Landlord', 'Estate Agent', 'Agent']);
+                $canEditRepairAdminFields = $user && (
+                    is_landlord_plan_user()
+                    || $user->hasAnyRole(['Super Admin', 'Landlord', 'Estate Agent', 'Agent'])
+                );
                 $propertyId = $repairIssue->property_id;
                 if ($canEditRepairAdminFields && $request->filled('property_id')) {
                     $propertyInput = $request->input('property_id');
@@ -1467,7 +1489,6 @@ class PropertyRepairController
                 $subStatus = $canEditRepairAdminFields ? $request->input('sub_status', $repairIssue->sub_status) : $repairIssue->sub_status;
                 $estimatedPrice = $canEditRepairAdminFields ? $request->input('estimated_price', $repairIssue->estimated_price) : $repairIssue->estimated_price;
                 $vatType = $canEditRepairAdminFields ? $request->input('vat_type', $repairIssue->vat_type) : $repairIssue->vat_type;
-                $vatPercentage = $canEditRepairAdminFields ? $request->input('vat_percentage', $repairIssue->vat_percentage) : $repairIssue->vat_percentage;
 
                 $data = [
                     'property_id' => $propertyId,
@@ -1482,9 +1503,15 @@ class PropertyRepairController
                     'access_details' => $request->input('access_details'),
                     'estimated_price' => $estimatedPrice,
                     'vat_type' => $vatType,
-                    'vat_percentage' => $vatPercentage,
                     'tenant_id' => $tenant_id,
                 ];
+
+                // Staging schema may not have vat_percentage (never in create migration).
+                if (\Illuminate\Support\Facades\Schema::hasColumn('repair_issues', 'vat_percentage')) {
+                    $data['vat_percentage'] = $canEditRepairAdminFields
+                        ? $request->input('vat_percentage', $repairIssue->vat_percentage)
+                        : $repairIssue->vat_percentage;
+                }
                 if ($previousPropertyId !== (int) $propertyId) {
                     $syncManagersFromPropertyId = (int) $propertyId;
                 }

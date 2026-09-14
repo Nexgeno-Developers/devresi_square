@@ -54,11 +54,15 @@ class WorkspaceIsolationHttpTest extends TestCase
         $repair = RepairIssue::create([
             'account_id' => $accountB,
             'property_id' => $propertyB->id,
+            'tenant_id' => $landlordB->id,
+            'final_contractor_id' => $landlordB->id,
             'repair_category_id' => $category->id,
             'repair_navigation' => json_encode(['Isolation test']),
             'description' => 'Secret boiler leak',
             'priority' => 'medium',
+            'sub_status' => 'Pending',
             'status' => 'Pending',
+            'reference_number' => 'ISOTEST-'.uniqid(),
             'created_by' => $landlordB->id,
         ]);
 

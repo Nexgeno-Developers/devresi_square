@@ -164,7 +164,18 @@ class LandlordOnboardingService
             return;
         }
 
-        $this->leaveAddFlow($account);
+        // Leaving add-property mode on normal pages must not defer first-run
+        // onboarding for empty portfolios (that is only for explicit "Finish later").
+        $this->dismissAddProperty();
+
+        if ($this->hasNoProperties($account) || $account->onboarding_completed_at) {
+            return;
+        }
+
+        $account->update([
+            'onboarding_completed_at' => now(),
+            'onboarding_step' => max(3, (int) $account->onboarding_step),
+        ]);
     }
 
     public function canMutate(?User $user, ?Account $account): bool
