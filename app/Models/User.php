@@ -3,6 +3,7 @@ namespace App\Models;
 
 use App\Traits\TracksUser;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Password;
@@ -64,13 +65,21 @@ class User extends Authenticatable
     {
         static::creating(function ($user) {
             // if no name is set, use default name 'temp name'
-            if(empty($user->name)){
+            if (empty($user->name)) {
                 $user->name = 'temp name';
             }
 
-            // If no password is set, use default password '123456'
+            // Quick-add contact creates the row on step 1 before email exists.
+            // Strict MySQL rejects missing NOT NULL email; use a unique draft address
+            // with an unusable password until personal details are saved.
+            $isDraftContact = blank($user->email);
+            if ($isDraftContact) {
+                $user->email = 'draft+'.Str::lower((string) Str::uuid()).'@resisquare.invalid';
+            }
+
+            // If no password is set, use default password '123456' (drafts get random)
             if (empty($user->password)) {
-                $user->password = Hash::make('123456');
+                $user->password = Hash::make($isDraftContact ? Str::random(64) : '123456');
             }
         });
 

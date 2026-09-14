@@ -65,7 +65,7 @@
                     <p class="text-center mt-lg-5">Search your problem</p>
                     <div class="row justify-content-center align-items-center">
                         <div class="col-6">
-                            <x-search-dropdown name="select_repair_category" route="{{ route('admin.get.repair.categories') }}" placeholder="Search repair category..." />
+                            <x-search-dropdown name="select_repair_category" route="{{ route('admin.property_repairs.categories') }}" placeholder="Search repair category..." />
                         </div>
                     </div>
                 </div>
@@ -398,7 +398,7 @@
 
             function checkLastStep(selectedCategories) {
                 $.ajax({
-                    url: "{{ route('admin.repair.checkLastStep') }}",
+                    url: "{{ route('admin.property_repairs.checkLastStep') }}",
                     method: 'POST',
                     data: {
                         _token: "{{ csrf_token() }}",

@@ -37,7 +37,13 @@ class EventController
             'eventTypes' => EventType::query()->visibleToCurrentUser()->orderBy('name')->get(),
             'eventSubTypes' => EventSubType::query()->visibleToCurrentUser()->orderBy('name')->get(),
             'statuses' => ['Confirmed', 'Pending', 'Cancelled', 'Rescheduled', 'Scheduled'],
-            'offices' => Event::whereNotNull('office')->where('office', '!=', '')->distinct()->orderBy('office')->pluck('office'),
+            'offices' => Event::query()
+                ->whereNotNull('office')
+                ->where('office', '!=', '')
+                ->select('office')
+                ->distinct()
+                ->orderBy('office')
+                ->pluck('office'),
             'users' => User::forAccount(current_account_id())->orderBy('name')->get(),
             'properties' => Property::forAccount(current_account_id())->orderBy('prop_name')->get(),
             'repairIssues' => RepairIssue::forAccount(current_account_id())->orderBy('reference_number')->get(),

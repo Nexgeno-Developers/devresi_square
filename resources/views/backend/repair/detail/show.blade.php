@@ -6,7 +6,7 @@
 
     @unless(is_landlord_plan_user())
     <a class="btn btn-outline-primary btn-sm"
-        href="{{ route('admin.repair.workorder.invoice', $repairIssue->id) }}">{{ $repairIssue->workOrder ? 'Edit Work Order & Invoice' : 'Create Work Order & Invoice' }}</a>
+        href="{{ route('admin.property_repairs.workorder.invoice', $repairIssue->id) }}">{{ $repairIssue->workOrder ? 'Edit Work Order & Invoice' : 'Create Work Order & Invoice' }}</a>
     @endunless
     <div class="d-flex justify-content-end mb-3">
         <a id="toggleAll" class="pointer underline">Collapse All</a>

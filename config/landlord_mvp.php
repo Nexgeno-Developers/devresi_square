@@ -19,6 +19,7 @@ return [
         'backend.saas.addons',
         'backend.saas.accounts',
         'backend.saas.subscriptions',
+        'backend.saas.billing',
         'admin.registrations.',
         'admin.designations.',
         'admin.branches.',

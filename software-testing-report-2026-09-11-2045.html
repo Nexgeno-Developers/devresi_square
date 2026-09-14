@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Software Testing Report — Staging Landlord</title>
+  <style>
+    :root {
+      --ink: #1a1d23;
+      --muted: #5c6570;
+      --line: #d8dde3;
+      --bg: #f4f6f8;
+      --card: #fff;
+      --pass: #1b7a4a;
+      --pass-bg: #e7f6ee;
+      --fail: #b42318;
+      --fail-bg: #fdecea;
+      --crit: #7a1010;
+      --high: #c2410c;
+      --med: #b45309;
+      --low: #475569;
+      --blocked: #c2410c;
+      --nt: #64748b;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--bg); line-height: 1.5; }
+    .header { background: #0b1220; color: #fff; padding: 32px 24px; }
+    .header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 650; }
+    .header p { margin: 0; color: #c5ccd4; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: -40px; margin-bottom: 24px; }
+    .card { background: var(--card); border: 1px solid var(--line); padding: 16px; }
+    .card h3 { margin: 0 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+    .card .v { font-size: 20px; font-weight: 650; }
+    .badge { display: inline-block; padding: 2px 8px; font-size: 12px; font-weight: 650; }
+    .pass { background: var(--pass-bg); color: var(--pass); }
+    .fail { background: var(--fail-bg); color: var(--fail); }
+    .blocked { background: #fff4e5; color: var(--blocked); }
+    .nt { background: #eef1f4; color: var(--nt); }
+    .crit { background: #fdecea; color: var(--crit); }
+    .high { background: #fff4e5; color: var(--high); }
+    .med { background: #fffbeb; color: var(--med); }
+    .low { background: #eef2ff; color: var(--low); }
+    .open { background: var(--fail-bg); color: var(--fail); }
+    h2 { font-size: 18px; margin: 32px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; background: var(--card); font-size: 13px; }
+    th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+    th { background: #eef1f4; font-weight: 650; }
+    tbody tr:nth-child(even) { background: #fafbfc; }
+    code, .path { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+    .note { color: var(--muted); font-size: 14px; }
+    footer { color: var(--muted); font-size: 12px; margin: 40px 0 12px; }
+    .shot { margin: 20px 0 28px; }
+    .shot img { display: block; width: 100%; max-width: 100%; border: 1px solid var(--line); background: #fff; }
+    .shot figcaption { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media print { body { background: #fff; } .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+    @media (max-width: 900px) { .pair { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { table { display: block; overflow-x: auto; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Software Testing Report — Staging Landlord</h1>
+    <p>Resisquare cPanel staging · live browser walkthrough as paying landlord · errors logged and testing continued</p>
+  </div>
+  <div class="wrap">
+    <div class="meta">
+      <div class="card"><h3>Overall score</h3><div class="v">63%</div></div>
+      <div class="card"><h3>Final status</h3><div class="v"><span class="badge fail">Not Ready for Production</span></div></div>
+      <div class="card"><h3>Quality rating</h3><div class="v">Critical</div></div>
+      <div class="card"><h3>Environment</h3><div class="v">Staging · HTTP</div></div>
+    </div>
+
+    <h2>1. Project Information</h2>
+    <table>
+      <tbody>
+        <tr><th>Project</th><td>Resisquare (devresi_square)</td></tr>
+        <tr><th>Application type</th><td>Laravel SaaS property platform · landlord workspace under <code>/admin</code></td></tr>
+        <tr><th>Test date</th><td>11 Sep 2026, 20:05–20:45 IST</td></tr>
+        <tr><th>Tester</th><td>Cursor agent · live Chrome via Cursor browser</td></tr>
+        <tr><th>Base URL</th><td><a href="http://laravel.resisquare.co.uk/">http://laravel.resisquare.co.uk/</a></td></tr>
+        <tr><th>Account used</th><td>Landlord <code>sabir.nexgeno@gmail.com</code> · role Landlord · account “Sabir Sayyed Landlord Account” · plan Landlord Basic (trialing, 0/5 properties, trial ends 17 Sep 2026). Password not recorded.</td></tr>
+        <tr><th>Scope</th><td>Login, dashboard, calendar, properties (search + save), tenancies, owner groups, portal access, finance, contacts, billing, repairs, documents, profile, notifications, landlord 403 on SaaS Plans.</td></tr>
+        <tr><th>Out of scope</th><td>Stripe Checkout click-through, calendar event save, profile save, logout, forgot password, tenant portal, Super Admin, Firefox/Safari/mobile, destructive deletes.</td></tr>
+        <tr><th>Prior reports</th><td><code>software-testing-report-2026-09-09-1730.html</code> (local landlord), <code>software-testing-report-2026-09-10-1755.html</code> (Super Admin)</td></tr>
+        <tr><th>Code changes</th><td>None during this run. Findings only.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>2. Testing Summary</h2>
+    <table>
+      <thead><tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Functional Testing</td><td>21</td><td>17</td><td>4</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Security Testing</td><td>5</td><td>3</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>UI/UX Testing</td><td>8</td><td>4</td><td>4</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Performance Testing</td><td>2</td><td>1</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>SEO Testing</td><td>3</td><td>1</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Content Testing</td><td>3</td><td>2</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Compatibility Testing</td><td>1</td><td>1</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>API Testing</td><td>3</td><td>1</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Database Testing</td><td>3</td><td>0</td><td>3</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Production / Deployment Testing</td><td>4</td><td>2</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+      </tbody>
+    </table>
+    <p class="note">Blocked/Not Tested rows are excluded from pass/fail totals. Overall score uses only categories that were tested.</p>
+
+    <h2>3. Functional Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>FT-001</td><td>Login</td><td>Login with valid landlord email/password</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-002</td><td>Dashboard</td><td>Landlord workspace loads with plan usage 0/5 and empty portfolio</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-003</td><td>Calendar</td><td>Month calendar, filters, empty appointments, events JSON returns <code>[]</code></td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-004</td><td>Properties</td><td>Active properties empty state and Add property overlay</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-005</td><td>Properties</td><td>Postcode search SW1A 1AA returns Buckingham Palace and 1 The Mall</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-006</td><td>Properties</td><td>Select 1 The Mall and save property</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td><code>properties.epc_required</code> is missing on staging MySQL. Run <code>docs/cpanel-fix-missing-property-columns.sql</code> in phpMyAdmin. Migration exists locally: <code>database/migrations/2026_09_10_190000_add_missing_property_detail_columns.php</code>.</td></tr>
+        <tr><td>FT-007</td><td>Tenancies</td><td>Active tenancies empty list</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-008</td><td>Tenancies</td><td>Add tenancy form loads; property dropdown empty with helper copy</td><td><span class="badge pass">Pass</span></td><td>High</td><td>Cannot complete a tenancy until FT-006 is fixed. Expected given 0 properties.</td></tr>
+        <tr><td>FT-009</td><td>Owner Groups</td><td>Empty owner groups list</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-010</td><td>Portal Access</td><td>Invite blocked until a tenancy exists</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-011</td><td>Finance</td><td>Rent invoices empty state</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-012</td><td>Contacts</td><td>Active contacts list loads</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>List shows 0 contacts while dashboard tile showed 1. See BUG-008.</td></tr>
+        <tr><td>FT-013</td><td>Contacts</td><td>Quick Add Contact: select Tenant, click Next</td><td><span class="badge fail">Fail</span></td><td>High</td><td>POST <code>/admin/users/store</code> inserts a temp user without email. Staging <code>users.email</code> is NOT NULL. <code>UserController</code> store / quick-add first step must insert a nullable email, or ALTER <code>users.email</code> to nullable to match local.</td></tr>
+        <tr><td>FT-014</td><td>Billing</td><td>Billing &amp; Plan shows Landlord Basic, monthly £29, trialing, usage 0/5</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-015</td><td>Repair</td><td>Issue list empty table</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>Toolbar overlap is UX-002, not a 500.</td></tr>
+        <tr><td>FT-016</td><td>Repair</td><td>Raise repair form + category AJAX</td><td><span class="badge fail">Fail</span></td><td>High</td><td>GET <code>/admin/property-repairs/get-repair-categories</code> returns 403. Route name is <code>admin.get.repair.categories</code>, which is not under <code>admin.property_repairs.</code> in <code>config/landlord_mvp.php</code>. Add that name (and <code>admin.get.property_repairs.tenants</code>) to enabled prefixes, or rename the routes.</td></tr>
+        <tr><td>FT-017</td><td>Documents</td><td>Documents empty state</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-018</td><td>Profile</td><td>User profile shows name, email, phone, Landlord role</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-019</td><td>Notifications</td><td>Open notifications inbox</td><td><span class="badge fail">Fail</span></td><td>High</td><td><code>NotificationController.php</code> → <code>index()</code> → <code>distinct()-&gt;orderBy('category')</code> hits MySQL ONLY_FULL_GROUP_BY. Use <code>select('category')-&gt;distinct()-&gt;orderBy('category')</code> without ordering by <code>created_at</code>, or <code>groupBy('category')</code>.</td></tr>
+        <tr><td>FT-020</td><td>Notifications</td><td>Notification preferences page</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-021</td><td>AuthZ</td><td>Landlord GET <code>/admin/saas/plans</code></td><td><span class="badge pass">Pass</span></td><td>High</td><td>403 as expected for landlord plan.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4. Bug / Issue Report</h2>
+    <table>
+      <thead><tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>BUG-001</td><td>Properties</td><td>POST <code>/admin/onboarding/landlord/property</code> 500: unknown column <code>epc_required</code>. Overlay stays on the search step; no user-visible error besides debugbar.</td><td><span class="badge crit">Critical</span></td><td><span class="badge open">Open</span></td><td>phpMyAdmin: <code>ALTER TABLE properties ADD epc_required tinyint(1) NULL;</code> plus youtube/instagram/nearest_places from <code>docs/cpanel-fix-missing-property-columns.sql</code>. Do not re-import the whole dump.</td></tr>
+        <tr><td>BUG-002</td><td>Deployment</td><td>PHP Debugbar, SQL bindings, session IDs, and full exception pages are visible on public HTTP staging, including login.</td><td><span class="badge crit">Critical</span></td><td><span class="badge open">Open</span></td><td>Set <code>APP_DEBUG=false</code> and <code>APP_ENV=production</code> in staging <code>.env</code>. Disable debugbar. Serve over HTTPS.</td></tr>
+        <tr><td>BUG-003</td><td>Notifications</td><td><code>/admin/notifications</code> 500 SQLSTATE 3065 DISTINCT + ORDER BY created_at.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td><code>app/Http/Controllers/Backend/NotificationController.php</code> lines 32–33: select only <code>category</code> when using distinct, do not inherit latest()/created_at order.</td></tr>
+        <tr><td>BUG-004</td><td>Contacts</td><td>Quick Add Contact Next → 500 toast “Something went wrong”. Insert omits email; staging <code>users.email</code> has no default.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>Make <code>users.email</code> nullable on staging to match the wizard, or write a placeholder email on step 1. Same dump/schema drift as AUTO_INCREMENT / missing columns.</td></tr>
+        <tr><td>BUG-005</td><td>Repair</td><td>Raise-repair categories AJAX 403 for landlord.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td><code>routes/backend.php</code> → <code>get.repair.categories</code> is not allowed by <code>RestrictLandlordRoutes</code> / <code>config/landlord_mvp.php</code>.</td></tr>
+        <tr><td>BUG-006</td><td>Deployment</td><td>Staging is HTTP only. Login, session cookie, and billing Stripe IDs travel in the clear.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>Force HTTPS in cPanel / <code>APP_URL</code> and session <code>secure</code> cookie.</td></tr>
+        <tr><td>BUG-007</td><td>Repair</td><td>Search / Reset Filters / Hide Detail buttons overlap on the issue list.</td><td><span class="badge med">Medium</span></td><td><span class="badge open">Open</span></td><td>Repair list toolbar CSS. Page still loads.</td></tr>
+        <tr><td>BUG-008</td><td>Dashboard</td><td>Contacts tile shows 1; contacts list says “No contacts yet.”</td><td><span class="badge med">Medium</span></td><td><span class="badge open">Open</span></td><td>Dashboard count likely includes the landlord user; list filters them out. Align the query.</td></tr>
+        <tr><td>BUG-009</td><td>Onboarding</td><td>Add-property overlay reopened on Tenancies after the failed save; must click Later.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Expected onboarding while properties=0, but a failed save should show an error instead of silently returning to search.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. Security Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Security Check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>SEC-001</td><td>Debug mode / debugbar / exception stack traces on public staging</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>See BUG-002. Do not leave <code>APP_DEBUG=true</code> on laravel.resisquare.co.uk.</td></tr>
+        <tr><td>SEC-002</td><td>HTTPS / secure cookies</td><td><span class="badge fail">Fail</span></td><td>High</td><td>See BUG-006.</td></tr>
+        <tr><td>SEC-003</td><td>Landlord cannot open SaaS Plans</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>SEC-004</td><td>Unauthenticated /admin requires login (session after login works)</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>SEC-005</td><td>CSRF token present on login and POST forms</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+      </tbody>
+    </table>
+    <p class="note">No destructive attacks, SQLi payloads, or credential stuffing were run. Invalid-password login was not retested this session.</p>
+
+    <h2>6. UI/UX Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>UX-001</td><td>Dashboard</td><td>Landlord workspace empty states and quick actions</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-002</td><td>Repair list</td><td>Filter buttons overlap</td><td><span class="badge fail">Fail</span></td><td>See BUG-007.</td></tr>
+        <tr><td>UX-003</td><td>Layout</td><td>Debugbar covers the bottom of every authenticated page</td><td><span class="badge fail">Fail</span></td><td>See BUG-002.</td></tr>
+        <tr><td>UX-004</td><td>Onboarding</td><td>Failed property save has no in-overlay error</td><td><span class="badge fail">Fail</span></td><td>Surface the 500 as a toast in the overlay. See BUG-001 / BUG-009.</td></tr>
+        <tr><td>UX-005</td><td>Contacts</td><td>Dashboard count vs list empty state</td><td><span class="badge fail">Fail</span></td><td>See BUG-008.</td></tr>
+        <tr><td>UX-006</td><td>Tenancy / Finance / Portal</td><td>Clear “add a property first” empty states</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-007</td><td>Navigation</td><td>Landlord sidebar is scoped (no SaaS Management, no Accounting)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-008</td><td>Calendar / Billing / Profile</td><td>Readable landlord layout</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>7. Performance Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>PF-001</td><td>Dashboard / list pages</td><td>Debugbar reported ~105–166ms HTML for dashboard, calendar, properties, billing</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>PF-002</td><td>Add property</td><td>Failed POST took ~3s then 500</td><td><span class="badge fail">Fail</span></td><td>High</td><td>Fix BUG-001. Not a capacity issue; the query errors after enrichment.</td></tr>
+      </tbody>
+    </table>
+    <p class="note">No server CPU/memory metrics. Times are from on-page debugbar only.</p>
+
+    <h2>8. SEO Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>SEO Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>SEO-001</td><td>Public homepage title “Resisquare”</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>SEO-002</td><td>HTTPS / canonical secure URL</td><td><span class="badge fail">Fail</span></td><td>See BUG-006.</td></tr>
+        <tr><td>SEO-003</td><td>Public login should not expose debugbar</td><td><span class="badge fail">Fail</span></td><td>See BUG-002. Indexing a debug toolbar is harmful.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>9. Content Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Content Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>CT-001</td><td>Landlord empty-state copy (properties, tenancies, finance, portal, documents)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>CT-002</td><td>Billing plan name, price £29, trial dates 10–17 Sep 2026</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>CT-003</td><td>Marketing homepage demo form success text “We will user you shortly.” (public site)</td><td><span class="badge fail">Fail</span></td><td>Copy should read “We will contact you shortly.” Public homepage, not landlord app.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>10. Browser &amp; Device Testing</h2>
+    <table>
+      <thead><tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>Chrome Desktop (Cursor embedded browser)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>Firefox Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Edge Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Safari</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+        <tr><td>Android / iPhone / Tablet</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>11. API Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>API / Feature</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>API-001</td><td>GET <code>/admin/calendar/events</code></td><td>200 JSON <code>{"events":[],"pagination":...}</code></td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>API-002</td><td>POST <code>/admin/onboarding/landlord/property</code></td><td>500 QueryException missing <code>epc_required</code></td><td><span class="badge fail">Fail</span></td><td>See BUG-001.</td></tr>
+        <tr><td>API-003</td><td>GET <code>/admin/property-repairs/get-repair-categories</code></td><td>403 Forbidden</td><td><span class="badge fail">Fail</span></td><td>See BUG-005.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>12. Database Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>DB-001</td><td><code>properties.epc_required</code> present for app insert</td><td><span class="badge fail">Fail</span></td><td>See BUG-001. Local DB was missing it too until migration 2026_09_10_190000; staging never received the ALTER.</td></tr>
+        <tr><td>DB-002</td><td><code>users.email</code> allows wizard step-1 insert</td><td><span class="badge fail">Fail</span></td><td>See BUG-004. Dump import left email NOT NULL without default.</td></tr>
+        <tr><td>DB-003</td><td>Notifications distinct category query vs ONLY_FULL_GROUP_BY</td><td><span class="badge fail">Fail</span></td><td>See BUG-003. Staging MySQL sql_mode is stricter than the query.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>13. Production / Deployment Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>DEP-001</td><td>Site reachable, login, MySQL connected (<code>castopcl_resisquare_laravel</code>)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DEP-002</td><td>Registration completed earlier; this landlord session works</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DEP-003</td><td><code>APP_DEBUG</code> / debugbar off</td><td><span class="badge fail">Fail</span></td><td>See BUG-002.</td></tr>
+        <tr><td>DEP-004</td><td>HTTPS</td><td><span class="badge fail">Fail</span></td><td>See BUG-006.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>14. Overall Score</h2>
+    <table>
+      <thead><tr><th>Category</th><th>Weight</th><th>Passed / Applicable</th><th>Score</th></tr></thead>
+      <tbody>
+        <tr><td>Functional</td><td>30%</td><td>17 / 21</td><td>81%</td></tr>
+        <tr><td>Security</td><td>20%</td><td>3 / 5</td><td>60%</td></tr>
+        <tr><td>UI/UX</td><td>15%</td><td>4 / 8</td><td>50%</td></tr>
+        <tr><td>Performance</td><td>15%</td><td>1 / 2</td><td>50%</td></tr>
+        <tr><td>SEO</td><td>10%</td><td>1 / 3</td><td>33%</td></tr>
+        <tr><td>Compatibility</td><td>5%</td><td>1 / 1</td><td>100%</td></tr>
+        <tr><td>Content</td><td>5%</td><td>2 / 3</td><td>67%</td></tr>
+      </tbody>
+    </table>
+    <p>Weighted overall: <strong>63%</strong>. Rating: <strong>Critical</strong> (score &lt; 70%, plus unresolved Critical defects). Override: even a higher score would not be production-ready while add-property 500 and public debug mode remain.</p>
+
+    <h2>15. Final Status</h2>
+    <p><strong>Final Status:</strong> <span class="badge fail">Not Ready for Production</span></p>
+    <p><strong>Recommendation:</strong></p>
+    <ul>
+      <li><strong>Working:</strong> Login, landlord dashboard, calendar, list pages (properties/tenancies/finance/portal/documents/owner groups), billing display, profile, notification preferences, landlord 403 on SaaS Plans, postcode lookup.</li>
+      <li><strong>Must fix before any real landlord use:</strong> BUG-001 (cannot add a property — blocks tenancy, rent, portal, repairs, documents). BUG-002 (debug/SQL leaked on HTTP). Then BUG-003, BUG-004, BUG-005, BUG-006.</li>
+      <li>Retest add-property → add tenancy → invite tenant → finance after the <code>epc_required</code> ALTER. Those flows were blocked this run.</li>
+      <li>Do not treat staging as production until HTTPS is on and <code>APP_DEBUG=false</code>.</li>
+    </ul>
+
+    <h2>Evidence</h2>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/staging-landlord-2026-09-11/01-dashboard.png" alt="Landlord dashboard">
+        <figcaption>FT-002 Dashboard — Landlord Basic trialing, 0 properties. Debugbar visible.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/staging-landlord-2026-09-11/05-add-property-step2.png" alt="Add property 500">
+        <figcaption>FT-006 / BUG-001 — POST property 500, overlay still on search.</figcaption>
+      </figure>
+    </div>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/staging-landlord-2026-09-11/13-contact-personal.png" alt="Add contact 500">
+        <figcaption>FT-013 / BUG-004 — Quick Add Contact Next → 500, email has no default.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/staging-landlord-2026-09-11/19-notifications-500.png" alt="Notifications 500">
+        <figcaption>FT-019 / BUG-003 — Notifications inbox SQLSTATE 3065.</figcaption>
+      </figure>
+    </div>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/staging-landlord-2026-09-11/16-raise-repair.png" alt="Raise repair 403">
+        <figcaption>FT-016 / BUG-005 — Raise repair form; categories AJAX 403.</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/staging-landlord-2026-09-11/14-billing.png" alt="Billing and plan">
+        <figcaption>FT-014 Billing &amp; Plan — trial and usage load. Stripe IDs visible (mask in logs).</figcaption>
+      </figure>
+    </div>
+
+    <h2>16. Testing Limitations</h2>
+    <ul>
+      <li>Staging only. No production credentials.</li>
+      <li>Could not complete property, tenancy, rent invoice, portal invite, or repair create because of BUG-001 / no property.</li>
+      <li>Did not click Stripe Manage Billing / Buy Addon (would leave staging for Checkout).</li>
+      <li>Did not save profile, create a calendar event, or log out.</li>
+      <li>Did not retest invalid login or password reset.</li>
+      <li>Only Chrome desktop in the Cursor browser. No mobile/Safari/Firefox/Edge.</li>
+      <li>Performance numbers are debugbar timings, not a load test.</li>
+      <li>No application code was changed in this run.</li>
+    </ul>
+
+    <footer>Report generated 11 September 2026 · Staging landlord QA · no application code modified</footer>
+  </div>
+</body>
+</html>

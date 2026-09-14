@@ -166,7 +166,7 @@
 
         // ----------------- FETCH ALL CATEGORIES ON PAGE LOAD ----------------- //
         $.ajax({
-            url: "{{ route('admin.get.repair.categories') }}",
+            url: "{{ route('admin.property_repairs.categories') }}",
             method: 'GET',
             async: false,  // For simplicity; consider using Promises for production
             success: function(data) {

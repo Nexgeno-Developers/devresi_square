@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Software Testing Report — Staging Retest after DB import</title>
+  <style>
+    :root { --ink:#1a1d23; --muted:#5c6570; --line:#d8dde3; --bg:#f4f6f8; --card:#fff; --pass:#1b7a4a; --pass-bg:#e7f6ee; --fail:#b42318; --fail-bg:#fdecea; --crit:#7a1010; --high:#c2410c; --med:#b45309; --low:#475569; --blocked:#c2410c; --nt:#64748b; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:"Segoe UI",system-ui,sans-serif; color:var(--ink); background:var(--bg); line-height:1.5; }
+    .header { background:#0b1220; color:#fff; padding:32px 24px; }
+    .header h1 { margin:0 0 8px; font-size:24px; font-weight:650; }
+    .header p { margin:0; color:#c5ccd4; }
+    .wrap { max-width:1100px; margin:0 auto; padding:24px; }
+    .meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-top:-40px; margin-bottom:24px; }
+    .card { background:var(--card); border:1px solid var(--line); padding:16px; }
+    .card h3 { margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+    .card .v { font-size:20px; font-weight:650; }
+    .badge { display:inline-block; padding:2px 8px; font-size:12px; font-weight:650; }
+    .pass { background:var(--pass-bg); color:var(--pass); }
+    .fail { background:var(--fail-bg); color:var(--fail); }
+    .blocked { background:#fff4e5; color:var(--blocked); }
+    .nt { background:#eef1f4; color:var(--nt); }
+    .crit { background:#fdecea; color:var(--crit); }
+    .high { background:#fff4e5; color:var(--high); }
+    .med { background:#fffbeb; color:var(--med); }
+    .low { background:#eef2ff; color:var(--low); }
+    .open { background:var(--fail-bg); color:var(--fail); }
+    h2 { font-size:18px; margin:32px 0 12px; border-bottom:1px solid var(--line); padding-bottom:8px; }
+    table { width:100%; border-collapse:collapse; background:var(--card); font-size:13px; }
+    th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+    th { background:#eef1f4; font-weight:650; }
+    tbody tr:nth-child(even) { background:#fafbfc; }
+    code, .path { font-family:Consolas,"Courier New",monospace; font-size:12px; }
+    .note { color:var(--muted); font-size:14px; }
+    footer { color:var(--muted); font-size:12px; margin:40px 0 12px; }
+    .shot { margin:20px 0 28px; }
+    .shot img { display:block; width:100%; max-width:100%; border:1px solid var(--line); background:#fff; }
+    .shot figcaption { font-size:12px; color:var(--muted); margin-top:8px; }
+    .pair { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media (max-width:900px){ .pair{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Software Testing Report — Staging Retest (post DB import)</h1>
+    <p>http://laravel.resisquare.co.uk · after local mysqldump import (nosuper) · compare to 11 Sep report</p>
+  </div>
+  <div class="wrap">
+    <div class="meta">
+      <div class="card"><h3>Overall score</h3><div class="v">78%</div></div>
+      <div class="card"><h3>Final status</h3><div class="v"><span class="badge fail">Needs Fixes and Retesting</span></div></div>
+      <div class="card"><h3>vs 11 Sep</h3><div class="v">63% → 78%</div></div>
+      <div class="card"><h3>Environment</h3><div class="v">Staging · HTTP</div></div>
+    </div>
+
+    <h2>1. Project Information</h2>
+    <table>
+      <tbody>
+        <tr><th>Project</th><td>Resisquare staging after successful local → cPanel DB import</td></tr>
+        <tr><th>Test date</th><td>14 Sep 2026, ~16:00 IST</td></tr>
+        <tr><th>Base URL</th><td><a href="http://laravel.resisquare.co.uk/">http://laravel.resisquare.co.uk/</a></td></tr>
+        <tr><th>Accounts used</th><td>Landlord <code>landlord.owner@resisquare.test</code> / demo password (from local dump). Tenant <code>tenant@resisquare.test</code>. <code>sabir.nexgeno@gmail.com</code> no longer matches after import (expected — dump replaced staging-only user).</td></tr>
+        <tr><th>Prior report</th><td><code>software-testing-report-2026-09-11-2045.html</code> (score 63%, add-property Critical fail)</td></tr>
+        <tr><th>Scope</th><td>Landlord smoke + add property; tenant portal pages; known prior failures (notifications, repair categories, debug/HTTPS)</td></tr>
+      </tbody>
+    </table>
+
+    <h2>2. Testing Summary</h2>
+    <table>
+      <thead><tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Functional Testing</td><td>22</td><td>19</td><td>3</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Security Testing</td><td>4</td><td>2</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>UI/UX Testing</td><td>4</td><td>3</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Performance Testing</td><td>1</td><td>1</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>SEO Testing</td><td>2</td><td>0</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Content Testing</td><td>2</td><td>2</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>Compatibility Testing</td><td>1</td><td>1</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>API Testing</td><td>2</td><td>1</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+        <tr><td>Database Testing</td><td>2</td><td>2</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+        <tr><td>Production / Deployment</td><td>3</td><td>1</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+      </tbody>
+    </table>
+
+    <h2>3. Functional Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>FT-001</td><td>Login</td><td>Landlord Lara login (dump credentials)</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-002</td><td>Login</td><td>sabir.nexgeno@gmail.com / old password</td><td><span class="badge blocked">Blocked</span></td><td>Medium</td><td>Expected after full DB replace. Re-register or reset password on staging.</td></tr>
+        <tr><td>FT-003</td><td>Dashboard</td><td>Landlord workspace loads (tenancies/repairs/contacts from dump)</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-004</td><td>Calendar</td><td>Page 200</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-005</td><td>Properties</td><td>List + postcode search E14 9RU</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-006</td><td>Properties</td><td>Save Flat 12 Baltimore Wharf (was Critical fail 11 Sep)</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>Schema import fixed <code>epc_required</code> / AUTO_INCREMENT. Property <code>RESISQP0000001</code> created.</td></tr>
+        <tr><td>FT-007</td><td>Properties</td><td>Property detail / tabs after create</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-008</td><td>Tenancies</td><td>Active list 200</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-009</td><td>Owner Groups</td><td>200</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-010</td><td>Portal Access</td><td>200</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-011</td><td>Finance</td><td>200</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-012</td><td>Contacts</td><td>200</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-013</td><td>Billing</td><td>200</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>FT-014</td><td>Repairs</td><td>Issue list 200</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-015</td><td>Repairs</td><td>get-repair-categories AJAX</td><td><span class="badge fail">Fail</span></td><td>High</td><td>Still 403. Allow <code>admin.get.repair.categories</code> in <code>config/landlord_mvp.php</code> or rename route under <code>admin.property_repairs.</code></td></tr>
+        <tr><td>FT-016</td><td>Documents</td><td>200</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-017</td><td>Profile</td><td>200</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-018</td><td>Notifications</td><td>Inbox</td><td><span class="badge fail">Fail</span></td><td>High</td><td>Still SQLSTATE 3065. Fix <code>NotificationController::index()</code> distinct/orderBy. Not a dump issue.</td></tr>
+        <tr><td>FT-019</td><td>Notifications</td><td>Preferences</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+        <tr><td>FT-020</td><td>AuthZ</td><td>Landlord SaaS Plans</td><td><span class="badge pass">Pass</span></td><td>High</td><td>403 expected.</td></tr>
+        <tr><td>FT-021</td><td>Tenant</td><td>Login + home portal</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+        <tr><td>FT-022</td><td>Tenant</td><td>tenancy / rent / calendar / maintenance / documents / profile</td><td><span class="badge pass">Pass</span></td><td>Critical</td><td>All 200, no SQL errors.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>4. Bug / Issue Report</h2>
+    <table>
+      <thead><tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>BUG-001</td><td>Properties</td><td>Missing <code>epc_required</code> / add-property 500</td><td><span class="badge crit">Critical</span></td><td><span class="badge pass">Fixed</span></td><td>Resolved by nosuper dump import. Retest Pass FT-006.</td></tr>
+        <tr><td>BUG-002</td><td>Deployment</td><td>APP_DEBUG / debugbar still on public HTTP</td><td><span class="badge crit">Critical</span></td><td><span class="badge open">Open</span></td><td>Set <code>APP_DEBUG=false</code>, disable debugbar, HTTPS.</td></tr>
+        <tr><td>BUG-003</td><td>Notifications</td><td>Inbox 500 DISTINCT + ORDER BY</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td><code>NotificationController.php</code> → fix category query for strict MySQL.</td></tr>
+        <tr><td>BUG-005</td><td>Repair</td><td>Categories AJAX 403 for landlord</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td><code>landlord_mvp.php</code> allowlist.</td></tr>
+        <tr><td>BUG-006</td><td>Deployment</td><td>Site still HTTP only</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>Force HTTPS in cPanel / APP_URL.</td></tr>
+        <tr><td>BUG-010</td><td>Accounts</td><td>Staging-only Sabir login gone after dump replace</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Expected. Use Lara/Tina demo accounts or re-register Sabir.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. Security Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Security Check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>SEC-001</td><td>Debugbar / APP_DEBUG off</td><td><span class="badge fail">Fail</span></td><td>Critical</td><td>BUG-002</td></tr>
+        <tr><td>SEC-002</td><td>HTTPS</td><td><span class="badge fail">Fail</span></td><td>High</td><td>BUG-006</td></tr>
+        <tr><td>SEC-003</td><td>Landlord blocked from SaaS Plans</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+        <tr><td>SEC-004</td><td>Tenant portal scoped (no landlord CRM nav)</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>6. UI/UX Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>UX-001</td><td>Landlord / tenant nav</td><td>Correct role workspaces</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-002</td><td>Add property</td><td>Advances to Owners / Tenants after save</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>UX-003</td><td>Debugbar</td><td>Still covers footer</td><td><span class="badge fail">Fail</span></td><td>BUG-002</td></tr>
+        <tr><td>UX-004</td><td>Tenant home</td><td>Clear cards for tenancy/rent/repairs</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>7. Performance Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>PF-001</td><td>Pages</td><td>HTML responses typically &lt;200ms in debugbar</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>Dashboard still runs many queries (272) — optimize later, not blocking.</td></tr>
+      </tbody>
+    </table>
+
+    <h2>8. SEO Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>SEO Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>SEO-001</td><td>HTTPS</td><td><span class="badge fail">Fail</span></td><td>BUG-006</td></tr>
+        <tr><td>SEO-002</td><td>Debugbar not on public pages</td><td><span class="badge fail">Fail</span></td><td>BUG-002</td></tr>
+      </tbody>
+    </table>
+
+    <h2>9. Content Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Content Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>CT-001</td><td>Landlord / tenant empty &amp; loaded states readable</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>CT-002</td><td>Tenant invoice RENT-0001 Paid £1,200 shown</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>10. Browser &amp; Device Testing</h2>
+    <table>
+      <thead><tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>Chrome Desktop (Cursor browser)</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>Other browsers / mobile</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>11. API Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>API / Feature</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>API-001</td><td>POST onboarding property / step / complete</td><td>200, property created</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>API-002</td><td>GET get-repair-categories</td><td>403</td><td><span class="badge fail">Fail</span></td><td>BUG-005</td></tr>
+      </tbody>
+    </table>
+
+    <h2>12. Database Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>DB-001</td><td>Property insert with epc_required succeeds</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DB-002</td><td>Demo landlord/tenant data usable after import</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+      </tbody>
+    </table>
+
+    <h2>13. Production / Deployment Testing</h2>
+    <table>
+      <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+      <tbody>
+        <tr><td>DEP-001</td><td>Login + DB after import</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+        <tr><td>DEP-002</td><td>APP_DEBUG off</td><td><span class="badge fail">Fail</span></td><td>BUG-002</td></tr>
+        <tr><td>DEP-003</td><td>HTTPS</td><td><span class="badge fail">Fail</span></td><td>BUG-006</td></tr>
+      </tbody>
+    </table>
+
+    <h2>14. Overall Score</h2>
+    <table>
+      <thead><tr><th>Category</th><th>Weight</th><th>Passed / Applicable</th><th>Score</th></tr></thead>
+      <tbody>
+        <tr><td>Functional</td><td>30%</td><td>19 / 21</td><td>90%</td></tr>
+        <tr><td>Security</td><td>20%</td><td>2 / 4</td><td>50%</td></tr>
+        <tr><td>UI/UX</td><td>15%</td><td>3 / 4</td><td>75%</td></tr>
+        <tr><td>Performance</td><td>15%</td><td>1 / 1</td><td>100%</td></tr>
+        <tr><td>SEO</td><td>10%</td><td>0 / 2</td><td>0%</td></tr>
+        <tr><td>Compatibility</td><td>5%</td><td>1 / 1</td><td>100%</td></tr>
+        <tr><td>Content</td><td>5%</td><td>2 / 2</td><td>100%</td></tr>
+      </tbody>
+    </table>
+    <p>Weighted overall: <strong>78%</strong>. Rating: Poor / Needs Fixes. Critical add-property is fixed; remaining Critical is public debug mode.</p>
+
+    <h2>15. Final Status</h2>
+    <p><strong>Final Status:</strong> <span class="badge fail">Needs Fixes and Retesting</span></p>
+    <ul>
+      <li><strong>Much better after DB import:</strong> add property works; landlord + tenant portals load; finance/tenancy/docs OK.</li>
+      <li><strong>Still fix:</strong> APP_DEBUG/debugbar + HTTPS; notifications inbox query; repair categories allowlist.</li>
+      <li><strong>Login note:</strong> use <code>landlord.owner@resisquare.test</code> / <code>tenant@resisquare.test</code> (Password123!) until Sabir is recreated.</li>
+    </ul>
+
+    <h2>Evidence</h2>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/staging-retest-2026-09-14/01-dashboard.png" alt="Landlord dashboard">
+        <figcaption>Lara landlord dashboard after dump import</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/staging-retest-2026-09-14/03-property-created.png" alt="Property created">
+        <figcaption>FT-006 Fixed — Flat 12, 1 Baltimore Wharf saved</figcaption>
+      </figure>
+    </div>
+    <div class="pair">
+      <figure class="shot">
+        <img src="qa-evidence/staging-retest-2026-09-14/02-add-property.png" alt="Owners step">
+        <figcaption>Add-property advanced to Owners (no SQL 500)</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="qa-evidence/staging-retest-2026-09-14/04-tenant-portal.png" alt="Tenant portal">
+        <figcaption>Tina tenant portal — rent invoice + open repair visible</figcaption>
+      </figure>
+    </div>
+
+    <h2>16. Testing Limitations</h2>
+    <ul>
+      <li>Did not complete Stripe pay click, full contact wizard, or raise-repair submit (categories still 403).</li>
+      <li>Did not retest Sabir password reset.</li>
+      <li>Chrome only. No mobile / Safari / Firefox.</li>
+      <li>No app code changes in this run.</li>
+    </ul>
+
+    <footer>Report generated 14 September 2026 · Staging retest after DB import</footer>
+  </div>
+</body>
+</html>

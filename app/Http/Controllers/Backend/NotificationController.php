@@ -29,8 +29,13 @@ class NotificationController
         if ($request->filled('date_to')) $query->whereDate('created_at', '<=', $request->date('date_to'));
 
         $notifications = $query->latest()->paginate(25)->withQueryString();
+        // Select only `category` so DISTINCT + ORDER BY works under MySQL ONLY_FULL_GROUP_BY.
         $categories = $request->user()->notifications()->where('account_id', $accountId)
-            ->whereNotNull('category')->distinct()->orderBy('category')->pluck('category');
+            ->whereNotNull('category')
+            ->select('category')
+            ->distinct()
+            ->orderBy('category')
+            ->pluck('category');
 
         return view('backend.notifications.index', compact('notifications', 'categories'));
     }

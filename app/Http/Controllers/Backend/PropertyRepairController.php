@@ -1258,6 +1258,8 @@ class PropertyRepairController
     // }
     public function workOrderInvoice($repairId)
     {
+        abort_if(is_landlord_plan_user(), 403, 'Work orders and invoices are not available on the landlord plan.');
+
         // Fetch the repair details
         $repairIssue = RepairIssue::findOrFail($repairId);
         ensureModelBelongsToCurrentAccount($repairIssue);

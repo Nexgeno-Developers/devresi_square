@@ -24,6 +24,9 @@ class Account extends Model implements Auditable
         'currency',
         'timezone',
         'status',
+        'status_reason',
+        'status_changed_at',
+        'status_changed_by',
         'trial_started_at',
         'trial_ends_at',
         'stripe_customer_id',
@@ -37,6 +40,7 @@ class Account extends Model implements Auditable
     protected $casts = [
         'trial_started_at' => 'datetime',
         'trial_ends_at' => 'datetime',
+        'status_changed_at' => 'datetime',
         'registration_welcome_email_sent_at' => 'datetime',
         'subscription_activation_email_sent_at' => 'datetime',
         'onboarding_completed_at' => 'datetime',

@@ -27,11 +27,9 @@
                     <option value="rejected"  {{ request('status') == 'rejected'  ? 'selected' : '' }}>Rejected</option>
                 </select>
             </div>
-            <div class="col-md-2">
-                <button class="btn btn-sm btn-primary w-100">Filter</button>
-            </div>
-            <div class="col-md-2">
-                <a href="{{ route('admin.registrations.index') }}" class="btn btn-sm btn-outline-secondary w-100">Reset</a>
+            <div class="col-md-5 d-flex gap-2">
+                <button class="btn btn-sm btn-primary">Filter</button>
+                <a href="{{ route('admin.registrations.index') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
             </div>
         </form>
     </div>

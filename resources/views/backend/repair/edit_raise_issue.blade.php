@@ -10,7 +10,9 @@
 
     <div class="d-flex justify-content-between align-items-center mt-2 mt-md-4">
         <h1>Edit Repair Issue</h1>
-        <a class="btn btn-primary float-end" href="{{ route('admin.repair.workorder.invoice', $repairIssue->id) }}">{{ $repairIssue->workOrder ? 'Edit Work Order & Invoice' : 'Create Work Order & Invoice' }}</a>
+        @unless(is_landlord_plan_user())
+        <a class="btn btn-primary float-end" href="{{ route('admin.property_repairs.workorder.invoice', $repairIssue->id) }}">{{ $repairIssue->workOrder ? 'Edit Work Order & Invoice' : 'Create Work Order & Invoice' }}</a>
+        @endunless
         {{-- <button class=" float-end btn btn-primary" data-bs-toggle="modal" data-bs-target="#workOrderModal">{{ $repairIssue->workOrder ? 'Edit Work Order' : 'Create Work Order' }}</button> --}}
     </div>
 
@@ -723,7 +725,7 @@
 
         // Preload all categories via AJAX (similar to create form)
         $.ajax({
-            url: "{{ route('admin.get.repair.categories') }}",
+            url: "{{ route('admin.property_repairs.categories') }}",
             method: 'GET',
             async: false,
             success: function(data) {
@@ -936,7 +938,7 @@
         // // Fetch tenants for the given property.
         // if (initialSelectedProperties) {
         //     $.ajax({
-        //         url: "{{ route('admin.get.property_repairs.tenants') }}",
+        //         url: "{{ route('admin.property_repairs.tenants') }}",
         //         method: "GET",
         //         data: { property_id: initialSelectedProperties },
         //         success: function(data) {
@@ -960,7 +962,7 @@
         // Function to fetch tenants for a given property and update the dropdown
         function fetchTenants(propertyId, callback) {
             $.ajax({
-                url: "{{ route('admin.get.property_repairs.tenants') }}",
+                url: "{{ route('admin.property_repairs.tenants') }}",
                 method: "GET",
                 data: { property_id: propertyId },
                 success: function(data) {

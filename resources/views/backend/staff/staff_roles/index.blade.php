@@ -5,7 +5,7 @@
 <div class="aiz-titlebar mt-2 mb-3">
     <div class="row align-items-center">
         <div class="col-md-6">
-            <h1 class="h3">All Role</h1>
+            <h1 class="h3">All roles</h1>
         </div>
         @can('add staff role')
         <div class="col-md-6 text-end">

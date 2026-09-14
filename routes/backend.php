@@ -181,6 +181,8 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         Route::get('subscriptions', [\App\Http\Controllers\Backend\Saas\SubscriptionController::class, 'index'])->name('subscriptions.index');
         Route::get('subscriptions/{subscription}', [\App\Http\Controllers\Backend\Saas\SubscriptionController::class, 'show'])->name('subscriptions.show');
         Route::post('subscriptions/{subscription}/extend-trial', [\App\Http\Controllers\Backend\Saas\SubscriptionController::class, 'extendTrial'])->name('subscriptions.extend-trial');
+        Route::get('billing', [\App\Http\Controllers\Backend\Saas\PlatformBillingController::class, 'index'])->name('billing.index');
+        Route::post('accounts/{account}/status', [\App\Http\Controllers\Backend\Saas\AccountController::class, 'updateStatus'])->name('accounts.status');
     });
 
     Route::middleware(['current.account', 'account.status'])->group(function () {
@@ -485,10 +487,10 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
                 Route::get('/raise-repair-issue-create', 'repairRaise')->name('property_repairs.create');  // List all property repairs
                 Route::get('/repair-category/{categoryId}/subcategories', 'getSubCategories')->name('property_repairs.getSubCategories');
                 Route::post('/raise-issue-store', 'raiseIssueStore')->name(name: 'property_repairs.store');  // List all property repairs
-                Route::post('/repair/check-last-step', 'checkLastStep')->name('repair.checkLastStep');
-                Route::get('/get-repair-categories', 'getCategories')->name('get.repair.categories');
-                Route::get('/selected-property/tenants', 'getPropertyTenants')->name('get.property_repairs.tenants');
-                Route::get('/repair/{repair}/workorder-invoice', 'workOrderInvoice')->name('repair.workorder.invoice');
+                Route::post('/repair/check-last-step', 'checkLastStep')->name('property_repairs.checkLastStep');
+                Route::get('/get-repair-categories', 'getCategories')->name('property_repairs.categories');
+                Route::get('/selected-property/tenants', 'getPropertyTenants')->name('property_repairs.tenants');
+                Route::get('/repair/{repair}/workorder-invoice', 'workOrderInvoice')->name('property_repairs.workorder.invoice');
                 Route::post('/quote-contractors', 'storeQuoteContractor')->name('property_repairs.quote_contractors.store');
                 Route::post('/{repairIssue}/quote-requests', 'sendQuoteRequests')->name('property_repairs.quote_requests.store');
                 Route::post('/{repairIssue}/contractor-assignments/{assignment}/finalize', 'finalizeContractor')->name('property_repairs.contractors.finalize');

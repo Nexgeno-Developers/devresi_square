@@ -701,15 +701,16 @@ class UserController
 
                     $user->update($validatedData);
 
-                    // ✅ Mark as new only if email is present
-                    $isNewUser = ! empty($user->email);
+                    // Real email means personal step completed (exclude wizard draft addresses).
+                    $isNewUser = filled($user->email)
+                        && ! str_ends_with((string) $user->email, '@resisquare.invalid');
                 }
             } else {
                 // Create new user only empty user id
                 if (empty($user_id)) {
                     $validatedData['quick_step'] = $request->step;
                     Log::info('Creating new user', $validatedData);
-                    $user = User::create(array_merge($validatedData, ['added_by' => Auth::id()]));
+                    $user = User::create($validatedData);
                     $this->syncCurrentAccountMembership($user, $request->input('role_ids', []));
                 }
             }

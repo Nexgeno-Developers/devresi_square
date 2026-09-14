@@ -25,6 +25,8 @@
                 <tr><th>Billing phone</th><td>{{ $account->billing_phone ?: '-' }}</td></tr>
                 <tr><th>Currency</th><td>{{ $account->currency ?: 'GBP' }}</td></tr>
                 <tr><th>Status</th><td>{{ ucwords(str_replace('_', ' ', $account->status)) }}</td></tr>
+                <tr><th>Status reason</th><td>{{ $account->status_reason ?: '-' }}</td></tr>
+                <tr><th>Status changed</th><td>{{ $account->status_changed_at ? $account->status_changed_at->format('Y-m-d H:i') : '-' }}</td></tr>
                 <tr><th>Trial started</th><td>{{ $account->trial_started_at ? $account->trial_started_at->format('Y-m-d H:i') : '-' }}</td></tr>
                 <tr><th>Trial ends</th><td>{{ $account->trial_ends_at ? $account->trial_ends_at->format('Y-m-d H:i') : '-' }}</td></tr>
                 <tr><th>Created</th><td>{{ $account->created_at ? $account->created_at->format('Y-m-d H:i') : '-' }}</td></tr>
@@ -38,7 +40,7 @@
                 <tr><th>Email</th><td>{{ $account->owner?->email ?: '-' }}</td></tr>
                 <tr><th>Phone</th><td>{{ $account->owner?->phone ?: '-' }}</td></tr>
                 <tr><th>User type</th><td>{{ $account->owner?->user_type ?: '-' }}</td></tr>
-                <tr><th>Status</th><td>{{ $account->owner?->status ?: '-' }}</td></tr>
+                <tr><th>Status</th><td>{{ $account->owner === null ? '-' : ($account->owner->status ? 'Active' : 'Inactive') }}</td></tr>
             </table>
         </div>
 
@@ -55,6 +57,31 @@
             @else
                 <div class="alert alert-secondary">No company profile linked.</div>
             @endif
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="mb-3">Account actions</h5>
+            <p class="text-muted small mb-3">These change workspace access only. They do not open Stripe checkout, rent Finance, or Accounting.</p>
+            <form action="{{ route('backend.saas.accounts.status', $account) }}" method="POST" class="row g-3 align-items-end">
+                @csrf
+                <div class="col-md-6">
+                    <label class="form-label" for="status-reason">Reason</label>
+                    <textarea id="status-reason" name="reason" class="form-control" rows="2" required minlength="8" placeholder="Required audit note">{{ old('reason') }}</textarea>
+                </div>
+                <div class="col-md-6 d-flex flex-wrap gap-2">
+                    @if(in_array($account->status, ['trialing', 'active', 'past_due'], true))
+                        <button type="submit" name="action" value="suspend" class="btn btn-warning">Suspend</button>
+                    @endif
+                    @if($account->status === 'suspended')
+                        <button type="submit" name="action" value="reactivate" class="btn btn-success">Reactivate</button>
+                    @endif
+                    @if($account->status !== 'cancelled')
+                        <button type="submit" name="action" value="cancel" class="btn btn-danger">Cancel account</button>
+                    @endif
+                </div>
+            </form>
         </div>
     </div>
 

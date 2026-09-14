@@ -100,6 +100,61 @@ class AccountController extends BaseSaasController
         ));
     }
 
+    public function updateStatus(Request $request, Account $account)
+    {
+        $data = $request->validate([
+            'action' => ['required', 'in:suspend,reactivate,cancel'],
+            'reason' => ['required', 'string', 'min:8', 'max:1000'],
+        ]);
+
+        $current = (string) $account->status;
+        $action = $data['action'];
+
+        if ($action === 'suspend' && ! in_array($current, ['trialing', 'active', 'past_due'], true)) {
+            flash('Only trialing, active or past-due accounts can be suspended.')->error();
+
+            return back();
+        }
+
+        if ($action === 'reactivate' && $current !== 'suspended') {
+            flash('Only a suspended account can be reactivated here.')->error();
+
+            return back();
+        }
+
+        if ($action === 'cancel' && $current === 'cancelled') {
+            flash('This account is already cancelled.')->error();
+
+            return back();
+        }
+
+        $next = match ($action) {
+            'suspend' => 'suspended',
+            'cancel' => 'cancelled',
+            'reactivate' => ($account->trial_ends_at && $account->trial_ends_at->isFuture()) ? 'trialing' : 'active',
+        };
+
+        $account->forceFill([
+            'status' => $next,
+            'status_reason' => $data['reason'],
+            'status_changed_at' => now(),
+            'status_changed_by' => $request->user()->id,
+        ])->save();
+
+        if ($action === 'cancel') {
+            $account->subscriptions()
+                ->whereIn('status', ['trialing', 'active', 'past_due'])
+                ->update([
+                    'status' => 'cancelled',
+                    'cancelled_at' => now(),
+                ]);
+        }
+
+        flash('Account status updated to '.$next.'.')->success();
+
+        return back();
+    }
+
     private function limitRows($subscription): array
     {
         $plan = $subscription?->plan;

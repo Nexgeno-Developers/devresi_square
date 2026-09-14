@@ -331,6 +331,11 @@
                     @slot('link') {{ route('backend.saas.subscriptions.index') }} @endslot
                     @slot('link_name') Subscriptions @endslot
                 @endcomponent
+                @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ request()->routeIs('backend.saas.billing.*') ? 'active submenu-link' : 'submenu-link' }} @endslot
+                    @slot('link') {{ route('backend.saas.billing.index') }} @endslot
+                    @slot('link_name') SaaS Billing @endslot
+                @endcomponent
             </ul>
         </li>
         @endif
