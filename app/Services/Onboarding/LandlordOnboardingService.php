@@ -77,7 +77,23 @@ class LandlordOnboardingService
 
     public function shouldIncludeOverlay(?User $user, ?Account $account): bool
     {
-        return $this->shouldShow($user, $account) || $this->isAddingProperty($user, $account);
+        // First-run (no properties yet): keep the setup overlay available.
+        if ($this->shouldShow($user, $account)) {
+            return true;
+        }
+
+        // "Add another property" mode must not cover Finance/Notifications/etc.
+        // Only show it on the property/onboarding surfaces while the session is active.
+        if (! $this->isAddingProperty($user, $account)) {
+            return false;
+        }
+
+        $route = request()->route()?->getName() ?? '';
+
+        return $route === 'backend.dashboard'
+            || $route === 'backend.home'
+            || str_starts_with($route, 'admin.properties.')
+            || str_starts_with($route, 'admin.onboarding.landlord.');
     }
 
     public function isAddingProperty(?User $user, ?Account $account): bool
