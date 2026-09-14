@@ -1242,10 +1242,10 @@
                 status: { required: true },
                 estimated_price: { required: true, number: true },
                 vat_type: { required: true },
-                tenant_availability: { required: true },
-                access_details: { required: true },
+                tenant_availability: { required: {{ is_landlord_plan_user() ? 'false' : 'true' }} },
+                access_details: { required: {{ is_landlord_plan_user() ? 'false' : 'true' }} },
                 tenant_id: { required: true },
-                "property_managers[]": { required: true }
+                "property_managers[]": { required: {{ is_landlord_plan_user() ? 'false' : 'true' }} }
             },
             errorPlacement: function(error, element) {
                 error.insertAfter(element.closest('.form-group'));

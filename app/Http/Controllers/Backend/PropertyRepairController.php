@@ -842,7 +842,7 @@ class PropertyRepairController
             'access_details' => 'nullable|string',
             'estimated_price' => 'required|numeric',
             'vat_type' => 'required|in:inclusive,exclusive',
-            'vat_percentage' => 'required_if:vat_type,exclusive|numeric',  // VAT percentage is required if VAT type is 'exclusive'
+            'vat_percentage' => 'nullable|numeric|required_if:vat_type,exclusive',  // VAT percentage is required if VAT type is 'exclusive'
             'property_managers' => 'required|array',
             'tenant_id' => 'nullable',
             'repair_photos' => 'nullable|string',  // The input is a string of IDs

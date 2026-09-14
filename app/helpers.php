@@ -584,13 +584,33 @@ if (!function_exists('getFormattedRepairNavigation')) {
         // Decode the repair_navigation JSON string
         $categories = json_decode($navigationString, true);
 
+        if (! is_array($categories)) {
+            return is_string($navigationString) ? $navigationString : '';
+        }
+
         // Initialize an empty array to store category names
         $categoryNames = [];
 
         // Loop through each level in the decoded categories array
         foreach ($categories as $level => $categoryId) {
+            // Landlord raise-repair stores [{id, name}, ...] rather than plain IDs.
+            if (is_array($categoryId)) {
+                $name = $categoryId['name'] ?? null;
+                $id = $categoryId['id'] ?? null;
+                if (filled($name)) {
+                    $categoryNames[] = $name;
+                    continue;
+                }
+                $categoryId = $id;
+            }
+
+            if (! is_numeric($categoryId)) {
+                $categoryNames[] = is_string($categoryId) ? $categoryId : 'Unknown Category';
+                continue;
+            }
+
             // Fetch the category name by ID
-            $category = \App\Models\RepairCategory::find($categoryId);
+            $category = \App\Models\RepairCategory::find((int) $categoryId);
 
             // If category exists, append the name; otherwise, append the ID
             if ($category) {
