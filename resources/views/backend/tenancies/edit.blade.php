@@ -141,7 +141,7 @@
                 <div class="mb-3">
                     <label class="control-label" for="tenancies-move_in">Move In</label>
                     <input type="date" id="tenancies-move_in" class="form-control" name="move_in"
-                        value="{{ $move_in }}" required>
+                        value="{{ $move_in ? \Illuminate\Support\Carbon::parse($move_in)->format('Y-m-d') : '' }}" required>
                 </div>
             </div>
             <div class="col">
@@ -162,7 +162,7 @@
                 <div class="mb-3">
                     <label class="control-label" for="tenancies-move_out">Move Out</label>
                     <input type="date" id="tenancies-move_out" class="form-control" name="move_out"
-                        value="{{ $move_out }}">
+                        value="{{ $move_out ? \Illuminate\Support\Carbon::parse($move_out)->format('Y-m-d') : '' }}">
                 </div>
             </div>
         </div>

@@ -51,9 +51,9 @@
                             {{ $tenancy->property->city }}
                         @else
                             <span class="text-warning">No property</span>
-                            @can('manage tenancies')
+                            @if(is_landlord_plan_user() || auth()->user()?->can('manage tenancies'))
                                 <a href="{{ route('admin.tenancies.edit', $tenancy->id) }}" class="small d-block">Link property</a>
-                            @endcan
+                            @endif
                         @endif
                     </td>
                     <td>
@@ -70,9 +70,9 @@
                     <td>
                         <div class="d-flex gap-1">
                             <a href="{{ route('admin.tenancies.show', $tenancy->id) }}" class="btn btn-sm btn-outline-info">View</a>
-                            @can('manage tenancies')
+                            @if(is_landlord_plan_user() || auth()->user()?->can('manage tenancies'))
                             <a href="{{ route('admin.tenancies.edit', $tenancy->id) }}" class="btn btn-sm btn-outline-warning">Edit</a>
-                            @endcan
+                            @endif
                             <a href="{{ route('admin.tenancies.rent-ledger', $tenancy->id) }}" class="btn btn-sm btn-outline-primary">Rent Ledger</a>
                         </div>
                     </td>
