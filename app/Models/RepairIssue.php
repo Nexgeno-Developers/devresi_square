@@ -82,6 +82,19 @@ class RepairIssue extends Model
     protected static function boot()
     {
         parent::boot();
+
+        static::creating(function (RepairIssue $repairIssue) {
+            if (blank($repairIssue->priority)) {
+                $repairIssue->priority = 'medium';
+            }
+            if (blank($repairIssue->sub_status)) {
+                $repairIssue->sub_status = 'Pending';
+            }
+            if (blank($repairIssue->status)) {
+                $repairIssue->status = 'Pending';
+            }
+        });
+
         static::deleting(function ($repairIssue) {
             $repairIssue->repairPhotos()->delete();
         });

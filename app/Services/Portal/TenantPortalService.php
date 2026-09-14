@@ -198,6 +198,7 @@ class TenantPortalService
             'repair_navigation' => json_encode([$category->name]),
             'description' => $payload['description'],
             'priority' => $priority,
+            'sub_status' => 'Pending',
             'status' => 'Pending',
             'reference_number' => generateReferenceNumber(RepairIssue::class, 'reference_number', 'RESISQRPR'),
             'created_by' => $user->id,

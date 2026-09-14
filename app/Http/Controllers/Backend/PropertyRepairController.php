@@ -1142,6 +1142,8 @@ class PropertyRepairController
             'repair_navigation' => json_encode($categories),
             'repair_category_id' => $request->repair_category_id,
             'description' => $request->description,
+            'priority' => $request->input('priority', 'medium'),
+            'sub_status' => 'Pending',
             'status' => 'Pending',
             'reference_number' => $repairReference,  // Store the reference number
         ]);
