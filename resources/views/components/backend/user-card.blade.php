@@ -7,6 +7,9 @@
         <div class="pvc_user_name">
             @if($userName)
                 {{ $userName }}
+                @if(is_string($email) && str_ends_with($email, '@resisquare.invalid'))
+                    <span class="badge bg-secondary ms-1">Draft</span>
+                @endif
             @else
                 <em>User name not available</em>
             @endif

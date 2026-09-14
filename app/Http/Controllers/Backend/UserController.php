@@ -1580,13 +1580,9 @@ class UserController
 
     private function scopeContactsToCurrentUser($query)
     {
-        $this->scopeUsersToCurrentAccount($query);
-
-        if (auth()->user()?->hasRole('Landlord')) {
-            $query->where('users.created_by', auth()->id());
-        }
-
-        return $query;
+        // Account membership is the source of truth for landlord contacts.
+        // Do not also filter by created_by — seeded/invited tenants would vanish from the list.
+        return $this->scopeUsersToCurrentAccount($query);
     }
 
     private function ensureUserAccessible(User $user): void
