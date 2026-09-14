@@ -109,7 +109,10 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-muted py-4">No portal users found for this account.</td>
+                            <td colspan="7" class="text-center py-4">
+                                <div class="fw-semibold mb-1">No portal users yet</div>
+                                <p class="text-muted mb-0">Use the invite form above to give a tenant access.</p>
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>

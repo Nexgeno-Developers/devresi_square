@@ -51,7 +51,11 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5" class="text-center text-muted">No repair issues found.</td>
+                    <td colspan="5" class="text-center py-4">
+                        <div class="fw-semibold mb-1">No repair issues yet</div>
+                        <p class="text-muted mb-3">Raise a repair for a property, or wait for a tenant to report one.</p>
+                        <a href="{{ route('admin.property_repairs.create') }}" class="btn btn-outline-primary btn-sm">Raise repair</a>
+                    </td>
                 </tr>
             @endforelse
         </tbody>

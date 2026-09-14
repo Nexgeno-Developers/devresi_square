@@ -34,6 +34,16 @@
     <form id="editTenancyForm" action="{{ route('admin.tenancies.update', $tenancy->id) }}" method="POST"
         enctype="multipart/form-data">
         @csrf
+        @if ($errors->any())
+            <div class="alert alert-danger">
+                <div class="fw-semibold mb-1">Please fix the highlighted problems</div>
+                <ul class="mb-0 ps-3">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
         @php $isLandlord = is_landlord_plan_user(); @endphp
         @if($isLandlord || empty($tenancy->property_id) || ($properties ?? collect())->isNotEmpty())
             <div class="form-group mb-3">
@@ -62,14 +72,20 @@
                 Quick Add New Tenant
             </button>
             <label for="tenant_id">Select Tenants</label>
-            <select name="user_id[]" id="tenant_id" multiple class="form-control select2">
+            <select name="user_id[]" id="tenant_id" multiple class="form-control select2 @error('user_id') is-invalid @enderror">
                 @foreach ($tenants as $user)
                     <option value="{{ $user->id }}"
-                        {{ in_array($user->id, $tenancy->tenantMembers->pluck('user_id')->toArray()) ? 'selected' : '' }}>
+                        {{ in_array($user->id, old('user_id', $tenancy->tenantMembers->pluck('user_id')->toArray())) ? 'selected' : '' }}>
                         {{ $user->name }}
                     </option>
                 @endforeach
             </select>
+            @error('user_id')
+                <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
+            @error('is_main_person')
+                <div class="text-danger small mt-1">{{ $message }}</div>
+            @enderror
         </div>
 
         <div id="tenant-options" class="mt-3" data-current-main="{{ $tenancy->tenantMembers->where('is_main_person', 1)->first()?->user_id ?? '' }}"></div>
@@ -140,8 +156,11 @@
             <div class="col">
                 <div class="mb-3">
                     <label class="control-label" for="tenancies-move_in">Move In</label>
-                    <input type="date" id="tenancies-move_in" class="form-control" name="move_in"
-                        value="{{ $move_in ? \Illuminate\Support\Carbon::parse($move_in)->format('Y-m-d') : '' }}" required>
+                    <input type="date" id="tenancies-move_in" class="form-control @error('move_in') is-invalid @enderror" name="move_in"
+                        value="{{ old('move_in', $move_in ? \Illuminate\Support\Carbon::parse($move_in)->format('Y-m-d') : '') }}" required>
+                    @error('move_in')
+                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                    @enderror
                 </div>
             </div>
             <div class="col">
@@ -196,8 +215,11 @@
                 <div class="mb-3">
                     <div class="form-group field-tenancies-rent">
                         <label class="control-label" for="tenancies-rent">Rent</label>
-                        <input type="number" inputmode="numeric" pattern="[0-9]" id="tenancies-rent"
-                            class="form-control" name="rent" value="{{ $rent }}">
+                        <input type="number" inputmode="decimal" id="tenancies-rent"
+                            class="form-control @error('rent') is-invalid @enderror" name="rent" value="{{ old('rent', $rent) }}">
+                        @error('rent')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
             </div>
@@ -206,7 +228,10 @@
                     <div class="form-group field-tenancies-deposit">
                         <label class="control-label" for="tenancies-deposit">Deposit</label>
                         <input type="number" inputmode="numeric" pattern="[0-9]" id="tenancies-deposit"
-                            class="form-control" name="deposit" value="{{ $deposit }}" readonly>
+                            class="form-control @error('deposit') is-invalid @enderror" name="deposit" value="{{ old('deposit', $deposit) }}" readonly>
+                        @error('deposit')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
             </div>

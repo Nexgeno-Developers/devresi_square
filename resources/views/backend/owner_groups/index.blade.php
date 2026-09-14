@@ -36,7 +36,11 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5">No owner groups yet. Add a property, then create an owner group.</td>
+                    <td colspan="5" class="text-center py-4">
+                        <div class="fw-semibold mb-1">No owner groups yet</div>
+                        <p class="text-muted mb-3">Add a property first, then group the owners who share it.</p>
+                        <a href="{{ route('admin.owner-groups.create') }}" class="btn btn-outline-primary btn-sm">Add owner group</a>
+                    </td>
                 </tr>
             @endforelse
         </tbody>

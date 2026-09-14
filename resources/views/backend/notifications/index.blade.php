@@ -26,7 +26,16 @@
                     </div>
                 </a>
             @empty
-                <div class="p-4 text-muted">No notifications match these filters.</div>
+                <div class="p-4 text-center">
+                    @if(request()->hasAny(['state', 'category', 'priority', 'date_from', 'date_to']))
+                        <div class="fw-semibold mb-1">No notifications match these filters</div>
+                        <p class="text-muted mb-3">Clear filters to see everything in your inbox.</p>
+                        <a href="{{ route('backend.notifications.index') }}" class="btn btn-outline-secondary btn-sm">Clear filters</a>
+                    @else
+                        <div class="fw-semibold mb-1">No notifications yet</div>
+                        <p class="text-muted mb-0">You’ll see invites, repairs, and rent updates here when they happen.</p>
+                    @endif
+                </div>
             @endforelse
         </div>
     </div>

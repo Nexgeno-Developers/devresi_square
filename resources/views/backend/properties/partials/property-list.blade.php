@@ -90,8 +90,8 @@
     <div class="pcc-empty-list">
         <h5>No properties yet</h5>
         <p>Get started by adding your first property.</p>
-        @can('create properties')
+        @if(is_landlord_plan_user() || auth()->user()?->can('create properties'))
             <a href="{{ property_create_url() }}" class="pcc-btn-ink">Add property</a>
-        @endcan
+        @endif
     </div>
 @endif

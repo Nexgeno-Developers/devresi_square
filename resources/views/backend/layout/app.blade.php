@@ -98,7 +98,7 @@
     @stack('scripts')
     <script>
         @foreach (session('flash_notification', collect())->toArray() as $message)
-            AIZ.plugins.notify('{{ $message['level'] }}', '{{ $message['message'] }}');
+            AIZ.plugins.notify(@json($message['level']), @json($message['message']));
         @endforeach
     </script>
     @yield('page.scripts')
@@ -136,7 +136,7 @@
             // Check if there are validation errors
             @if ($errors->any())
                 @foreach ($errors->all() as $error)
-                    AIZ.plugins.notify('danger', "{{ $error }}", {
+                    AIZ.plugins.notify('danger', @json($error), {
                         "closeButton": true,
                         "progressBar": true,
                         "positionClass": "toast-top-right",
@@ -148,7 +148,27 @@
 
             // Check if a custom error message is present
             @if (session('error'))
-                AIZ.plugins.notify('danger', "{{ session('error') }}", {
+                AIZ.plugins.notify('danger', @json(session('error')), {
+                    "closeButton": true,
+                    "progressBar": true,
+                    "positionClass": "toast-top-right",
+                    "timeOut": 7000,
+                    "extendedTimeOut": 1000
+                });
+            @endif
+
+            @if (session('success'))
+                AIZ.plugins.notify('success', @json(session('success')), {
+                    "closeButton": true,
+                    "progressBar": true,
+                    "positionClass": "toast-top-right",
+                    "timeOut": 7000,
+                    "extendedTimeOut": 1000
+                });
+            @endif
+
+            @if (session('warning'))
+                AIZ.plugins.notify('warning', @json(session('warning')), {
                     "closeButton": true,
                     "progressBar": true,
                     "positionClass": "toast-top-right",
