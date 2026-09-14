@@ -28,6 +28,15 @@
                     <a href="{{ route('admin.tenancies.create') }}" class="btn lw-btn-primary">Add tenancy</a>
                 </div>
             @else
+                @if ($errors->any())
+                    <div class="alert alert-danger" role="alert">
+                        <ul class="mb-0 ps-3">
+                            @foreach ($errors->all() as $message)
+                                <li>{{ $message }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
                 <form action="{{ route('admin.portal-access.invite') }}" method="POST" class="row g-3">
                     @csrf
                     <div class="col-md-6">
@@ -57,9 +66,12 @@
                     </div>
                     <div class="col-md-3">
                         <label for="invite_email" class="form-label">Email</label>
-                        <input type="email" name="email" id="invite_email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email') }}" required maxlength="255">
+                        <input type="email" name="email" id="invite_email" class="form-control @error('email') is-invalid @enderror @error('user') is-invalid @enderror" value="{{ old('email') }}" required maxlength="255">
                         @error('email')
                             <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                        @error('user')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
                         @enderror
                     </div>
                     <div class="col-12">

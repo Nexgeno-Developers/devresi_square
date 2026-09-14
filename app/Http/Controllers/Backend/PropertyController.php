@@ -44,6 +44,10 @@ class PropertyController
 
     public function index(Request $request)
     {
+        if (is_tenant_portal_user()) {
+            return redirect()->route('backend.home');
+        }
+
         // Fetch all properties
         // $properties = Property::all();
         // Fetch all properties in descending order
@@ -719,6 +723,10 @@ class PropertyController
     // Show the form for creating a new property.
     public function create()
     {
+        if (is_tenant_portal_user()) {
+            return redirect()->route('backend.home');
+        }
+
         if ($response = $this->redirectIfSaasLimitDenied('property', 'admin.properties.index')) {
             return $response;
         }
@@ -729,6 +737,10 @@ class PropertyController
     // show quick form
     public function quick()
     {
+        if (is_tenant_portal_user()) {
+            return redirect()->route('backend.home');
+        }
+
         if ($response = $this->redirectIfSaasLimitDenied('property', 'admin.properties.index')) {
             return $response;
         }
@@ -1167,6 +1179,10 @@ class PropertyController
 
     public function edit($id)
     {
+        if (is_tenant_portal_user()) {
+            return redirect()->route('backend.home');
+        }
+
         $property = Property::findOrFail($id); // Fetch property by ID
         ensureModelBelongsToCurrentAccount($property);
         $this->authorizePortalPropertyEdit($property);
