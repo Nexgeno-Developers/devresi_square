@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\ValidationException;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 use Spatie\Permission\Models\Role;
 
@@ -1073,6 +1074,7 @@ class PropertyRepairController
             'repair_category_id' => 'required|integer|exists:repair_categories,id',
             'repair_navigation' => 'required|json',
             'description' => 'required|string',
+            'tenant_id' => 'nullable|integer|exists:users,id',
         ]);
 
         // Decode JSON categories
@@ -1101,6 +1103,28 @@ class PropertyRepairController
         ensureModelBelongsToCurrentAccount($property);
         $this->ensurePortalCanAccessPropertyForRepair($property);
 
+        $tenantId = null;
+        if (is_tenant_portal_user()) {
+            $tenantId = Auth::id();
+        } elseif ($request->filled('tenant_id')) {
+            $tenantId = (int) $request->input('tenant_id');
+        } else {
+            $tenantId = TenantMember::query()
+                ->where('account_id', $property->account_id ?: current_account_id())
+                ->whereHas('tenancy', function ($query) use ($propertyId) {
+                    $query->where('property_id', $propertyId)
+                        ->where('status', 'Active');
+                })
+                ->orderByDesc('is_main_person')
+                ->value('user_id');
+        }
+
+        if (! $tenantId) {
+            throw ValidationException::withMessages([
+                'tenant_id' => 'Select a tenant for this repair, or add an active tenancy on the property first.',
+            ]);
+        }
+
         // dd([
         //     'original_property_id' => $request->property_id,
         //     'converted_property_id' => $propertyId,
@@ -1114,6 +1138,7 @@ class PropertyRepairController
         $repair = RepairIssue::create([
             'account_id' => $property->account_id ?: current_account_id(),
             'property_id' => $propertyId,
+            'tenant_id' => $tenantId,
             'repair_navigation' => json_encode($categories),
             'repair_category_id' => $request->repair_category_id,
             'description' => $request->description,
