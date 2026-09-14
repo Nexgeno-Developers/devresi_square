@@ -14,11 +14,24 @@ use Illuminate\Validation\ValidationException;
 
 class OwnerGroupController
 {
+    private function denyTenantPortal(): ?\Illuminate\Http\RedirectResponse
+    {
+        if (is_tenant_portal_user()) {
+            return redirect()->route('backend.home');
+        }
+
+        return null;
+    }
+
     /**
      * Display a listing of the OwnerGroup.
      */
     public function index()
     {
+        if ($redirect = $this->denyTenantPortal()) {
+            return $redirect;
+        }
+
         $ownerGroups = $this->ownerGroupsForCurrentAccount()
             ->with('property')
             ->get();
@@ -31,6 +44,10 @@ class OwnerGroupController
      */
     public function create()
     {
+        if ($redirect = $this->denyTenantPortal()) {
+            return $redirect;
+        }
+
         // $users = User::all();
         // Fetch users where category_id is 1
         // $users = User::where('category_id', 1)->get();
@@ -43,6 +60,10 @@ class OwnerGroupController
 
     public function createGroup()
     {
+        if ($redirect = $this->denyTenantPortal()) {
+            return $redirect;
+        }
+
         // $users = User::all();
         // Fetch users where category_id is 1
         // $users = User::where('category_id', 1)->get();
@@ -56,6 +77,10 @@ class OwnerGroupController
      */
     public function store(Request $request)
     {
+        if ($redirect = $this->denyTenantPortal()) {
+            return $redirect;
+        }
+
         $validatedData = $request->validate([
             'user_id' => 'required|exists:users,id',
             'property_id' => 'required|exists:properties,id',
@@ -195,6 +220,10 @@ class OwnerGroupController
      */
     public function show($id)
     {
+        if ($redirect = $this->denyTenantPortal()) {
+            return $redirect;
+        }
+
         $ownerGroup = $this->ownerGroupsForCurrentAccount()
             ->with('property', 'estateCharges')
             ->findOrFail($id);
@@ -209,6 +238,10 @@ class OwnerGroupController
      */
     public function edit(Request $request, $id)
     {
+        if ($redirect = $this->denyTenantPortal()) {
+            return $redirect;
+        }
+
         $ownerGroup = $this->ownerGroupsForCurrentAccount()
             ->with('ownerGroupUsers.user')
             ->findOrFail($id);
@@ -450,6 +483,10 @@ class OwnerGroupController
      */
     public function update(Request $request, $ownerGroup)
     {
+        if ($redirect = $this->denyTenantPortal()) {
+            return $redirect;
+        }
+
         $ownerGroup = $this->ownerGroupsForCurrentAccount()
             ->with('ownerGroupUsers')
             ->findOrFail($ownerGroup);

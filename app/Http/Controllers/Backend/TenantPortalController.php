@@ -75,6 +75,28 @@ class TenantPortalController extends Controller
         ]);
     }
 
+    public function showInvoice(Request $request, TenantPortalService $portal, RentStripeCheckoutService $rentCheckout, RentInvoice $rentInvoice): View
+    {
+        $user = $request->user();
+        $accountId = current_account_id();
+        $this->assertTenantInvoice($portal, $user, $accountId, $rentInvoice);
+
+        $rentInvoice->load(['property', 'tenancy', 'payments']);
+
+        $fee = null;
+        $cardReady = $rentCheckout->isConfigured();
+        if ($cardReady && $rentInvoice->isOpen()) {
+            $fee = $rentCheckout->feeBreakdown((float) $rentInvoice->balance);
+        }
+
+        return view('backend.tenant.portal.invoice-show', [
+            'invoice' => $rentInvoice,
+            'cardReady' => $cardReady,
+            'fee' => $fee,
+            'print' => $request->boolean('print'),
+        ]);
+    }
+
     public function pay(Request $request, TenantPortalService $portal, RentStripeCheckoutService $rentCheckout, RentInvoice $rentInvoice): Response
     {
         $user = $request->user();

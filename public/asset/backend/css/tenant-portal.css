@@ -216,9 +216,64 @@
     margin: 0;
 }
 
+.tp-link {
+    color: var(--tp-ink);
+    font-weight: 650;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.tp-pill.is-unpaid {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.tp-pill.is-partial {
+    background: #e0e7ff;
+    color: #3730a3;
+}
+
+.tp-pill.is-paid {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.tp-pill.is-overdue {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.tp-pill.is-void {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.tp-row-overdue td:first-child .tp-link {
+    color: #991b1b;
+}
+
+.tp-invoice-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.tp-invoice-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.tp-invoice-sheet h2 {
+    font-size: 22px;
+}
+
 @media (max-width: 900px) {
     .tp-metrics,
-    .tp-grid {
+    .tp-grid,
+    .tp-invoice-grid {
         grid-template-columns: 1fr;
     }
 
@@ -228,5 +283,28 @@
 
     .tp-dl {
         grid-template-columns: 1fr;
+    }
+}
+
+@media print {
+    .tp-no-print,
+    aside,
+    .navbar,
+    .phpdebugbar,
+    .dropdown,
+    .btn,
+    .tp-btn {
+        display: none !important;
+    }
+
+    .tenant-portal {
+        padding: 0;
+        background: #fff;
+    }
+
+    .tp-card {
+        border: 0;
+        box-shadow: none;
+        padding: 0;
     }
 }

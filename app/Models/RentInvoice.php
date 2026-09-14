@@ -82,6 +82,29 @@ class RentInvoice extends Model
             && (float) $this->balance > 0;
     }
 
+    public function isOverdue(): bool
+    {
+        if (! $this->isOpen() || ! $this->due_date) {
+            return false;
+        }
+
+        return $this->due_date->endOfDay()->lt(now());
+    }
+
+    public function statusLabel(): string
+    {
+        if ($this->isOverdue()) {
+            return 'Overdue';
+        }
+
+        return match ($this->status) {
+            self::STATUS_PAID => 'Paid',
+            self::STATUS_PARTIAL => 'Part paid',
+            self::STATUS_VOID => 'Void',
+            default => 'Unpaid',
+        };
+    }
+
     public function canVoid(): bool
     {
         $hasPayments = $this->relationLoaded('payments')

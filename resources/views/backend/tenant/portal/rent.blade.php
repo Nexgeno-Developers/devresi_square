@@ -40,23 +40,35 @@
                         @php
                             $open = $invoice->isOpen();
                             $fee = $fees[$invoice->id] ?? null;
+                            $statusClass = match (true) {
+                                $invoice->isOverdue() => 'is-overdue',
+                                $invoice->status === \App\Models\RentInvoice::STATUS_PAID => 'is-paid',
+                                $invoice->status === \App\Models\RentInvoice::STATUS_PARTIAL => 'is-partial',
+                                $invoice->status === \App\Models\RentInvoice::STATUS_VOID => 'is-void',
+                                default => 'is-unpaid',
+                            };
                         @endphp
-                        <tr>
-                            <td>{{ $invoice->invoice_no ?: '#'.$invoice->id }}</td>
+                        <tr class="{{ $invoice->isOverdue() ? 'tp-row-overdue' : '' }}">
+                            <td>
+                                <a href="{{ route('tenant.rent.show', $invoice) }}" class="tp-link">
+                                    {{ $invoice->invoice_no ?: '#'.$invoice->id }}
+                                </a>
+                            </td>
                             <td>{{ $invoice->invoice_date ? \Carbon\Carbon::parse($invoice->invoice_date)->format('d M Y') : '—' }}</td>
                             <td>{{ $invoice->due_date ? \Carbon\Carbon::parse($invoice->due_date)->format('d M Y') : '—' }}</td>
                             <td>£{{ number_format((float) ($invoice->total_amount ?? 0), 2) }}</td>
                             <td>£{{ number_format((float) ($invoice->balance_amount ?? $invoice->total_amount ?? 0), 2) }}</td>
-                            <td><span class="tp-pill">{{ ucfirst((string) ($invoice->status ?: 'issued')) }}</span></td>
+                            <td><span class="tp-pill {{ $statusClass }}">{{ $invoice->statusLabel() }}</span></td>
                             <td class="tp-table-action">
+                                <a href="{{ route('tenant.rent.show', $invoice) }}" class="tp-btn tp-btn-ghost">View</a>
                                 @if($open && $cardReady)
-                                    <form action="{{ route('tenant.rent.pay', $invoice) }}" method="POST">
+                                    <form action="{{ route('tenant.rent.pay', $invoice) }}" method="POST" class="d-inline">
                                         @csrf
                                         <button type="submit" class="tp-btn">Pay £{{ number_format((float) ($fee['total'] ?? $invoice->balance), 2) }}</button>
-                                        @if($fee && $fee['fee'] >= 0.01)
-                                            <p class="tp-muted mt-1 mb-0">£{{ number_format($fee['rent'], 2) }} rent + £{{ number_format($fee['fee'], 2) }} {{ $fee['fee_label'] }}</p>
-                                        @endif
                                     </form>
+                                    @if($fee && $fee['fee'] >= 0.01)
+                                        <p class="tp-muted mt-1 mb-0">£{{ number_format($fee['rent'], 2) }} rent + £{{ number_format($fee['fee'], 2) }} {{ $fee['fee_label'] }}</p>
+                                    @endif
                                 @elseif($open && ! $cardReady)
                                     <span class="tp-muted">Pay by bank transfer</span>
                                 @endif
