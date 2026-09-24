@@ -38,11 +38,11 @@
             @endif
         </div>
         <div class="pcc-detail-info">
-            @if($property->prop_ref_no)
+            @if($property->prop_ref_no && ! is_landlord_plan_user())
                 <div class="pcc-detail-ref">{{ $property->prop_ref_no }}</div>
             @endif
-            <h5 class="pcc-detail-name">{{ $property->prop_name ?: $property->line_1 }}</h5>
-            <div class="pcc-detail-address">{{ $address }}</div>
+            <h5 class="pcc-detail-name">{{ is_landlord_plan_user() ? $property->short_title : ($property->prop_name ?: $property->line_1) }}</h5>
+            <div class="pcc-detail-address">{{ is_landlord_plan_user() ? ($property->short_address ?: $address) : $address }}</div>
             <div class="pcc-detail-meta">
                 @if($property->property_type && ! is_landlord_plan_user())
                     <span>{{ $property->property_type }}</span>

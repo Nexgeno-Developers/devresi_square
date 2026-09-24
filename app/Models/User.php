@@ -321,8 +321,35 @@ class User extends Authenticatable
             ->contains('name', $permissionName);
     }
 
+    /**
+     * Launch Step 10: resolve permissions from the active account membership
+     * designation when present, then staff overrides, then Spatie + global designation.
+     */
     public function hasEffectivePermission(string $permissionName): bool
     {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        $accountId = function_exists('current_account_id') ? current_account_id() : null;
+
+        if ($accountId) {
+            $membership = $this->accountUsers()
+                ->where('account_id', $accountId)
+                ->where('status', 'active')
+                ->with('designation.permissions')
+                ->first();
+
+            if ($membership?->designation_id) {
+                $fromMembership = (bool) $membership->designation?->permissions
+                    ->contains('name', $permissionName);
+
+                if ($fromMembership) {
+                    return true;
+                }
+            }
+        }
+
         if ($this->isStaffAccount()) {
             if ($this->hasCustomizedStaffPermissions()) {
                 return $this->getDirectPermissions()->contains('name', $permissionName);

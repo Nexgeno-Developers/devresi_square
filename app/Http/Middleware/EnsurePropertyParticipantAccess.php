@@ -30,7 +30,7 @@ class EnsurePropertyParticipantAccess
             return $next($request);
         }
 
-        $property = $this->resolveProperty($request);
+        $property = $this->resolveProperty($request, $accountId);
 
         if (! $property) {
             return $next($request);
@@ -45,22 +45,28 @@ class EnsurePropertyParticipantAccess
         return $next($request);
     }
 
-    private function resolveProperty(Request $request): ?Property
+    private function resolveProperty(Request $request, int $accountId): ?Property
     {
         foreach (['property', 'property_id', 'propertyId', 'id'] as $key) {
             $value = $request->route($key);
 
             if ($value instanceof Property) {
+                abort_unless((int) $value->account_id === $accountId, 403);
+
                 return $value;
             }
 
             if (is_numeric($value)) {
-                return Property::query()->find((int) $value);
+                return Property::query()
+                    ->forAccount($accountId)
+                    ->find((int) $value);
             }
         }
 
         $queryId = $request->query('property_id');
 
-        return is_numeric($queryId) ? Property::query()->find((int) $queryId) : null;
+        return is_numeric($queryId)
+            ? Property::query()->forAccount($accountId)->find((int) $queryId)
+            : null;
     }
 }

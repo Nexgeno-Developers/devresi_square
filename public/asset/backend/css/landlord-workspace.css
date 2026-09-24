@@ -15,6 +15,47 @@ body.landlord-workspace {
     background: var(--lw-wash);
 }
 
+/* Accessibility baseline (Step 43) */
+body.landlord-workspace .lw-btn:focus-visible,
+body.landlord-workspace .btn:focus-visible,
+body.landlord-workspace a:focus-visible,
+body.tenant-portal-shell .tp-btn:focus-visible,
+body.tenant-portal-shell .tp-bottom-nav__item:focus-visible,
+body.tenant-portal-shell a:focus-visible {
+    outline: 3px solid #5eead4;
+    outline-offset: 2px;
+}
+
+.sr-only-focusable:not(:focus):not(:focus-within) {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.skip-to-content {
+    position: absolute;
+    left: 1rem;
+    top: 1rem;
+    z-index: 2000;
+    background: #0b1220;
+    color: #fff;
+    padding: 0.55rem 0.9rem;
+    border-radius: 8px;
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.skip-to-content:focus {
+    outline: 3px solid #5eead4;
+    outline-offset: 2px;
+}
+
 body.landlord-workspace #wrapper.main_content {
     background: var(--lw-wash);
 }
@@ -372,18 +413,18 @@ body.landlord-workspace .pcc-root {
 }
 
 body.landlord-workspace .pcc-toolbar {
-    background: linear-gradient(120deg, #064e3b, #0f766e);
-    border-bottom: none;
+    background: #fff;
+    border-bottom: 1px solid #e6e9ef;
     padding: 0.95rem 1.2rem;
     gap: 0.85rem;
 }
 
 body.landlord-workspace .pcc-toolbar-title {
-    color: #fff;
+    color: #0b1220;
 }
 
 body.landlord-workspace .pcc-toolbar-kicker {
-    color: rgba(255, 255, 255, 0.78);
+    color: #5b6573;
 }
 
 body.landlord-workspace .pcc-toolbar-search {
@@ -785,4 +826,374 @@ body.landlord-workspace .pcc-tab-content .lw-empty .lw-empty-title {
     body.landlord-workspace .pcc-toolbar-kicker {
         display: none;
     }
+}
+
+/* --------------------------------------------------------------------------
+   Blade kit (Step 35) — one button + status language for IN routes
+   -------------------------------------------------------------------------- */
+:root {
+    --lw-ok: #166534;
+    --lw-ok-bg: #dcfce7;
+    --lw-warn: #b45309;
+    --lw-warn-bg: #fef3c7;
+    --lw-bad: #b91c1c;
+    --lw-bad-bg: #fee2e2;
+    --lw-idle: #5b6573;
+    --lw-idle-bg: #e6e9ef;
+}
+
+.lw-btn,
+body.landlord-workspace .lw-btn,
+body.tenant-portal-shell .lw-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.92rem;
+    line-height: 1.2;
+    border: 1px solid transparent;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.lw-btn-primary,
+.btn.lw-btn-primary,
+body.landlord-workspace .lw-btn-primary,
+body.landlord-workspace .btn.lw-btn-primary,
+body.tenant-portal-shell .lw-btn-primary,
+body.tenant-portal-shell .btn.lw-btn-primary {
+    background: var(--lw-ink);
+    border-color: var(--lw-ink);
+    color: #fff;
+}
+
+.lw-btn-primary:hover,
+.btn.lw-btn-primary:hover,
+body.landlord-workspace .lw-btn-primary:hover,
+body.landlord-workspace .btn.lw-btn-primary:hover,
+body.tenant-portal-shell .lw-btn-primary:hover {
+    background: #1a2233;
+    border-color: #1a2233;
+    color: #fff;
+}
+
+.lw-btn-secondary,
+.btn.lw-btn-secondary,
+body.landlord-workspace .lw-btn-secondary,
+body.landlord-workspace .btn.lw-btn-secondary {
+    background: #fff;
+    border-color: var(--lw-accent);
+    color: var(--lw-ink);
+}
+
+.lw-btn-secondary:hover,
+body.landlord-workspace .lw-btn-secondary:hover {
+    background: #f0fdfa;
+    border-color: var(--lw-accent);
+    color: var(--lw-ink);
+}
+
+.lw-btn-danger,
+.btn.lw-btn-danger,
+body.landlord-workspace .lw-btn-danger {
+    background: transparent;
+    border-color: #fecaca;
+    color: var(--lw-bad);
+}
+
+.lw-btn-danger:hover,
+body.landlord-workspace .lw-btn-danger:hover {
+    background: var(--lw-bad-bg);
+    border-color: #fca5a5;
+    color: var(--lw-bad);
+}
+
+.lw-btn-ghost,
+body.landlord-workspace .lw-btn-ghost {
+    background: transparent;
+    border-color: transparent;
+    color: var(--lw-ink);
+}
+
+.lw-btn-ghost:hover {
+    background: var(--lw-wash);
+}
+
+.lw-btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.82rem;
+}
+
+.lw-pill,
+.lw-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 650;
+    line-height: 1.3;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+}
+
+.lw-pill-ok,
+.lw-status-ok { background: var(--lw-ok-bg); color: var(--lw-ok); }
+.lw-pill-warn,
+.lw-status-warn { background: var(--lw-warn-bg); color: var(--lw-warn); }
+.lw-pill-bad,
+.lw-status-bad { background: var(--lw-bad-bg); color: var(--lw-bad); }
+.lw-pill-idle,
+.lw-status-idle { background: var(--lw-idle-bg); color: var(--lw-idle); }
+
+.lw-table {
+    width: 100%;
+    margin: 0;
+    --bs-table-bg: transparent;
+}
+
+.lw-table thead th {
+    color: var(--lw-muted);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 650;
+    border-bottom: 1px solid var(--lw-line);
+    background: transparent;
+}
+
+.lw-table tbody td {
+    border-color: var(--lw-line);
+    vertical-align: middle;
+    color: var(--lw-ink);
+}
+
+.lw-chip-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0 0 1rem;
+}
+
+.lw-chip-filters a,
+.lw-chip-filters .lw-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--lw-line);
+    background: #fff;
+    color: var(--lw-muted);
+    font-size: 0.84rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.lw-chip-filters a:hover {
+    border-color: #99f6e4;
+    color: var(--lw-ink);
+}
+
+.lw-chip-filters a.is-active,
+.lw-chip-filters .lw-chip.is-active {
+    background: var(--lw-ink);
+    border-color: var(--lw-ink);
+    color: #fff;
+}
+
+.lw-hero {
+    background: linear-gradient(120deg, #064e3b, #0f766e);
+    color: #fff;
+    border-radius: var(--lw-radius-lg);
+    padding: 1.35rem 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+body.landlord-workspace .lw-hero,
+body.landlord-workspace .lw-page .lw-hero {
+    background: #fff;
+    color: #0b1220;
+    border: 1px solid #e6e9ef;
+    box-shadow: none;
+}
+
+body.landlord-workspace .lw-page .lw-hero h1,
+body.landlord-workspace .lw-page .lw-hero h2,
+body.landlord-workspace .lw-page .lw-hero h4,
+body.landlord-workspace .lw-page .lw-hero p,
+body.landlord-workspace .lw-hero h1,
+body.landlord-workspace .lw-hero h2,
+body.landlord-workspace .lw-hero h4,
+body.landlord-workspace .lw-hero p {
+    color: #0b1220;
+}
+
+.lw-card,
+body.landlord-workspace .lw-card {
+    background: var(--lw-card);
+    border: 1px solid var(--lw-line);
+    border-radius: var(--lw-radius-lg);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.lw-empty,
+body.landlord-workspace .lw-empty {
+    text-align: center;
+    padding: 2.75rem 1.25rem;
+    color: var(--lw-muted);
+}
+
+/* Ban Bootstrap primary / warning / danger on IN landlord + tenant shells */
+body.landlord-workspace .btn-primary,
+body.tenant-portal-shell .btn-primary,
+body.landlord-workspace .btn-primary:focus,
+body.tenant-portal-shell .btn-primary:focus {
+    background: var(--lw-ink) !important;
+    border-color: var(--lw-ink) !important;
+    color: #fff !important;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+body.landlord-workspace .btn-primary:hover,
+body.tenant-portal-shell .btn-primary:hover {
+    background: #1a2233 !important;
+    border-color: #1a2233 !important;
+    color: #fff !important;
+}
+
+body.landlord-workspace .btn-warning,
+body.tenant-portal-shell .btn-warning {
+    background: #fff !important;
+    border-color: var(--lw-accent) !important;
+    color: var(--lw-ink) !important;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+body.landlord-workspace .btn-warning:hover,
+body.tenant-portal-shell .btn-warning:hover {
+    background: #f0fdfa !important;
+    border-color: var(--lw-accent) !important;
+    color: var(--lw-ink) !important;
+}
+
+body.landlord-workspace .btn-danger,
+body.tenant-portal-shell .btn-danger {
+    background: transparent !important;
+    border-color: #fecaca !important;
+    color: var(--lw-bad) !important;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+body.landlord-workspace .btn-danger:hover,
+body.tenant-portal-shell .btn-danger:hover {
+    background: var(--lw-bad-bg) !important;
+    border-color: #fca5a5 !important;
+    color: var(--lw-bad) !important;
+}
+
+body.landlord-workspace .badge.bg-primary,
+body.landlord-workspace .badge.bg-warning,
+body.landlord-workspace .badge.bg-danger,
+body.tenant-portal-shell .badge.bg-primary,
+body.tenant-portal-shell .badge.bg-warning,
+body.tenant-portal-shell .badge.bg-danger {
+    border-radius: 999px;
+    font-weight: 650;
+}
+
+body.landlord-workspace .badge.bg-primary,
+body.tenant-portal-shell .badge.bg-primary {
+    background: var(--lw-idle-bg) !important;
+    color: var(--lw-idle) !important;
+}
+
+body.landlord-workspace .badge.bg-warning,
+body.tenant-portal-shell .badge.bg-warning {
+    background: var(--lw-warn-bg) !important;
+    color: var(--lw-warn) !important;
+}
+
+body.landlord-workspace .badge.bg-danger,
+body.tenant-portal-shell .badge.bg-danger {
+    background: var(--lw-bad-bg) !important;
+    color: var(--lw-bad) !important;
+}
+
+body.landlord-workspace .alert-primary {
+    background: #ecfdf5;
+    border-color: #99f6e4;
+    color: var(--lw-accent-2);
+    border-radius: 12px;
+}
+
+body.landlord-workspace .alert-warning {
+    background: #fff8eb;
+    border-color: #f6d6a8;
+    color: #7a4b00;
+    border-radius: 12px;
+}
+
+body.landlord-workspace .alert-danger {
+    background: var(--lw-bad-bg);
+    border-color: #fecaca;
+    color: var(--lw-bad);
+    border-radius: 12px;
+}
+
+/* Sidebar active contrast (Step 36) — never black-on-navy */
+body.landlord-workspace .sidebar .nav-link.active,
+body.landlord-workspace .sidebar .nav-link.active .icon_wrapper,
+body.tenant-portal-shell .sidebar .nav-link.active,
+body.tenant-portal-shell .sidebar .nav-link.active .icon_wrapper {
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+body.landlord-workspace .sidebar .nav-link.active i,
+body.tenant-portal-shell .sidebar .nav-link.active i {
+    color: #5eead4 !important;
+}
+
+body.landlord-workspace .sidebar .submenu-link.active,
+body.landlord-workspace .sidebar a.submenu-link.active {
+    color: #fff !important;
+    background: rgba(15, 118, 110, 0.35);
+    border-radius: 6px;
+}
+
+body.landlord-workspace .sidebar .submenu-link.active i {
+    color: #5eead4 !important;
+}
+
+.lw-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 2.5rem 1rem;
+    color: var(--lw-muted);
+}
+
+.lw-loading-spinner {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 3px solid #d1fae5;
+    border-top-color: var(--lw-accent);
+    animation: lw-spin 0.7s linear infinite;
+}
+
+.lw-loading-label {
+    font-size: 0.92rem;
+    font-weight: 600;
 }

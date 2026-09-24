@@ -154,6 +154,7 @@ class PropertyController
                 if ($selectedProperty) {
                     ensureModelBelongsToCurrentAccount($selectedProperty);
                     $this->assertPropertyVisibleToUser($user, $selectedProperty, $isPortalUser, $portalAccessService);
+                    $this->hydratePropertyForControlCenter($selectedProperty);
 
                     $response['tabs'] = $this->tabsForUser($user, $selectedProperty, $isPortalUser, $portalAccessService);
                     $response['detail_header'] = view('backend.properties.partials.detail-header', ['property' => $selectedProperty])->render();
@@ -178,7 +179,7 @@ class PropertyController
                     'isPortalUser' => $isPortalUser,
                 ]);
             }
-            if ($this->shouldUseLandlordWizard()) {
+            if ($this->shouldUseLandlordWizard() || is_landlord_plan_user()) {
                 $tabs = $this->tabsForUser($user, null, $isPortalUser, $portalAccessService);
 
                 return view('backend.properties.control-center', [
@@ -247,6 +248,7 @@ class PropertyController
                     
         if ($property) {
             $this->assertPropertyVisibleToUser($user, $property, $isPortalUser, $portalAccessService);
+            $this->hydratePropertyForControlCenter($property);
         } else {
             $firstProperty = $properties->first();
             return redirect()->route('admin.properties.index', [
@@ -1339,21 +1341,16 @@ class PropertyController
     {
         $property = Property::findOrFail($id);
         ensureModelBelongsToCurrentAccount($property);
-        // Optionally, check if the property is already deleted
         if ($property->trashed()) {
             return redirect()->route('admin.properties.index')->with('error', 'This property is already deleted.');
         }
-        // Use soft delete
-        $property->deleted_by = Auth::id(); // Set the user who deleted the property
-        $property->save(); // Save changes
-        $property->delete(); // Perform the soft delete
-        $response = [
+
+        app(\App\Services\PropertyArchiveService::class)->archive($property, Auth::id());
+
+        return response()->json([
             'status' => true,
             'message' => 'Property Deleted successfully!',
-        ];
-
-        return response()->json($response);
-        //return redirect()->route('admin.properties.index')->with('success', 'Property deleted successfully.');
+        ]);
     }
 
     public function showSoftDeletedProperties()
@@ -1422,7 +1419,9 @@ class PropertyController
         $property = $this->trashedPropertiesQuery()->findOrFail($id);
 
         try {
-            DB::transaction(fn () => $property->forceDelete());
+            DB::transaction(function () use ($property) {
+                app(\App\Services\PropertyArchiveService::class)->forceRemove($property, Auth::id());
+            });
         } catch (QueryException $exception) {
             Log::warning('Permanent property deletion blocked by linked records.', [
                 'property_id' => $property->id,
@@ -2535,6 +2534,25 @@ class PropertyController
         return response()->json(['results' => $results]);
     }
 
+    /**
+     * Eager stats for control-center header/overview (avoids N+1 in detail-stats / property-landlord).
+     */
+    private function hydratePropertyForControlCenter(Property $property): void
+    {
+        $property->loadMissing('localAuthority');
+        $property->loadCount([
+            'tenancies as active_tenancies_count' => fn ($q) => $q->where('status', 'Active'),
+            'repairIssues as open_repairs_count' => fn ($q) => $q->whereIn('status', ['Pending', 'Reported', 'Under Process']),
+            'complianceRecords as compliance_records_count',
+            'complianceRecords as expiring_compliance_count' => fn ($q) => $q
+                ->where('expiry_date', '>=', now())
+                ->where('expiry_date', '<=', now()->addMonths(2)),
+        ]);
+        $property->load([
+            'tenancies' => fn ($q) => $q->where('status', 'Active')->orderByDesc('move_in')->limit(1),
+        ]);
+    }
+
     private function scopePropertyQuery($query)
     {
         $user = auth()->user();
@@ -2691,9 +2709,7 @@ class PropertyController
                 $affected = $query->count();
                 $query->each(function ($property) {
                     $this->persistProperty(function () use ($property) {
-                        $property->deleted_by = auth()->id();
-                        $property->save();
-                        $property->delete();
+                        app(\App\Services\PropertyArchiveService::class)->archive($property, auth()->id());
                     });
                 });
                 break;
@@ -2701,7 +2717,7 @@ class PropertyController
                 $affected = $query->count();
                 $query->each(function ($property) {
                     $this->persistProperty(function () use ($property) {
-                        $property->forceDelete();
+                        app(\App\Services\PropertyArchiveService::class)->forceRemove($property, auth()->id());
                     });
                 });
                 break;

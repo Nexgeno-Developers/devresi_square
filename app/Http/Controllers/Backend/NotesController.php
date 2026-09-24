@@ -58,6 +58,8 @@ class NotesController
     // Add a method to handle logic, returning Note model
     public function saveNoteData(array $data)
     {
+        $content = app(\App\Services\HtmlSanitizer::class)->sanitize((string) ($data['content'] ?? ''));
+
         if (!empty($data['note_id'])) {
             $note = Notes::where('noteable_type', $data['noteable_type'])
                         ->where('noteable_id', $data['noteable_id'])
@@ -67,7 +69,7 @@ class NotesController
             $this->authorizeNoteableWrite($note->noteable);
             $note->update([
                 'note_type_id' => $data['note_type_id'],
-                'content' => $data['content'],
+                'content' => $content,
                 'visibility' => $data['visibility'] ?? $note->visibility ?? 'private',
             ]);
         } else {
@@ -80,7 +82,7 @@ class NotesController
                 'noteable_type' => $data['noteable_type'],
                 'noteable_id'   => $data['noteable_id'],
                 'note_type_id'  => $data['note_type_id'],
-                'content'       => $data['content'],
+                'content'       => $content,
                 'visibility'    => $data['visibility'] ?? 'private',
                 'created_by'    => auth()->id(),
             ]);
@@ -104,7 +106,7 @@ class NotesController
 
         return response()->json([
             'status'  => true,
-            'message' => $data['note_id'] ? 'Note updated' : 'Note created',
+            'message' => ! empty($data['note_id']) ? 'Note updated' : 'Note created',
             'note'    => $note->load('noteType'),
         ]);
     }

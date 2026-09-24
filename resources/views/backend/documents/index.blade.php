@@ -9,9 +9,10 @@
 
     <div class="card lw-card">
         <div class="card-body table-responsive">
-            <table class="table align-middle">
+            <table class="table lw-table align-middle">
                 <thead>
                     <tr>
+                        <th>Name</th>
                         <th>Type</th>
                         <th>Attached to</th>
                         <th>Tenant</th>
@@ -22,18 +23,19 @@
                 <tbody>
                     @forelse($documents as $document)
                         <tr>
-                            <td>{{ $document->documentType?->name ?? 'Untitled' }}</td>
+                            <td>{{ rs_document_title($document->displayName(), $document->documentType?->name) }}</td>
+                            <td>{{ $document->documentType?->name ?? '—' }}</td>
                             <td>
                                 @if($document->documentable instanceof \App\Models\Property)
-                                    {{ $document->documentable->full_address ?: ($document->documentable->line_1 ?: 'Property #'.$document->documentable_id) }}
+                                    {{ rs_property_title($document->documentable) }}
                                 @elseif($document->documentable instanceof \App\Models\User)
-                                    {{ $document->documentable->name ?: $document->documentable->email }}
+                                    {{ rs_person($document->documentable) }}
                                 @else
-                                    {{ class_basename((string) $document->documentable_type) }} #{{ $document->documentable_id }}
+                                    Related record
                                 @endif
                             </td>
                             <td>{{ $document->isSharedWithTenant() ? 'Shared' : 'Private' }}</td>
-                            <td>{{ $document->created_at ? formatDateTime($document->created_at) : '—' }}</td>
+                            <td>{{ rs_date($document->created_at) }}</td>
                             <td class="text-end text-nowrap">
                                 @if($document->upload_ids)
                                     <a href="{{ route('admin.documents.download', $document) }}" class="btn btn-sm btn-outline-primary">Download</a>
@@ -49,7 +51,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5">
+                            <td colspan="6">
                                 <div class="lw-empty">
                                     <div class="lw-empty-icon"><i class="bi bi-folder2-open"></i></div>
                                     <div class="lw-empty-title">No documents yet</div>

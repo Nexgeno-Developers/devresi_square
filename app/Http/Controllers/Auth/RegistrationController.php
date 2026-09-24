@@ -27,8 +27,6 @@ class RegistrationController extends Controller
 {
     private const ACCOUNT_TYPES = [
         'landlord',
-        'estate_agent_freelance',
-        'estate_agent_company',
     ];
 
     private const BILLING_CYCLES = [
@@ -38,8 +36,6 @@ class RegistrationController extends Controller
 
     private const ACCOUNT_TYPE_TO_REGISTRATION_TYPE = [
         'landlord' => 'landlord',
-        'estate_agent_freelance' => 'estate_agent',
-        'estate_agent_company' => 'estate_agent',
     ];
 
     // ─── Step 1: Show registration form ──────────────────────────────────────
@@ -67,7 +63,8 @@ class RegistrationController extends Controller
             if (
                 ! $selectedPlan
                 || ! in_array($selectedBillingCycle, self::BILLING_CYCLES, true)
-                || $selectedAccountType !== $selectedPlan->target_account_type
+                || $selectedAccountType !== 'landlord'
+                || $selectedPlan->target_account_type !== 'landlord'
             ) {
                 return redirect()
                     ->route('pricing')
@@ -108,7 +105,7 @@ class RegistrationController extends Controller
                 'string',
                 'regex:/^\+?[0-9\s\-\(\)]{7,20}$/',
             ],
-            'type'       => 'required|in:landlord,owner,estate_agent,contractor',
+            'type'       => 'required|in:landlord',
             'verify_via' => 'required|in:email,phone',
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'plan_id' => ['required', 'integer'],
@@ -297,14 +294,15 @@ class RegistrationController extends Controller
                 'email_verified_at' => $registration->email_verified_at,
             ]);
 
-            $roleName = $registration->account_type === 'landlord' ? 'Landlord' : 'Estate Agent';
+            $roleName = 'Landlord';
             $role = Role::findByName($roleName);
             $user->assignRole($role);
 
             $account = $accountProvisioningService->provisionFromRegistration($registration, $user, $user);
 
-            // Access remains restricted until Stripe confirms the subscription via webhook.
-            $account->forceFill(['status' => 'suspended'])->save();
+            // Keep trialing until Stripe Checkout starts successfully. Suspending
+            // before checkout left local/dev (and failed Stripe) landlords stuck
+            // on Billing with no first-home overlay.
 
             $registration->update([
                 'status' => 'approved',
@@ -335,6 +333,9 @@ class RegistrationController extends Controller
                 $account->currentSubscription()->with('plan')->firstOrFail()
             );
 
+            // Restrict workspace until Stripe confirms the subscription (webhook).
+            $account->forceFill(['status' => 'suspended'])->save();
+
             return redirect()->away($checkoutUrl);
         } catch (\Throwable $exception) {
             Log::error('Self-service Stripe checkout creation failed', [
@@ -343,9 +344,11 @@ class RegistrationController extends Controller
                 'error' => $exception->getMessage(),
             ]);
 
+            // No Stripe session — stay trialing so the landlord can finish first-home
+            // setup locally / when keys are missing, then retry Billing later.
             return redirect()
-                ->route('backend.billing.index')
-                ->with('error', 'Your account was created, but checkout could not start. Please retry from Billing & Plan.');
+                ->route('backend.dashboard')
+                ->with('error', 'Your trial account is ready. Checkout could not start — open Billing & Plan when you are ready to add a card.');
         }
     }
 
@@ -481,10 +484,23 @@ class RegistrationController extends Controller
     // ─── Normalize phone to E.164 ─────────────────────────────────────────────
     private function normalizePhone(string $phone): string
     {
-        $cleaned = preg_replace('/[^\d+]/', '', $phone);
-        if (str_starts_with($cleaned, '+')) return $cleaned;
-        if (strlen($cleaned) === 10)        return '+91' . $cleaned;
-        if (strlen($cleaned) === 12 && str_starts_with($cleaned, '91')) return '+' . $cleaned;
-        return '+' . $cleaned;
+        $cleaned = preg_replace('/[^\d+]/', '', $phone) ?? '';
+        if (str_starts_with($cleaned, '+')) {
+            return $cleaned;
+        }
+        if (str_starts_with($cleaned, '00')) {
+            return '+'.substr($cleaned, 2);
+        }
+        if (str_starts_with($cleaned, '44')) {
+            return '+'.$cleaned;
+        }
+        if (str_starts_with($cleaned, '0')) {
+            return '+44'.substr($cleaned, 1);
+        }
+        if (strlen($cleaned) === 10 && str_starts_with($cleaned, '7')) {
+            return '+44'.$cleaned;
+        }
+
+        return '+44'.$cleaned;
     }
 }

@@ -37,13 +37,13 @@ class DashboardController extends Controller
             return redirect()->route('backend.home');
         }
 
-        if (! $user->hasRole('Landlord')) {
+        if (! $user->hasRole('Landlord') && ! is_landlord_plan_user($user)) {
             $this->authorize('view dashboard');
         }
-        // $this->middleware(middleware: 'auth'); // Ensure the user is authenticated
-        // $this->middleware('can:view dashboard'); // Optional: Ensure the user has permission to view the dashboard
 
-        if (!$user->hasAnyRole(['Super Admin', 'Landlord', 'Staff', 'Property Manager', 'Estate Agent', 'Test'])) {
+        if (! $user->hasAnyRole(['Super Admin', 'Landlord', 'Staff', 'Property Manager', 'Estate Agent', 'Test'])
+            && ! is_landlord_plan_user($user)
+        ) {
             abort(403);
         }
 
@@ -55,11 +55,21 @@ class DashboardController extends Controller
         $accountId = $planUsageAccount?->id;
 
         $usersCount = AccountUser::where('account_id', $accountId)->where('status', 'active')->count();
+        if ($user->hasRole('Landlord') && $accountId) {
+            $usersCount = \App\Models\PropertyParticipant::query()
+                ->where('account_id', $accountId)
+                ->whereIn('participant_type', ['owner', 'tenant'])
+                ->distinct()
+                ->count('user_id');
+        }
         $propertiesCount = Property::forAccount($accountId)->count();
         $invoicesCount = Invoice::whereHas('workOrder', fn ($query) => $query->forAccount($accountId))->count();
         $workOrdersCount = WorkOrder::forAccount($accountId)->count();
         $repairIssuesCount = RepairIssue::forAccount($accountId)->count();
-        $activeTenanciesCount = Tenancy::forAccount($accountId)->where('status', 'Active')->count();
+        $activeTenanciesCount = Tenancy::forAccount($accountId)
+            ->where('status', 'Active')
+            ->whereHas('property')
+            ->count();
         $openRepairsCount = RepairIssue::forAccount($accountId)->whereNotIn('status', ['Closed', 'Invoice Paid'])->count();
         $branchesCount = Branch::forAccount($accountId)->count();
         $staffCount = Staff::forAccount($accountId)->where('status', 'active')->count();
@@ -88,6 +98,32 @@ class DashboardController extends Controller
             ? app(AccountLimitService::class)->summary($planUsageAccount)
             : $this->emptyPlanUsageSummary();
 
+        $pendingCorrectionCount = 0;
+        $pendingCorrectionTenancyId = null;
+        $overdueRentCount = 0;
+        $complianceAttentionCount = 0;
+        $complianceAttentionPropertyId = null;
+        $depositAttentionCount = 0;
+        $depositAttentionTenancyId = null;
+        if ($accountId && \Illuminate\Support\Facades\Schema::hasTable('tenancy_correction_requests')) {
+            $confirmation = app(\App\Services\Portal\TenancyDetailsConfirmationService::class);
+            $pendingCorrectionCount = $confirmation->pendingCountForAccount($accountId);
+            $pendingCorrectionTenancyId = $confirmation->latestPendingForAccount($accountId)?->tenancy_id;
+        }
+        if ($accountId && \Illuminate\Support\Facades\Schema::hasTable('rent_invoices')) {
+            $overdueRentCount = app(\App\Services\Finance\RentFinanceService::class)->overdueOpenCount((int) $accountId);
+        }
+        if ($accountId && \Illuminate\Support\Facades\Schema::hasTable('compliance_records')) {
+            $attention = \App\Models\ComplianceRecord::certificateGapsForAccount((int) $accountId);
+            $complianceAttentionCount = count($attention);
+            $complianceAttentionPropertyId = $attention[0]['property']->id ?? null;
+        }
+        if ($accountId && \Illuminate\Support\Facades\Schema::hasTable('tenancies')) {
+            $depositAttention = \App\Models\Tenancy::needingDepositProtectionForAccount((int) $accountId);
+            $depositAttentionCount = $depositAttention->count();
+            $depositAttentionTenancyId = $depositAttention->first()?->id;
+        }
+
         return view('backend.dashboard', [
             'usersCount' => $usersCount,
             'propertiesCount' => $propertiesCount,
@@ -104,6 +140,13 @@ class DashboardController extends Controller
             'dashboardRole' => $dashboardRole,
             'planUsageAccount' => $planUsageAccount,
             'planUsageSummary' => $planUsageSummary,
+            'pendingCorrectionCount' => $pendingCorrectionCount,
+            'pendingCorrectionTenancyId' => $pendingCorrectionTenancyId,
+            'overdueRentCount' => $overdueRentCount,
+            'complianceAttentionCount' => $complianceAttentionCount,
+            'complianceAttentionPropertyId' => $complianceAttentionPropertyId,
+            'depositAttentionCount' => $depositAttentionCount,
+            'depositAttentionTenancyId' => $depositAttentionTenancyId,
         ]);
     }
 

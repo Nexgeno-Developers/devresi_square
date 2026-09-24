@@ -1,67 +1,43 @@
-@extends('frontend.layout.app') {{-- or your CRM master layout --}}
+@extends('layouts.auth')
+
+@section('title', 'Choose a new password · Resisquare')
+@section('brand_headline', 'Choose a new password.')
+@section('brand_copy', 'Use at least 8 characters. You’ll sign in with this next time.')
 
 @section('content')
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
+    <h2>Reset password</h2>
+    <p class="auth-muted">Almost done — set a new password for {{ $email ?? 'your account' }}.</p>
 
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Reset Your Password</h4>
-                </div>
+    @if (session('status'))
+        <div class="auth-alert auth-alert-success">{{ session('status') }}</div>
+    @endif
 
-                <div class="card-body">
-                    {{-- Success / Error Messages --}}
-                    @if (session('status'))
-                        <div class="alert alert-success">{{ session('status') }}</div>
-                    @endif
-
-                    @if ($errors->any())
-                        <div class="alert alert-danger">
-                            <ul class="mb-0">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
-
-                    <form method="POST" action="{{ route('password.reset') }}">
-                        @csrf
-
-                        <input type="hidden" name="token" value="{{ $token }}">
-                        {{-- <input type="hidden" name="email" value="{{ $email }}"> --}}
-
-                        <div class="mb-3">
-                            <label for="password" class="form-label">New Password</label>
-                            <input id="password" type="password" 
-                                   class="form-control @error('password') is-invalid @enderror" 
-                                   name="password" required minlength="6" autofocus>
-
-                            @error('password')
-                                <span class="invalid-feedback">{{ $message }}</span>
-                            @enderror
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="password-confirm" class="form-label">Confirm New Password</label>
-                            <input id="password-confirm" type="password" 
-                                   class="form-control" 
-                                   name="password_confirmation" required minlength="6">
-                        </div>
-
-                        <button type="submit" class="btn btn-primary w-100">
-                            Reset Password
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="text-center mt-3">
-                <a href="{{ route('login') }}">← Back to Login</a>
-            </div>
-
+    @if ($errors->any())
+        <div class="auth-alert auth-alert-danger">
+            @foreach ($errors->all() as $error)
+                <div>{{ $error }}</div>
+            @endforeach
         </div>
-    </div>
-</div>
+    @endif
+
+    <form method="POST" action="{{ route('password.reset') }}">
+        @csrf
+        <input type="hidden" name="token" value="{{ $token }}">
+        @if(! empty($email))
+            <input type="hidden" name="email" value="{{ $email }}">
+        @endif
+        <label class="auth-field">
+            <span>New password</span>
+            <input type="password" name="password" required minlength="8" autofocus autocomplete="new-password">
+        </label>
+        <label class="auth-field">
+            <span>Confirm password</span>
+            <input type="password" name="password_confirmation" required minlength="8" autocomplete="new-password">
+        </label>
+        <button type="submit" class="auth-btn">Save password</button>
+    </form>
+
+    <p class="auth-muted mb-0">
+        <a class="auth-link" href="{{ route('login') }}">Back to sign in</a>
+    </p>
 @endsection

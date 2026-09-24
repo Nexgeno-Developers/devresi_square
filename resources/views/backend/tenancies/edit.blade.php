@@ -225,6 +225,21 @@
             </div>
             <div class="col">
                 <div class="mb-3">
+                    <label class="form-label" for="tenancies-frequency">How often</label>
+                    <select class="form-select" id="tenancies-frequency" name="frequency">
+                        <option value="Monthly" @selected(old('frequency', $tenancy->frequency ?: 'Monthly') === 'Monthly')>Monthly</option>
+                        <option value="Weekly" @selected(old('frequency', $tenancy->frequency) === 'Weekly')>Weekly</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col">
+                <div class="mb-3">
+                    <label class="form-label" for="tenancies-rent-due-day">Rent due day</label>
+                    <input type="number" min="1" max="28" class="form-control" id="tenancies-rent-due-day" name="rent_due_day" value="{{ old('rent_due_day', $tenancy->rent_due_day ?: 1) }}">
+                </div>
+            </div>
+            <div class="col">
+                <div class="mb-3">
                     <div class="form-group field-tenancies-deposit">
                         <label class="control-label" for="tenancies-deposit">Deposit</label>
                         <input type="number" inputmode="numeric" pattern="[0-9]" id="tenancies-deposit"
@@ -356,7 +371,7 @@
             <label for="user_phone" class="form-label">Phone</label>
             <input type="text" class="form-control" id="user_phone" name="phone" required>
         </div>
-        <button type="submit" class="btn btn-primary">Save User</button>
+        <button type="submit" class="btn lw-btn-primary">Save User</button>
         <button type="button" class="btn btn-secondary" id="backToMainForm">Back</button>
     </form>
 </div>

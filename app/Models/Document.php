@@ -22,6 +22,7 @@ class Document extends Model
         'documentable_type',
         'upload_ids',
         'document_type_id',
+        'title',
         'visibility',
         'created_by',
     ];
@@ -47,6 +48,18 @@ class Document extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function displayName(): string
+    {
+        $title = trim((string) ($this->title ?? ''));
+        if ($title !== '') {
+            return $title;
+        }
+
+        $type = trim((string) ($this->documentType?->name ?? ''));
+
+        return $type !== '' ? $type : 'Document';
     }
 
     public function isSharedWithTenant(): bool
@@ -75,24 +88,35 @@ class Document extends Model
         $path = $this->absolutePathFor($upload);
         abort_unless($path, 404, 'The file is missing.');
 
-        $name = $upload->file_original_name ?: basename($path);
+        $name = $this->displayName();
+        if ($upload->extension) {
+            $ext = ltrim((string) $upload->extension, '.');
+            if ($ext !== '' && ! str_ends_with(strtolower($name), '.'.strtolower($ext))) {
+                $name .= '.'.$ext;
+            }
+        }
 
         return response()->download($path, $name);
     }
 
     private function absolutePathFor(Upload $upload): ?string
     {
-        $name = ltrim((string) $upload->file_name, '/');
+        $name = (string) $upload->file_name;
 
         if ($name === '') {
             return null;
         }
 
+        $service = app(\App\Services\SecureUploadService::class);
+        $relative = $service->resolveRelativePath($name);
+        $disk = $service->resolveDisk($name);
+
         $candidates = [
-            Storage::disk('public')->path($name),
-            storage_path('app/public/'.$name),
-            public_path($name),
-            base_path('public/'.$name),
+            Storage::disk($disk)->path($relative),
+            Storage::disk('public')->path(ltrim($name, '/')),
+            storage_path('app/public/'.ltrim($name, '/')),
+            public_path(ltrim($name, '/')),
+            base_path('public/'.ltrim($name, '/')),
         ];
 
         foreach ($candidates as $path) {

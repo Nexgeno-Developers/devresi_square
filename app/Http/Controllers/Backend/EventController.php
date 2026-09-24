@@ -181,6 +181,7 @@ class EventController
                     'diary_owner' => optional($event->diaryOwner)->id,
                     'on_behalf_of' => optional($event->onBehalfOf)->id,
                     'invite_ids' => $event->users->pluck('id')->all(),
+                    'visible_to_tenant' => (bool) $event->visible_to_tenant,
                     'users' => $event->users
                         ->map(fn($u) => ['id' => $u->id, 'text' => $u->display_label]),
 
@@ -251,8 +252,7 @@ class EventController
             'repair_ids.*' => 'exists:repair_issues,id',
             'invite_ids' => 'nullable|array',
             'invite_ids.*' => 'exists:users,id',
-            // 'user_ids' => 'nullable|array',
-            // 'user_ids.*' => 'exists:users,id',
+            'visible_to_tenant' => 'nullable|boolean',
         ]);
         $this->ensureEventRelationsAreAccessible($validated);
         $validated = $this->attachPropertyHouseholdInvites($validated);
@@ -271,6 +271,7 @@ class EventController
                 'sub_type_id' => $validated['sub_type_id'],
                 'office' => $validated['office'] ?? null,
                 'status' => $validated['status'] ?? 'Pending',
+                'visible_to_tenant' => (bool) ($validated['visible_to_tenant'] ?? false),
                 'diary_owner' => $validated['diary_owner'] ?? null,
                 'on_behalf_of' => $validated['on_behalf_of'] ?? null,
                 'location' => $validated['location'] ?? null,
@@ -325,6 +326,7 @@ class EventController
                         'sub_type_id' => $master->sub_type_id,
                         'office' => $master->office,
                         'status' => $master->status,
+                        'visible_to_tenant' => (bool) $master->visible_to_tenant,
                         'diary_owner' => $master->diary_owner,
                         'on_behalf_of' => $master->on_behalf_of,
                         'location' => $master->location,
@@ -362,6 +364,7 @@ class EventController
                             'appointment_title' => $master->title,
                             'appointment_at' => $master->start_datetime->timezone(current_account()?->timezone ?: 'Europe/London')->format('d M Y, H:i'),
                             'action_url' => route('backend.events.calendar'),
+                            'portal_action_url' => route('tenant.calendar'),
                         ],
                         auth()->user(),
                     );
@@ -445,6 +448,15 @@ class EventController
             ]);
         }
 
+        $newStart = Carbon::parse($data['start_datetime'])->format('Y-m-d H:i:s');
+        if ($oldStart !== $newStart) {
+            $this->notifyVisit(
+                $event->fresh(),
+                CrmNotificationEvent::AppointmentRescheduled,
+                'rescheduled-'.Carbon::parse($newStart)->timestamp
+            );
+        }
+
         return response()->json(['success' => true]);
     }
 
@@ -484,8 +496,7 @@ class EventController
             'repair_ids.*' => 'exists:repair_issues,id',
             'invite_ids' => 'nullable|array',
             'invite_ids.*' => 'exists:users,id',
-            // 'user_ids' => 'nullable|array',
-            // 'user_ids.*' => 'exists:users,id',
+            'visible_to_tenant' => 'nullable|boolean',
         ]);
         $this->ensureEventRelationsAreAccessible($validated);
         $validated = $this->attachPropertyHouseholdInvites($validated);
@@ -549,12 +560,14 @@ class EventController
                     }
 
                     // Else, just update single instance without recurrence
+                    $previousStart = optional($instance->start_datetime)->format('Y-m-d H:i:s');
                     $instance->update([
                         'title' => $validated['title'],
                         'type_id' => $validated['type_id'],
                         'sub_type_id' => $validated['sub_type_id'],
                         'office' => $validated['office'] ?? null,
                         'status' => $validated['status'] ?? 'Confirmed',
+                        'visible_to_tenant' => (bool) ($validated['visible_to_tenant'] ?? $instance->visible_to_tenant),
                         'diary_owner' => $validated['diary_owner'] ?? null,
                         'on_behalf_of' => $validated['on_behalf_of'] ?? null,
                         'location' => $validated['location'] ?? null,
@@ -580,6 +593,15 @@ class EventController
 
                     // resync relations:
                     $this->syncMorphRelations($instance, $validated);
+
+                    $movedTo = Carbon::parse($validated['start_datetime'])->format('Y-m-d H:i:s');
+                    if ($previousStart !== $movedTo) {
+                        $this->notifyVisit(
+                            $instance->fresh(),
+                            CrmNotificationEvent::AppointmentRescheduled,
+                            'rescheduled-'.Carbon::parse($movedTo)->timestamp
+                        );
+                    }
 
                     \DB::commit();
                     return response()->json(['success' => true, 'message' => 'Single occurrence updated.']);
@@ -994,7 +1016,12 @@ class EventController
             ->setTimezone(config('app.timezone'))
             ->format('Y-m-d H:i:s');
 
-        $event = Event::findOrFail($id);
+        $event = Event::query()
+            ->when(
+                ! auth()->user()?->hasRole('Super Admin'),
+                fn ($query) => $query->forAccount(current_account_id())
+            )
+            ->findOrFail($id);
         ensureModelBelongsToCurrentAccount($event);
         $event->load('users', 'account');
 
@@ -1057,19 +1084,7 @@ class EventController
                 return response()->json(['success' => false, 'message' => 'Invalid action.'], 400);
         }
 
-        app(CrmNotificationService::class)->dispatch(
-            CrmNotificationEvent::AppointmentCancelled,
-            $event,
-            [
-                'account_id' => $event->account_id,
-                'recipients' => $event->users()->get(),
-                'appointment_title' => $event->title,
-                'appointment_at' => $event->start_datetime->timezone(current_account()?->timezone ?: 'Europe/London')->format('d M Y, H:i'),
-                'action_url' => route('backend.events.calendar'),
-                'milestone' => 'cancelled-'.$choice,
-            ],
-            auth()->user(),
-        );
+        $this->notifyVisit($event, CrmNotificationEvent::AppointmentCancelled, 'cancelled-'.$choice);
 
         return response()->json(['success' => true, 'message' => 'Cancellation successful.']);
     }
@@ -1162,6 +1177,7 @@ class EventController
                 'appointment_title' => $event->title,
                 'appointment_at' => $event->start_datetime->timezone($event->account?->timezone ?: 'Europe/London')->format('d M Y, H:i'),
                 'action_url' => route('backend.events.calendar'),
+                            'portal_action_url' => route('tenant.calendar'),
                 'milestone' => 'deleted-'.$choice.'-'.$event->updated_at?->timestamp,
             ], auth()->user());
         }
@@ -1186,15 +1202,11 @@ class EventController
             $notificationEvent = strtolower($request->status) === 'cancelled'
                 ? CrmNotificationEvent::AppointmentCancelled
                 : CrmNotificationEvent::AppointmentRescheduled;
-            app(CrmNotificationService::class)->dispatch($notificationEvent, $event, [
-                'account_id' => $event->account_id,
-                'recipients' => $event->users()->get(),
-                'appointment_title' => $event->title,
-                'appointment_at' => $event->start_datetime->timezone(current_account()?->timezone ?: 'Europe/London')->format('d M Y, H:i'),
-                'action_url' => route('backend.events.calendar'),
-                'milestone' => strtolower($request->status).'-'.$event->updated_at?->timestamp,
-                'old_status' => $oldStatus,
-            ], auth()->user());
+            $this->notifyVisit(
+                $event,
+                $notificationEvent,
+                strtolower($request->status).'-'.$event->updated_at?->timestamp
+            );
         }
 
         return response()->json(['success' => true]);
@@ -1298,12 +1310,32 @@ class EventController
         abort_if(is_tenant_portal_user($user) || $user->hasRole('Contractor'), 403);
     }
 
+    private function notifyVisit(Event $event, CrmNotificationEvent $notificationEvent, string $milestone): void
+    {
+        $when = $event->start_datetime
+            ? $event->start_datetime->timezone(current_account()?->timezone ?: 'Europe/London')->format('d M Y, H:i')
+            : '';
+
+        app(CrmNotificationService::class)->dispatch($notificationEvent, $event, [
+            'account_id' => $event->account_id,
+            'recipients' => $event->users()->get(),
+            'appointment_title' => $event->title,
+            'appointment_at' => $when,
+            'action_url' => route('backend.events.calendar'),
+            'portal_action_url' => route('tenant.calendar'),
+            'portal_action_tenants_only' => true,
+            'milestone' => $milestone,
+        ], auth()->user());
+    }
+
     /**
-     * Landlord diary: household members on linked properties see the appointment in the tenant portal.
+     * When a visit is marked for the tenant, invite the household so reminders reach them.
      */
     private function attachPropertyHouseholdInvites(array $validated): array
     {
-        if (! is_landlord_plan_user(auth()->user()) || empty($validated['property_ids'])) {
+        $validated['visible_to_tenant'] = (bool) ($validated['visible_to_tenant'] ?? false);
+
+        if (! $validated['visible_to_tenant'] || ! is_landlord_plan_user(auth()->user()) || empty($validated['property_ids'])) {
             return $validated;
         }
 

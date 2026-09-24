@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Backend\Concerns\EnforcesSaasPlanLimits;
+use App\Support\PlatformRoles;
 use Illuminate\Http\Request;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
 use Illuminate\Routing\Controller;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
@@ -14,141 +15,119 @@ class RoleController extends Controller
 
     public function __construct()
     {
-        // Staff Permission Check
+        // Launch Step 10: every role mutation requires the matching permission.
         $this->middleware(['permission:view staff roles'])->only('index');
-        $this->middleware(['permission:add staff role'])->only('create');
-        $this->middleware(['permission:edit staff role'])->only('edit');
+        $this->middleware(['permission:add staff role'])->only(['create', 'store']);
+        $this->middleware(['permission:edit staff role'])->only(['edit', 'update']);
         $this->middleware(['permission:delete staff role'])->only('destroy');
+        // Creating global permission names is platform-only.
+        $this->middleware(['role:Super Admin'])->only('add_permission');
     }
-
 
     public function index()
     {
         $this->abortIfSaasLimitDenied('roles_permissions');
 
-        $roles = Role::where('id', '!=', 1)->paginate(10);
+        $roles = Role::query()
+            ->whereNotIn('name', PlatformRoles::PROTECTED_NAMES)
+            ->orderBy('name')
+            ->paginate(10);
+
         return view('backend.staff.staff_roles.index', compact('roles'));
-
-        // $roles = Role::paginate(10);
-        // return view('backend.staff.staff_roles.index', compact('roles'));
     }
-
 
     public function create()
     {
         $this->abortIfSaasLimitDenied('roles_permissions');
 
-        $permissions = Permission::all();
+        $permissions = Permission::query()->orderBy('name')->get();
+
         return view('backend.staff.staff_roles.create', compact('permissions'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(Request $request)
-{
-    $this->abortIfSaasLimitDenied('roles_permissions');
+    {
+        $this->abortIfSaasLimitDenied('roles_permissions');
 
-    $request->validate([
-        'name'          => 'required|string|unique:roles,name',
-        'permissions'   => 'required|array',
-        'permissions.*' => 'exists:permissions,id',
-    ]);
+        $request->validate([
+            'name' => 'required|string|max:125',
+            'permissions' => 'required|array',
+            'permissions.*' => 'exists:permissions,id',
+        ]);
 
-    $role = Role::create([
-        'name'       => $request->name,
-        'guard_name' => 'web',
-    ]);
+        PlatformRoles::assertMutable($request->name);
 
-    // Fetch the Permission models
-    $perms = Permission::whereIn('id', $request->permissions)->get();
+        $request->validate([
+            'name' => 'unique:roles,name',
+        ]);
 
-    // Sync by passing the collection of Permission models
-    $role->syncPermissions($perms);
+        $role = Role::create([
+            'name' => $request->name,
+            'guard_name' => 'web',
+        ]);
 
-    flash('New role has been added successfully')->success();
-    return redirect()->route('roles.index');
-}
+        $perms = Permission::whereIn('id', $request->permissions)->get();
+        $role->syncPermissions($perms);
 
+        flash('New role has been added successfully')->success();
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    // public function show($id)
-    // {
-    //     //
-    // }
+        return redirect()->route('roles.index');
+    }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * //@return \Illuminate\Http\Response
-     */
     public function edit($id)
     {
         $this->abortIfSaasLimitDenied('roles_permissions');
 
-        $role        = Role::findOrFail($id);
-        $permissions = Permission::all();
-        $rolePerms   = $role->permissions->pluck('id')->toArray();
+        $role = Role::findOrFail($id);
+        PlatformRoles::assertMutable($role->name);
+
+        $permissions = Permission::query()->orderBy('name')->get();
+        $rolePerms = $role->permissions->pluck('id')->toArray();
 
         return view('backend.staff.staff_roles.edit', compact('role', 'permissions', 'rolePerms'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * //@return \Illuminate\Http\Response
-     */
     public function update(Request $request, $id)
-{
-    $this->abortIfSaasLimitDenied('roles_permissions');
+    {
+        $this->abortIfSaasLimitDenied('roles_permissions');
 
-    $request->validate([
-        'name'          => "required|string|unique:roles,name,{$id}",
-        'permissions'   => 'required|array',
-        'permissions.*' => 'exists:permissions,id',
-    ]);
+        $role = Role::findOrFail($id);
+        PlatformRoles::assertMutable($role->name);
 
-    $role = Role::findOrFail($id);
-    $role->update(['name' => $request->name]);
+        $request->validate([
+            'name' => "required|string|unique:roles,name,{$id}|max:125",
+            'permissions' => 'required|array',
+            'permissions.*' => 'exists:permissions,id',
+        ]);
 
-    // Fetch the Permission models
-    $perms = Permission::whereIn('id', $request->permissions)->get();
+        PlatformRoles::assertMutable($request->name);
 
-    // Sync them
-    $role->syncPermissions($perms);
+        $role->update(['name' => $request->name]);
 
-    flash('Role has been updated successfully')->success();
-    return redirect()->route('roles.index');
-}
+        $perms = Permission::whereIn('id', $request->permissions)->get();
+        $role->syncPermissions($perms);
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * //@return \Illuminate\Http\Response
-     */
+        flash('Role has been updated successfully')->success();
+
+        return redirect()->route('roles.index');
+    }
+
     public function destroy($id)
     {
         $this->abortIfSaasLimitDenied('roles_permissions');
 
-        if(env('DEMO_MODE') == 'On'){
+        if (env('DEMO_MODE') == 'On') {
             flash('Data can not change in demo mode.')->info();
+
             return back();
         }
 
-        Role::destroy($id);
+        $role = Role::findOrFail($id);
+        PlatformRoles::assertMutable($role->name);
+
+        $role->delete();
         flash('Role has been deleted successfully')->success();
+
         return redirect()->route('roles.index');
     }
 
@@ -156,7 +135,19 @@ class RoleController extends Controller
     {
         $this->abortIfSaasLimitDenied('roles_permissions');
 
-        $permission = Permission::create(['name' => $request->name]);
+        $validated = $request->validate([
+            'name' => 'required|string|unique:permissions,name|max:125',
+        ]);
+
+        Permission::create([
+            'name' => $validated['name'],
+            'guard_name' => 'web',
+        ]);
+
+        cache()->forget('all_permissions');
+
+        flash('Permission created.')->success();
+
         return redirect()->route('roles.index');
     }
 

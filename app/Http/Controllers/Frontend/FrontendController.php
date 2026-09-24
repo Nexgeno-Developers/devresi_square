@@ -33,6 +33,7 @@ class FrontendController
     public function pricing()
     {
         $plans = Plan::where('is_active', 1)
+            ->where('target_account_type', 'landlord')
             ->orderBy('sort_order')
             ->orderBy('name')
             ->get();

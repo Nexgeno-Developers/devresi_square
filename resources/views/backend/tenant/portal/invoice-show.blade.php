@@ -39,12 +39,16 @@
                 <p class="mb-0">{{ $invoice->property?->full_address ?: ($invoice->property?->line_1 ?: '—') }}</p>
             </div>
             <div>
+                <p class="tp-muted mb-1">Billed to</p>
+                <p class="mb-0">{{ $invoice->tenant?->name ?: '—' }}</p>
+            </div>
+            <div>
                 <p class="tp-muted mb-1">Issued</p>
                 <p class="mb-0">{{ $invoice->issue_date?->format('d M Y') ?: '—' }}</p>
             </div>
             <div>
                 <p class="tp-muted mb-1">Due</p>
-                <p class="mb-0">{{ $invoice->due_date?->format('d M Y') ?: '—' }}</p>
+                <p class="mb-0">{{ rs_date($invoice->due_date) }}</p>
             </div>
             <div>
                 <p class="tp-muted mb-1">Period</p>
@@ -82,11 +86,18 @@
                         @endif
                     </form>
                 @else
-                    <p class="tp-muted mb-0">Pay by bank transfer using the details your landlord gave you.</p>
+                    <p class="tp-muted mb-0">Card payment is off for this home. Use the bank transfer details below.</p>
                 @endif
             </div>
         @endif
     </div>
+
+    @if($invoice->isOpen() && ! $cardReady)
+        @if($cardPaused ?? false)
+            <p class="tp-banner" data-card-paused="1">Card payments are paused because this account is suspended or cancelled. Bank transfer is still available.</p>
+        @endif
+        @include('backend.tenant.portal._bank-transfer', ['rentBank' => $rentBank ?? null, 'invoice' => $invoice])
+    @endif
 
     <div class="tp-card mt-3">
         <h3 class="h5 mb-3">Payments</h3>

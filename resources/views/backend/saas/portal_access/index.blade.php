@@ -1,22 +1,30 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="container-fluid lw-page">
-    <div class="lw-hero">
-        <h4>Portal Access</h4>
-        <p>Invite a tenant to their own portal. They only see their tenancy, rent, documents and repairs.</p>
+<div class="container-fluid lw-page" data-people-hub="1">
+    <div class="lw-hero d-flex justify-content-between align-items-start flex-wrap gap-3">
+        <div>
+            <h4>People</h4>
+            <p>Invite a tenant to the portal, then resend or revoke that login. Adding someone as a contact does not give them a portal login.</p>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            @unless(is_landlord_plan_user())
+            <a href="{{ route('admin.users.index', ['status' => 'active']) }}" class="btn lw-btn-secondary">All contacts</a>
+            @endunless
+            <a href="{{ route('admin.properties.index') }}" class="btn lw-btn-secondary">Owners on properties</a>
+        </div>
     </div>
 
     <div class="card lw-card mb-3">
         <div class="card-body">
             <h5 class="mb-3">Invite a tenant</h5>
-            <p class="text-muted mb-3">Pick the tenancy, then their name and email.</p>
+            <p class="text-muted mb-3">Pick the tenancy, then their name and email. They get a link to set a password.</p>
 
-            @if(($orphanTenancies ?? collect())->isNotEmpty() && $tenancies->isEmpty())
-                <div class="alert alert-lw mb-3">
-                    Your active tenancy is not linked to a property, so the invite form is hidden.
+            @if(($orphanTenancies ?? collect())->isNotEmpty())
+                <div class="alert alert-lw mb-3" data-orphan-tenancy="1">
+                    This tenancy is not linked to a property, so invite stays off until you choose one.
                     @foreach($orphanTenancies as $orphan)
-                        <a class="alert-link" href="{{ route('admin.tenancies.edit', $orphan->id) }}">Link tenancy #{{ $orphan->id }}</a>@if(! $loop->last), @endif
+                        <a class="alert-link" href="{{ route('admin.tenancies.edit', $orphan->id) }}">Edit tenancy</a>@if(! $loop->last), @endif
                     @endforeach
                 </div>
             @endif
@@ -46,10 +54,10 @@
                             @foreach($tenancies as $tenancy)
                                 @php
                                     $propertyLabel = $tenancy->property?->full_address
-                                        ?: ($tenancy->property?->line_1 ?: 'Property #'.$tenancy->property_id);
+                                        ?: ($tenancy->property?->line_1 ?: 'Property');
                                 @endphp
                                 <option value="{{ $tenancy->id }}" @selected((string) old('tenancy_id') === (string) $tenancy->id)>
-                                    {{ $propertyLabel }} — {{ $tenancy->status ?: 'Tenancy' }} (#{{ $tenancy->id }})
+                                    {{ $propertyLabel }} — {{ $tenancy->status ?: 'Tenancy' }}
                                 </option>
                             @endforeach
                         </select>
@@ -84,14 +92,15 @@
 
     <div class="card lw-card">
         <div class="card-body table-responsive">
-            <table class="table align-middle">
+            <h5 class="mb-3">Portal access</h5>
+            <table class="table lw-table align-middle">
                 <thead>
                     <tr>
                         <th>User</th>
                         <th>Email</th>
                         <th>Member Type</th>
                         <th>Can Login</th>
-                        <th>Assigned Properties</th>
+                        <th>Homes</th>
                         <th>Status</th>
                         <th class="text-end">Action</th>
                     </tr>
@@ -107,8 +116,12 @@
                             <td>{{ ucfirst($membership->status) }}</td>
                             <td class="text-end">
                                 @if($membership->user)
-                                    <a href="{{ route('admin.users.edit', $membership->user_id) }}" class="btn btn-sm btn-outline-primary">View/Edit</a>
+                                    <a href="{{ route('admin.users.edit', $membership->user_id) }}" class="btn btn-sm btn-outline-primary">View</a>
                                     @if($membership->status === 'active')
+                                        <form action="{{ route('admin.portal-access.resend', $membership->user) }}" method="POST" class="d-inline">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">Resend invite</button>
+                                        </form>
                                         <form action="{{ route('admin.portal-access.revoke', $membership->user) }}" method="POST" class="d-inline" onsubmit="return confirm('Revoke portal access for this person?');">
                                             @csrf
                                             <button type="submit" class="btn btn-sm btn-outline-danger">Revoke</button>
@@ -121,9 +134,10 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-4">
-                                <div class="fw-semibold mb-1">No portal users yet</div>
-                                <p class="text-muted mb-0">Use the invite form above to give a tenant access.</p>
+                            <td colspan="7">
+                                <x-lw.empty title="No portal users yet">
+                                    Use the invite form above to give a tenant access.
+                                </x-lw.empty>
                             </td>
                         </tr>
                     @endforelse

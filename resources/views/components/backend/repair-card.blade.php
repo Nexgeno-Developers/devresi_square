@@ -42,14 +42,31 @@
 
 @php
     $isSelected = isset($selectedRepairId) && $repair->id == $selectedRepairId;
+    $photoId = (int) trim(explode(',', (string) ($repair->repairPhotos->first()?->photos ?? ''))[0] ?? '');
+    $photoUrl = $photoId > 0 ? uploaded_asset($photoId) : null;
 @endphp
 
 <tr class="align-middle repair-row {{ $isSelected ? 'selected' : '' }}" data-url="{{ route('admin.property_repairs.show', $repair->id) }}" onclick="loadRepairDetailByUrl(this)" style="cursor:pointer;">
     <!-- Property -->
     <td>{{ getPropertyDetails($repair->property_id, ['prop_name', 'line_1', 'city', 'country']) }}</td>
 
-    <!-- Issue in -->
-    <td>{{ getRepairCategoryDetails($repair->repair_category_id) }}</td>
+    <!-- Issue -->
+    <td>
+        <div class="d-flex gap-2 align-items-start">
+            @if($photoUrl)
+                <img src="{{ $photoUrl }}" alt="" width="48" height="48" class="rounded border object-fit-cover">
+            @endif
+            <div>
+                <div class="fw-semibold" data-repair-title="address">{{ $repair->property?->line_1 ?: (getPropertyDetails($repair->property_id, ['line_1']) ?: 'Property') }}</div>
+                <div class="small text-muted">{{ \Illuminate\Support\Str::limit($repair->description ?: 'Repair', 90) }}</div>
+                <div class="small text-muted">{{ getRepairCategoryDetails($repair->repair_category_id) }}</div>
+                @if($repair->reference_number)
+                    <div class="small text-muted">{{ $repair->reference_number }}</div>
+                @endif
+            </div>
+        </div>
+    </td>
+    <td class="text-capitalize">{{ $repair->priority ?: 'medium' }}</td>
 
     <!-- Status -->
     <td>

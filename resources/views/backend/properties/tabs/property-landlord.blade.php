@@ -21,11 +21,13 @@
     $usefulInformation = trim((string) ($property->useful_information ?? ''));
     $showSources = $usefulInformation !== '' && ! str_starts_with(strtolower($usefulInformation), 'sources:');
     $localAuthority = $property->localAuthority->display_name ?? '';
-    $activeTenancy = \App\Models\Tenancy::query()
-        ->where('property_id', $property->id)
-        ->where('status', 'Active')
-        ->orderByDesc('move_in')
-        ->first();
+    $activeTenancy = $property->relationLoaded('tenancies')
+        ? $property->tenancies->first()
+        : \App\Models\Tenancy::query()
+            ->where('property_id', $property->id)
+            ->where('status', 'Active')
+            ->orderByDesc('move_in')
+            ->first();
     $rent = $lettingPrice ?: ($activeTenancy->rent ?? null);
     $features = array_filter([
         $floor ? ['Floor', $floor] : null,

@@ -35,6 +35,11 @@ return [
         'backend.transaction_categories.',
         'cache.clear',
         'customer.statements',
+        'admin.property_repairs.quote_contractors.store',
+        'admin.property_repairs.quote_requests.store',
+        'admin.property_repairs.contractors.finalize',
+        'admin.work_orders.',
+        'admin.workorder.',
     ],
 
     'enabled_route_name_prefixes' => [
@@ -55,9 +60,10 @@ return [
         'admin.documents.',
         'admin.notes.',
         'admin.property_repairs.',
-        'admin.work_orders.',
         'admin.compliance.',
+        'backend.api.event_sub_types.byType',
         'admin.portal-access.',
+        'admin.people.',
         'admin.finance.',
         'admin.getUsersByProperty',
         'admin.getTenantsByProperty',

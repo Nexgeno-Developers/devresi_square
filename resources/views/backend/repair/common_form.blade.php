@@ -3,8 +3,8 @@
 
     <!-- Textarea for description -->
     <div class="mb-3">
-        <label for="description" class="form-label">Description</label>
-        <textarea class="form-control" id="description" rows="4" name="description" required></textarea>
+        <label for="description" class="form-label">What is wrong</label>
+        <textarea class="form-control" id="description" rows="4" name="description" required placeholder="Kitchen tap is dripping"></textarea>
     </div>
 
     {{-- <!-- Multiple Image Select -->

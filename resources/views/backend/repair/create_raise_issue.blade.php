@@ -1,6 +1,51 @@
 @extends('backend.layout.app')
 
 @section('content')
+@if(is_landlord_plan_user())
+<div class="container lw-page">
+    <div class="lw-hero mb-3">
+        <h4>Report a repair</h4>
+        <p>Choose the property, say what is wrong, and add a photo if you have one.</p>
+    </div>
+    <form method="POST" action="{{ route('admin.property_repairs.store') }}" class="card lw-card">
+        @csrf
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label" for="landlord_property_select">Which property needs the repair?</label>
+                <select id="landlord_property_select" name="property_id" class="form-select" required>
+                    <option value="">Select a property</option>
+                    @foreach(($landlordProperties ?? collect()) as $lp)
+                        <option value="{{ $lp->id }}">{{ rs_property_title($lp) }}</option>
+                    @endforeach
+                </select>
+                @if(($landlordProperties ?? collect())->isEmpty())
+                    <div class="form-text">Add a property first, then you can raise a repair.</div>
+                @endif
+            </div>
+            <div class="mb-3">
+                <label class="form-label" for="landlord_area">Where in the home</label>
+                <select id="landlord_area" name="repair_category_id" class="form-select" required>
+                    <option value="">Select an area</option>
+                    @foreach($categories as $category)
+                        <option value="{{ $category->id }}">{{ $category->name }}</option>
+                    @endforeach
+                </select>
+                <input type="hidden" name="repair_navigation" id="landlord_nav" value="">
+            </div>
+            @include('backend.repair.common_form')
+            <button type="submit" class="btn lw-btn-primary">Raise repair</button>
+        </div>
+    </form>
+</div>
+<script>
+    document.getElementById('landlord_area')?.addEventListener('change', function () {
+        var nav = document.getElementById('landlord_nav');
+        if (nav) {
+            nav.value = JSON.stringify({ level_1: this.value });
+        }
+    });
+</script>
+@else
 <div class="container lw-page">
     <div class="lw-hero mb-3">
         <h4>Report a repair</h4>
@@ -25,7 +70,7 @@
                 <!-- Navigation Buttons (global for all steps) -->
                 <div class="d-flex gap-2">
                     <button id="prev-btn" class="btn btn-secondary" disabled>Previous</button>
-                    <button id="next-btn" class="btn btn-primary" disabled>Next</button>
+                    <button id="next-btn" class="btn lw-btn-primary" disabled>Next</button>
                 </div>
             </div>
 
@@ -41,8 +86,7 @@
                                 @php $tp = $tenantProperties->first(); @endphp
                                 <div class="alert alert-info text-center">
                                     <strong>Property:</strong>
-                                    {{ trim(implode(', ', array_filter([$tp->line_1, $tp->city, $tp->postcode]))) }}
-                                    @if($tp->prop_ref_no) &nbsp;({{ $tp->prop_ref_no }}) @endif
+                                    {{ rs_property_title($tp) }}
                                 </div>
                                 <input type="hidden" id="selected_properties" name="property_id" value="{{ json_encode([$tp->id]) }}">
                             @else
@@ -53,8 +97,7 @@
                                         <option value="">-- Select a property --</option>
                                         @foreach($tenantProperties as $tp)
                                             <option value="{{ $tp->id }}">
-                                                {{ trim(implode(', ', array_filter([$tp->line_1, $tp->city, $tp->postcode]))) }}
-                                                @if($tp->prop_ref_no) ({{ $tp->prop_ref_no }}) @endif
+                                                {{ rs_property_title($tp) }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -68,7 +111,7 @@
                                     <option value="">Select a property</option>
                                     @foreach($landlordProperties as $lp)
                                         <option value="{{ $lp->id }}">
-                                            {{ trim(implode(', ', array_filter([$lp->line_1, $lp->city, $lp->postcode]))) ?: ($lp->prop_name ?: 'Property #'.$lp->id) }}
+                                            {{ rs_property_title($lp) }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -142,16 +185,18 @@
                 <div id="repair-form" class="d-block">
                     @include('backend.repair.common_form')
                     <!-- Final Submit Button -->
-                    <button type="submit" class="btn btn-primary mt-3">Submit</button>
+                    <button type="submit" class="btn lw-btn-primary mt-3">Submit</button>
                 </div>
             </div>
         </div>
 
     </form>
 </div>
+@endif
 @endsection
 
 @section('page.scripts')
+@unless(is_landlord_plan_user())
 {{-- @stack('domready.scripts') --}}
 <script>
     $(document).ready(function () {
@@ -578,4 +623,5 @@
 
     });
 </script>
+@endunless
 @endsection

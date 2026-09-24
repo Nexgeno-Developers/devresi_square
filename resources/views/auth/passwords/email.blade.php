@@ -1,43 +1,35 @@
-@extends('frontend.layout.app')
+@extends('layouts.auth')
+
+@section('title', 'Reset password · Resisquare')
+@section('brand_headline', 'Reset your password.')
+@section('brand_copy', 'We’ll email a secure link. No new account is created.')
 
 @section('content')
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Forgot Password</h4>
-                </div>
-                <div class="card-body">
-                    @if (session('status'))
-                        <div class="alert alert-success">{{ session('status') }}</div>
-                    @endif
+    <h2>Forgot password</h2>
+    <p class="auth-muted">Enter the email on your account.</p>
 
-                    @if ($errors->any())
-                        <div class="alert alert-danger">
-                            <ul class="mb-0">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
+    @if (session('status'))
+        <div class="auth-alert auth-alert-success">{{ session('status') }}</div>
+    @endif
 
-                    <form method="POST" action="{{ route('password.email') }}">
-                        @csrf
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email Address</label>
-                            <input type="email" class="form-control" id="email" name="email" value="{{ old('email') }}" required autofocus>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Send Reset Link</button>
-                    </form>
-                </div>
-            </div>
-
-            <div class="text-center mt-3">
-                <a href="{{ route('login') }}">Back to Login</a>
-            </div>
+    @if ($errors->any())
+        <div class="auth-alert auth-alert-danger">
+            @foreach ($errors->all() as $error)
+                <div>{{ $error }}</div>
+            @endforeach
         </div>
-    </div>
-</div>
+    @endif
+
+    <form method="POST" action="{{ route('password.email') }}">
+        @csrf
+        <label class="auth-field">
+            <span>Email</span>
+            <input type="email" name="email" value="{{ old('email') }}" required autofocus>
+        </label>
+        <button type="submit" class="auth-btn">Send reset link</button>
+    </form>
+
+    <p class="auth-muted mb-0">
+        <a class="auth-link" href="{{ route('login') }}">Back to sign in</a>
+    </p>
 @endsection

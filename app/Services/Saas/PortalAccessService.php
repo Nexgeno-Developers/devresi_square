@@ -286,6 +286,67 @@ class PortalAccessService
         });
     }
 
+    /**
+     * End portal access for an archived let. A person with another active let keeps that login.
+     */
+    public function closePortalForEndedTenancy(Tenancy $tenancy): void
+    {
+        $accountId = (int) $tenancy->account_id;
+        $userIds = TenantMember::query()
+            ->where('tenancy_id', $tenancy->id)
+            ->pluck('user_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        TenantMember::query()
+            ->where('tenancy_id', $tenancy->id)
+            ->update(['can_login' => false]);
+
+        foreach ($userIds as $userId) {
+            $stillOnProperty = TenantMember::query()
+                ->where('account_id', $accountId)
+                ->where('user_id', $userId)
+                ->where('tenancy_id', '!=', $tenancy->id)
+                ->whereHas('tenancy', function ($query) use ($tenancy) {
+                    $query->where('status', 'Active')
+                        ->where('property_id', $tenancy->property_id);
+                })
+                ->exists();
+
+            if (! $stillOnProperty && $tenancy->property_id) {
+                PropertyParticipant::query()
+                    ->where('account_id', $accountId)
+                    ->where('property_id', $tenancy->property_id)
+                    ->where('user_id', $userId)
+                    ->where('participant_type', AccountMembership::TENANT)
+                    ->update(['status' => 'inactive']);
+            }
+
+            $stillOpen = TenantMember::query()
+                ->where('account_id', $accountId)
+                ->where('user_id', $userId)
+                ->where('tenancy_id', '!=', $tenancy->id)
+                ->whereHas('tenancy', function ($query) {
+                    $query->where('status', 'Active')->whereHas('property');
+                })
+                ->exists();
+
+            if ($stillOpen) {
+                continue;
+            }
+
+            AccountUser::query()
+                ->where('account_id', $accountId)
+                ->where('user_id', $userId)
+                ->where('member_type', AccountMembership::TENANT)
+                ->update([
+                    'can_login' => false,
+                    'status' => 'disabled',
+                ]);
+        }
+    }
+
     public function isAccountOwnerOrAdmin(User $user, int $accountId): bool
     {
         if ($user->isSuperAdmin()) {

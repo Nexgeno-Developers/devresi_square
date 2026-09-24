@@ -95,15 +95,8 @@
                                     </div>
 
                                     <div class="col-12">
-                                        <select class="form-select form-select-lg" id="type" name="type" required>
-                                            @php($selectedType = old('type', $suggestedRegistrationType ?? null))
-                                            <option value="" disabled @selected(! $selectedType)>I am a...</option>
-                                            <option value="landlord" @selected($selectedType === 'landlord')>Landlord</option>
-                                            <option value="owner" @selected($selectedType === 'owner')>Owner</option>
-                                            <option value="estate_agent" @selected($selectedType === 'estate_agent')>Estate Agent</option>
-                                            <option value="contractor" @selected($selectedType === 'contractor')>Contractor</option>
-                                        </select>
-                                        <div class="invalid-feedback"></div>
+                                        <input type="hidden" name="type" value="landlord">
+                                        <p class="text-start mb-0">This creates a landlord account.</p>
                                     </div>
 
                                     <div class="col-12">

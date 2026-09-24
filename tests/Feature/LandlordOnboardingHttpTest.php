@@ -56,7 +56,8 @@ class LandlordOnboardingHttpTest extends TestCase
         $response->assertSee('Lead tenant', false);
         $response->assertSee('Tenancy terms', false);
         $response->assertSee('Rent (£)', false);
-        $response->assertSee('Test mode: try', false);
+        $response->assertDontSee('Test mode:', false);
+        $response->assertSee('Try postcode', false);
         $response->assertSee('Calendar', false);
     }
 

@@ -25,6 +25,8 @@ class TenantMember extends Model
         // 'poor_credit',
         'access_level',
         'can_login',
+        'details_status',
+        'details_confirmed_at',
         'is_main_person',
         'group_id'
         ,'right_to_rent_required'
@@ -34,6 +36,7 @@ class TenantMember extends Model
 
     protected $casts = [
         'can_login' => 'boolean',
+        'details_confirmed_at' => 'datetime',
         'right_to_rent_required' => 'boolean',
         'right_to_rent_checked_at' => 'datetime',
         'right_to_rent_follow_up_due_at' => 'datetime',

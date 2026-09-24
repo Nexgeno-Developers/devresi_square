@@ -10,7 +10,7 @@ use App\Models\TenantMember;
 use App\Models\TenancyType;
 use App\Models\TenancySubStatus;
 use App\Models\PropertyManagerTenancy;
-use App\Models\SysSaleInvoice;
+use App\Models\RentInvoice;
 use App\Models\EmailTemplate;
 use App\Mail\MailManager;
 use Illuminate\Http\Request;
@@ -65,7 +65,7 @@ class TenancyController
     {
         Gate::authorize('viewAny', Tenancy::class);
 
-        $query = Tenancy::with(['property', 'tenantMembers.user', 'tenancySubStatus'])
+        $query = Tenancy::with(['property', 'tenantMembers.user', 'tenancySubStatus', 'correctionRequests' => fn ($query) => $query->pending()])
             ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->orderByDesc('id');
 
@@ -126,7 +126,8 @@ class TenancyController
             'deposit' => 'required|numeric',
             'deposit_type' => 'nullable|string|max:255', // Adjusting validation based on possible values for 'deposit_type'
             'deposit_number' => 'nullable|string|max:255',
-            'frequency' => 'nullable|string|max:255',
+            'frequency' => 'nullable|in:Monthly,Weekly',
+            'rent_due_day' => 'nullable|integer|min:1|max:28',
             'tenancy_sub_status_id' => 'nullable|exists:tenancy_sub_statuses,id', // Assuming foreign key relationship
             'tenancy_type_id' => 'nullable|exists:tenancy_types,id', // Assuming foreign key relationship
             'deposit_held_by' => 'nullable|string|max:255',
@@ -182,6 +183,8 @@ class TenancyController
         
         // Create a new tenancy
         $tenancy = Tenancy::create($validated);
+
+        $this->syncPropertyLettingStatus((int) $validated['property_id']);
 
         // Attach property managers to the tenancy if provided
         if ($request->has('property_manager')) {
@@ -281,6 +284,8 @@ class TenancyController
                 'move_in_date' => optional($tenancy->move_in)->format('d M Y'),
                 'rent' => '£'.number_format((float) $tenancy->rent, 2),
                 'action_url' => route('admin.tenancies.show', $tenancy->id),
+                'portal_action_url' => route('tenant.tenancy'),
+                'portal_action_tenants_only' => true,
                 'milestone' => 'activated-'.$tenancy->id,
             ],
             auth()->user(),
@@ -313,11 +318,22 @@ class TenancyController
                 ! auth()->user()?->hasRole('Super Admin'),
                 fn ($userQuery) => $userQuery->forAccount(current_account_id())
             ),
+            'correctionRequests' => fn ($query) => $query->with(['requester', 'reviewer'])->latest('id'),
+            'documents.documentType',
         ])->findOrFail($id);
         ensureModelBelongsToCurrentAccount($tenancy);
         Gate::authorize('view', $tenancy);
 
-        return view('backend.tenancies.show', compact('tenancy'));
+        $documentTypes = \App\Models\DocumentType::query()->orderBy('name')->get();
+        \App\Models\DocumentType::query()->firstOrCreate(
+            ['name' => 'Prescribed Information'],
+            ['description' => 'Deposit prescribed information given to the tenant.']
+        );
+        if ($documentTypes->where('name', 'Prescribed Information')->isEmpty()) {
+            $documentTypes = \App\Models\DocumentType::query()->orderBy('name')->get();
+        }
+
+        return view('backend.tenancies.show-page', compact('tenancy', 'documentTypes'));
     }
 
     public function rentLedger($id)
@@ -336,58 +352,24 @@ class TenancyController
             ),
         ])->findOrFail($id);
         ensureModelBelongsToCurrentAccount($tenancy);
+        Gate::authorize('view', $tenancy);
 
-        $tenantUserIds = $tenancy->tenantMembers
-            ->pluck('user_id')
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-
-        $invoices = SysSaleInvoice::query()
-            ->with([
-                'payments' => function ($query) {
-                    $query->where(function ($paymentQuery) {
-                        $paymentQuery->whereNull('is_voided')->orWhere('is_voided', false);
-                    })->with(['paymentMethod', 'bankAccount'])->orderBy('payment_date')->orderBy('id');
-                },
-                'chargeTo',
-                'user',
-            ])
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
-            ->where(function ($query) use ($tenancy, $tenantUserIds) {
-                $query->where(function ($direct) use ($tenancy) {
-                    $direct->where('link_to_type', 'Tenancy')
-                        ->where('link_to_id', $tenancy->id);
-                });
-
-                if (!empty($tenantUserIds) && $tenancy->property_id) {
-                    $query->orWhere(function ($propertyLinked) use ($tenancy, $tenantUserIds) {
-                        $propertyLinked->where('link_to_type', 'Property')
-                            ->where('link_to_id', $tenancy->property_id)
-                            ->whereIn('charge_to_id', $tenantUserIds);
-                    });
-                }
-            })
-            ->orderByDesc('invoice_date')
+        $invoices = RentInvoice::query()
+            ->with(['tenant', 'payments'])
+            ->forAccount(current_account_id())
+            ->where('tenancy_id', $tenancy->id)
+            ->orderByDesc('issue_date')
             ->orderByDesc('id')
             ->get();
 
-        $invoiceRows = $invoices->map(function (SysSaleInvoice $invoice) use ($tenancy) {
+        $invoiceRows = $invoices->map(function (RentInvoice $invoice) {
             $paid = (float) $invoice->payments->sum('amount');
-            $total = (float) ($invoice->total_amount ?? 0);
-            $balance = $invoice->balance_amount === null
-                ? max(0, $total - $paid)
-                : max(0, (float) $invoice->balance_amount);
 
             return [
                 'invoice' => $invoice,
                 'paid' => $paid,
-                'balance' => $balance,
-                'source' => $invoice->link_to_type === 'Tenancy' && (int) $invoice->link_to_id === (int) $tenancy->id
-                    ? 'Tenancy'
-                    : 'Property',
-                'latest_payment_date' => $invoice->payments->max('payment_date'),
+                'balance' => (float) $invoice->balance,
+                'latest_payment_date' => $invoice->payments->max('paid_at'),
             ];
         });
 
@@ -400,31 +382,38 @@ class TenancyController
                     ];
                 });
             })
-            ->sortByDesc(fn (array $row) => $row['payment']->payment_date . '-' . str_pad((string) $row['payment']->id, 10, '0', STR_PAD_LEFT))
+            ->sortByDesc(fn (array $row) => ($row['payment']->paid_at?->format('Y-m-d') ?? '').'-'.str_pad((string) $row['payment']->id, 10, '0', STR_PAD_LEFT))
             ->values();
 
         $latestPayment = $payments->first();
+        $openBalance = (float) $invoiceRows
+            ->filter(fn (array $row) => $row['invoice']->status !== RentInvoice::STATUS_VOID)
+            ->sum('balance');
 
         $summary = [
-            'invoice_count' => $invoices->count(),
-            'total_invoiced' => (float) $invoices->sum(fn (SysSaleInvoice $invoice) => (float) ($invoice->total_amount ?? 0)),
+            'invoice_count' => $invoices->where('status', '!=', RentInvoice::STATUS_VOID)->count(),
+            'total_invoiced' => (float) $invoices->where('status', '!=', RentInvoice::STATUS_VOID)->sum(fn (RentInvoice $invoice) => (float) $invoice->amount),
             'total_paid' => (float) $invoiceRows->sum('paid'),
-            'balance' => (float) $invoiceRows->sum('balance'),
-            'latest_payment_date' => $latestPayment ? $latestPayment['payment']->payment_date : null,
+            'balance' => $openBalance,
+            'latest_payment_date' => $latestPayment ? $latestPayment['payment']->paid_at : null,
+            'overdue_count' => $invoices->filter(fn (RentInvoice $invoice) => $invoice->isOverdue())->count(),
         ];
 
         if ($summary['invoice_count'] === 0) {
-            $summary['status'] = 'Not Invoiced';
+            $summary['status'] = 'Not invoiced';
             $summary['status_class'] = 'secondary';
+        } elseif ($summary['overdue_count'] > 0) {
+            $summary['status'] = 'Overdue';
+            $summary['status_class'] = 'danger';
         } elseif ($summary['total_invoiced'] > 0 && $summary['balance'] <= 0.0001) {
             $summary['status'] = 'Paid';
             $summary['status_class'] = 'success';
         } elseif ($summary['total_paid'] > 0 && $summary['balance'] > 0) {
-            $summary['status'] = 'Partial';
+            $summary['status'] = 'Part paid';
             $summary['status_class'] = 'warning';
         } else {
-            $summary['status'] = 'Due';
-            $summary['status_class'] = 'danger';
+            $summary['status'] = 'Unpaid';
+            $summary['status_class'] = 'primary';
         }
 
         return view('backend.tenancies.rent-ledger', compact('tenancy', 'invoiceRows', 'payments', 'summary'));
@@ -521,7 +510,8 @@ class TenancyController
             'deposit' => 'required|numeric',
             'deposit_type' => 'nullable|string|max:255', // Adjusting validation based on possible values for 'deposit_type'
             'deposit_number' => 'nullable|string|max:255',
-            'frequency' => 'nullable|string|max:255',
+            'frequency' => 'nullable|in:Monthly,Weekly',
+            'rent_due_day' => 'nullable|integer|min:1|max:28',
             'tenancy_sub_status_id' => 'nullable|exists:tenancy_sub_statuses,id', // Assuming foreign key relationship
             'tenancy_type_id' => 'nullable|exists:tenancy_types,id', // Assuming foreign key relationship
             'deposit_held_by' => 'nullable|string|max:255',
@@ -568,8 +558,15 @@ class TenancyController
         $this->ensureRoleUsersAreAccessible($validated['property_manager'] ?? [], 'Property Manager', 'property_manager');
         $this->ensureOfferMatchesProperty($validated['offer_id'] ?? null, $property);
 
+        $previousPropertyId = (int) $tenancy->property_id;
+
         // Update the tenancy record
         $tenancy->update($validated);
+
+        $this->syncPropertyLettingStatus((int) $validated['property_id']);
+        if ($previousPropertyId !== (int) $validated['property_id']) {
+            $this->syncPropertyLettingStatus($previousPropertyId);
+        }
 
         // Sync property managers for the tenancy
         if ($request->has('property_manager')) {
@@ -586,25 +583,13 @@ class TenancyController
             }
         }
 
-        // Update TenantMember records
-        // First, remove all existing tenant members
-        TenantMember::where('tenancy_id', $tenancy->id)->delete();
-
-        // Store new TenantMember records
-        $groupId = 'GROUP_' . $tenancy->id; // Regenerate group_id
-        foreach ($request->user_id as $userId) {
-            // Determine if the user is the main person
-            $isMainPerson = $userId == $request->is_main_person;
-            TenantMember::create([
-                'account_id' => $validated['account_id'],
-                'tenancy_id' => $tenancy->id,
-                'user_id' => $userId,
-                'is_main_person' => $isMainPerson,
-                'group_id' => $groupId, // Set group_id if necessary
-            ]);
-        }
+        $this->syncTenantMembers($tenancy, $validated['account_id'], $request->input('user_id', []), (int) $request->input('is_main_person'));
 
         $tenancy->refresh()->load('tenantMembers.user', 'propertyManagers', 'property');
+
+        if ($tenancy->status === 'Archived') {
+            app(\App\Services\Saas\PortalAccessService::class)->closePortalForEndedTenancy($tenancy);
+        }
         app(CrmNotificationService::class)->dispatch(
             CrmNotificationEvent::TenancyUpdated,
             $tenancy,
@@ -613,13 +598,16 @@ class TenancyController
                 'property_address' => $property->full_address ?: $property->prop_name,
                 'move_in_date' => optional($tenancy->move_in)->format('d M Y'),
                 'action_url' => route('admin.tenancies.show', $tenancy->id),
+                'portal_action_url' => route('tenant.tenancy'),
+                'portal_action_tenants_only' => true,
                 'milestone' => 'updated-'.$tenancy->updated_at?->timestamp,
             ],
             auth()->user(),
         );
 
         flash("Tenancy updated successfully!")->success();
-        return back();
+
+        return redirect()->route('admin.tenancies.show', $tenancy->id);
     }
 
 
@@ -632,12 +620,86 @@ class TenancyController
         $propertyId = $tenancy->property_id;
         $tenancy->delete();
 
+        $this->syncPropertyLettingStatus((int) $propertyId);
+
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json(['success' => true]);
         }
 
         return redirect()->route('admin.properties.index', ['property_id' => $propertyId, 'tabname' => 'tenancy'])
             ->with('success', 'Tenancy deleted successfully!');
+    }
+
+    /**
+     * Keep property letting badge in sync with Active tenancies.
+     */
+    private function syncPropertyLettingStatus(?int $propertyId): void
+    {
+        if (! $propertyId) {
+            return;
+        }
+
+        $property = Property::query()->find($propertyId);
+        if (! $property) {
+            return;
+        }
+
+        $hasActive = Tenancy::query()
+            ->where('property_id', $propertyId)
+            ->where('status', 'Active')
+            ->exists();
+
+        $desired = $hasActive ? 'let agreed' : 'available';
+        if ((string) $property->letting_current_status !== $desired) {
+            $property->forceFill(['letting_current_status' => $desired])->save();
+        }
+    }
+
+    /**
+     * Upsert tenant members without wiping confirmation / right-to-rent fields.
+     *
+     * @param  list<int|string>  $userIds
+     */
+    private function syncTenantMembers(Tenancy $tenancy, ?int $accountId, array $userIds, int $mainPersonId): void
+    {
+        $incoming = collect($userIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        TenantMember::query()
+            ->where('tenancy_id', $tenancy->id)
+            ->whereNotIn('user_id', $incoming->all())
+            ->delete();
+
+        $existing = TenantMember::query()
+            ->where('tenancy_id', $tenancy->id)
+            ->get()
+            ->keyBy(fn (TenantMember $member) => (int) $member->user_id);
+
+        $groupId = 'GROUP_'.$tenancy->id;
+
+        foreach ($incoming as $userId) {
+            $payload = [
+                'account_id' => $accountId,
+                'is_main_person' => $userId === $mainPersonId,
+                'group_id' => $groupId,
+            ];
+
+            if ($existing->has($userId)) {
+                $existing->get($userId)->update($payload);
+                continue;
+            }
+
+            TenantMember::create([
+                'account_id' => $accountId,
+                'tenancy_id' => $tenancy->id,
+                'user_id' => $userId,
+                'is_main_person' => $userId === $mainPersonId,
+                'group_id' => $groupId,
+            ]);
+        }
     }
 
     private function usersWithRoleForCurrentAccount(string $role)

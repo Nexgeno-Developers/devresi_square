@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>{{ get_setting('website_name') ?: 'Resisquare' }}</title>
+    <title>@yield('title', get_setting('website_name') ?: 'Resisquare')</title>
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-url" content="{{ getBaseURL() }}">
     <meta name="file-base-url" content="{{ getFileBaseURL() }}">
@@ -32,17 +32,21 @@
 
     {{-- This will render all CSS pushed to the "styles" stack --}}
     @stack('styles')
+    @if(auth()->check() && (is_landlord_plan_user() || is_tenant_portal_user() || ! empty($tenancyConfirmation)))
+        <link href="{{ asset('asset/backend/css/tenant-portal.css') }}?v={{ @filemtime(public_path('asset/backend/css/tenant-portal.css')) }}" rel="stylesheet">
+    @endif
 
 
     <link href="{{ asset('asset/backend/css/aiz-main.css') }}" rel="stylesheet">
-    @if(auth()->check() && is_landlord_plan_user())
+    @if(auth()->check() && (is_landlord_plan_user() || is_tenant_portal_user()))
         <link href="{{ asset('asset/backend/css/landlord-workspace.css') }}?v={{ filemtime(public_path('asset/backend/css/landlord-workspace.css')) }}" rel="stylesheet">
     @endif
     {{-- <link href="{{ asset('asset/backend/css/media.css') }}" rel="stylesheet"> --}}
     {{-- <link href="{{ asset('asset/backend/css/vendors.css') }}" rel="stylesheet"> --}}
 </head>
 
-<body class="show-sidebar{{ auth()->check() && is_landlord_plan_user() ? ' landlord-workspace' : '' }}">
+<body class="show-sidebar{{ auth()->check() && is_landlord_plan_user() ? ' landlord-workspace' : '' }}{{ auth()->check() && is_tenant_portal_user() ? ' tenant-portal-shell' : '' }}">
+    <a class="skip-to-content sr-only-focusable" href="#wrapper">Skip to content</a>
     <header id="header" class="">
         <div class="container-fluid">
             <div class="top_header tw-ml-1">
@@ -56,7 +60,7 @@
             @include('backend.partials.aside2')
             {{-- @include('backend.partials.aside') --}}
 
-            <div id="wrapper" class="main_content">
+            <div id="wrapper" class="main_content" tabindex="-1">
                 {{-- <div class="alert_wrapper">
                     <!-- Display success message -->
                     @if (session('success'))
@@ -85,10 +89,16 @@
                 </div> --}}
 
                 @yield('content')
+                @if(auth()->check() && is_tenant_portal_user())
+                    @include('backend.tenant.portal._bottom-nav')
+                @endif
             </div>
         </div>
     </main>
     @yield('modal')
+    @if(! empty($tenancyConfirmation))
+        @include('backend.tenant.portal._confirmation')
+    @endif
     @if(auth()->check() && app(\App\Services\Onboarding\LandlordOnboardingService::class)->shouldIncludeOverlay(auth()->user(), current_account()))
         @include('backend.onboarding.landlord-overlay')
     @endif

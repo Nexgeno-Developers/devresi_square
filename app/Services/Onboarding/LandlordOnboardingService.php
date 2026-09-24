@@ -228,7 +228,8 @@ class LandlordOnboardingService
             'step' => $this->normalisedStep($account),
             'completed' => (bool) $account->onboarding_completed_at,
             'add_mode' => $this->isAddingProperty($user, $account),
-            'test_mode' => (bool) config('chimnie.test_mode', true),
+            'test_mode' => (bool) config('chimnie.test_mode', false)
+                && app()->environment(['local', 'testing']),
             'property' => $property ? $this->propertyPayload($property) : null,
             'owner' => [
                 'name' => $user->name,

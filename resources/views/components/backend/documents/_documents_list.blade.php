@@ -3,7 +3,7 @@
         <div class="col-12">
             <div class="document-card card shadow-sm h-100">
                 <div class="card-body d-flex flex-wrap align-items-center gap-3 py-2">
-                    <span class="badge bg-secondary">{{ $document->documentType->name ?? 'N/A' }}</span>
+                    <span class="badge bg-secondary">{{ $document->displayName() }}</span>
                 @php
                     // explode the CSV into an array of IDs
                     $uploadIds = $document->upload_ids
@@ -13,31 +13,12 @@
 
                 @if ($uploadIds)
                         <div class="d-flex flex-wrap align-items-center" style="gap:10px;">
-                            @foreach ($uploadIds as $uid)
-                                @php
-                                    $url     = uploaded_asset($uid);
-                                    $ext     = strtolower(pathinfo($url, PATHINFO_EXTENSION));
-                                    $isImage = in_array($ext, ['jpg','jpeg','png','gif','svg','webp']);
-                                @endphp
-
-                                <div class="d-flex align-items-center gap-1">
-                                    <a href="{{ $url }}" target="_blank" class="text-decoration-none d-block mb-1">
-                                        @if($isImage)
-                                            <i class="fas fa-image fa-2x"></i>
-                                        @else
-                                            <i class="fas fa-file-alt fa-2x"></i>
-                                        @endif
-                                    </a>
-                                    {!! attachmentViewer(
-                                        $url,
-                                        'Preview',
-                                        'btn btn-outline-secondary btn-sm',
-                                        'lg'
-                                    ) !!}
-                                </div>
-                            @endforeach
+                            <a href="{{ route('admin.documents.download', $document) }}" class="text-decoration-none d-block mb-1" title="Download">
+                                <i class="fas fa-file-alt fa-2x"></i>
+                            </a>
                         </div>
                 @endif
+                    <span class="small text-muted">{{ $document->documentType?->name ?: '—' }}</span>
                     <span class="small text-muted">Added {{ formatDateTime($document->created_at) }}</span>
                     <span class="small text-muted">Updated {{ formatDateTime($document->updated_at) }}</span>
                     <div class="ms-auto d-flex gap-1">

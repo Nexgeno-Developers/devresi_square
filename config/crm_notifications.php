@@ -75,6 +75,21 @@ $events = [
             'subject' => 'Tenancy notice: [[notice_type]]',
             'message' => 'A [[notice_type]] notice has been recorded for [[property_address]].',
         ],
+        CrmNotificationEvent::TenancyDetailsCorrectionRequested->value => [
+            'category' => 'tenancies', 'priority' => 'high', 'channels' => $both,
+            'subject' => 'Tenancy details need a check: [[property_address]]',
+            'message' => '[[customer_name]] asked you to review the tenancy details for [[property_address]].',
+        ],
+        CrmNotificationEvent::TenancyDetailsCorrectionApproved->value => [
+            'category' => 'tenancies', 'priority' => 'high', 'channels' => $both,
+            'subject' => 'Tenancy details updated: [[property_address]]',
+            'message' => 'Your landlord updated the tenancy details for [[property_address]]. Please confirm them in your portal.',
+        ],
+        CrmNotificationEvent::TenancyDetailsCorrectionRejected->value => [
+            'category' => 'tenancies', 'priority' => 'normal', 'channels' => $both,
+            'subject' => 'Tenancy details unchanged: [[property_address]]',
+            'message' => 'Your landlord kept the original tenancy details for [[property_address]]. Please confirm them in your portal.',
+        ],
         CrmNotificationEvent::ComplianceExpiring->value => [
             'category' => 'compliance', 'priority' => 'high', 'channels' => $both,
             'subject' => '[[compliance_type]] expires soon',
@@ -89,6 +104,11 @@ $events = [
             'category' => 'compliance', 'priority' => 'critical', 'channels' => $both,
             'subject' => 'Compliance remediation [[due_text]]',
             'message' => 'Remediation for [[compliance_type]] at [[property_address]] is [[due_text]].',
+        ],
+        CrmNotificationEvent::DocumentShared->value => [
+            'category' => 'documents', 'priority' => 'normal', 'channels' => $both,
+            'subject' => 'A document is ready: [[document_title]]',
+            'message' => '[[document_title]] has been shared with you. Open it from your documents.',
         ],
         CrmNotificationEvent::ComplianceRenewed->value => [
             'category' => 'compliance', 'priority' => 'normal', 'channels' => $both, 'locked_channels' => ['email'],
@@ -136,7 +156,7 @@ $events = [
             'message' => 'Repair [[repair_reference]] changed from [[old_status]] to [[new_status]].',
         ],
         CrmNotificationEvent::FinanceInvoiceIssued->value => [
-            'category' => 'finance', 'priority' => 'high', 'channels' => $both, 'locked_channels' => ['email'],
+            'category' => 'finance', 'priority' => 'high', 'channels' => $both,
             'subject' => 'Invoice [[invoice_number]]',
             'message' => 'Invoice [[invoice_number]] for [[invoice_amount]] is due on [[due_date]].',
         ],
@@ -176,7 +196,7 @@ $permittedPlaceholders = [
     'appointment_title', 'appointment_at', 'property_address', 'offer_amount', 'move_in_date',
     'days_text', 'due_text', 'due_date', 'notice_type', 'compliance_type', 'repair_reference',
     'repair_priority', 'old_status', 'new_status', 'invoice_id', 'invoice_number', 'invoice_amount',
-    'payment_amount', 'action_url', 'customer_name', 'customer_email', 'invoice_pdf_url',
+    'payment_amount', 'action_url', 'customer_name', 'customer_email', 'invoice_pdf_url', 'document_title',
     'recipient_name', 'recipient_email', 'brand_name', 'currency',
 ];
 

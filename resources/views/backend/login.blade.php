@@ -7,7 +7,7 @@
     <div class="col-md-6">
         <h2>Login</h2>
         @include('auth.partials.login-errors')
-        <form action="{{ route('login.post') }}" method="POST">
+        <form action="{{ route('backend.login.post') }}" method="POST">
             @csrf
             <div class="mb-3">
                 <label for="email" class="form-label">Email</label>

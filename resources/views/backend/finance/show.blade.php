@@ -4,23 +4,23 @@
 <div class="container lw-page">
     <div class="lw-hero d-flex align-items-center justify-content-between gap-3 flex-wrap mb-3">
         <div>
-            <h4>{{ $invoice->invoice_no }}</h4>
-            <p>{{ ucfirst($invoice->status) }} · balance £{{ number_format((float) $invoice->balance, 2) }}</p>
+            <h4>{{ rs_rent_title($invoice) }}</h4>
+            <p>{{ $invoice->statusLabel() }} · balance {{ rs_money($invoice->balance) }} · <span class="opacity-75">{{ $invoice->invoice_no }}</span></p>
         </div>
-        <a href="{{ route('admin.finance.index') }}" class="btn btn-light">Back</a>
+        <a href="{{ route('admin.finance.index') }}" class="btn lw-btn-secondary">Back</a>
     </div>
 
-    <div class="card mb-3">
+    <div class="card lw-card mb-3">
         <div class="card-body">
             <div class="row">
                 <div class="col-md-6 mb-2"><strong>Tenant</strong><br>{{ $invoice->tenant?->name ?: $invoice->tenant?->email }}</div>
                 <div class="col-md-6 mb-2"><strong>Property</strong><br>{{ $invoice->property?->full_address ?: ($invoice->property?->line_1 ?: '—') }}</div>
-                <div class="col-md-3 mb-2"><strong>Issued</strong><br>{{ $invoice->issue_date?->format('d M Y') }}</div>
-                <div class="col-md-3 mb-2"><strong>Due</strong><br>{{ $invoice->due_date?->format('d M Y') }}</div>
-                <div class="col-md-3 mb-2"><strong>Amount</strong><br>£{{ number_format((float) $invoice->amount, 2) }}</div>
-                <div class="col-md-3 mb-2"><strong>Balance</strong><br>£{{ number_format((float) $invoice->balance, 2) }}</div>
+                <div class="col-md-3 mb-2"><strong>Issued</strong><br>{{ rs_date($invoice->issue_date) }}</div>
+                <div class="col-md-3 mb-2"><strong>Due</strong><br>{{ rs_date($invoice->due_date) }}</div>
+                <div class="col-md-3 mb-2"><strong>Amount</strong><br>{{ rs_money($invoice->amount) }}</div>
+                <div class="col-md-3 mb-2"><strong>Balance</strong><br>{{ rs_money($invoice->balance) }}</div>
                 @if($invoice->period_start || $invoice->period_end)
-                    <div class="col-12 mb-2"><strong>Period</strong><br>{{ $invoice->period_start?->format('d M Y') ?: '—' }} – {{ $invoice->period_end?->format('d M Y') ?: '—' }}</div>
+                    <div class="col-12 mb-2"><strong>Period</strong><br>{{ rs_date($invoice->period_start) }} – {{ rs_date($invoice->period_end) }}</div>
                 @endif
                 @if($invoice->note)
                     <div class="col-12"><strong>Note</strong><br>{{ $invoice->note }}</div>
@@ -30,7 +30,7 @@
     </div>
 
     @if($invoice->isOpen())
-        <div class="card mb-3">
+        <div class="card lw-card mb-3">
             <div class="card-body">
                 <h5>Record payment</h5>
                 <form action="{{ route('admin.finance.payments.store', $invoice) }}" method="POST">
@@ -77,7 +77,7 @@
     <div class="card">
         <div class="card-body">
             <h5>Payments</h5>
-            <table class="table align-middle mb-0">
+            <table class="table lw-table align-middle mb-0">
                 <thead>
                     <tr>
                         <th>Date</th>

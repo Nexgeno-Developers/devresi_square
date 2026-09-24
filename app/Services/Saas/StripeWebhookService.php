@@ -200,6 +200,12 @@ class StripeWebhookService
         ])->save();
 
         $this->syncAccountStatus($subscription, 'past_due');
+
+        Log::warning('Stripe subscription payment failed; account marked past_due', [
+            'account_id' => $subscription->account_id,
+            'stripe_subscription_id' => $stripeSubscriptionId,
+            'stripe_invoice_id' => $this->stripeId($invoice),
+        ]);
     }
 
     private function syncSubscriptionFromStripe(mixed $stripeSubscription, ?AccountSubscription $subscription = null): ?AccountSubscription

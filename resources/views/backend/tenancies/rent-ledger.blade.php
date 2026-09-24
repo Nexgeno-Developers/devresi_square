@@ -8,43 +8,39 @@
         ->filter()
         ->unique()
         ->implode(', ');
-    $money = fn ($amount) => number_format((float) $amount, 2);
+    $money = fn ($amount) => '£'.number_format((float) $amount, 2);
 @endphp
 
 @section('content')
-<div class="mt-md-4 me-md-4 me-3 mt-3">
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+<div class="container-fluid pt-4 pb-5 lw-page">
+    <div class="lw-hero d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
         <div>
-            <h2 class="mb-1">Rent Ledger - Tenancy #{{ $tenancy->id }}</h2>
-            <div class="text-muted">
-                {{ $property->prop_ref_no ?? '' }}
-                {{ $property->full_address ?? 'Property not available' }}
-            </div>
+            <h4 class="mb-1">Rent ledger</h4>
+            <p class="mb-0">
+                {{ $property?->short_title ?? ($property?->line_1 ?? 'Property') }}
+                @if($property?->short_address)
+                    <span class="text-muted">· {{ $property->short_address }}</span>
+                @endif
+            </p>
         </div>
-        <div class="d-flex gap-2">
-            @if($property)
-                <a href="{{ route('admin.properties.index', ['property_id' => $property->id, 'tabname' => 'Tenancy']) }}" class="btn btn-outline-secondary">
-                    Back to Tenancy
-                </a>
-            @endif
-            <a href="{{ route('backend.accounting.sale.invoices.create') }}" class="btn btn-primary">
-                Create Rent Invoice
-            </a>
+        <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ route('admin.tenancies.show', $tenancy->id) }}" class="btn lw-btn-secondary">Back to tenancy</a>
+            <a href="{{ route('admin.finance.create') }}" class="btn lw-btn-primary">New invoice</a>
         </div>
     </div>
 
     <div class="row g-3 mb-3">
         <div class="col-md-3">
-            <div class="card h-100">
+            <div class="card lw-card h-100">
                 <div class="card-body">
-                    <div class="text-muted small">Agreed Rent</div>
+                    <div class="text-muted small">Agreed rent</div>
                     <div class="h5 mb-0">{{ $money($tenancy->rent) }}</div>
                     <div class="text-muted small">{{ $tenancy->frequency ?: 'No frequency set' }}</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card h-100">
+            <div class="card lw-card h-100">
                 <div class="card-body">
                     <div class="text-muted small">Invoiced</div>
                     <div class="h5 mb-0">{{ $money($summary['total_invoiced']) }}</div>
@@ -53,16 +49,16 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card h-100">
+            <div class="card lw-card h-100">
                 <div class="card-body">
                     <div class="text-muted small">Paid</div>
                     <div class="h5 mb-0">{{ $money($summary['total_paid']) }}</div>
-                    <div class="text-muted small">Latest: {{ $summary['latest_payment_date'] ?: '-' }}</div>
+                    <div class="text-muted small">Latest: {{ $summary['latest_payment_date'] ? \Illuminate\Support\Carbon::parse($summary['latest_payment_date'])->format('d M Y') : '—' }}</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card h-100">
+            <div class="card lw-card h-100">
                 <div class="card-body">
                     <div class="text-muted small">Balance</div>
                     <div class="h5 mb-0">{{ $money($summary['balance']) }}</div>
@@ -72,7 +68,7 @@
         </div>
     </div>
 
-    <div class="card mb-3">
+    <div class="card lw-card mb-3">
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-4">
@@ -87,85 +83,71 @@
                     <div>{{ $tenancy->status }}</div>
                 </div>
                 <div class="col-md-2">
-                    <div class="text-muted small">Sub Status</div>
-                    <div>{{ $tenancy->tenancySubStatus->name ?? '-' }}</div>
+                    <div class="text-muted small">Move in</div>
+                    <div>{{ $tenancy->move_in?->format('d M Y') ?: '—' }}</div>
                 </div>
                 <div class="col-md-2">
-                    <div class="text-muted small">Move In</div>
-                    <div>{{ $tenancy->move_in ?: '-' }}</div>
+                    <div class="text-muted small">Move out</div>
+                    <div>{{ $tenancy->move_out?->format('d M Y') ?: '—' }}</div>
                 </div>
                 <div class="col-md-2">
-                    <div class="text-muted small">Move Out</div>
-                    <div>{{ $tenancy->move_out ?: '-' }}</div>
-                </div>
-                <div class="col-md-2">
-                    <div class="text-muted small">Deposit</div>
-                    <div>{{ $money($tenancy->deposit) }}</div>
-                </div>
-                <div class="col-md-2">
-                    <div class="text-muted small">Type</div>
-                    <div>{{ $tenancy->tenancyType->name ?? '-' }}</div>
-                </div>
-                <div class="col-md-4">
-                    <div class="text-muted small">Term</div>
-                    <div>{{ $tenancy->term_months ?? 0 }} months, {{ $tenancy->term_days ?? 0 }} days</div>
+                    <div class="text-muted small">Auto invoice</div>
+                    <div>{{ $tenancy->rent_auto_invoice ? 'On' : 'Off' }}</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="card mb-3">
+    <div class="card lw-card mb-3">
         <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="mb-0">Rent Invoices For This Tenancy Record</h5>
-                <span class="text-muted small">Includes direct tenancy invoices and property-linked invoices charged to this tenancy's tenants.</span>
-            </div>
+            <h5 class="mb-3">Rent invoices</h5>
 
             @if($invoiceRows->isEmpty())
-                <div class="alert alert-info mb-0">No rent invoices are linked to this tenancy record yet.</div>
+                <div class="lw-empty pt-2">
+                    <div class="lw-empty-title">No rent invoices yet</div>
+                    <p class="mb-3">Issue rent from Finance for this tenancy.</p>
+                    <a href="{{ route('admin.finance.create') }}" class="btn lw-btn-primary">New invoice</a>
+                </div>
             @else
                 <div class="table-responsive">
-                    <table class="table table-bordered table-sm align-middle">
-                        <thead class="table-light">
+                    <table class="table lw-table align-middle">
+                        <thead>
                             <tr>
                                 <th>Invoice</th>
-                                <th>Date</th>
+                                <th>Issued</th>
                                 <th>Due</th>
-                                <th>Charged To</th>
-                                <th>Source</th>
+                                <th>Tenant</th>
                                 <th class="text-end">Total</th>
                                 <th class="text-end">Paid</th>
                                 <th class="text-end">Balance</th>
                                 <th>Status</th>
-                                <th>Action</th>
+                                <th></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($invoiceRows as $row)
                                 @php
                                     $invoice = $row['invoice'];
-                                    $invoiceStatusClass = match ($invoice->status) {
-                                        'paid' => 'success',
-                                        'partial' => 'warning',
-                                        'cancelled' => 'secondary',
-                                        'draft' => 'info',
-                                        default => 'danger',
+                                    $label = $invoice->statusLabel();
+                                    $badge = match ($label) {
+                                        'Overdue' => 'danger',
+                                        'Paid' => 'success',
+                                        'Part paid' => 'warning',
+                                        'Void' => 'secondary',
+                                        default => 'primary',
                                     };
                                 @endphp
                                 <tr>
                                     <td>{{ $invoice->invoice_no }}</td>
-                                    <td>{{ $invoice->invoice_date ?: '-' }}</td>
-                                    <td>{{ $invoice->due_date ?: '-' }}</td>
-                                    <td>{{ $invoice->user->name ?? $invoice->chargeTo->name ?? '-' }}</td>
-                                    <td>{{ $row['source'] }}</td>
-                                    <td class="text-end">{{ $money($invoice->total_amount) }}</td>
+                                    <td>{{ $invoice->issue_date?->format('d M Y') ?: '—' }}</td>
+                                    <td>{{ rs_date($invoice->due_date) }}</td>
+                                    <td>{{ $invoice->tenant?->name ?: $invoice->tenant?->email ?: '—' }}</td>
+                                    <td class="text-end">{{ $money($invoice->amount) }}</td>
                                     <td class="text-end">{{ $money($row['paid']) }}</td>
                                     <td class="text-end">{{ $money($row['balance']) }}</td>
-                                    <td><span class="badge bg-{{ $invoiceStatusClass }}">{{ ucfirst($invoice->status ?? 'draft') }}</span></td>
+                                    <td><span class="badge bg-{{ $badge }}">{{ $label }}</span></td>
                                     <td>
-                                        <a href="{{ route('backend.accounting.sale.invoices.show', $invoice->id) }}" class="btn btn-sm btn-outline-info">
-                                            View
-                                        </a>
+                                        <a href="{{ route('admin.finance.show', $invoice) }}" class="btn btn-sm btn-outline-primary">View</a>
                                     </td>
                                 </tr>
                             @endforeach
@@ -176,23 +158,22 @@
         </div>
     </div>
 
-    <div class="card">
+    <div class="card lw-card">
         <div class="card-body">
-            <h5 class="mb-2">Payment Records</h5>
+            <h5 class="mb-3">Payments</h5>
 
             @if($payments->isEmpty())
-                <div class="alert alert-info mb-0">No payments have been recorded against this tenancy's invoices.</div>
+                <p class="text-muted mb-0">No payments recorded against this tenancy’s invoices yet.</p>
             @else
                 <div class="table-responsive">
-                    <table class="table table-bordered table-sm align-middle">
-                        <thead class="table-light">
+                    <table class="table lw-table align-middle mb-0">
+                        <thead>
                             <tr>
                                 <th>Date</th>
                                 <th>Invoice</th>
                                 <th>Method</th>
-                                <th>Bank</th>
                                 <th class="text-end">Amount</th>
-                                <th>Notes</th>
+                                <th>Reference</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -202,16 +183,13 @@
                                     $payment = $row['payment'];
                                 @endphp
                                 <tr>
-                                    <td>{{ $payment->payment_date ?: '-' }}</td>
+                                    <td>{{ $payment->paid_at?->format('d M Y') ?: '—' }}</td>
                                     <td>
-                                        <a href="{{ route('backend.accounting.sale.invoices.show', $invoice->id) }}">
-                                            {{ $invoice->invoice_no }}
-                                        </a>
+                                        <a href="{{ route('admin.finance.show', $invoice) }}">{{ $invoice->invoice_no }}</a>
                                     </td>
-                                    <td>{{ $payment->paymentMethod->name ?? '-' }}</td>
-                                    <td>{{ $payment->bankAccount->account_name ?? '-' }}</td>
+                                    <td>{{ \App\Models\RentPayment::METHODS[$payment->method] ?? ucfirst((string) $payment->method) }}</td>
                                     <td class="text-end">{{ $money($payment->amount) }}</td>
-                                    <td>{{ $payment->notes ?: '-' }}</td>
+                                    <td>{{ $payment->reference ?: '—' }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

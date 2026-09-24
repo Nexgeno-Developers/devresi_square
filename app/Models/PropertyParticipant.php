@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Builder;
 use OwenIt\Auditing\Contracts\Auditable;
 
 class PropertyParticipant extends Model implements Auditable
 {
     use HasFactory;
+    use BelongsToSaasAccount;
     use \OwenIt\Auditing\Auditable;
 
     protected $fillable = [
@@ -31,11 +33,6 @@ class PropertyParticipant extends Model implements Auditable
         'can_view_documents' => 'boolean',
         'can_upload_documents' => 'boolean',
     ];
-
-    public function account(): BelongsTo
-    {
-        return $this->belongsTo(Account::class);
-    }
 
     public function property(): BelongsTo
     {
@@ -60,11 +57,6 @@ class PropertyParticipant extends Model implements Auditable
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('status', 'active');
-    }
-
-    public function scopeForAccount(Builder $query, int $accountId): Builder
-    {
-        return $query->where('account_id', $accountId);
     }
 
     public function scopeForUser(Builder $query, int $userId): Builder

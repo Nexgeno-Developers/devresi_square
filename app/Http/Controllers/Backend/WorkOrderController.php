@@ -63,8 +63,14 @@ class WorkOrderController
 
         // Check if we're updating an existing Work Order
         if (!empty($request->work_order_id)) {
-            $workOrder = WorkOrder::find($request->work_order_id);
-        
+            $workOrderQuery = WorkOrder::query()
+                ->when(
+                    ! auth()->user()?->isSuperAdmin(),
+                    fn ($query) => $query->forAccount(current_account_id())
+                );
+
+            $workOrder = $workOrderQuery->find($request->work_order_id);
+
             if (!$workOrder) {
                 return response()->json([
                     'message' => 'Work Order not found!',
@@ -360,7 +366,12 @@ class WorkOrderController
             'repairIssue.property.creator',
             'repairIssue.repairCategory',
             'repairIssue.tenant',
-        ])->findOrFail($id);
+        ])
+            ->when(
+                ! auth()->user()?->isSuperAdmin(),
+                fn ($query) => $query->forAccount(current_account_id())
+            )
+            ->findOrFail($id);
 
         ensureModelBelongsToCurrentAccount($workorder);
         $this->ensurePortalCanAccessWorkOrder($workorder);

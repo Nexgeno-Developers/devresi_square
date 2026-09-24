@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend;
 use App\Models\Document;
 use App\Models\DocumentType;
 use App\Models\Property;
+use App\Models\Tenancy;
 use App\Models\Upload;
 use App\Models\User;
 use App\Services\Saas\PortalAccessService;
@@ -52,7 +53,7 @@ class DocumentsController
             return response('Invalid documentable type.', 404);
         }
 
-        $documentable = $documentableType::findOrFail($documentableId);
+        $documentable = $this->resolveDocumentable($documentableType, (int) $documentableId);
         $this->ensureDocumentableIsAccessible($documentable);
         $this->authorizeDocumentableUpload($documentable);
         $documentTypes = DocumentType::all();
@@ -87,35 +88,45 @@ class DocumentsController
      */
     public function saveDocumentData(array $data)
     {
+        $previousVisibility = null;
         if (!empty($data['document_id'])) {
             // Update existing
-            $document = Document::where('documentable_type', $data['documentable_type'])
+            $document = Document::whereIn('documentable_type', $this->documentableTypeAliases($data['documentable_type']))
                                 ->where('documentable_id', $data['documentable_id'])
                                 ->findOrFail($data['document_id']);
             ensureModelBelongsToCurrentAccount($document);
             $this->ensureDocumentableIsAccessible($document->documentable);
             $this->authorizeDocumentableUpload($document->documentable);
+            $previousVisibility = $document->visibility;
             $document->update([
                 'upload_ids'       => $data['upload_ids'],
                 'document_type_id' => $data['document_type_id'] ?? null,
+                'title'            => $data['title'] ?? $document->title,
                 'visibility'       => $data['visibility'] ?? $document->visibility,
             ]);
         } else {
-            $documentable = $data['documentable_type']::findOrFail($data['documentable_id']);
+            $documentable = $this->resolveDocumentable($data['documentable_type'], (int) $data['documentable_id']);
             $this->ensureDocumentableIsAccessible($documentable);
             $this->authorizeDocumentableUpload($documentable);
 
             // Create new
             $document = Document::create([
                 'account_id' => current_account_id(),
-                'documentable_type'   => $data['documentable_type'],
-                'documentable_id'     => $data['documentable_id'],
+                'documentable_type'   => $documentable->getMorphClass(),
+                'documentable_id'     => $documentable->id,
                 'upload_ids'          => $data['upload_ids'],
                 'document_type_id'    => $data['document_type_id'] ?? null,
+                'title'               => $data['title'] ?? null,
                 'visibility'          => $data['visibility'] ?? 'private',
                 'created_by'          => auth()->id(),
             ]);
         }
+
+        $document->refresh();
+        if ($document->isSharedWithTenant() && ! in_array((string) $previousVisibility, Document::TENANT_VISIBILITIES, true)) {
+            app(\App\Services\Documents\DocumentShareNotifier::class)->shared($document);
+        }
+
         return $document;
     }
 
@@ -128,7 +139,8 @@ class DocumentsController
             'documentable_type'   => ['required', 'string', Rule::in($this->supportedDocumentableTypes())],
             'documentable_id'     => ['required', 'integer'],
             'upload_ids'          => ['required', 'string'], // comma-separated IDs
-            'document_type_id'    => ['nullable', 'integer', Rule::exists('document_types', 'id')],
+            'title'               => ['required', 'string', 'max:255'],
+            'document_type_id'    => ['required', 'integer', Rule::exists('document_types', 'id')],
             'document_id'         => ['nullable', 'integer', Rule::exists('documents', 'id')],
             'share_with_tenant'   => ['nullable', 'boolean'],
             'visibility'          => ['nullable', Rule::in(['private', 'shared', 'portal'])],
@@ -166,10 +178,10 @@ class DocumentsController
 
         $q = Document::with('documentType')
             ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
-            ->where('documentable_type', $data['documentable_type'])
+            ->whereIn('documentable_type', $this->documentableTypeAliases($data['documentable_type']))
             ->where('documentable_id',   $data['documentable_id']);
 
-        $documentable = $data['documentable_type']::findOrFail($data['documentable_id']);
+        $documentable = $this->resolveDocumentable($data['documentable_type'], (int) $data['documentable_id']);
         $this->ensureDocumentableIsAccessible($documentable);
         $this->authorizeDocumentableView($documentable);
 
@@ -217,9 +229,13 @@ class DocumentsController
         $this->authorizeDocumentableUpload($document->documentable);
 
         $share = $request->boolean('share_with_tenant');
+        $wasShared = $document->isSharedWithTenant();
         $document->update([
             'visibility' => $share ? 'portal' : 'private',
         ]);
+        if ($share && ! $wasShared) {
+            app(\App\Services\Documents\DocumentShareNotifier::class)->shared($document->fresh());
+        }
 
         flash($share
             ? 'This file is now visible to the tenant.'
@@ -260,6 +276,7 @@ class DocumentsController
     {
         $document = Document::findOrFail($id);
         ensureModelBelongsToCurrentAccount($document);
+        Gate::authorize('delete', $document);
         $this->ensureDocumentableIsAccessible($document->documentable);
         $this->authorizeDocumentableUpload($document->documentable);
         $document->delete();
@@ -290,9 +307,39 @@ class DocumentsController
         }
     }
 
+    private function resolveDocumentable(string $type, int $id)
+    {
+        $class = \Illuminate\Database\Eloquent\Relations\Relation::getMorphedModel($type) ?: $type;
+        if (! class_exists($class)) {
+            abort(404, 'Invalid documentable type.');
+        }
+
+        return $class::findOrFail($id);
+    }
+
+    private function documentableTypeAliases(string $type): array
+    {
+        $class = \Illuminate\Database\Eloquent\Relations\Relation::getMorphedModel($type) ?: $type;
+        $aliases = [$type, $class];
+        if (class_exists($class)) {
+            $aliases[] = (new $class)->getMorphClass();
+        }
+
+        return array_values(array_unique(array_filter($aliases)));
+    }
+
     private function supportedDocumentableTypes(): array
     {
-        return [Property::class, User::class];
+        return [
+            Property::class,
+            User::class,
+            Tenancy::class,
+            'Property',
+            'Tenancy',
+            'App\\Models\\Property',
+            'App\\Models\\User',
+            'App\\Models\\Tenancy',
+        ];
     }
 
     private function isSupportedDocumentableType(string $type): bool

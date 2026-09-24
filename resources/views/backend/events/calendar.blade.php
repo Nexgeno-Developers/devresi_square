@@ -8,7 +8,7 @@
                 <h4>Calendar</h4>
                 <p>Click a day to add an appointment. Events on a let home also show in the tenant portal.</p>
             </div>
-            <button type="button" class="btn btn-light" onclick="window.openLandlordCalendarEvent && window.openLandlordCalendarEvent()">Add event</button>
+            <button type="button" class="btn lw-btn-secondary" onclick="window.openLandlordCalendarEvent && window.openLandlordCalendarEvent()">Add event</button>
         </div>
     @endif
     <div class="row h-100">
@@ -116,7 +116,7 @@
             const type = (evt.type && evt.type.name) ? evt.type.name : (evt.type_name || '');
             const subType = (evt.sub_type && evt.sub_type.name) ? evt.sub_type.name : (evt.subType && evt.subType.name ? evt.subType.name : (evt.sub_type_name || ''));
             const diaryOwner = (evt.diary_owner && evt.diary_owner.name) ? evt.diary_owner.name : (evt.diaryOwner && evt.diaryOwner.name ? evt.diaryOwner.name : '');
-            const hasReminders = (evt.reminders && evt.reminders.length) ? '?? ' : '';
+            const hasReminders = (evt.reminders && evt.reminders.length) ? 'Reminder · ' : '';
             
             html += `
                 <div class="event-list-item card mb-2" data-event-id="${evt.id}" data-master-id="${evt.parent_id || evt.id}">
@@ -128,8 +128,8 @@
                                 ${type ? `<small class="badge bg-info text-dark me-1">${type}</small>` : ''}
                                 ${subType ? `<small class="badge bg-secondary me-1">${subType}</small>` : ''}
                                 ${status ? `<small class="badge bg-${status === 'Confirmed' ? 'success' : status === 'Cancelled' ? 'danger' : status === 'Pending' ? 'warning' : 'primary'}">${status}</small>` : ''}
-                                ${diaryOwner ? `<small class="text-muted d-block mt-1">?? ${diaryOwner}</small>` : ''}
-                                ${evt.location ? `<small class="text-muted d-block">?? ${evt.location}</small>` : ''}
+                                ${diaryOwner ? `<small class="text-muted d-block mt-1">With ${diaryOwner}</small>` : ''}
+                                ${evt.location ? `<small class="text-muted d-block">At ${evt.location}</small>` : ''}
                             </div>
                             <button class="btn btn-sm btn-outline-primary event-goto-calendar" data-event-id="${evt.id}" data-master-id="${evt.parent_id || evt.id}" title="Show on calendar">
                                 <i class="fa-solid fa-calendar-day"></i>

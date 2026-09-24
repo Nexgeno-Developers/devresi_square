@@ -13,6 +13,8 @@
     </div>
 </div>
 
+@include('backend.repair.partials.priority-sla')
+
 <div class="accordion" id="propertyAccordion">
 
     @php

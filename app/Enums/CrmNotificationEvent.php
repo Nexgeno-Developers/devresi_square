@@ -20,11 +20,15 @@ enum CrmNotificationEvent: string
     case TenancyDepositDue = 'tenancy.deposit_due';
     case TenancyRightToRentDue = 'tenancy.right_to_rent_due';
     case TenancyNoticeServed = 'tenancy.notice_served';
+    case TenancyDetailsCorrectionRequested = 'tenancy.details_correction_requested';
+    case TenancyDetailsCorrectionApproved = 'tenancy.details_correction_approved';
+    case TenancyDetailsCorrectionRejected = 'tenancy.details_correction_rejected';
 
     case ComplianceExpiring = 'compliance.expiring';
     case ComplianceExpired = 'compliance.expired';
     case ComplianceRemediationDue = 'compliance.remediation_due';
     case ComplianceRenewed = 'compliance.renewed';
+    case DocumentShared = 'document.shared';
 
     case RepairReported = 'repair.reported';
     case RepairEscalated = 'repair.escalated';

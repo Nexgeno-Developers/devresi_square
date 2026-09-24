@@ -19,6 +19,7 @@ use App\Http\Controllers\Backend\InvoiceController;
 use App\Http\Controllers\Backend\JobTypeController;
 use App\Http\Controllers\Backend\TenancyController;
 use App\Http\Controllers\Backend\TenancyNoticeController;
+use App\Http\Controllers\Backend\TenancyCorrectionRequestController;
 use App\Http\Controllers\Backend\TenantPortalController;
 use App\Http\Controllers\Backend\WebsiteController;
 use App\Http\Controllers\Backend\NoteTypeController;
@@ -27,6 +28,7 @@ use App\Http\Controllers\Backend\LandlordPropertyWizardController;
 use App\Http\Controllers\Backend\LandlordOnboardingController;
 use App\Http\Controllers\Backend\PropertyAddressLookupController;
 use App\Http\Controllers\Backend\DashboardController;
+use App\Http\Controllers\Backend\UiLabController;
 use App\Http\Controllers\Backend\DocumentsController;
 use App\Http\Controllers\Backend\EventTypeController;
 use App\Http\Controllers\Backend\WorkOrderController;
@@ -71,6 +73,7 @@ use App\Http\Controllers\Backend\UserCategoryController;
 use App\Http\Controllers\Backend\AccountHeaderController;
 use App\Http\Controllers\Backend\EmailTemplateController;
 use App\Http\Controllers\Backend\PropertyRepairController;
+use App\Http\Controllers\Backend\RepairSlaController;
 use App\Http\Controllers\Backend\PurchaseInvoiceController;
 use App\Http\Controllers\Backend\BusinessSettingsController;
 use App\Http\Controllers\Backend\EstateChargeItemController;
@@ -156,11 +159,16 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])
         ->middleware(['current.account', 'account.status'])
         ->name('backend.dashboard');
+    Route::get('/ui-lab', [UiLabController::class, 'index'])
+        ->middleware(['current.account', 'account.status'])
+        ->name('backend.ui_lab');
     Route::get('/home', [TenantPortalController::class, 'home'])
         ->middleware(['current.account', 'account.status', 'portal.tenant'])
         ->name('backend.home');
     Route::middleware(['current.account', 'account.status', 'portal.tenant'])->group(function () {
         Route::get('/portal/tenancy', [TenantPortalController::class, 'tenancy'])->name('tenant.tenancy');
+        Route::post('/portal/tenancy/confirm', [TenantPortalController::class, 'confirmDetails'])->name('tenant.tenancy.confirm');
+        Route::post('/portal/tenancy/correction', [TenantPortalController::class, 'requestCorrection'])->name('tenant.tenancy.correction');
         Route::get('/portal/rent', [TenantPortalController::class, 'rent'])->name('tenant.rent');
         Route::get('/portal/rent/paid', [TenantPortalController::class, 'paid'])->name('tenant.rent.paid');
         Route::get('/portal/rent/{rentInvoice}', [TenantPortalController::class, 'showInvoice'])->name('tenant.rent.show');
@@ -170,6 +178,11 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         Route::get('/portal/documents', [TenantPortalController::class, 'documents'])->name('tenant.documents');
         Route::get('/portal/documents/{document}/download', [TenantPortalController::class, 'downloadDocument'])->name('tenant.documents.download');
         Route::get('/portal/calendar', [TenantPortalController::class, 'calendar'])->name('tenant.calendar');
+        Route::get('/portal/profile', [TenantPortalController::class, 'profile'])->name('tenant.profile');
+        Route::post('/portal/profile', [TenantPortalController::class, 'updateProfile'])->name('tenant.profile.update');
+        Route::post('/portal/profile/password', [TenantPortalController::class, 'updatePassword'])->name('tenant.profile.password');
+        Route::get('/portal/notifications', [TenantPortalController::class, 'notificationPreferences'])->name('tenant.notifications');
+        Route::put('/portal/notifications', [TenantPortalController::class, 'updateNotificationPreferences'])->name('tenant.notifications.update');
     });
     // Route::get('/dashboard', [DashboardController::class, 'dashboard'])->middleware('can:view-dashboard')->name('backend.dashboard');
 
@@ -203,12 +216,19 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             ->name('portal-access.index');
         Route::post('/portal-access/invite', [PortalAccessController::class, 'invite'])
             ->name('portal-access.invite');
+        Route::post('/portal-access/{user}/resend', [PortalAccessController::class, 'resend'])
+            ->name('portal-access.resend');
         Route::post('/portal-access/{user}/revoke', [PortalAccessController::class, 'revoke'])
             ->name('portal-access.revoke');
+        // Alias for coherent People UX (same hub as portal access).
+        Route::get('/people', [PortalAccessController::class, 'index'])
+            ->name('people.index');
 
         Route::prefix('finance')->name('finance.')->controller(\App\Http\Controllers\Backend\FinanceController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/create', 'create')->name('create');
+            Route::get('/rent-pay', 'rentPay')->name('rent-pay');
+            Route::post('/rent-pay/bank', 'storeRentPayBank')->name('rent-pay.bank');
             Route::post('/', 'store')->name('store');
             Route::get('/{rentInvoice}', 'show')->name('show');
             Route::post('/{rentInvoice}/payments', 'storePayment')->name('payments.store');
@@ -395,6 +415,10 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             });
             Route::post('/tenancies/{tenancy}/notices', [TenancyNoticeController::class, 'store'])
                 ->name('tenancies.notices.store');
+            Route::post('/tenancies/{tenancy}/correction-requests/{correction}/approve', [TenancyCorrectionRequestController::class, 'approve'])
+                ->name('tenancies.correction-requests.approve');
+            Route::post('/tenancies/{tenancy}/correction-requests/{correction}/reject', [TenancyCorrectionRequestController::class, 'reject'])
+                ->name('tenancies.correction-requests.reject');
 
             Route::get('/properties/{propertyId}/tenancies', [TenancyController::class, 'index'])->name('tenancies.index');
             Route::get('/tenancies', [TenancyController::class, 'all'])->name('tenancies.all');
@@ -435,6 +459,8 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         });
 
         Route::prefix('compliance')->name('compliance.')->controller(ComplianceController::class)->group(function () {
+            Route::get('/', 'certificates')->name('index');
+            Route::post('/share-certificate', 'shareCertificate')->name('share');
             Route::get('/type/form/{complianceTypeId}/{complianceRecordId?}', 'getComplianceForm')->name('type.form');
             Route::post('/store', 'storeCompliance')->name('store');
             Route::post('/update', 'updateCompliance')->name('update');
@@ -502,6 +528,10 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
 
                 Route::get('/ajax', 'ajaxList')->name( 'property_repairs.ajax');  // AJAX endpoint to list property repairs for a select dropdown
             });
+
+            Route::post('/{repairIssue}/sla/{event}', [RepairSlaController::class, 'store'])
+                ->whereIn('event', ['dispatched', 'made_safe', 'resolved'])
+                ->name('property_repairs.sla.store');
         });
 
         Route::prefix('/job-types')->group(function () {

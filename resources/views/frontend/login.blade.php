@@ -1,56 +1,37 @@
-@extends('frontend.layout.app')
+@extends('layouts.auth')
 
-@section('title', 'Login | Resisquare')
+@section('title', 'Sign in · Resisquare')
+@section('brand_headline', 'Homes, rent and repairs in one workspace.')
+@section('brand_copy', 'Landlords see the portfolio. Tenants only see their home.')
 
 @section('content')
-<section class="vh-80 gradient-custom">
-    <div class="container py-5 h-100">
-      <div class="row d-flex justify-content-center align-items-center h-100">
-        <div class="col-12 col-md-8 col-lg-6 col-xl-5">
-          <div class="card bg-light" style="border-radius: 1rem;">
-            <div class="card-body p-md-5 p-4 text-center">
+    <h2>Sign in</h2>
+    <p class="auth-muted">Use the email for your Resisquare account.</p>
 
-                <form action="{{ route('login.post') }}" method="POST">
-                    @csrf
-                    <div class="mb-md-5 mt-md-4 pb-4">
+    @include('auth.partials.login-errors')
 
-                        <h2 class="fw-bold mb-2 text-uppercase">Login</h2>
-                        <p class=" mb-5">Please enter your login and password!</p>
+    <form method="POST" action="{{ route('login.post') }}">
+        @csrf
+        <label class="auth-field">
+            <span>Email</span>
+            <input type="email" name="email" value="{{ old('email') }}" autocomplete="email" required autofocus>
+        </label>
+        <label class="auth-field">
+            <span>Password</span>
+            <input type="password" name="password" autocomplete="current-password" required>
+        </label>
+        <label class="auth-check">
+            <input type="checkbox" name="remember" value="1">
+            <span>Remember me</span>
+        </label>
+        <button type="submit" class="auth-btn">Login</button>
+    </form>
 
-                        @include('auth.partials.login-errors')
-
-                        <div class="form-outline form-white mb-4">
-                            <input type="email" class="form-control form-control-lg @error('email') is-invalid @enderror"
-                                id="email" name="email" value="{{ old('email') }}" placeholder="Email"
-                                autocomplete="email" required autofocus />
-                        </div>
-
-                        <div class="form-outline form-white mb-4">
-                            <input type="password" class="form-control form-control-lg @error('password') is-invalid @enderror"
-                                id="password" name="password" placeholder="Password"
-                                autocomplete="current-password" required />
-                        </div>
-
-                        <div class="form-outline form-white mb-4">
-                            <input type="checkbox" class="form-check-input" id="remember" name="remember" />
-                            <label class="form-check-label" for="remember">Remember Me</label>
-                        </div>
-
-                        <p class="small mb-5 pb-lg-2"><a class="" href="{{ route('password.request') }}">Forgot password?</a></p>
-
-                        <button class="btn btn_outline_secondary btn-lg px-5 w-100 d-flex justify-content-center" type="submit">Login</button>
-
-                    </div>
-
-                    <div>
-                        <p class="mb-0">Don't have an account? <a href="{{ route('register.post') }}" class=" fw-bold">Sign Up</a>
-                        </p>
-                    </div>
-                </form>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+    <p class="auth-muted">
+        <a class="auth-link" href="{{ route('password.request') }}">Forgot password?</a>
+    </p>
+    <p class="auth-muted mb-0">
+        Don’t have an account?
+        <a class="auth-link" href="{{ route('register') }}">Sign up</a>
+    </p>
 @endsection

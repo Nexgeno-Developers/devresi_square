@@ -8,7 +8,7 @@
                 ['Portfolio properties', $propertiesCount, 'bi-buildings', 'primary'],
                 ['Active tenancies', $activeTenanciesCount, 'bi-key', 'success'],
                 ['Open repairs', $openRepairsCount, 'bi-tools', 'danger'],
-                ['Contacts', $usersCount, 'bi-people', 'info'],
+                ['People', $usersCount, 'bi-people', 'info'],
             ],
         ],
         'estate_agent' => [
@@ -59,36 +59,76 @@
 @endphp
 
 <style>
-    .account-dashboard .account-hero { border-radius:18px; color:#fff; overflow:hidden; }
-    .account-dashboard .dashboard-card { border:0; border-radius:14px; box-shadow:0 5px 22px rgba(15,23,42,.07); }
     .account-dashboard .metric-icon { width:46px; height:46px; display:grid; place-items:center; border-radius:12px; font-size:1.2rem; }
-    .account-dashboard .metric-number { font-size:1.7rem; line-height:1; font-weight:700; color:#172554; }
-    .account-dashboard .quick-action { border:1px solid #e2e8f0; border-radius:12px; color:#334155; text-decoration:none; transition:.15s ease; }
-    .account-dashboard .quick-action:hover { border-color:#93c5fd; background:#eff6ff; transform:translateY(-1px); }
+    .account-dashboard .metric-number { font-size:1.7rem; line-height:1; font-weight:700; }
+    .account-dashboard .quick-action { border:1px solid var(--lw-line, #e2e8f0); border-radius:12px; color:inherit; text-decoration:none; }
     .account-dashboard .usage-bar { height:7px; }
 </style>
 
-<div class="container-fluid py-4 account-dashboard">
-    <div class="account-hero p-4 p-lg-5 mb-4" style="background:{{ $roleUi['gradient'] }}">
+<div class="container-fluid py-4 account-dashboard lw-page">
+    <div class="lw-hero mb-4" @unless(is_landlord_plan_user()) style="background:{{ $roleUi['gradient'] }}; color:#fff;" @endunless>
         <div class="row align-items-center g-4">
             <div class="col-lg-8">
                 <div class="text-uppercase small fw-semibold opacity-75 mb-2" style="letter-spacing:.12em">{{ $roleUi['eyebrow'] }}</div>
                 <h2 class="fw-bold mb-2">{{ $roleUi['title'] }}</h2>
-                <p class="mb-0 text-white-50">{{ $roleUi['subtitle'] }}</p>
+                <p class="mb-0 {{ is_landlord_plan_user() ? 'text-muted' : 'text-white-50' }}">{{ $roleUi['subtitle'] }}</p>
             </div>
             <div class="col-lg-4 text-lg-end">
-                <div class="d-inline-flex align-items-center gap-3 bg-white bg-opacity-10 rounded-3 px-3 py-3 text-start">
+                <div class="d-inline-flex align-items-center gap-3 rounded-3 px-3 py-3 text-start {{ is_landlord_plan_user() ? '' : 'bg-white bg-opacity-10' }}">
                     <i class="bi {{ $roleUi['icon'] }} fs-2"></i>
-                    <div><div class="fw-semibold">{{ $planUsageAccount?->account_name }}</div><small class="text-white-50">{{ $planUsageSummary['plan_name'] ?: 'No active plan' }}</small></div>
+                    <div><div class="fw-semibold">{{ $planUsageAccount?->account_name }}</div><small class="{{ is_landlord_plan_user() ? 'text-muted' : 'text-white-50' }}">{{ $planUsageSummary['plan_name'] ?: 'No active plan' }}</small></div>
                 </div>
             </div>
         </div>
     </div>
 
+    @if(! empty($pendingCorrectionCount))
+        <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4" data-alert-corrections="{{ $pendingCorrectionCount }}">
+            <div>
+                <strong>{{ $pendingCorrectionCount }} tenancy correction {{ \Illuminate\Support\Str::plural('request', $pendingCorrectionCount) }} waiting</strong>
+                <div class="small mb-0">A tenant asked you to check rent, dates or deposit before they confirm the let.</div>
+            </div>
+            @if(! empty($pendingCorrectionTenancyId))
+                <a href="{{ route('admin.tenancies.show', $pendingCorrectionTenancyId) }}" class="btn btn-sm btn-dark">Review</a>
+            @endif
+        </div>
+    @endif
+
+    @if(! empty($overdueRentCount))
+        <div class="alert alert-danger d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4" data-alert-arrears="{{ $overdueRentCount }}">
+            <div>
+                <strong>{{ $overdueRentCount }} overdue rent {{ \Illuminate\Support\Str::plural('invoice', $overdueRentCount) }}</strong>
+                <div class="small mb-0">Open balance past the due date.</div>
+            </div>
+            <a href="{{ route('admin.finance.index', ['status' => 'overdue']) }}" class="btn btn-sm btn-dark">View arrears</a>
+        </div>
+    @endif
+
+    @if(! empty($complianceAttentionCount))
+        <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4" data-alert-certificates="{{ $complianceAttentionCount }}">
+            <div>
+                <strong>{{ $complianceAttentionCount }} certificate{{ $complianceAttentionCount === 1 ? '' : 's' }} need you</strong>
+                <div class="small mb-0">Gas, EPC or EICR expired or due within 60 days.</div>
+            </div>
+            <a href="{{ route('admin.compliance.index') }}" class="btn btn-sm btn-dark">Review certificates</a>
+        </div>
+    @endif
+
+    @if(! empty($depositAttentionCount))
+        <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4" data-alert-deposits="{{ $depositAttentionCount }}">
+            <div>
+                <strong>{{ $depositAttentionCount }} deposit{{ $depositAttentionCount === 1 ? '' : 's' }} need you</strong>
+                <div class="small mb-0">Protection scheme, dates or prescribed information incomplete.</div>
+            </div>
+            <a href="{{ ! empty($depositAttentionTenancyId) ? route('admin.tenancies.show', $depositAttentionTenancyId) : route('admin.tenancies.all') }}" class="btn btn-sm btn-dark">Review deposit</a>
+        </div>
+    @endif
+
     <div class="row g-3 mb-4">
         @php
             $metricHrefs = [
                 'Portfolio properties' => route('admin.properties.index'),
+                'People' => route('admin.people.index'),
                 'Active tenancies' => route('admin.tenancies.all', ['status' => 'Active']),
                 'Open repairs' => route('admin.property_repairs.index'),
                 'Contacts' => route('admin.users.index'),
@@ -129,7 +169,7 @@
                     @endif
                     @if(is_landlord_plan_user())
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.finance.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-receipt fs-4 text-success"></i><span class="fw-semibold">Finance</span></a></div>
-                        <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.portal-access.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-person-plus fs-4 text-primary"></i><span class="fw-semibold">Invite tenant</span></a></div>
+                        <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.people.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-person-plus fs-4 text-primary"></i><span class="fw-semibold">Invite tenant</span></a></div>
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('admin.documents.index') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-folder2-open fs-4 text-warning"></i><span class="fw-semibold">Documents</span></a></div>
                         <div class="col-sm-6 col-lg-4"><a href="{{ route('backend.events.calendar') }}" class="quick-action p-3 d-flex align-items-center gap-3 h-100"><i class="bi bi-calendar-event fs-4 text-info"></i><span class="fw-semibold">Calendar</span></a></div>
                     @endif
@@ -165,17 +205,17 @@
     <div class="row g-4">
         <div class="col-xl-4">
             <div class="card dashboard-card h-100"><div class="card-header bg-white border-0 px-4 pt-4 d-flex justify-content-between"><div><h5 class="mb-1">Recent properties</h5><small class="text-muted">Latest portfolio additions</small></div><a href="{{ route('admin.properties.index') }}" class="small">View all</a></div><div class="card-body px-4">
-                @forelse($recentProperties as $property)<div class="border-bottom py-3"><div class="fw-semibold">{{ $property->prop_name ?: $property->line_1 ?: 'Property #'.$property->id }}</div><small class="text-muted">{{ implode(', ', array_filter([$property->city, $property->postcode])) ?: $property->prop_ref_no }}</small></div>@empty<div class="text-muted text-center py-4">No properties yet.</div>@endforelse
+                @forelse($recentProperties as $property)<div class="border-bottom py-3"><div class="fw-semibold">{{ rs_property_title($property) }}</div><small class="text-muted">{{ $property->short_address ?: '—' }}</small></div>@empty<div class="text-center py-4" data-next-action="add-property"><p class="mb-2">No homes yet.</p><a href="{{ property_create_url() }}" class="btn btn-sm lw-btn-primary">Add a property</a></div>@endforelse
             </div></div>
         </div>
         <div class="col-xl-4">
-            <div class="card dashboard-card h-100"><div class="card-header bg-white border-0 px-4 pt-4 d-flex justify-content-between"><div><h5 class="mb-1">Repair activity</h5><small class="text-muted">Most recent issues</small></div>@can('view property repair')<a href="{{ route('admin.property_repairs.index') }}" class="small">View all</a>@endcan</div><div class="card-body px-4">
-                @forelse($recentRepairs as $repair)<div class="d-flex justify-content-between gap-2 border-bottom py-3"><div><div class="fw-semibold">{{ $repair->reference_number ?: 'Repair #'.$repair->id }}</div><small class="text-muted">{{ $repair->property?->prop_name ?: $repair->property?->line_1 ?: 'No property' }}</small></div><span class="badge bg-secondary bg-opacity-10 text-secondary align-self-center">{{ $repair->status ?: 'Pending' }}</span></div>@empty<div class="text-muted text-center py-4">No repair activity.</div>@endforelse
+            <div class="card dashboard-card h-100"><div class="card-header bg-white border-0 px-4 pt-4 d-flex justify-content-between"><div><h5 class="mb-1">Repair activity</h5><small class="text-muted">Most recent issues</small></div>@if(is_landlord_plan_user() || auth()->user()->can('view property repair'))<a href="{{ route('admin.property_repairs.index') }}" class="small">View all</a>@endif</div><div class="card-body px-4">
+                @forelse($recentRepairs as $repair)<div class="d-flex justify-content-between gap-2 border-bottom py-3"><div><div class="fw-semibold">{{ rs_property_title($repair->property) }}</div><small class="text-muted">{{ \Illuminate\Support\Str::limit($repair->description ?: 'Repair', 80) }}</small>@if($repair->reference_number)<div class="text-muted small">{{ $repair->reference_number }}</div>@endif</div><span class="badge bg-secondary bg-opacity-10 text-secondary align-self-center">{{ $repair->status ?: 'Pending' }}</span></div>@empty<div class="text-center py-4" data-next-action="raise-repair"><p class="mb-2">No repairs yet.</p><a href="{{ route('admin.property_repairs.create') }}" class="btn btn-sm lw-btn-primary">Raise a repair</a></div>@endforelse
             </div></div>
         </div>
         <div class="col-xl-4">
-            <div class="card dashboard-card h-100"><div class="card-header bg-white border-0 px-4 pt-4 d-flex justify-content-between"><div><h5 class="mb-1">Recent tenancies</h5><small class="text-muted">Latest tenancy records</small></div>@can('manage tenancies')<a href="{{ route('admin.tenancies.all') }}" class="small">View all</a>@endcan</div><div class="card-body px-4">
-                @forelse($recentTenancies as $tenancy)<div class="d-flex justify-content-between gap-2 border-bottom py-3"><div><div class="fw-semibold">{{ $tenancy->property?->prop_name ?: $tenancy->property?->line_1 ?: 'Tenancy #'.$tenancy->id }}</div><small class="text-muted">{{ $tenancy->move_in ? 'Move in '.\Illuminate\Support\Carbon::parse($tenancy->move_in)->format('d M Y') : 'No move-in date' }}</small></div><span class="badge {{ $tenancy->status === 'Active' ? 'bg-success' : 'bg-secondary' }} bg-opacity-10 {{ $tenancy->status === 'Active' ? 'text-success' : 'text-secondary' }} align-self-center">{{ $tenancy->status }}</span></div>@empty<div class="text-muted text-center py-4">No tenancies yet.</div>@endforelse
+            <div class="card dashboard-card h-100"><div class="card-header bg-white border-0 px-4 pt-4 d-flex justify-content-between"><div><h5 class="mb-1">Recent tenancies</h5><small class="text-muted">Latest tenancy records</small></div>@if(is_landlord_plan_user() || auth()->user()->can('manage tenancies'))<a href="{{ route('admin.tenancies.all') }}" class="small">View all</a>@endif</div><div class="card-body px-4">
+                @forelse($recentTenancies as $tenancy)<div class="d-flex justify-content-between gap-2 border-bottom py-3"><div><div class="fw-semibold">{{ rs_property_title($tenancy->property) }}</div><small class="text-muted">{{ $tenancy->move_in ? 'Move in '.rs_date($tenancy->move_in) : 'No move-in date' }}</small></div><span class="badge {{ $tenancy->status === 'Active' ? 'bg-success' : 'bg-secondary' }} bg-opacity-10 {{ $tenancy->status === 'Active' ? 'text-success' : 'text-secondary' }} align-self-center">{{ $tenancy->status }}</span></div>@empty<div class="text-center py-4" data-next-action="add-tenancy"><p class="mb-2">No tenancies yet.</p><a href="{{ route('admin.tenancies.create') }}" class="btn btn-sm lw-btn-primary">Add a tenancy</a></div>@endforelse
             </div></div>
         </div>
     </div>

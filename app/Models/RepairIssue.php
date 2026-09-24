@@ -34,6 +34,19 @@ class RepairIssue extends Model
         'updated_by',
         'acknowledged_at',
         'acknowledged_by',
+        'complaint_code',
+        'classification_snapshot',
+        'sla_due_at',
+        'make_safe_due_at',
+        'emergency_access',
+        'reported_at',
+        'dispatched_at',
+        'dispatched_by',
+        'make_safe_at',
+        'make_safe_by',
+        'resolved_at',
+        'resolved_by',
+        'landlord_note',
     ];
 
     // protected $casts = [
@@ -44,6 +57,14 @@ class RepairIssue extends Model
     protected $casts = [
         'tenant_availability' => 'datetime',
         'acknowledged_at' => 'datetime',
+        'classification_snapshot' => 'array',
+        'emergency_access' => 'boolean',
+        'sla_due_at' => 'datetime',
+        'make_safe_due_at' => 'datetime',
+        'reported_at' => 'datetime',
+        'dispatched_at' => 'datetime',
+        'make_safe_at' => 'datetime',
+        'resolved_at' => 'datetime',
     ];
 
     /**
@@ -120,6 +141,49 @@ class RepairIssue extends Model
         return $this->hasMany(RepairHistory::class);
     }
 
+    public function slaEvents()
+    {
+        return $this->hasMany(RepairSlaEvent::class);
+    }
+
+    public function isPriorityComplaint(): bool
+    {
+        return filled($this->complaint_code);
+    }
+
+    /**
+     * Staff open the landlord repair. Tenants open maintenance.
+     *
+     * @return array{action_url: string, portal_action_url: string, portal_action_tenants_only: true}
+     */
+    public function notificationLinks(): array
+    {
+        return [
+            'action_url' => route('admin.property_repairs.show', $this->id),
+            'portal_action_url' => route('tenant.maintenance'),
+            'portal_action_tenants_only' => true,
+        ];
+    }
+
+    /**
+     * Visit window chosen by the tenant: morning, afternoon, or evening.
+     */
+    public function tenantAvailabilityLabel(): ?string
+    {
+        if (! $this->tenant_availability) {
+            return null;
+        }
+
+        $slot = match ((int) $this->tenant_availability->format('G')) {
+            9 => 'morning',
+            13 => 'afternoon',
+            17 => 'evening',
+            default => $this->tenant_availability->format('H:i'),
+        };
+
+        return $this->tenant_availability->format('j M Y').', '.$slot;
+    }
+
     public function repairIssueUsers()
     {
         return $this->hasMany(RepairIssueUser::class);
@@ -173,7 +237,35 @@ class RepairIssue extends Model
     {
         return "{$this->reference_number}";
     }
-    
+
+    /**
+     * Plain-language status for the tenant portal.
+     */
+    public function tenantStatusLabel(): string
+    {
+        $status = strtolower(trim((string) $this->status));
+
+        return match (true) {
+            in_array($status, ['closed', 'invoice paid', 'completed', 'complete'], true) => 'Done',
+            in_array($status, ['cancelled', 'canceled'], true) => 'Cancelled',
+            in_array($status, ['under process', 'in progress', 'assigned', 'quoted', 'scheduled'], true) => 'In progress',
+            in_array($status, ['pending', 'open', 'new'], true) => 'Received',
+            default => $this->status ? ucfirst((string) $this->status) : 'Received',
+        };
+    }
+
+    /**
+     * 0 = reported, 1 = in progress, 2 = done — for a simple tenant timeline.
+     */
+    public function tenantStatusStep(): int
+    {
+        return match ($this->tenantStatusLabel()) {
+            'Done' => 2,
+            'In progress' => 1,
+            default => 0,
+        };
+    }
+
     /**
      * Return an array of [id => “RefNo, …]
      * suitable for a <select> dropdown.

@@ -16,11 +16,7 @@ class RestrictLandlordRoutes
             return $next($request);
         }
 
-        if ($user->hasAnyRole(['Property Manager', 'Estate Agent'])) {
-            return $next($request);
-        }
-
-        if (! is_landlord_plan_user($user)) {
+        if (! is_landlord_plan_user($user) && ! $this->estateAgentOnLandlordAccount($user)) {
             return $next($request);
         }
 
@@ -31,6 +27,15 @@ class RestrictLandlordRoutes
         }
 
         return $next($request);
+    }
+
+    private function estateAgentOnLandlordAccount($user): bool
+    {
+        $account = function_exists('current_account') ? current_account() : null;
+
+        return $account
+            && \App\Support\AccountType::isLandlord($account->account_type)
+            && $user->hasRole('Estate Agent');
     }
 
     private function isAllowed(string $routeName): bool

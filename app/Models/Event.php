@@ -42,6 +42,7 @@ class Event extends Model implements Auditable
         'sub_type_id',   // foreign key
         'office',
         'status',
+        'visible_to_tenant',
         'diary_owner',
         'on_behalf_of',
         'start_datetime',
@@ -58,6 +59,7 @@ class Event extends Model implements Auditable
     protected $casts = [
         'start_datetime' => 'datetime',
         'end_datetime' => 'datetime',
+        'visible_to_tenant' => 'boolean',
     ];
 
     // in app/Models/Event.php

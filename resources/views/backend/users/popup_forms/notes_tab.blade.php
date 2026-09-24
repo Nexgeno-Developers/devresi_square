@@ -55,7 +55,7 @@
                     </div>
                     <div class="card-body">
                         {{-- <p class="card-text">{!! $note->content !!}</p> --}}
-                        <p class="card-text">{!! Str::limit(   $note->content, 200) !!}</p>
+                        <p class="card-text">{{ Str::limit(strip_tags((string) $note->content), 200) }}</p>
                     </div>
                     <div class="card-footer text-end">
                         <div class="d-flex justify-content-end">

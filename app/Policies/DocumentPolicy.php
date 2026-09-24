@@ -26,7 +26,11 @@ class DocumentPolicy
         }
 
         return AccountMembership::isTenant(current_account_membership($user)?->member_type)
-            && $document->isSharedWithTenant();
+            && app(\App\Services\Portal\TenantPortalService::class)->documentVisibleTo(
+                $user,
+                current_account_id() ? (int) current_account_id() : null,
+                $document,
+            );
     }
 
     public function download(User $user, Document $document): bool

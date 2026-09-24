@@ -680,6 +680,7 @@ class PropertyRepairController
             'repairPhotos',
             'property',  // Eager load the related property
             'invoice',
+            'slaEvents',
         ])->findOrFail($id);
         ensureModelBelongsToCurrentAccount($repairIssue);
         \Illuminate\Support\Facades\Gate::authorize('view', $repairIssue);
@@ -1029,7 +1030,7 @@ class PropertyRepairController
                     'property_address' => $repairIssue->property?->full_address,
                     'old_status' => $oldStatus,
                     'new_status' => $validated['status'],
-                    'action_url' => route('admin.property_repairs.show', $repairIssue->id),
+                    ...$repairIssue->notificationLinks(),
                     'milestone' => 'status-'.$validated['status'].'-'.$repairIssue->updated_at?->timestamp,
                 ],
                 auth()->user(),
@@ -1173,8 +1174,8 @@ class PropertyRepairController
                 'repair_reference' => $repair->reference_number,
                 'repair_priority' => $repair->priority ?: 'normal',
                 'property_address' => $property->full_address ?: $property->prop_name,
-                'action_url' => route('admin.property_repairs.show', $repair->id),
                 'milestone' => 'reported-'.$repair->id,
+                ...$repair->notificationLinks(),
             ],
             auth()->user(),
         );
@@ -1189,6 +1190,10 @@ class PropertyRepairController
         }
 
         flash('Repair request raised successfully')->success();
+        if (is_landlord_plan_user()) {
+            return redirect()->route('admin.property_repairs.show', $repair->id);
+        }
+
         return redirect()->route('admin.property_repairs.create');
     }
 
@@ -1432,6 +1437,7 @@ class PropertyRepairController
                 $repairNavigation = $request->input('repair_navigation');
                 $repairCategoryId = $request->input('repair_category_id');
                 $tenant_id = $repairIssue->tenant_id;
+                $previousStatus = $repairIssue->status;
 
                 // Fallback to old values if new values are empty or '{}'
                 if (empty($repairNavigation) || $repairNavigation === '{}') {
@@ -1505,6 +1511,11 @@ class PropertyRepairController
                     'vat_type' => $vatType,
                     'tenant_id' => $tenant_id,
                 ];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('repair_issues', 'landlord_note') && $request->exists('landlord_note')) {
+                    $data['landlord_note'] = filled($request->input('landlord_note'))
+                        ? mb_substr((string) $request->input('landlord_note'), 0, 500)
+                        : null;
+                }
 
                 // Staging schema may not have vat_percentage (never in create migration).
                 if (\Illuminate\Support\Facades\Schema::hasColumn('repair_issues', 'vat_percentage')) {
@@ -1626,6 +1637,33 @@ class PropertyRepairController
 
         $repairIssue->update($data);
 
+        if ($formType === 'property_issue_details' && isset($previousStatus) && (string) $previousStatus !== (string) $repairIssue->fresh()->status) {
+            $fresh = $repairIssue->fresh();
+            if (! $fresh->acknowledged_at && strtolower((string) $fresh->status) !== 'pending') {
+                $fresh->forceFill(['acknowledged_at' => now(), 'acknowledged_by' => Auth::id()])->save();
+            }
+            RepairHistory::create([
+                'repair_issue_id' => $fresh->id,
+                'action' => 'Updated repair issue',
+                'previous_status' => $previousStatus,
+                'new_status' => $fresh->status,
+            ]);
+            app(CrmNotificationService::class)->dispatch(
+                CrmNotificationEvent::RepairStatusChanged,
+                $fresh,
+                [
+                    'account_id' => $fresh->account_id,
+                    'repair_reference' => $fresh->reference_number,
+                    'property_address' => $fresh->property?->full_address,
+                    'old_status' => $previousStatus,
+                    'new_status' => $fresh->status,
+                    ...$fresh->notificationLinks(),
+                    'milestone' => 'status-'.$fresh->status.'-'.$fresh->updated_at?->timestamp,
+                ],
+                auth()->user(),
+            );
+        }
+
         if ($syncManagersFromPropertyId !== null) {
             $this->syncRepairIssuePropertyManagers(
                 $repairIssue,
@@ -1643,8 +1681,8 @@ class PropertyRepairController
                 'account_id' => $repairIssue->account_id,
                 'repair_reference' => $repairIssue->reference_number,
                 'property_address' => $repairIssue->property?->full_address,
-                'action_url' => route('admin.property_repairs.show', $repairIssue->id),
                 'milestone' => 'manager-'.collect($repairIssue->repairIssuePropertyManagers)->pluck('property_manager_id')->sort()->implode('-'),
+                ...$repairIssue->notificationLinks(),
             ], auth()->user());
         }
 

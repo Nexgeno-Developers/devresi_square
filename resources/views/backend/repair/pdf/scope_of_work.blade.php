@@ -45,7 +45,7 @@
         </tr>
         <tr>
             <th>Navigation</th>
-            <td>{!! getFormattedRepairNavigation($repairIssue->repair_navigation) !!}</td>
+            <td>{{ getFormattedRepairNavigation($repairIssue->repair_navigation) }}</td>
         </tr>
         <tr>
             <th>Description</th>

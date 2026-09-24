@@ -56,13 +56,8 @@
                                 <div class="pricing_features_wrapper">
                                     <ul class="pricing_features">
                                         <li>{{ $plan->property_limit }} properties included</li>
-                                        <li>{{ $plan->branch_limit }} branches included</li>
-                                        <li>{{ $plan->staff_limit }} staff included</li>
-                                        <li>{{ $plan->property_manager_limit }} property managers included</li>
-                                        <li>Company profile: {{ $plan->allow_company_profile ? 'Yes' : 'No' }}</li>
-                                        <li>Invoice branding: {{ $plan->allow_invoice_branding ? 'Yes' : 'No' }}</li>
-                                        <li>Roles and permissions: {{ $plan->allow_roles_permissions ? 'Yes' : 'No' }}</li>
-                                        <li>Contact portal login: {{ $plan->allow_contact_login ? 'Yes' : 'No' }}</li>
+                                        <li>Tenant portal for rent, repairs and documents</li>
+                                        <li>Rent invoices and bank or card pay</li>
                                     </ul>
                                 </div>
                             </div>

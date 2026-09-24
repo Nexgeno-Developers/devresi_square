@@ -65,8 +65,8 @@
                     </div>
                 </form>
 
-                @if($lobState['test_mode'])
-                    <p class="lob-test">Test mode: try <strong>SW1A 1AA</strong> or <strong>E14 9RU</strong>.</p>
+                @if($lobState['test_mode'] && app()->environment(['local', 'testing']))
+                    <p class="lob-hint">Try postcode <strong>SW1A 1AA</strong> or <strong>E14 9RU</strong>.</p>
                 @endif
 
                 <div class="lob-results" data-lob-results hidden></div>

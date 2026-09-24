@@ -58,7 +58,7 @@
                                         <div class="mb-3">
                                             <input type="hidden" name="types[]" value="MAIL_PASSWORD">
                                             <label class="form-label">Password</label>
-                                            <input type="password" class="form-control" name="MAIL_PASSWORD" value="{{ env('MAIL_PASSWORD') }}" placeholder="Your email password">
+                                            <input type="password" class="form-control" name="MAIL_PASSWORD" value="" autocomplete="new-password" placeholder="Leave blank to keep current password">
                                         </div>
 
                                         <div class="mb-3">
@@ -102,7 +102,7 @@
                                         <div class="mb-3">
                                             <input type="hidden" name="types[]" value="MAILGUN_SECRET">
                                             <label class="form-label">Mailgun Secret</label>
-                                            <input type="text" class="form-control" name="MAILGUN_SECRET" value="{{ env('MAILGUN_SECRET') }}" placeholder="Your Mailgun secret key">
+                                            <input type="password" class="form-control" name="MAILGUN_SECRET" value="" autocomplete="new-password" placeholder="Leave blank to keep current secret">
                                         </div>
 
                                     </div>

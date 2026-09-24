@@ -7,6 +7,7 @@ use App\Models\Account;
 use App\Models\AccountUser;
 use App\Models\ComplianceRecord;
 use App\Models\PropertyParticipant;
+use App\Models\RentInvoice;
 use App\Models\RepairIssue;
 use App\Models\SysSaleInvoice;
 use App\Models\Tenancy;
@@ -14,7 +15,10 @@ use App\Models\TenantMember;
 use App\Models\User;
 use App\Models\NotificationLog;
 use App\Models\Property;
+use App\Services\Finance\RentInvoiceNotifier;
 use App\Services\Notifications\CrmNotificationService;
+use App\Services\Repairs\RepairComplaintClassifier;
+use App\Services\Repairs\RepairSlaRecorder;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
@@ -35,7 +39,8 @@ class SendDueCrmNotifications extends Command
         }
 
         $created = 0;
-        $query->orderBy('id')->chunkById(100, function (Collection $accounts) use ($notifications, &$created): void {
+        $upgraded = 0;
+        $query->orderBy('id')->chunkById(100, function (Collection $accounts) use ($notifications, &$created, &$upgraded): void {
             foreach ($accounts as $account) {
                 $timezone = $account->timezone ?: config('crm_notifications.default_timezone', 'Europe/London');
                 $now = $this->option('at')
@@ -45,12 +50,17 @@ class SendDueCrmNotifications extends Command
                 $created += $this->processCompliance($account, $now, $notifications);
                 $created += $this->processTenancies($account, $now, $notifications);
                 $created += $this->processRightToRent($account, $now, $notifications);
+                $upgraded += $this->upgradeOpenSummerHeating($account, $now);
                 $created += $this->processRepairSlas($account, $now, $notifications);
                 $created += $this->processInvoices($account, $now, $notifications);
+                $created += $this->processRentInvoices($account, $now);
             }
         });
 
         $this->info("Created {$created} channel deliveries.");
+        if ($upgraded > 0) {
+            $this->info("Upgraded {$upgraded} heating repairs to the winter clock.");
+        }
 
         return self::SUCCESS;
     }
@@ -127,6 +137,8 @@ class SendDueCrmNotifications extends Command
                                 'property_address' => $this->propertyAddress($tenancy->property),
                                 'days_text' => $days === 1 ? '1 day' : "{$days} days",
                                 'action_url' => route('admin.tenancies.show', $tenancy->id),
+                                'portal_action_url' => route('tenant.tenancy'),
+                                'portal_action_tenants_only' => true,
                             ]);
                         }
                     }
@@ -189,15 +201,59 @@ class SendDueCrmNotifications extends Command
         return $created;
     }
 
+    private function upgradeOpenSummerHeating(Account $account, CarbonImmutable $now): int
+    {
+        $classifier = app(RepairComplaintClassifier::class);
+        if (! $classifier->isWinter($now)) {
+            return 0;
+        }
+
+        $upgraded = 0;
+        $recorder = app(RepairSlaRecorder::class);
+        RepairIssue::query()->forAccount($account->id)
+            ->where('complaint_code', 'heating_loss')
+            ->whereNull('resolved_at')
+            ->whereRaw("LOWER(status) NOT IN ('completed', 'closed', 'cancelled')")
+            ->chunkById(200, function ($repairs) use ($classifier, $recorder, $now, &$upgraded): void {
+                foreach ($repairs as $repair) {
+                    $snapshot = is_array($repair->classification_snapshot) ? $repair->classification_snapshot : [];
+                    $upgrade = $classifier->heatingUpgrade($snapshot, $now);
+                    if (! $upgrade) {
+                        continue;
+                    }
+
+                    $recorder->heatingUpgraded($repair, $upgrade);
+                    $upgraded++;
+                }
+            });
+
+        return $upgraded;
+    }
+
     private function processRepairSlas(Account $account, CarbonImmutable $now, CrmNotificationService $notifications): int
     {
         $created = 0;
         RepairIssue::query()->forAccount($account->id)
-            ->whereNull('acknowledged_at')
             ->whereRaw("LOWER(status) NOT IN ('completed', 'closed', 'cancelled')")
+            ->where(function ($query): void {
+                $query->where(function ($normal): void {
+                    $normal->whereNull('complaint_code')->whereNull('acknowledged_at');
+                })->orWhere(function ($priority): void {
+                    $priority->whereNotNull('complaint_code')->whereNull('resolved_at');
+                });
+            })
             ->with(['property', 'tenant', 'repairIssuePropertyManagers.propertyManager'])
             ->chunkById(200, function ($repairs) use ($account, $now, $notifications, &$created): void {
                 foreach ($repairs as $repair) {
+                    if ($repair->isPriorityComplaint()) {
+                        $created += $this->processPriorityComplaint($account, $repair, $now, $notifications);
+                        continue;
+                    }
+
+                    if ($repair->acknowledged_at) {
+                        continue;
+                    }
+
                     $threshold = match ($repair->priority) {
                         'critical' => $repair->created_at->addHour(),
                         'high' => $repair->created_at->addHours(4),
@@ -210,18 +266,56 @@ class SendDueCrmNotifications extends Command
 
                     $daysOver = max(0, (int) floor($threshold->utc()->diffInHours($now->utc()) / 24));
                     $milestone = 'sla-'.($daysOver === 0 ? 'initial' : "day-{$daysOver}");
-                    $created += $notifications->dispatch(CrmNotificationEvent::RepairEscalated, $repair, [
-                        'account_id' => $account->id,
-                        'milestone' => $milestone,
-                        'recipients' => $this->operationalRecipients($account, $repair->property_id, $repair->repairIssuePropertyManagers->pluck('propertyManager')),
-                        'repair_reference' => $repair->reference_number ?: "#{$repair->id}",
-                        'property_address' => $this->propertyAddress($repair->property),
-                        'action_url' => route('admin.property_repairs.show', $repair->id),
-                    ]);
+                    $created += $this->dispatchRepairEscalation($account, $repair, $notifications, $milestone);
                 }
             });
 
         return $created;
+    }
+
+    private function processPriorityComplaint(Account $account, RepairIssue $repair, CarbonImmutable $now, CrmNotificationService $notifications): int
+    {
+        $snapshot = is_array($repair->classification_snapshot) ? $repair->classification_snapshot : [];
+        $clock = $snapshot['clock'] ?? null;
+        $milestone = null;
+
+        if ($clock === 'make_safe_24') {
+            if ($repair->make_safe_at || ! $repair->make_safe_due_at) {
+                return 0;
+            }
+            if ($now->utc()->lessThan(CarbonImmutable::parse($repair->make_safe_due_at)->utc())) {
+                return 0;
+            }
+            $milestone = 'make-safe-due';
+        } else {
+            if (! $repair->sla_due_at || ! $repair->reported_at) {
+                return 0;
+            }
+            $warnHours = (int) ($snapshot['warn_hours'] ?? 48);
+            $warnAt = CarbonImmutable::parse($repair->reported_at)->addHours($warnHours);
+            $dueAt = CarbonImmutable::parse($repair->sla_due_at);
+            if ($now->utc()->greaterThanOrEqualTo($dueAt->utc())) {
+                $milestone = 'sla-due';
+            } elseif ($now->utc()->greaterThanOrEqualTo($warnAt->utc())) {
+                $milestone = 'sla-warn-48h';
+            } else {
+                return 0;
+            }
+        }
+
+        return $this->dispatchRepairEscalation($account, $repair, $notifications, $milestone);
+    }
+
+    private function dispatchRepairEscalation(Account $account, RepairIssue $repair, CrmNotificationService $notifications, string $milestone): int
+    {
+        return $notifications->dispatch(CrmNotificationEvent::RepairEscalated, $repair, [
+            'account_id' => $account->id,
+            'milestone' => $milestone,
+            'recipients' => $this->operationalRecipients($account, $repair->property_id, $repair->repairIssuePropertyManagers->pluck('propertyManager')),
+            'repair_reference' => $repair->reference_number ?: "#{$repair->id}",
+            'property_address' => $this->propertyAddress($repair->property),
+            ...$repair->notificationLinks(),
+        ]);
     }
 
     private function processInvoices(Account $account, CarbonImmutable $now, CrmNotificationService $notifications): int
@@ -274,6 +368,43 @@ class SendDueCrmNotifications extends Command
                             }
                         }
                     }
+                }
+            });
+
+        return $created;
+    }
+
+    private function processRentInvoices(Account $account, CarbonImmutable $now): int
+    {
+        $created = 0;
+        $notifier = app(RentInvoiceNotifier::class);
+
+        RentInvoice::query()->forAccount($account->id)
+            ->whereIn('status', [RentInvoice::STATUS_ISSUED, RentInvoice::STATUS_PARTIAL])
+            ->where('balance', '>', 0)
+            ->whereNotNull('due_date')
+            ->with(['tenant', 'tenancy.tenantMembers.user', 'property'])
+            ->chunkById(200, function ($invoices) use ($account, $now, $notifier, &$created): void {
+                foreach ($invoices as $invoice) {
+                    $days = $this->calendarDaysUntil($now, $invoice->due_date, $now->timezoneName);
+                    $milestone = $days >= 0
+                        ? (in_array($days, [3, 0], true) ? "due-{$days}" : null)
+                        : $this->deadlineMilestone($days, []);
+                    $event = $days < 0
+                        ? CrmNotificationEvent::FinanceInvoiceOverdue
+                        : CrmNotificationEvent::FinanceInvoiceDue;
+                    $milestone = $this->backfillMilestone($milestone, $days, $invoice, $event);
+                    if (! $milestone) {
+                        continue;
+                    }
+
+                    $created += $notifier->send(
+                        $event,
+                        $invoice,
+                        $notifier->household($invoice)->merge($notifier->landlords((int) $account->id)),
+                        $milestone,
+                        [],
+                    );
                 }
             });
 

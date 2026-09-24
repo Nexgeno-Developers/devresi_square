@@ -65,13 +65,44 @@ class BusinessSettingsController
     }
 
     /**
+     * Keys that Super Admin may write via the SMTP screen. Anything else is ignored.
+     *
+     * @var list<string>
+     */
+    private const ENV_KEY_ALLOWLIST = [
+        'MAIL_DRIVER',
+        'MAIL_MAILER',
+        'MAIL_HOST',
+        'MAIL_PORT',
+        'MAIL_USERNAME',
+        'MAIL_PASSWORD',
+        'MAIL_ENCRYPTION',
+        'MAIL_FROM_ADDRESS',
+        'MAIL_FROM_NAME',
+        'MAILGUN_DOMAIN',
+        'MAILGUN_SECRET',
+        'APP_NAME',
+        'APP_TIMEZONE',
+    ];
+
+    /**
      * overWrite the Env File values.
+     * Launch Step 4: Super Admin only; never accept arbitrary keys from HTTP.
+     *
      * @param  string $type
      * @param  string $val
      * @return bool
      */
     public function overWriteEnvFile($type, $val)
     {
+        if (! auth()->user()?->isSuperAdmin()) {
+            return false;
+        }
+
+        if (! in_array($type, self::ENV_KEY_ALLOWLIST, true)) {
+            return false;
+        }
+
         if(env('DEMO_MODE') != 'On'){
             $path = base_path('.env');
             if (file_exists($path)) {
@@ -96,7 +127,18 @@ class BusinessSettingsController
      */
     public function env_key_update(Request $request)
     {
+        abort_unless(auth()->user()?->isSuperAdmin(), 403);
+
         foreach ($request->types as $key => $type) {
+            if (! in_array($type, self::ENV_KEY_ALLOWLIST, true)) {
+                continue;
+            }
+
+            // Never wipe secrets when the form field is left blank.
+            if (in_array($type, ['MAIL_PASSWORD', 'MAILGUN_SECRET'], true) && blank($request->input($type))) {
+                continue;
+            }
+
             $this->overWriteEnvFile($type, $request[$type]);
 
             // Laravel 11 reads MAIL_MAILER; the SMTP screen still posts MAIL_DRIVER.
@@ -111,6 +153,8 @@ class BusinessSettingsController
 
     public function smtp_settings(Request $request)
     {
+        abort_unless(auth()->user()?->isSuperAdmin(), 403);
+
         return view('backend.setup_configurations.smtp_settings');
     }
 

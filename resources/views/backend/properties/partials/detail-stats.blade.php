@@ -1,15 +1,21 @@
 ﻿@php
-    $activeTenancies = \App\Models\Tenancy::where('property_id', $property->id)->where('status','Active')->count();
-    $openRepairs = \App\Models\RepairIssue::where('property_id', $property->id)
-        ->whereIn('status', ['Pending','Reported','Under Process'])->count();
-    $complianceCount = $property->complianceRecords()->count();
-    $expiringCompliance = $property->complianceRecords()
-        ->where('expiry_date','<=', now()->addMonths(2))
-        ->where('expiry_date','>=', now())->count();
-    $activeTenancy = \App\Models\Tenancy::where('property_id', $property->id)
-        ->where('status', 'Active')
-        ->orderByDesc('move_in')
-        ->first();
+    $activeTenancies = $property->active_tenancies_count
+        ?? \App\Models\Tenancy::where('property_id', $property->id)->where('status','Active')->count();
+    $openRepairs = $property->open_repairs_count
+        ?? \App\Models\RepairIssue::where('property_id', $property->id)
+            ->whereIn('status', ['Pending','Reported','Under Process'])->count();
+    $complianceCount = $property->compliance_records_count
+        ?? $property->complianceRecords()->count();
+    $expiringCompliance = $property->expiring_compliance_count
+        ?? $property->complianceRecords()
+            ->where('expiry_date','<=', now()->addMonths(2))
+            ->where('expiry_date','>=', now())->count();
+    $activeTenancy = $property->relationLoaded('tenancies')
+        ? $property->tenancies->first()
+        : \App\Models\Tenancy::where('property_id', $property->id)
+            ->where('status', 'Active')
+            ->orderByDesc('move_in')
+            ->first();
     $nextRentDue = '-';
     if ($activeTenancy?->move_in) {
         $freq = strtolower((string) $activeTenancy->frequency);
@@ -28,7 +34,7 @@
                 $cursor->addMonth();
             }
         }
-        $nextRentDue = $cursor->format('d M');
+        $nextRentDue = $cursor->format('j M');
     }
     $daysListed = 0;
     if ($property->created_at) {
@@ -47,7 +53,7 @@
     <div class="pcc-stat-pill">
         <div class="pcc-stat-icon"><i class="bi bi-currency-pound"></i></div>
         <div class="pcc-stat-content">
-            <div class="pcc-stat-value">£{{ number_format((float) ($property->letting_price ?: ($activeTenancy->rent ?? 0)), 0) }}</div>
+            <div class="pcc-stat-value">{{ rs_money($property->letting_price ?: ($activeTenancy->rent ?? 0)) }}</div>
             <div class="pcc-stat-label">Rent/mo</div>
         </div>
     </div>

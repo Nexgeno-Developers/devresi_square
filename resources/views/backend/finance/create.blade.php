@@ -95,6 +95,14 @@
                 @error('note')<div class="invalid-feedback">{{ $message }}</div>@enderror
             </div>
 
+            <div class="form-check mb-3">
+                <input type="hidden" name="auto_recurring" value="0">
+                <input class="form-check-input" type="checkbox" value="1" name="auto_recurring" id="auto_recurring" @checked(old('auto_recurring'))>
+                <label class="form-check-label" for="auto_recurring">
+                    Automatically issue the next rent periods. Weekly stays weekly and monthly stays monthly. Each invoice is due on the tenancy rent due day, or on the due day of this invoice if the tenancy has none.
+                </label>
+            </div>
+
             <button type="submit" class="btn lw-btn-primary">Issue invoice</button>
         </form>
             </div>

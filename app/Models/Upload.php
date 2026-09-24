@@ -3,8 +3,10 @@
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToAccount;
+use App\Services\SecureUploadService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Auth;
 
 class Upload extends Model
 {
@@ -26,28 +28,18 @@ class Upload extends Model
 
     public static function storeFile($file)
     {
-        // Define file types based on extension
-        $types = [
-            'jpg' => 'image', 'jpeg' => 'image', 'png' => 'image', 'gif' => 'image', 'webp' => 'image', 'svg' => 'image',
-            'pdf' => 'document', 'doc' => 'document', 'docx' => 'document', 'txt' => 'document',
-            'xls' => 'document', 'xlsx' => 'document', 'csv' => 'document'
-        ];
-    
+        $stored = app(SecureUploadService::class)->store($file);
+
         $upload = new self();
-        $upload->file_original_name = $file->getClientOriginalName();
-        $upload->extension = strtolower($file->getClientOriginalExtension());
-        $upload->file_name = $file->store('uploads/all', 'public'); // Store file
-        $upload->user_id = auth()->id();
-        $upload->file_size = $file->getSize();
+        $upload->file_original_name = pathinfo($stored['original_name'], PATHINFO_FILENAME);
+        $upload->extension = $stored['extension'];
+        $upload->file_name = $stored['path'];
+        $upload->user_id = Auth::id();
+        $upload->file_size = $stored['size'];
+        $upload->type = $stored['type'];
         $upload->account_id = function_exists('current_account_id') ? current_account_id() : null;
-    
-        // Set the file type based on extension
-        $upload->type = $types[$upload->extension] ?? 'document'; // Default to 'document' if not listed
-    
         $upload->save();
-    
+
         return $upload;
     }
-    
-
 }

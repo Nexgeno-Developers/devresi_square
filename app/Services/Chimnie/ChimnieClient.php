@@ -18,7 +18,7 @@ class ChimnieClient
             ]);
         }
 
-        if (config('chimnie.test_mode', true)) {
+        if (config('chimnie.test_mode', false)) {
             return $this->testSearch($normalised);
         }
 

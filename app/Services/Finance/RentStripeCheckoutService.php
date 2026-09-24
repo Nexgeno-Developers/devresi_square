@@ -53,6 +53,13 @@ class RentStripeCheckoutService
             ]);
         }
 
+        $accountStatus = (string) \App\Models\Account::query()->whereKey($invoice->account_id)->value('status');
+        if (in_array($accountStatus, ['suspended', 'cancelled'], true)) {
+            throw ValidationException::withMessages([
+                'invoice' => 'Card payments are paused because this account is '.$accountStatus.'. Bank transfer is still available.',
+            ]);
+        }
+
         if ((int) $invoice->tenant_user_id !== (int) $tenant->id) {
             throw ValidationException::withMessages([
                 'invoice' => 'That invoice is not on your account.',

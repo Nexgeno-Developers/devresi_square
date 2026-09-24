@@ -593,6 +593,7 @@
                     $('#type_id').val('');
                     $('#sub_type_id').html('<option value="">— Select Sub-Type —</option>');
                     $('#reminderList').empty();
+                    $('#addReminderBtn').click();
                     $('.select-entity').each(function () {
                         $(this).val(null).trigger('change');
                         $(this).empty();
@@ -662,6 +663,8 @@
                     if ((inst.invite_ids || []).length) {
                         preselectSelect2($('#invite-select'), inst.invite_ids, inst.users);
                     }
+
+                    $('#visible-to-tenant').prop('checked', Boolean(inst.visible_to_tenant));
 
                     if (!inst.rrule) {
                         console.log('✏️[eventClick] Editing single instance:', inst.master_id);

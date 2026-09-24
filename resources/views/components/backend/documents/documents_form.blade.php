@@ -4,8 +4,16 @@
     @csrf
 
     <input type="hidden" name="document_id"       value="{{ $document->id ?? '' }}">
-    <input type="hidden" name="documentable_type" value="{{ get_class($documentable) }}">
+    <input type="hidden" name="documentable_type" value="{{ $documentable->getMorphClass() }}">
     <input type="hidden" name="documentable_id" value="{{ $documentable->id }}">
+
+    <div class="mb-3">
+        <div class="form-group">
+            <label for="documentTitle" class="form-label">Name</label>
+            <input type="text" name="title" id="documentTitle" class="form-control" required maxlength="255"
+                value="{{ old('title', $document->title ?? '') }}" placeholder="e.g. Gas safety certificate 2026">
+        </div>
+    </div>
 
     <div class="mb-3">
         <div class="form-group">
@@ -50,7 +58,7 @@
         <div class="form-text">Tenants can download shared files from their portal. Private files stay on this account only.</div>
     </div>
 
-    <button type="submit" class="btn btn-primary float-end">
+    <button type="submit" class="btn lw-btn-primary float-end">
         {{ $document ? 'Update' : 'Save' }}
     </button>
 </form>

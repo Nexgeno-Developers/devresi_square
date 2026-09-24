@@ -58,10 +58,12 @@ class RoleAndPermissionSeeder extends Seeder
             'delete tenants',
             'assign tenants to property',
             'end tenancy',
+            'manage tenancies',
             'view own lease info',
 
             // Maintenance
             'view maintenance requests',
+            'view property repair',
             'create maintenance requests',
             'assign maintenance tasks',
             'update maintenance status',
@@ -156,6 +158,8 @@ class RoleAndPermissionSeeder extends Seeder
                         'assign tenants to property',
 
                         'view maintenance requests',
+                        'view property repair',
+                        'manage tenancies',
                         'view rent payments',
                         'view documents',
                         'view communication log',

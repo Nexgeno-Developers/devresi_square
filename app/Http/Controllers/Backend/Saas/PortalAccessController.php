@@ -86,7 +86,7 @@ class PortalAccessController
 
         if (! $tenancy->property) {
             throw ValidationException::withMessages([
-                'tenancy_id' => 'That tenancy has no property attached.',
+                'tenancy_id' => 'Link this tenancy to a property before inviting.',
             ]);
         }
 
@@ -115,6 +115,62 @@ class PortalAccessController
             )->success();
         } else {
             flash('Tenant portal access has been granted, but the invite email could not be sent.')->warning();
+        }
+
+        return redirect()->route('admin.portal-access.index');
+    }
+
+    public function resend(Request $request, User $user)
+    {
+        $actor = $request->user();
+        $account = current_account();
+
+        abort_unless($account, 403);
+
+        $portalAccessService = app(PortalAccessService::class);
+        $this->ensureCanManagePortal($actor, $account, $portalAccessService);
+
+        $membership = AccountUser::query()
+            ->where('account_id', $account->id)
+            ->where('user_id', $user->id)
+            ->whereIn('member_type', AccountMembership::PORTAL_TYPES)
+            ->where('status', 'active')
+            ->first();
+
+        abort_unless($membership, 404, 'That person does not have active portal access on this account.');
+
+        $participant = PropertyParticipant::query()
+            ->with('property')
+            ->where('account_id', $account->id)
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->orderByDesc('id')
+            ->first();
+
+        $property = $participant?->property;
+        if (! $property) {
+            $member = \App\Models\TenantMember::query()
+                ->with('tenancy.property')
+                ->where('account_id', $account->id)
+                ->where('user_id', $user->id)
+                ->where('can_login', true)
+                ->orderByDesc('id')
+                ->first();
+            $property = $member?->tenancy?->property;
+        }
+
+        if (! $property) {
+            throw ValidationException::withMessages([
+                'user' => 'No property is linked for this portal user, so an invite cannot be resent.',
+            ]);
+        }
+
+        $mail = app(TenantInviteMailer::class)->send($user, $property, true);
+
+        if ($mail['sent']) {
+            flash('Invite resent. We emailed a fresh link to set a password.')->success();
+        } else {
+            flash('Could not resend the invite email. Try again shortly.')->warning();
         }
 
         return redirect()->route('admin.portal-access.index');

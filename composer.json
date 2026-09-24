@@ -59,6 +59,12 @@
             "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
         ],
+        "test": [
+            "@php vendor/bin/phpunit --colors=always"
+        ],
+        "ci:audit": [
+            "@php scripts/ci-composer-audit.php"
+        ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite"
@@ -71,7 +77,8 @@
     },
     "config": {
         "optimize-autoloader": true,
-        "preferred-install": "dist",
+        "preferred-install": {
+        },
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true,

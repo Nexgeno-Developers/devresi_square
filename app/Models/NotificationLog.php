@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class NotificationLog extends Model
 {
+    use BelongsToSaasAccount;
+
     protected $fillable = [
         'account_id',
         'identifier',

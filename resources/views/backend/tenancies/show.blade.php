@@ -8,6 +8,8 @@
         <strong>Property:</strong> {{ $tenancy->property->full_address ?? 'N/A' }}
     </div>
 
+    @include('backend.tenancies._correction-requests')
+
     <div class="mb-3">
         <strong>Right to rent follow-up register</strong>
         @foreach($tenancy->tenantMembers as $member)
@@ -57,9 +59,9 @@
 
     <hr>
 
-    <div class="row">
+    <div class="row" data-let-facts="landlord">
         <div class="col">
-            <strong>Move In:</strong> {{ $tenancy->move_in }}
+            <strong>Move In:</strong> {{ rs_date($tenancy->move_in) }}
         </div>
         <div class="col">
             <strong>Term:</strong> {{ $tenancy->term_months ?? 0 }} months, {{ $tenancy->term_days ?? 0 }} days
@@ -82,7 +84,13 @@
 
     <div class="row">
         <div class="col">
-            <strong>Rent:</strong> £{{ number_format($tenancy->rent, 2) }}
+            <strong>Rent:</strong> {{ rs_money($tenancy->rent) }}
+        </div>
+        <div class="col">
+            <strong>Frequency:</strong> {{ $tenancy->rentFrequencyLabel() }}
+        </div>
+        <div class="col">
+            <strong>Due day:</strong> {{ $tenancy->rentDueLabel() }}
         </div>
         <div class="col">
             <strong>Deposit:</strong> £{{ number_format($tenancy->deposit, 2) }}
@@ -120,6 +128,8 @@
     </div>
     @endif
 
+    @include('backend.tenancies._deposit-protection')
+
     <hr>
 
     <div class="mb-3">
@@ -134,7 +144,7 @@
     <hr>
     <div class="mb-3">
         <strong>Notice register</strong>
-        <table class="table table-sm mt-2">
+        <table class="table lw-table table-sm mt-2">
             <thead><tr><th>Type</th><th>Served</th><th>Effective</th><th>Recipient</th><th>Status</th></tr></thead>
             <tbody>
             @forelse($tenancy->notices()->with('recipient')->latest('served_at')->get() as $notice)
@@ -172,7 +182,7 @@
             </div>
             <div class="col-md-2"><input type="datetime-local" name="served_at" class="form-control" required></div>
             <div class="col-md-2"><input type="date" name="effective_at" class="form-control"></div>
-            <div class="col-md-2"><button class="btn btn-primary w-100">Record &amp; notify</button></div>
+            <div class="col-md-2"><button class="btn lw-btn-primary w-100">Record &amp; notify</button></div>
             <div class="col-12"><textarea name="notes" class="form-control" rows="2" placeholder="Evidence or internal notes"></textarea></div>
         </form>
     </div>

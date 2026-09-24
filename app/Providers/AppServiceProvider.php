@@ -7,6 +7,7 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use OwenIt\Auditing\Contracts\Auditor as AuditorContract;
@@ -57,14 +58,20 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(AuditorContract::class, Auditor::class);
 
-        $debugbarExplicit = env('DEBUGBAR_ENABLED');
-        $debugbarOff = $this->app->environment('production')
-            || $debugbarExplicit === false
-            || $debugbarExplicit === 'false'
-            || $debugbarExplicit === '0';
-
-        if ($debugbarOff) {
+        // Launch Step 3: never expose debug/Debugbar outside local, even if .env is wrong.
+        if (! $this->app->environment('local')) {
+            $this->app['config']->set('app.debug', false);
             $this->app['config']->set('debugbar.enabled', false);
+        } else {
+            $debugbarExplicit = env('DEBUGBAR_ENABLED');
+            $debugbarOff = $debugbarExplicit === false
+                || $debugbarExplicit === 'false'
+                || $debugbarExplicit === '0'
+                || ($debugbarExplicit === null && ! (bool) env('APP_DEBUG', false));
+
+            if ($debugbarOff) {
+                $this->app['config']->set('debugbar.enabled', false);
+            }
         }
     }
 
@@ -79,6 +86,18 @@ class AppServiceProvider extends ServiceProvider
         Blade::component('components.backend.documents.documents', 'backend-documents-component');
         Schema::defaultStringLength(191);
         Paginator::useBootstrapFive();
+
+        View::composer('backend.layout.app', function ($view) {
+            if (! empty($view->getData()['tenancyConfirmation']) || ! auth()->check() || ! is_tenant_portal_user()) {
+                return;
+            }
+
+            $view->with(
+                'tenancyConfirmation',
+                app(\App\Services\Portal\TenancyDetailsConfirmationService::class)
+                    ->payloadFor(auth()->user(), current_account_id())
+            );
+        });
         //Paginator::useBootstrap(); // Enables Bootstrap 4 styling
 
         // Super Admin still bypasses Gates so platform screens keep working.
@@ -141,10 +160,13 @@ class AppServiceProvider extends ServiceProvider
             'App\\Models\\PropertyParticipant' => PropertyParticipant::class,
             'App\\Models\\Offer'      => Offer::class,
             'App\\Models\\ComplianceRecord' => ComplianceRecord::class,
+            'App\\Models\\Document' => Document::class,
             'App\\Models\\RepairIssue' => RepairIssue::class,
+            'App\\Models\\RentInvoice' => RentInvoice::class,
             'App\\Models\\WorkOrder' => WorkOrder::class,
             'App\\Models\\TenantMember' => TenantMember::class,
             'App\\Models\\TenancyNotice' => TenancyNotice::class,
+            'App\\Models\\TenancyCorrectionRequest' => \App\Models\TenancyCorrectionRequest::class,
             'App\\Models\\NotificationLog' => NotificationLog::class,
             'App\\Models\\Property'   => Property::class,
             'App\\Models\\Tenancy'    => Tenancy::class,

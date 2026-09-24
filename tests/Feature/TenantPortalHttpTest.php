@@ -27,19 +27,27 @@ class TenantPortalHttpTest extends TestCase
             ->assertSee('Upcoming appointments', false)
             ->assertSee('Report an issue', false)
             ->assertSee(route('tenant.maintenance'), false)
-            ->assertDontSee(route('admin.property_repairs.create'), false);
+            ->assertDontSee(route('admin.property_repairs.create'), false)
+            ->assertSee('tp-bottom-nav', false)
+            ->assertSee('>Rent</span>', false)
+            ->assertSee('>Repairs</span>', false)
+            ->assertSee('>Docs</span>', false)
+            ->assertSee('>Me</span>', false);
 
         $this->actingAs($user)
             ->withSession(['current_account_id' => $accountId])
             ->get(route('tenant.calendar'))
             ->assertOk()
-            ->assertSee('Appointments', false);
+            ->assertSee('Appointments', false)
+            ->assertSee('data-tenant-calendar="1"', false)
+            ->assertSee(now()->format('F Y'), false);
 
         $this->actingAs($user)
             ->withSession(['current_account_id' => $accountId])
             ->get(route('tenant.maintenance'))
             ->assertOk()
-            ->assertSee('Repair requests', false);
+            ->assertSee('Something broken?', false)
+            ->assertSee('data-tenant-maintenance="1"', false);
     }
 
     public function test_tenant_agency_repair_form_redirects_to_portal_maintenance(): void
@@ -116,7 +124,22 @@ class TenantPortalHttpTest extends TestCase
             ->assertDontSee('View Active Properties', false)
             ->assertDontSee('View Active Tenancies', false)
             ->assertDontSee('Billing &amp; Plan', false)
-            ->assertDontSee('Sales Offer', false);
+            ->assertDontSee('Sales Offer', false)
+            ->assertDontSee('Back to Users', false)
+            ->assertDontSee('staff workspace', false)
+            ->assertDontSee('Properties, Contacts, or Repair', false);
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('admin.users.profile.show'))
+            ->assertRedirect(route('tenant.profile'));
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('tenant.profile'))
+            ->assertOk()
+            ->assertSee('tp-bottom-nav', false)
+            ->assertDontSee('Back to Users', false);
     }
 
     public function test_tenant_does_not_see_another_tenants_home(): void
@@ -199,8 +222,10 @@ class TenantPortalHttpTest extends TestCase
             ->assertDontSee('99 Secret Tenant B Lane', false);
     }
 
-    public function test_tenant_repair_request_saves_medium_priority(): void
+    public function test_tenant_repair_request_requires_photo_and_saves(): void
     {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
         [$landlord, $accountId] = $this->createPortalUser('Landlord', 'owner');
         [$tenant] = $this->createPortalUser('Tenant', 'tenant');
 
@@ -244,6 +269,16 @@ class TenantPortalHttpTest extends TestCase
                 'property_id' => $property->id,
                 'description' => 'Kitchen tap is dripping',
                 'priority' => 'medium',
+            ])
+            ->assertSessionHasErrors('photo');
+
+        $this->actingAs($tenant)
+            ->withSession(['current_account_id' => $accountId])
+            ->post(route('tenant.maintenance.store'), [
+                'property_id' => $property->id,
+                'description' => 'Kitchen tap is dripping',
+                'priority' => 'medium',
+                'photo' => \Illuminate\Http\UploadedFile::fake()->image('drip.jpg'),
             ])
             ->assertRedirect(route('tenant.maintenance'));
 
@@ -315,6 +350,7 @@ class TenantPortalHttpTest extends TestCase
         $this->actingAs($tenant)->withSession($session)
             ->get(route('tenant.documents'))
             ->assertOk()
+            ->assertSee('data-tenant-documents="1"', false)
             ->assertSee(route('tenant.documents.download', $shared), false)
             ->assertDontSee(route('tenant.documents.download', $private), false);
 
@@ -343,6 +379,19 @@ class TenantPortalHttpTest extends TestCase
         $this->actingAs($tenant)->withSession($session)
             ->get(route('tenant.documents.download', $private))
             ->assertOk();
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.documents.share', $private), ['share_with_tenant' => 0])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('documents', [
+            'id' => $private->id,
+            'visibility' => 'private',
+        ]);
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('tenant.documents.download', $private))
+            ->assertNotFound();
     }
 
     private function createPropertyDocument(int $accountId, int $userId, int $propertyId, string $visibility, string $filename): Document
@@ -365,6 +414,7 @@ class TenantPortalHttpTest extends TestCase
             'documentable_type' => Property::class,
             'documentable_id' => $propertyId,
             'upload_ids' => (string) $upload->id,
+            'title' => pathinfo($filename, PATHINFO_FILENAME),
             'visibility' => $visibility,
             'created_by' => $userId,
         ]);

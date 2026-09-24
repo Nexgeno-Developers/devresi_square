@@ -7,104 +7,114 @@
     $status = $subscription?->status;
     $currency = strtoupper($account->currency ?: ($plan?->currency ?: 'GBP'));
     $formatMinor = function ($minor) use ($currency) {
-        return $currency . ' ' . number_format(((int) ($minor ?? 0)) / 100, 2);
+        $symbol = $currency === 'GBP' ? '£' : ($currency.' ');
+        return $symbol . number_format(((int) ($minor ?? 0)) / 100, 2);
     };
     $resourceRows = [
         'Properties' => $limitSummary['properties'] ?? null,
-        'Branches' => $limitSummary['branches'] ?? null,
-        'Staff' => $limitSummary['staff'] ?? null,
-        'Property managers' => $limitSummary['property_managers'] ?? null,
     ];
+    if (! is_landlord_plan_user()) {
+        $resourceRows = array_merge($resourceRows, [
+            'Branches' => $limitSummary['branches'] ?? null,
+            'Staff' => $limitSummary['staff'] ?? null,
+            'Property managers' => $limitSummary['property_managers'] ?? null,
+        ]);
+    }
     $canActivate = $subscription && ! $subscription->stripe_subscription_id && in_array($status, ['trialing', 'active', 'past_due'], true);
     $canBuyAddons = $subscription && in_array($status, ['trialing', 'active'], true) && $subscription->stripe_subscription_id;
+    $statusTone = match ($status) {
+        'active' => 'ok',
+        'trialing' => 'warn',
+        'past_due', 'cancelled' => 'bad',
+        default => 'idle',
+    };
+    $formatDate = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('j M Y') : '—';
 @endphp
 
-<div class="mt-md-4 me-md-4 me-3 mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+<div class="container-fluid lw-page">
+    <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
         <div>
-            <h2 class="mb-1">Billing &amp; Plan</h2>
-            <div class="text-muted">{{ $account->account_name ?: 'Account #' . $account->id }}</div>
+            <h4>{{ is_landlord_plan_user() ? 'Settings' : 'Billing & Plan' }}</h4>
+            <p>{{ $account->account_name ?: 'Your workspace plan' }}</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+            @if($status)
+                <x-lw.pill :tone="$statusTone">{{ ucwords(str_replace('_', ' ', $status)) }}</x-lw.pill>
+            @endif
             @if($canActivate)
-                <form method="POST" action="{{ route('backend.saas.subscription.checkout') }}">
+                <form method="POST" action="{{ route('backend.saas.subscription.checkout') }}" class="d-inline">
                     @csrf
-                    <button type="submit" class="btn btn-primary">
-                        {{ $status === 'trialing' ? 'Activate Subscription' : 'Pay / Activate Subscription' }}
+                    <button type="submit" class="btn lw-btn-primary">
+                        {{ $status === 'trialing' ? 'Activate subscription' : 'Pay / activate' }}
                     </button>
                 </form>
             @endif
-
             @if($subscription?->stripe_subscription_id || $account->stripe_customer_id)
-                <form method="POST" action="{{ route('backend.billing.portal') }}">
+                <form method="POST" action="{{ route('backend.billing.portal') }}" class="d-inline">
                     @csrf
-                    <button type="submit" class="btn btn-outline-primary">Manage Billing</button>
+                    <button type="submit" class="btn lw-btn-secondary">Manage billing</button>
                 </form>
             @endif
         </div>
     </div>
 
     @if($subscription?->status === 'trialing' && ! $subscription->stripe_subscription_id)
-        <div class="alert alert-info">You are on a trial. Add payment method to continue after trial.</div>
-    @elseif($subscription?->status === 'active' && $subscription->stripe_subscription_id)
-        <div class="alert alert-success">Subscription active.</div>
+        <div class="alert alert-lw mb-3">You are on a trial. Add a payment method before it ends to keep access.</div>
     @elseif($subscription?->status === 'past_due')
-        <div class="alert alert-warning">Payment failed. Please update payment method.</div>
+        <div class="alert alert-danger mb-3">Payment failed. Update your card in Manage billing.</div>
     @elseif($subscription?->status === 'cancelled')
-        <div class="alert alert-danger">Subscription cancelled.</div>
+        <div class="alert alert-danger mb-3">Subscription cancelled.</div>
     @elseif(! $subscription)
-        <div class="alert alert-warning">No subscription is linked to this account.</div>
+        <div class="alert alert-lw mb-3">No subscription is linked to this account yet.</div>
     @endif
 
-    <div class="row">
-        <div class="col-lg-6 mb-4">
-            <h5>Current Plan</h5>
-            <table class="table table-bordered align-middle">
-                <tbody>
-                    <tr><th width="35%">Account</th><td>{{ $account->account_name ?: '-' }}</td></tr>
-                    <tr><th>Account status</th><td>{{ ucwords(str_replace('_', ' ', $account->status ?: '-')) }}</td></tr>
-                    <tr><th>Plan</th><td>{{ $plan?->name ?: '-' }}</td></tr>
-                    <tr><th>Billing cycle</th><td>{{ ucwords($billingCycle) }}</td></tr>
-                    <tr><th>Plan price</th><td>
-                        @if($plan)
-                            {{ $billingCycle === 'annual' ? $plan->formattedAnnualPrice() : $plan->formattedMonthlyPrice() }}
-                        @else
-                            -
-                        @endif
-                    </td></tr>
-                    <tr><th>Subscription status</th><td>{{ $status ? ucwords(str_replace('_', ' ', $status)) : '-' }}</td></tr>
-                    <tr><th>Stripe subscription ID</th><td>{{ $subscription?->stripe_subscription_id ?: '-' }}</td></tr>
-                    <tr><th>Stripe price ID</th><td>{{ $subscription?->stripe_price_id ?: '-' }}</td></tr>
-                </tbody>
-            </table>
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="card lw-card h-100">
+                <div class="card-body">
+                    <div class="lw-section-title mt-0">Current plan</div>
+                    <table class="table lw-table mb-0">
+                        <tbody>
+                            <tr><th width="40%">Account</th><td>{{ $account->account_name ?: '—' }}</td></tr>
+                            <tr><th>Plan</th><td>{{ $plan?->name ?: '—' }}</td></tr>
+                            <tr><th>Billing cycle</th><td>{{ ucwords($billingCycle) }}</td></tr>
+                            <tr><th>Price</th><td>
+                                @if($plan)
+                                    {{ $billingCycle === 'annual' ? $plan->formattedAnnualPrice() : $plan->formattedMonthlyPrice() }}
+                                @else
+                                    —
+                                @endif
+                            </td></tr>
+                            <tr><th>Status</th><td>{{ $status ? ucwords(str_replace('_', ' ', $status)) : '—' }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-
-        <div class="col-lg-6 mb-4">
-            <h5>Trial / Period Dates</h5>
-            <table class="table table-bordered align-middle">
-                <tbody>
-                    <tr><th width="35%">Trial started</th><td>{{ $subscription?->trial_started_at?->format('Y-m-d') ?: $account->trial_started_at?->format('Y-m-d') ?: '-' }}</td></tr>
-                    <tr><th>Trial ends</th><td>{{ $subscription?->trial_ends_at?->format('Y-m-d') ?: $account->trial_ends_at?->format('Y-m-d') ?: '-' }}</td></tr>
-                    <tr><th>Period start</th><td>{{ $subscription?->current_period_start?->format('Y-m-d') ?: '-' }}</td></tr>
-                    <tr><th>Period end</th><td>{{ $subscription?->current_period_end?->format('Y-m-d') ?: '-' }}</td></tr>
-                    <tr><th>Cancel at period end</th><td>{{ $subscription?->cancel_at_period_end ? 'Yes' : 'No' }}</td></tr>
-                    <tr><th>Cancelled at</th><td>{{ $subscription?->cancelled_at?->format('Y-m-d H:i') ?: '-' }}</td></tr>
-                </tbody>
-            </table>
+        <div class="col-lg-6">
+            <div class="card lw-card h-100">
+                <div class="card-body">
+                    <div class="lw-section-title mt-0">Dates</div>
+                    <table class="table lw-table mb-0">
+                        <tbody>
+                            <tr><th width="40%">Trial started</th><td>{{ $formatDate($subscription?->trial_started_at ?: $account->trial_started_at) }}</td></tr>
+                            <tr><th>Trial ends</th><td>{{ $formatDate($subscription?->trial_ends_at ?: $account->trial_ends_at) }}</td></tr>
+                            <tr><th>Period start</th><td>{{ $formatDate($subscription?->current_period_start) }}</td></tr>
+                            <tr><th>Period end</th><td>{{ $formatDate($subscription?->current_period_end) }}</td></tr>
+                            <tr><th>Cancel at period end</th><td>{{ $subscription?->cancel_at_period_end ? 'Yes' : 'No' }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="mb-4">
-        <h5>Usage Summary</h5>
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped align-middle">
+    <div class="card lw-card mb-3">
+        <div class="card-body">
+            <div class="lw-section-title mt-0">Usage</div>
+            <table class="table lw-table align-middle mb-0">
                 <thead>
-                    <tr>
-                        <th>Resource</th>
-                        <th>Used</th>
-                        <th>Limit</th>
-                        <th>Remaining</th>
-                    </tr>
+                    <tr><th>Resource</th><th>Used</th><th>Limit</th><th>Remaining</th></tr>
                 </thead>
                 <tbody>
                     @foreach($resourceRows as $label => $summary)
@@ -120,53 +130,37 @@
         </div>
     </div>
 
-    <div class="mb-4">
-        <h5>Active Addons</h5>
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped align-middle">
+    @unless(is_landlord_plan_user())
+    <div class="card lw-card mb-3">
+        <div class="card-body">
+            <div class="lw-section-title mt-0">Active addons</div>
+            <table class="table lw-table align-middle mb-0">
                 <thead>
-                    <tr>
-                        <th>Addon</th>
-                        <th>Type</th>
-                        <th>Quantity</th>
-                        <th>Billing cycle</th>
-                        <th>Price snapshot</th>
-                        <th>Stripe item ID</th>
-                    </tr>
+                    <tr><th>Addon</th><th>Type</th><th>Qty</th><th>Cycle</th><th>Price</th></tr>
                 </thead>
                 <tbody>
                     @forelse($activeAddons as $subscriptionAddon)
                         <tr>
-                            <td>{{ $subscriptionAddon->addon_name_at_purchase ?: $subscriptionAddon->addon?->name ?: '-' }}</td>
-                            <td>{{ $subscriptionAddon->addon ? ucwords(str_replace('_', ' ', $subscriptionAddon->addon->addon_type)) : '-' }}</td>
+                            <td>{{ $subscriptionAddon->addon_name_at_purchase ?: $subscriptionAddon->addon?->name ?: '—' }}</td>
+                            <td>{{ $subscriptionAddon->addon ? ucwords(str_replace('_', ' ', $subscriptionAddon->addon->addon_type)) : '—' }}</td>
                             <td>{{ $subscriptionAddon->quantity }}</td>
                             <td>{{ ucwords($subscriptionAddon->billing_cycle) }}</td>
-                            <td>{{ $subscriptionAddon->price_at_purchase_minor !== null ? $formatMinor($subscriptionAddon->price_at_purchase_minor) : '-' }}</td>
-                            <td>{{ $subscriptionAddon->stripe_subscription_item_id ?: '-' }}</td>
+                            <td>{{ $subscriptionAddon->price_at_purchase_minor !== null ? $formatMinor($subscriptionAddon->price_at_purchase_minor) : '—' }}</td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="6" class="text-center">No active addons.</td>
-                        </tr>
+                        <tr><td colspan="5" class="text-muted">No active addons.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div class="mb-4">
-        <h5>Available Addons</h5>
-        <div class="table-responsive">
-            <table class="table table-bordered table-striped align-middle">
+    <div class="card lw-card mb-3">
+        <div class="card-body">
+            <div class="lw-section-title mt-0">Available addons</div>
+            <table class="table lw-table align-middle mb-0">
                 <thead>
-                    <tr>
-                        <th>Addon</th>
-                        <th>Type</th>
-                        <th>Grant</th>
-                        <th>Price</th>
-                        <th>Stackable</th>
-                        <th width="220">Action</th>
-                    </tr>
+                    <tr><th>Addon</th><th>Type</th><th>Grant</th><th>Price</th><th>Action</th></tr>
                 </thead>
                 <tbody>
                     @forelse($availableAddons as $addon)
@@ -175,27 +169,25 @@
                             <td>{{ ucwords(str_replace('_', ' ', $addon->addon_type)) }}</td>
                             <td>{{ $addon->grant_quantity }}</td>
                             <td>{{ $billingCycle === 'annual' ? $addon->formattedAnnualPrice() : $addon->formattedMonthlyPrice() }}</td>
-                            <td>{{ $addon->is_stackable ? 'Yes' : 'No' }}</td>
                             <td>
                                 @if($canBuyAddons)
                                     <form method="POST" action="{{ route('backend.billing.addons.checkout', $addon) }}" class="d-flex gap-2">
                                         @csrf
                                         <input type="number" name="quantity" min="1" value="1" class="form-control form-control-sm" style="max-width: 80px;">
-                                        <button type="submit" class="btn btn-sm btn-primary">Buy Addon</button>
+                                        <button type="submit" class="btn lw-btn-primary btn-sm">Buy</button>
                                     </form>
                                 @else
-                                    <button type="button" class="btn btn-sm btn-secondary" disabled>Activate subscription first</button>
+                                    <span class="text-muted small">Activate subscription first</span>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr>
-                            <td colspan="6" class="text-center">No addons available.</td>
-                        </tr>
+                        <tr><td colspan="5" class="text-muted">No addons available.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
     </div>
+    @endunless
 </div>
 @endsection

@@ -77,8 +77,112 @@ class WorkspaceIsolationHttpTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_landlord_cannot_open_another_accounts_bank_detail_or_work_order_pdf(): void
+    {
+        [$landlordA, $accountA] = $this->createLandlord();
+        [$landlordB, $accountB] = $this->createLandlord();
+
+        $propertyB = Property::create([
+            'account_id' => $accountB,
+            'created_by' => $landlordB->id,
+            'line_1' => '77 Foreign Finance Street',
+            'city' => 'London',
+            'postcode' => 'E1 6AN',
+        ]);
+
+        $bankId = \DB::table('bank_details')->insertGetId([
+            'account_id' => $accountB,
+            'user_id' => $landlordB->id,
+            'account_name' => 'Secret Landlord',
+            'account_no' => '12345678',
+            'sort_code' => '00-00-00',
+            'bank_name' => 'Isolation Bank',
+            'is_active' => 1,
+            'is_primary' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $category = \App\Models\RepairCategory::query()->orderBy('id')->first()
+            ?: \App\Models\RepairCategory::create([
+                'name' => 'Isolation work order',
+                'parent_id' => null,
+                'level' => 1,
+                'description' => 'Test',
+                'status' => 1,
+                'position' => 0,
+            ]);
+
+        $repair = RepairIssue::create([
+            'account_id' => $accountB,
+            'property_id' => $propertyB->id,
+            'tenant_id' => $landlordB->id,
+            'final_contractor_id' => $landlordB->id,
+            'repair_category_id' => $category->id,
+            'repair_navigation' => json_encode(['Isolation work order']),
+            'description' => 'Secret work order',
+            'priority' => 'medium',
+            'sub_status' => 'Pending',
+            'status' => 'Pending',
+            'reference_number' => 'ISOWO-'.uniqid(),
+            'created_by' => $landlordB->id,
+        ]);
+
+        $workOrderId = \DB::table('work_orders')->insertGetId([
+            'account_id' => $accountB,
+            'works_order_no' => 'RESISQREWO-ISO-'.uniqid(),
+            'repair_issue_id' => $repair->id,
+            'job_type_id' => null,
+            'status' => 'Pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($landlordA)
+            ->withSession(['current_account_id' => $accountA])
+            ->get(route('admin.bank_details.show', ['id' => $bankId]))
+            ->assertNotFound();
+
+        $this->actingAs($landlordA)
+            ->withSession(['current_account_id' => $accountA])
+            ->post(route('admin.bank_details.delete', ['id' => $bankId]))
+            ->assertNotFound();
+
+        $pdf = $this->actingAs($landlordA)
+            ->withSession(['current_account_id' => $accountA])
+            ->get(route('admin.workorder.generate.invoice', ['id' => $workOrderId]));
+        $this->assertContains($pdf->status(), [403, 404]);
+    }
+
+    public function test_landlord_cannot_mutate_event_on_another_account(): void
+    {
+        [$landlordA, $accountA] = $this->createLandlord();
+        [$landlordB, $accountB] = $this->createLandlord();
+
+        $eventId = \DB::table('events')->insertGetId([
+            'account_id' => $accountB,
+            'title' => 'Secret visit',
+            'start_datetime' => now()->addDay(),
+            'end_datetime' => now()->addDay()->addHour(),
+            'status' => 'Scheduled',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($landlordA)
+            ->withSession(['current_account_id' => $accountA])
+            ->post(route('backend.events.cancelInstance', ['id' => $eventId]), [
+                'occurrence_start' => now()->addDay()->toDateTimeString(),
+                'choice_action' => 'single',
+            ]);
+        // Scoped find → 404; post-load ensure → 403. Both are fail-closed.
+        $this->assertContains($response->status(), [403, 404]);
+    }
+
     public function test_tenant_cannot_raise_repair_on_another_tenants_home(): void
     {
+        \Illuminate\Support\Facades\Storage::fake('public');
+
         [$landlord, $accountId] = $this->createLandlord();
         [$tenant] = $this->createMembershipOnAccount($accountId, 'Tenant', 'tenant');
 
@@ -117,6 +221,7 @@ class WorkspaceIsolationHttpTest extends TestCase
             ->post(route('tenant.maintenance.store'), [
                 'property_id' => $otherProperty->id,
                 'description' => 'Trying to report on someone else home',
+                'photo' => \Illuminate\Http\UploadedFile::fake()->image('leak.jpg'),
             ])
             ->assertSessionHasErrors('property_id');
     }

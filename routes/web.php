@@ -4,15 +4,11 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\Backend\AizUploadController;
-use App\Http\Controllers\Backend\AuthenticateController;
-use App\Http\Controllers\Backend\DashboardController;
-use App\Http\Controllers\CommandController;
 use App\Http\Controllers\Frontend\ContractorPortalController;
 use App\Http\Controllers\Frontend\CustomerStatementController;
 use App\Http\Controllers\Frontend\FormController;
 use App\Http\Controllers\Frontend\FrontendController;
 use App\Http\Controllers\Frontend\RepairQuoteController;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
@@ -24,33 +20,7 @@ Route::post('/stripe/rent/webhook', [\App\Http\Controllers\Webhook\StripeRentWeb
 //     return $pdf->download('test.pdf');
 // });
 
-Route::get('/storage-link', function () {
-    if (!file_exists(public_path('storage'))) {
-        Artisan::call('storage:link');
-        return 'Storage link created successfully.';
-    }
-    return 'Storage link already exists.';
-});
-
-//Command Routes
-Route::prefix('command')->group(function () {
-    // Route::get('cache-clear', [CommandController::class, 'cacheClear']);
-    // Route::get('config-clear', [CommandController::class, 'configClear']);
-    // Route::get('config-cache', [CommandController::class, 'configCache']);
-    // Route::get('route-cache', [CommandController::class, 'routeCache']);
-    // Route::get('route-clear', [CommandController::class, 'routeClear']);
-    // Route::get('view-clear', [CommandController::class, 'viewClear']);
-    // Route::get('view-cache', [CommandController::class, 'viewCache']);
-    // Route::get('storage-link', [CommandController::class, 'storageLink']);
-    // Route::get('key-generate', [CommandController::class, 'keyGenerate']);
-    Route::get('optimize-clear', [CommandController::class, 'optimizeClear']);
-    // Route::get('queue-work', [CommandController::class, 'queueWork']);
-    // Route::get('queue-retry/{id?}', [CommandController::class, 'queueRetry']); // optional id
-    // Route::get('queue-failed', [CommandController::class, 'queueFailed']);
-    // Route::get('queue-forget/{id}', [CommandController::class, 'queueForget']);
-    // Route::get('queue-flush', [CommandController::class, 'queueFlush']);
-    // Route::get('update-currency-rates', [CommandController::class, 'updateCurrencyRates']);
-});
+// Launch Step 5: maintenance Artisan commands are CLI-only. Public HTTP entry points removed.
 
 // Group for web routes
 Route::group(['middleware' => 'web'], function () {
@@ -95,10 +65,10 @@ Route::group(['middleware' => 'web'], function () {
     // Read-only prototype, self-contained in resources/views/backend/testExperiments.blade.php
     Route::get('/testExperiments', function () {
         return view('backend.testExperiments');
-    })->middleware(['auth', 'current.account', 'account.status'])->name('test.experiments');
+    })->middleware(['auth', 'current.account', 'account.status', 'landlord.restricted'])->name('test.experiments');
 
     // Contractor portal — repair listing & detail (auth required)
-    Route::middleware(['auth', 'current.account', 'account.status'])->prefix('contractor')->name('contractor.')->group(function () {
+    Route::middleware(['auth', 'current.account', 'account.status', 'landlord.restricted'])->prefix('contractor')->name('contractor.')->group(function () {
         Route::get('/repairs',       [ContractorPortalController::class, 'index'])->name('repairs.index');
         Route::get('/repairs/{id}',  [ContractorPortalController::class, 'show'])->name('repairs.show');
     });
@@ -110,11 +80,6 @@ Route::group(['middleware' => 'web'], function () {
         ->middleware('signed')
         ->name('repair-quotes.submit');
 
-});
-
-Route::group(['middleware' => 'auth', 'prefix' => 'admin'], function () {
-    Route::get('/login', [AuthenticateController::class, 'index'])->name('backend.login');
-    Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('backend.dashboard');
 });
 
 // Optional: Redirect from '/admin' to the login page if not authenticated
@@ -147,75 +112,6 @@ Route::get('/helper', function () {
     return view('helper');
 });
 
-// ── Twilio SMS test (remove after debugging) ──────────────────────────────
-Route::get('/test-sms', function () {
-    abort_unless(auth()->user()?->hasRole('Super Admin'), 403);
-
-    $to = request('to', '');
-    if (!$to) return 'Pass ?to=9833579014 in the URL';
-
-    // Normalize
-    $mobile = preg_replace('/[^\d]/', '', $to);
-    if (strlen($mobile) === 12 && str_starts_with($mobile, '91')) $mobile = substr($mobile, 2);
-    if (strlen($mobile) !== 10) return "Invalid number: {$mobile}";
-
-    // ── Try Fast2SMS ──
-    if (env('FAST2SMS_API_KEY')) {
-        $params = http_build_query([
-            'authorization' => env('FAST2SMS_API_KEY'),
-            'route'         => 'q',
-            'message'       => 'Your ResiSquare OTP is 123456. Valid for 2 minutes. Do not share.',
-            'language'      => 'english',
-            'flash'         => '0',
-            'numbers'       => $mobile,
-        ]);
-        $ch = curl_init('https://www.fast2sms.com/dev/bulkV2?' . $params);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPGET        => true,
-            CURLOPT_TIMEOUT        => 15,
-            CURLOPT_HTTPHEADER     => ['Cache-Control: no-cache'],
-        ]);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        return response()->json([
-            'provider'  => 'Fast2SMS',
-            'http_code' => $httpCode,
-            'mobile'    => $mobile,
-            'response'  => json_decode($response, true) ?? $response,
-        ]);
-    }
-
-    // ── Try Twilio ──
-    $sid   = env('TWILIO_SID');
-    $token = env('TWILIO_TOKEN');
-    $from  = env('TWILIO_FROM');
-    $toE164 = '+91' . $mobile;
-    $fromClean = preg_replace('/[^\d+]/', '', $from ?? '');
-    if ($fromClean && !str_starts_with($fromClean, '+')) $fromClean = '+' . $fromClean;
-
-    $url  = "https://api.twilio.com/2010-04-01/Accounts/{$sid}/Messages.json";
-    $data = http_build_query(['From' => $fromClean, 'To' => $toE164, 'Body' => 'Test OTP: 123456']);
-    $ch   = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $data,
-        CURLOPT_RETURNTRANSFER => true, CURLOPT_USERPWD => "{$sid}:{$token}",
-        CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
-        CURLOPT_TIMEOUT => 15,
-    ]);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    return response()->json([
-        'provider'   => 'Twilio',
-        'http_code'  => $httpCode,
-        'sid_prefix' => substr($sid ?? '', 0, 4),
-        'from'       => $fromClean,
-        'to'         => $toE164,
-        'response'   => json_decode($response, true) ?? $response,
-    ]);
-})->middleware('auth');
 
 Route::get('/form/{type}', [FormController::class, 'show'])->name('form.show');
 Route::post('/form/{type}', [FormController::class, 'submit'])->name('form.submit');

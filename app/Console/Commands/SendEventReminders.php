@@ -47,6 +47,8 @@ class SendEventReminders extends Command
                             'appointment_title' => $event->title,
                             'appointment_at' => $event->start_datetime->timezone($event->account?->timezone ?: 'Europe/London')->format('d M Y, H:i'),
                             'action_url' => route('backend.events.calendar'),
+                            'portal_action_url' => route('tenant.calendar'),
+                            'portal_action_tenants_only' => true,
                             'milestone' => 'reminder-'.$reminder->id,
                         ]
                     );

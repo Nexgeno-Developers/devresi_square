@@ -38,6 +38,10 @@ class UserController
 
     public function profile()
     {
+        if (is_tenant_portal_user()) {
+            return redirect()->route('tenant.profile');
+        }
+
         $authUser = auth()->user()->load([
             'ownedCompany.branches',
             'ownedCompany.ownerTransfers.oldOwner',
@@ -60,6 +64,10 @@ class UserController
 
     public function profileEdit()
     {
+        if (is_tenant_portal_user()) {
+            return redirect()->route('tenant.profile');
+        }
+
         // Fetch the authenticated user
 
         $user = User::with('country', 'details', 'ownedCompany')->find(auth()->id());

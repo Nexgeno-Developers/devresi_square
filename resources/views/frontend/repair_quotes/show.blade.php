@@ -22,7 +22,7 @@
                 <p class="mb-1"><strong>Property:</strong> {{ getPropertyDetails($assignment->repairIssue->property_id, ['prop_name', 'line_1', 'city', 'postcode']) }}</p>
                 <p class="mb-0"><strong>Issue:</strong> {{ getRepairCategoryDetails($assignment->repairIssue->repair_category_id) }}</p>
                 @if($assignment->repairIssue->repair_navigation)
-                    <p class="mb-1 mt-2"><strong>Navigation:</strong> {!! getFormattedRepairNavigation($assignment->repairIssue->repair_navigation) !!}</p>
+                    <p class="mb-1 mt-2"><strong>Navigation:</strong> {{ getFormattedRepairNavigation($assignment->repairIssue->repair_navigation) }}</p>
                 @endif
                 <p class="mb-1 mt-2">
                     <strong>Description:</strong>

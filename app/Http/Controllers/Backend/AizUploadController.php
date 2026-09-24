@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Models\Upload;
+use App\Services\SecureUploadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Intervention\Image\Facades\Image;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\ValidationException;
 
 class AizUploadController
 {
@@ -68,122 +70,67 @@ class AizUploadController
     }
     public function upload(Request $request)
     {
-        $type = array(
-            "jpg" => "image",
-            "jpeg" => "image",
-            "png" => "image",
-            "svg" => "image",
-            "webp" => "image",
-            "gif" => "image",
-            "mp4" => "video",
-            "mpg" => "video",
-            "mpeg" => "video",
-            "webm" => "video",
-            "ogg" => "video",
-            "avi" => "video",
-            "mov" => "video",
-            "flv" => "video",
-            "swf" => "video",
-            "mkv" => "video",
-            "wmv" => "video",
-            "wma" => "audio",
-            "aac" => "audio",
-            "wav" => "audio",
-            "mp3" => "audio",
-            "zip" => "archive",
-            "rar" => "archive",
-            "7z" => "archive",
-            "doc" => "document",
-            "txt" => "document",
-            "docx" => "document",
-            "pdf" => "document",
-            "csv" => "document",
-            "xml" => "document",
-            "ods" => "document",
-            "xlr" => "document",
-            "xls" => "document",
-            "xlsx" => "document"
-        );
-
-        if ($request->hasFile('aiz_file')) {
-            $upload = new Upload;
-            $upload->account_id = current_account_id();
-            $extension = strtolower($request->file('aiz_file')->getClientOriginalExtension());
-
-            if (
-                env('DEMO_MODE') == 'On' &&
-                isset($type[$extension]) &&
-                $type[$extension] == 'archive'
-            ) {
-                return '{}';
-            }
-
-            if (isset($type[$extension])) {
-                $upload->file_original_name = null;
-                $arr = explode('.', $request->file('aiz_file')->getClientOriginalName());
-                for ($i = 0; $i < count($arr) - 1; $i++) {
-                    if ($i == 0) {
-                        $upload->file_original_name .= $arr[$i];
-                    } else {
-                        $upload->file_original_name .= "." . $arr[$i];
-                    }
-                }
-
-                // $path = $request->file('aiz_file')->store('uploads/all', 'local');
-                $path = $request->file('aiz_file')->store('uploads/all', 'public');
-                $size = $request->file('aiz_file')->getSize();
-
-                // Return MIME type ala mimetype extension
-                // $finfo = finfo_open(FILEINFO_MIME_TYPE);
-
-                $file_mime = $request->file('aiz_file')->getMimeType();
-
-
-                if ($type[$extension] == 'image') {
-                    try {
-                        $img = Image::make($request->file('aiz_file')->getRealPath())->encode();
-                        $height = $img->height();
-                        $width = $img->width();
-                        if ($width > $height && $width > 1500) {
-                            $img->resize(1500, null, function ($constraint) {
-                                $constraint->aspectRatio();
-                            });
-                        } elseif ($height > 1500) {
-                            $img->resize(null, 800, function ($constraint) {
-                                $constraint->aspectRatio();
-                            });
-                        }
-                        $img->save(base_path('public/') . $path);
-                        clearstatcache();
-                        $size = $img->filesize();
-                    } catch (\Exception $e) {
-                        //dd($e);
-                    }
-                }
-
-                if (env('FILESYSTEM_DRIVER') == 's3') {
-                    Storage::disk('s3')->put(
-                        $path,
-                        file_get_contents(base_path('public/') . $path),
-                        [
-                            'visibility' => 'public',
-                            'ContentType' =>  $extension == 'svg' ? 'image/svg+xml' : $file_mime
-                        ]
-                    );
-                    if ($arr[0] != 'updates') {
-                        unlink(base_path('public/') . $path);
-                    }
-                }
-
-                $upload->extension = $extension;
-                $upload->file_name = $path;
-                $upload->user_id = Auth::user()->id;
-                $upload->type = $type[$upload->extension];
-                $upload->file_size = $size;
-                $upload->save();
-            }
+        if (! $request->hasFile('aiz_file')) {
             return '{}';
         }
+
+        $file = $request->file('aiz_file');
+        $service = app(SecureUploadService::class);
+
+        try {
+            $stored = $service->store($file);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => collect($e->errors())->flatten()->first() ?: 'Upload rejected.',
+            ], 422);
+        }
+
+        if (env('DEMO_MODE') == 'On' && $stored['type'] === 'archive') {
+            $service->delete($stored['path']);
+
+            return '{}';
+        }
+
+        $size = $stored['size'];
+        $relative = $service->resolveRelativePath($stored['path']);
+
+        if ($stored['type'] === 'image' && ! $stored['private']) {
+            try {
+                $fullPath = Storage::disk('public')->path($relative);
+                $img = Image::make($fullPath)->encode();
+                $height = $img->height();
+                $width = $img->width();
+                if ($width > $height && $width > 1500) {
+                    $img->resize(1500, null, function ($constraint) {
+                        $constraint->aspectRatio();
+                    });
+                } elseif ($height > 1500) {
+                    $img->resize(null, 800, function ($constraint) {
+                        $constraint->aspectRatio();
+                    });
+                }
+                $img->save($fullPath);
+                clearstatcache();
+                $size = (int) filesize($fullPath);
+            } catch (\Exception $e) {
+                // Keep original stored image if resize fails.
+            }
+        }
+
+        $original = pathinfo($stored['original_name'], PATHINFO_FILENAME);
+
+        $upload = new Upload;
+        $upload->account_id = current_account_id();
+        $upload->file_original_name = $original !== '' ? $original : 'file';
+        $upload->extension = $stored['extension'];
+        $upload->file_name = $stored['path'];
+        $upload->user_id = Auth::id();
+        $upload->type = $stored['type'];
+        $upload->file_size = $size;
+        $upload->save();
+
+        return '{}';
     }
 
     public function get_uploaded_files(Request $request)
@@ -249,31 +196,18 @@ class AizUploadController
         $upload = Upload::findOrFail($id);
         ensureModelBelongsToCurrentAccount($upload);
 
-        // 1) Check if the Upload model uses SoftDeletes
         $usesSoftDeletes = in_array(
             SoftDeletes::class,
             class_uses($upload)
         );
         try {
             if (! $usesSoftDeletes) {
-                // 1) Always try deleting from the “public” disk (storage/app/public → public/storage)
-                if (Storage::disk('public')->exists($upload->file_name)) {
-                    Storage::disk('public')->delete($upload->file_name);
-                }
+                app(SecureUploadService::class)->delete((string) $upload->file_name);
 
-                // 2) If you ever wrote directly into public/ via Image::save(...)
                 $directPublic = public_path($upload->file_name);
-                if (file_exists($directPublic)) {
+                if (is_string($upload->file_name) && ! str_starts_with($upload->file_name, 'private:') && file_exists($directPublic)) {
                     @unlink($directPublic);
                 }
-            }
-            if (env('FILESYSTEM_DRIVER') == 's3') {
-                Storage::disk('s3')->delete($upload->file_name);
-                if (file_exists(public_path() . '/' . $upload->file_name)) {
-                    unlink(public_path() . '/' . $upload->file_name);
-                }
-            } else {
-                unlink(public_path() . '/' . $upload->file_name);
             }
             $upload->delete();
             $response = [
@@ -312,9 +246,12 @@ class AizUploadController
         });
         $new_file_array = [];
         foreach ($files as $file) {
-            $file['file_name'] = my_asset($file->file_name);
             if ($file->external_link) {
                 $file['file_name'] = $file->external_link;
+            } elseif (is_string($file->file_name) && str_starts_with($file->file_name, 'private:')) {
+                $file['file_name'] = route('download_attachment', $file->id);
+            } else {
+                $file['file_name'] = my_asset($file->file_name);
             }
             $new_file_array[] = $file;
         }
@@ -327,23 +264,15 @@ class AizUploadController
     {
         abort_unless(auth()->user()?->hasRole('Super Admin'), 403);
 
-        $uploads = Upload::all();
+        $service = app(SecureUploadService::class);
+        $uploads = Upload::withTrashed()->get();
         foreach ($uploads as $upload) {
             try {
-                if (env('FILESYSTEM_DRIVER') == 's3') {
-                    Storage::disk('s3')->delete($upload->file_name);
-                    if (file_exists(public_path() . '/' . $upload->file_name)) {
-                        unlink(public_path() . '/' . $upload->file_name);
-                    }
-                } else {
-                    unlink(public_path() . '/' . $upload->file_name);
-                }
-                $upload->delete();
-                flash('File deleted successfully')->success();
+                $service->delete((string) $upload->file_name);
             } catch (\Exception $e) {
-                $upload->delete();
-                flash('File deleted successfully')->success();
+                // Continue wiping records even if a blob is already gone.
             }
+            $upload->forceDelete();
         }
 
         Upload::query()->truncate();
@@ -357,9 +286,25 @@ class AizUploadController
         $project_attachment = Upload::find($id);
         abort_unless($project_attachment, 404);
         ensureModelBelongsToCurrentAccount($project_attachment);
+
+        $service = app(SecureUploadService::class);
+        $stored = (string) $project_attachment->file_name;
+        $relative = $service->resolveRelativePath($stored);
+        $disk = $service->resolveDisk($stored);
+
         try {
-            $file_path = public_path($project_attachment->file_name);
-            return Response::download($file_path);
+            if (Storage::disk($disk)->exists($relative)) {
+                $downloadName = ($project_attachment->file_original_name ?: 'file')
+                    .($project_attachment->extension ? '.'.$project_attachment->extension : '');
+
+                return Storage::disk($disk)->download($relative, $downloadName);
+            }
+
+            // Legacy public-path uploads.
+            $legacy = public_path($stored);
+            abort_unless(is_file($legacy), 404);
+
+            return Response::download($legacy);
         } catch (\Exception $e) {
             flash('File does not exist!')->error();
             return back();

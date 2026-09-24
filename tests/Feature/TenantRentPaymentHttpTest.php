@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\BankDetails;
 use App\Models\Property;
 use App\Models\RentInvoice;
 use App\Models\RentPayment;
@@ -77,6 +78,99 @@ class TenantRentPaymentHttpTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_when_card_rent_is_off_tenant_sees_bank_transfer_details(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        [$tenant] = $this->createTenantOnAccount($accountId);
+        [, $tenancy] = $this->createLet($accountId, $landlord, $tenant);
+        $session = ['current_account_id' => $accountId];
+
+        config([
+            'services.stripe.rent.secret' => '',
+            'services.stripe.secret' => '',
+        ]);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.finance.rent-pay.bank'), [
+                'bank_name' => 'Barclays',
+                'account_name' => 'Resisquare Landlord',
+                'sort_code' => '20-00-00',
+                'account_no' => '12345678',
+            ])
+            ->assertRedirect(route('admin.finance.rent-pay'));
+
+        $this->assertDatabaseHas('bank_details', [
+            'account_id' => $accountId,
+            'sort_code' => '20-00-00',
+            'account_no' => '12345678',
+            'is_primary' => 1,
+        ]);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.finance.store'), [
+                'tenancy_id' => $tenancy->id,
+                'tenant_user_id' => $tenant->id,
+                'amount' => 750,
+                'issue_date' => now()->toDateString(),
+                'due_date' => now()->addDays(7)->toDateString(),
+            ]);
+
+        $invoice = RentInvoice::query()->forAccount($accountId)->firstOrFail();
+
+        $this->actingAs($landlord)->withSession($session)
+            ->get(route('admin.finance.index'))
+            ->assertOk()
+            ->assertSee('Rent pay settings', false)
+            ->assertSee('Bank details: set', false);
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('tenant.rent'))
+            ->assertOk()
+            ->assertDontSee('Pay £', false)
+            ->assertSee('Pay by bank transfer', false)
+            ->assertSee('20-00-00', false)
+            ->assertSee('12345678', false);
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('tenant.rent.show', $invoice))
+            ->assertOk()
+            ->assertSee('Barclays', false)
+            ->assertSee('Resisquare Landlord', false)
+            ->assertSee('Payment reference: '.$invoice->invoice_no, false);
+    }
+
+    public function test_card_off_without_bank_details_shows_explicit_dead_end(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        [$tenant] = $this->createTenantOnAccount($accountId);
+        [, $tenancy] = $this->createLet($accountId, $landlord, $tenant);
+        $session = ['current_account_id' => $accountId];
+
+        config([
+            'services.stripe.rent.secret' => '',
+            'services.stripe.secret' => '',
+        ]);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.finance.store'), [
+                'tenancy_id' => $tenancy->id,
+                'tenant_user_id' => $tenant->id,
+                'amount' => 400,
+                'issue_date' => now()->toDateString(),
+                'due_date' => now()->addDays(7)->toDateString(),
+            ]);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->get(route('admin.finance.index'))
+            ->assertOk()
+            ->assertSee('no bank details are saved', false);
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('tenant.rent'))
+            ->assertOk()
+            ->assertSee('has not published bank transfer details', false);
+    }
+
     public function test_stripe_fulfill_marks_invoice_paid_once(): void
     {
         [$landlord, $accountId] = $this->createLandlord();
@@ -119,6 +213,51 @@ class TenantRentPaymentHttpTest extends TestCase
         $this->assertEquals(0.0, (float) $invoice->balance);
         $this->assertSame(RentInvoice::STATUS_PAID, $invoice->status);
         $this->assertSame(1, $invoice->payments()->count());
+
+        $unpaid = (object) [
+            'id' => 'cs_test_unpaid_'.$invoice->id,
+            'payment_status' => 'unpaid',
+            'metadata' => [
+                'type' => 'rent_payment',
+                'account_id' => (string) $accountId,
+                'rent_invoice_id' => (string) $invoice->id,
+                'tenant_user_id' => (string) $tenant->id,
+                'rent_amount' => '1000.00',
+                'fee_amount' => '15.00',
+            ],
+        ];
+        $this->assertNull($checkout->fulfillSession($unpaid));
+        $this->assertSame(1, $invoice->payments()->count());
+    }
+
+    public function test_cancelled_checkout_leaves_the_invoice_unpaid(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        [$tenant] = $this->createTenantOnAccount($accountId);
+        [, $tenancy] = $this->createLet($accountId, $landlord, $tenant);
+        $session = ['current_account_id' => $accountId];
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.finance.store'), [
+                'tenancy_id' => $tenancy->id,
+                'tenant_user_id' => $tenant->id,
+                'amount' => 500,
+                'issue_date' => now()->toDateString(),
+                'due_date' => now()->addDays(7)->toDateString(),
+            ]);
+
+        $invoice = RentInvoice::query()->forAccount($accountId)->firstOrFail();
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('tenant.rent', ['checkout' => 'cancelled']))
+            ->assertOk()
+            ->assertSee('No payment was taken', false)
+            ->assertSee('500.00', false);
+
+        $invoice->refresh();
+        $this->assertSame(RentInvoice::STATUS_ISSUED, $invoice->status);
+        $this->assertEquals(500.0, (float) $invoice->balance);
+        $this->assertSame(0, $invoice->payments()->count());
     }
 
     public function test_fee_breakdown_uses_percent_and_fixed(): void

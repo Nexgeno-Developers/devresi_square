@@ -225,6 +225,12 @@
                             <select id="invite-select" class="form-control select-entity" data-entity="invite" data-mode="multi" data-max="20" data-url="{{ route('admin.users.ajax') }}"></select>
                             <div class="text-danger" data-error-for="invite_ids"></div>
                         </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" name="visible_to_tenant" id="visible-to-tenant" value="1">
+                                <label class="form-check-label" for="visible-to-tenant">Show this visit to the tenant</label>
+                            </div>
+                        </div>
                         <div class="col-md-6">
                             <label class="form-label">Location</label>
                             <input type="text" name="location" class="form-control" placeholder="Meeting location">

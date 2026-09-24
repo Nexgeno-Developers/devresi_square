@@ -4,10 +4,12 @@ namespace App\Services\Notifications;
 
 use App\Enums\CrmNotificationEvent;
 use App\Jobs\SendNotificationJob;
+use App\Models\AccountUser;
 use App\Models\EmailTemplate;
 use App\Models\NotificationLog;
 use App\Models\User;
 use App\Models\Account;
+use App\Support\AccountMembership;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -74,6 +76,9 @@ class CrmNotificationService
                 'recipient_name' => $recipient->name ?: $recipient->email,
                 'recipient_email' => $recipient->email,
             ]);
+            if (! empty($context['portal_action_url']) && $this->recipientUsesPortalLink($recipient, $accountId, $context)) {
+                $recipientPayload['action_url'] = $context['portal_action_url'];
+            }
             $subjectText = $this->render($template?->subject ?: $definition['subject'], $recipientPayload);
             $message = $this->render($template?->default_text ?: $definition['message'], $recipientPayload);
             foreach ($this->preferences->channels($accountId, $recipient, $eventKey, $definition) as $channel) {
@@ -113,6 +118,24 @@ class CrmNotificationService
         }
 
         return $created;
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function recipientUsesPortalLink(User $recipient, int $accountId, array $context): bool
+    {
+        if (! empty($context['portal_action_tenants_only'])) {
+            $memberType = AccountUser::query()
+                ->where('account_id', $accountId)
+                ->where('user_id', $recipient->id)
+                ->where('status', 'active')
+                ->value('member_type');
+
+            return AccountMembership::isTenant(is_string($memberType) ? $memberType : null);
+        }
+
+        return app(\App\Services\Saas\PortalAccessService::class)->isPortalUser($recipient, $accountId);
     }
 
     private function payload(string $eventKey, array $definition, Model $subject, array $context, int $accountId, ?User $actor): array

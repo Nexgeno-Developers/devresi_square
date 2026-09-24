@@ -280,12 +280,57 @@ class Property extends Model
     // }
     public function getDisplayLabelAttribute(): string
     {
-        return "{$this->prop_ref_no} — {$this->line_1}, {$this->line_2}, {$this->city}";
+        $short = $this->short_title;
+        $secondary = $this->short_address;
+
+        if ($secondary !== '' && $secondary !== $short) {
+            return $short.' · '.$secondary;
+        }
+
+        return $short !== '' ? $short : (string) ($this->prop_ref_no ?: 'Property');
+    }
+
+    /**
+     * Human portfolio title (prefer address line over system ref).
+     */
+    public function getShortTitleAttribute(): string
+    {
+        $name = trim((string) ($this->prop_name ?: ''));
+        $line1 = trim((string) ($this->line_1 ?: ''));
+
+        if ($name !== '' && $name !== $line1) {
+            return $name;
+        }
+
+        return $line1 !== '' ? $line1 : (string) ($this->prop_ref_no ?: 'Property');
+    }
+
+    /**
+     * Compact street · postcode line for cards and headers.
+     */
+    public function getShortAddressAttribute(): string
+    {
+        $street = trim(implode(', ', array_filter([
+            $this->line_2,
+            $this->city,
+        ], fn ($part) => filled($part))));
+
+        $postcode = trim((string) ($this->postcode ?: ''));
+
+        if ($street !== '' && $postcode !== '') {
+            return $street.' · '.$postcode;
+        }
+
+        return $street !== '' ? $street : $postcode;
     }
 
     public static function optionsForSelect(): array
     {
-        return self::all()->pluck('display_label', 'id')->toArray();
+        return self::query()
+            ->orderBy('line_1')
+            ->get()
+            ->mapWithKeys(fn (self $property) => [$property->getKey() => $property->display_label])
+            ->all();
     }
 
 

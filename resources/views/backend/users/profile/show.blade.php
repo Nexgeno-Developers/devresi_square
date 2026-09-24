@@ -30,15 +30,19 @@
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h2 class="fw-bold mb-1">User Profile</h2>
-            <p class="text-muted mb-0">View and manage user information</p>
+            <h2 class="fw-bold mb-1">{{ is_tenant_portal_user() ? 'My profile' : 'User Profile' }}</h2>
+            <p class="text-muted mb-0">{{ is_tenant_portal_user() ? 'Your contact details and password' : 'View and manage user information' }}</p>
         </div>
         <div class="d-flex gap-2">
-            @can('view contacts')
+            @if(is_tenant_portal_user())
+            <a href="{{ route('backend.home') }}" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left me-2"></i>Back to home
+            </a>
+            @elseif(auth()->user()?->can('view contacts'))
             <a href="{{ route('admin.users.index') }}" class="btn btn-outline-primary">
                 <i class="bi bi-arrow-left me-2"></i>Back to Users
             </a>
-            @endcan
+            @endif
             @if(auth()->user()->id === $authUser->id)
             <a href="{{ route('admin.users.profile.edit', $authUser->id) }}" class="btn btn-primary gradient-bg border-0">
                 <i class="bi bi-pencil-square me-2"></i>Edit Profile

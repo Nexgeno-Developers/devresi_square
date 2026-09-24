@@ -12,7 +12,7 @@
     <p class="mb-4 fs-6">
       <span class="fw-semibold">Navigation:</span>
       <span class="bg-light text-dark px-2 py-1 rounded">
-        {!! getFormattedRepairNavigation($repairIssue->repair_navigation) !!}
+        {{ getFormattedRepairNavigation($repairIssue->repair_navigation) }}
       </span>
     </p>
     
@@ -38,6 +38,10 @@
         {{ $repairIssue->status }}
       </span>
     </p>
+    @if(filled($repairIssue->landlord_note))
+    <p class="mb-1 fs-6 fw-semibold">Note for the tenant:</p>
+    <p class="mb-3 fs-6">{{ $repairIssue->landlord_note }}</p>
+    @endif
     
     <p class="mb-2 fs-6">
       <span class="fw-semibold">Estimated Price:</span>
@@ -55,11 +59,11 @@
       </p>    
     @endif
     
-    @if($repairIssue->tenant_availability)
+    @if($repairIssue->tenantAvailabilityLabel())
       <p class="mb-2 fs-6">
         <span class="fw-semibold">Tenant Availability:</span>
         <span class="bg-light text-dark px-2 py-1 rounded">
-          {{ \Carbon\Carbon::parse($repairIssue->tenant_availability)->format('d M Y, H:i') }}
+          {{ $repairIssue->tenantAvailabilityLabel() }}
         </span>
       </p>
     @endif
@@ -265,6 +269,10 @@
                         @endforeach
                     </select>
                 </div>
+                <div class="form-group mb-2">
+                    <label for="landlord_note">Note for the tenant</label>
+                    <textarea name="landlord_note" id="landlord_note" class="form-control" rows="2" maxlength="500">{{ old('landlord_note', $repairIssue->landlord_note) }}</textarea>
+                </div>
             </div>
             @endif
             <div class="col-6">
@@ -306,7 +314,7 @@
 
                 <!-- Estimated Price Input -->
                 <div class="form-group">
-                    <label for="estimated_price">Estimated Price</label>
+                    <label for="estimated_price">Estimated cost (£)</label>
                     <input type="number" step="0.01" name="estimated_price" id="estimated_price"
                         class="form-control"
                         value="{{ old('estimated_price', $repairIssue->estimated_price) }}">

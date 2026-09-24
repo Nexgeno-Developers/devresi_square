@@ -8,13 +8,30 @@
     @foreach ($properties as $listProperty)
         @php
             $addressParts = array_filter([
-                $listProperty['line_1'],
-                $listProperty['line_2'],
-                $listProperty['city'],
-                $listProperty['postcode'],
+                $listProperty['line_1'] ?? null,
+                $listProperty['line_2'] ?? null,
+                $listProperty['city'] ?? null,
+                $listProperty['postcode'] ?? null,
             ]);
             $fullAddress = implode(', ', $addressParts);
-            $title = $listProperty['prop_name'] ?: ($listProperty['line_1'] ?: 'Property address not available');
+
+            if (is_landlord_plan_user()) {
+                $title = $listProperty instanceof \App\Models\Property
+                    ? $listProperty->short_title
+                    : (($listProperty['prop_name'] ?? null) ?: ($listProperty['line_1'] ?? 'Property'));
+                $subtitle = $listProperty instanceof \App\Models\Property
+                    ? $listProperty->short_address
+                    : trim(implode(' · ', array_filter([
+                        trim(implode(', ', array_filter([$listProperty['line_2'] ?? null, $listProperty['city'] ?? null]))),
+                        $listProperty['postcode'] ?? null,
+                    ])));
+                if ($subtitle === '') {
+                    $subtitle = $fullAddress;
+                }
+            } else {
+                $title = $listProperty['prop_name'] ?: ($listProperty['line_1'] ?: 'Property address not available');
+                $subtitle = $fullAddress;
+            }
 
             $salesStatus = $listProperty['sales_current_status'] ?? '';
             $lettingStatus = $listProperty['letting_current_status'] ?? '';
@@ -68,7 +85,7 @@
                         <span class="pcc-hcard-price">{{ $priceLabel }}</span>
                     @endif
                 </div>
-                <div class="pcc-hcard-sub" title="{{ $fullAddress }}">{{ $fullAddress }}</div>
+                <div class="pcc-hcard-sub" title="{{ $fullAddress }}">{{ $subtitle ?? $fullAddress }}</div>
                 <div class="pcc-hcard-meta">
                     @if($displayStatus)
                         <span class="pcc-status" data-status="{{ strtolower($displayStatus) }}">{{ $displayStatus }}</span>
@@ -91,7 +108,7 @@
         <h5>No properties yet</h5>
         <p>Get started by adding your first property.</p>
         @if(is_landlord_plan_user() || auth()->user()?->can('create properties'))
-            <a href="{{ property_create_url() }}" class="pcc-btn-ink">Add property</a>
+            <a href="{{ property_create_url() }}" class="pcc-btn-ink" data-next-action="add-property">Add property</a>
         @endif
     </div>
 @endif

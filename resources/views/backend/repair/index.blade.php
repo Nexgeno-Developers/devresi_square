@@ -68,29 +68,51 @@
         }
     </style>
 
+    <div class="container-fluid lw-page">
+        <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
+            <div>
+                <h4>Repairs</h4>
+                <p>Issues reported across your properties.</p>
+            </div>
+            <a href="{{ route('admin.property_repairs.create') }}" class="btn lw-btn-primary btn-sm">Raise repair</a>
+        </div>
+
     <div class="row" id="master-detail-wrapper">
         <!-- Left: List + Filters -->
         <div class="col-md-5" id="list-pane">
             <!-- Toggle Button -->
-            <button id="toggle-detail-pane" class="btn btn-outline-secondary float-end toggle-btn mt-2">
+            <button id="toggle-detail-pane" class="btn lw-btn-ghost float-end toggle-btn mt-2">
                 <i class="fas fa-chevron-left"></i> Hide Detail
             </button>
             @include('backend.repair.list.filter')
+            <div class="card lw-card">
+                <div class="card-body p-0">
             @include('backend.repair.list.cards', [
                 'repairIssues' => $repairIssues,
                 'selectedRepairId' => isset($firstRepairIssue) ? $firstRepairIssue->id : null
             ])
+                </div>
+            </div>
 
         </div>
         <!-- Right: Detail -->
         <div class="col-md-7" id="detail-pane">
             @if(isset($firstRepairIssue))
+                <div class="card lw-card">
+                    <div class="card-body">
                 @include('backend.repair.detail.show', ['repairIssue' => $firstRepairIssue])
+                    </div>
+                </div>
             @else
-                <div class="alert alert-info">Select a repair item to view details.</div>
+                <div class="card lw-card">
+                    <div class="card-body">
+                        <x-lw.empty title="No repair selected">Pick an issue from the list, or raise a new one.</x-lw.empty>
+                    </div>
+                </div>
             @endif
         </div>
         
+    </div>
     </div>
     <!-- Include the Modal Component -->
     @include('backend.components.modal')

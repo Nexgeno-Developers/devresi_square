@@ -95,7 +95,14 @@ if (!function_exists('uploaded_asset')) {
         });
 
         if ($asset != null) {
-            return $asset->external_link == null ? my_asset($asset->file_name) : $asset->external_link;
+            if ($asset->external_link) {
+                return $asset->external_link;
+            }
+            if (is_string($asset->file_name) && str_starts_with($asset->file_name, 'private:')) {
+                return route('download_attachment', $asset->id);
+            }
+
+            return my_asset($asset->file_name);
         }
         return static_asset('asset/img/placeholder.jpg');
     }
@@ -110,6 +117,11 @@ if (!function_exists('my_asset')) {
      */
     function my_asset($path, $secure = null)
     {
+        if (is_string($path) && str_starts_with($path, 'private:')) {
+            // Private uploads are never publicly URL-addressable.
+            return '#';
+        }
+
         if (env('FILESYSTEM_DRIVER') == 's3') {
             return Storage::disk('s3')->url($path);
         } else {
@@ -209,6 +221,16 @@ if (!function_exists('current_account_id')) {
     function current_account_id(): ?int
     {
         return app(\App\Services\Saas\CurrentAccountService::class)->currentId();
+    }
+}
+
+if (!function_exists('safe_html')) {
+    /**
+     * Allowlisted HTML for rich-text fields (notes). Never use raw {!! $userInput !!}.
+     */
+    function safe_html(?string $html): string
+    {
+        return app(\App\Services\HtmlSanitizer::class)->sanitize($html);
     }
 }
 
@@ -598,7 +620,7 @@ if (!function_exists('getFormattedRepairNavigation')) {
                 $name = $categoryId['name'] ?? null;
                 $id = $categoryId['id'] ?? null;
                 if (filled($name)) {
-                    $categoryNames[] = $name;
+                    $categoryNames[] = (string) $name;
                     continue;
                 }
                 $categoryId = $id;
@@ -614,7 +636,7 @@ if (!function_exists('getFormattedRepairNavigation')) {
 
             // If category exists, append the name; otherwise, append the ID
             if ($category) {
-                $categoryNames[] = $category->name;
+                $categoryNames[] = (string) $category->name;
             } else {
                 $categoryNames[] = "Unknown Category (ID: $categoryId)";
             }
@@ -1232,6 +1254,7 @@ if (! function_exists('client_facing_property_tabs')) {
             ['name' => 'Property', 'label' => 'Overview'],
             ['name' => 'Tenancy'],
             ['name' => 'Owners'],
+            ['name' => 'Media', 'label' => 'Photos'],
             ['name' => 'Compliance', 'label' => 'Certificates'],
             ['name' => 'Documents'],
         ];
@@ -1263,6 +1286,183 @@ if (! function_exists('property_create_url')) {
         }
 
         return route('admin.properties.quick');
+    }
+}
+
+if (! function_exists('rs_money')) {
+    /**
+     * Always show sterling with £ for IN UI (minor units optional).
+     */
+    function rs_money(int|float|string|null $amount, bool $fromMinor = false): string
+    {
+        if ($amount === null || $amount === '') {
+            return '£0.00';
+        }
+
+        $value = $fromMinor ? ((int) $amount) / 100 : (float) $amount;
+
+        return '£'.number_format($value, 2);
+    }
+}
+
+if (! function_exists('rs_date')) {
+    /**
+     * Human date: 1 Jan 2026 (never Y-m-d in display).
+     */
+    function rs_date(mixed $value, string $fallback = '—'): string
+    {
+        if ($value === null || $value === '') {
+            return $fallback;
+        }
+
+        try {
+            $dt = $value instanceof \Carbon\CarbonInterface
+                ? $value
+                : \Carbon\Carbon::parse($value);
+        } catch (\Throwable) {
+            return $fallback;
+        }
+
+        return $dt->format('j M Y');
+    }
+}
+
+if (! function_exists('rs_datetime')) {
+    /**
+     * Human datetime: 1 Jan 2026, 14:30
+     */
+    function rs_datetime(mixed $value, string $fallback = '—'): string
+    {
+        if ($value === null || $value === '') {
+            return $fallback;
+        }
+
+        try {
+            $dt = $value instanceof \Carbon\CarbonInterface
+                ? $value
+                : \Carbon\Carbon::parse($value);
+        } catch (\Throwable) {
+            return $fallback;
+        }
+
+        return $dt->format('j M Y, H:i');
+    }
+}
+
+if (! function_exists('rs_month')) {
+    /**
+     * Month label: January 2026
+     */
+    function rs_month(mixed $value, string $fallback = '—'): string
+    {
+        if ($value === null || $value === '') {
+            return $fallback;
+        }
+
+        try {
+            $dt = $value instanceof \Carbon\CarbonInterface
+                ? $value
+                : \Carbon\Carbon::parse($value);
+        } catch (\Throwable) {
+            return $fallback;
+        }
+
+        return $dt->format('F Y');
+    }
+}
+
+if (! function_exists('rs_person')) {
+    /**
+     * Prefer name; never lead with email or system id.
+     */
+    function rs_person(?\App\Models\User $user, string $fallback = 'Someone'): string
+    {
+        if (! $user) {
+            return $fallback;
+        }
+
+        $name = trim((string) ($user->name ?: ''));
+        if ($name !== '') {
+            return $name;
+        }
+
+        $first = trim(implode(' ', array_filter([
+            $user->first_name ?? null,
+            $user->last_name ?? null,
+        ])));
+
+        if ($first !== '') {
+            return $first;
+        }
+
+        $email = trim((string) ($user->email ?: ''));
+
+        return $email !== '' ? $email : $fallback;
+    }
+}
+
+if (! function_exists('rs_property_title')) {
+    /**
+     * Human property title — address first, never RESISQ* alone as primary.
+     */
+    function rs_property_title(?\App\Models\Property $property, string $fallback = 'Property'): string
+    {
+        if (! $property) {
+            return $fallback;
+        }
+
+        $label = trim((string) ($property->display_label ?: $property->short_title ?: ''));
+        if ($label !== '' && ! preg_match('/^RESISQ/i', $label)) {
+            return $label;
+        }
+
+        $line = trim(implode(', ', array_filter([
+            $property->line_1,
+            $property->postcode,
+        ])));
+
+        return $line !== '' ? $line : $fallback;
+    }
+}
+
+if (! function_exists('rs_document_title')) {
+    /**
+     * Ban "Untitled" as a primary document label.
+     */
+    function rs_document_title(?string $title, ?string $type = null, string $fallback = 'Document'): string
+    {
+        $clean = trim((string) $title);
+        if ($clean !== '' && ! preg_match('/^untitled$/i', $clean)) {
+            return $clean;
+        }
+
+        $type = trim((string) $type);
+
+        return $type !== '' ? $type : $fallback;
+    }
+}
+
+if (! function_exists('rs_rent_title')) {
+    /**
+     * Prefer "September rent" over RENT-0003 as the primary label.
+     */
+    function rs_rent_title(?\App\Models\RentInvoice $invoice): string
+    {
+        if (! $invoice) {
+            return 'Rent';
+        }
+
+        if ($invoice->period_start) {
+            return rs_month($invoice->period_start).' rent';
+        }
+
+        if ($invoice->due_date) {
+            return 'Rent due '.rs_date($invoice->due_date);
+        }
+
+        $no = trim((string) ($invoice->invoice_no ?: ''));
+
+        return $no !== '' ? $no : 'Rent invoice';
     }
 }
 

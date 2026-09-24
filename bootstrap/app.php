@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule) {
         $schedule->command('sale-invoices:generate-recurring')->dailyAt('00:05');
+        $schedule->command('rent-invoices:generate-recurring')->dailyAt('00:15');
         $schedule->command('crm-notifications:send-due')->everyMinute()->withoutOverlapping();
         $schedule->command('notifications:retry')->everyFiveMinutes();
         $schedule->command('events:send-reminders')->everyMinute()->withoutOverlapping();

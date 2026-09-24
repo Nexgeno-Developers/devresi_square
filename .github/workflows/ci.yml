@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop, 'SaaS-*']
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Migrate, seed, and test
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: resisquare_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, pdo_mysql, bcmath, gd, zip, intl, exif
+          coverage: none
+          tools: composer:v2
+
+      - name: Get Composer cache dir
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          # Launch Step 7: CI uses MySQL 8 (production-class engine), not SQLite.
+          {
+            echo "APP_ENV=testing"
+            echo "APP_DEBUG=false"
+            echo "DEBUGBAR_ENABLED=false"
+            echo "DB_CONNECTION=mysql"
+            echo "DB_HOST=127.0.0.1"
+            echo "DB_PORT=3306"
+            echo "DB_DATABASE=resisquare_ci"
+            echo "DB_USERNAME=root"
+            echo "DB_PASSWORD=password"
+            echo "CACHE_STORE=array"
+            echo "QUEUE_CONNECTION=sync"
+            echo "SESSION_DRIVER=array"
+            echo "MAIL_MAILER=array"
+          } >> .env
+
+      - name: Migrate fresh + seed
+        run: |
+          php artisan migrate:fresh --force --seed
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: resisquare_ci
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: PHPUnit
+        run: php vendor/bin/phpunit --colors=always
+        env:
+          APP_ENV: testing
+          APP_DEBUG: false
+          DEBUGBAR_ENABLED: false
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: resisquare_ci
+          DB_USERNAME: root
+          DB_PASSWORD: password
+          CACHE_STORE: array
+          QUEUE_CONNECTION: sync
+          SESSION_DRIVER: array
+          MAIL_MAILER: array
+
+  audit:
+    name: Composer security audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+          tools: composer:v2
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Audit (vulnerabilities fail the job)
+        # Abandoned packages ignored; residual Laravel 11 advisories waived in scripts/ci-composer-audit.php
+        # until Laravel 12 (see docs/launch/COMPOSER_ADVISORIES.md).
+        run: php scripts/ci-composer-audit.php
