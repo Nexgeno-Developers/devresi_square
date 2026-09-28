@@ -184,8 +184,8 @@
             $('#tenancy-type').addClass('is-invalid');
         }
 
-        // Validate sub status
-        if (!$('#tenancies-sub_status').val()) {
+        // Agency users pick a sub status. Landlords send a hidden default, so this field is not on the form.
+        if ($('#tenancies-sub_status').length && !$('#tenancies-sub_status').val()) {
             errors.push('Please select a Sub Status.');
             $('#tenancies-sub_status').addClass('is-invalid');
         }

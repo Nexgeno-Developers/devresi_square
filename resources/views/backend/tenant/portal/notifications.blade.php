@@ -18,7 +18,7 @@
             <div class="tp-row" data-notice="{{ $notice->id }}">
                 <div>
                     <p class="mb-0">{{ $notice->subject }}</p>
-                    <p class="tp-muted mb-0">{{ $notice->message }}</p>
+                    <div class="tp-muted mb-0">{!! safe_html($notice->message) !!}</div>
                 </div>
                 @if(! empty($notice->payload['action_url']))
                     <a class="tp-btn tp-btn-ghost" href="{{ $notice->payload['action_url'] }}">Open</a>

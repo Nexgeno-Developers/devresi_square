@@ -18,7 +18,7 @@
             <div class="tp-row" data-notice="{{ $notice->id }}">
                 <div>
                     <p class="mb-0">{{ $notice->subject }}</p>
-                    <p class="tp-muted mb-0">{{ \Illuminate\Support\Str::limit($notice->message, 120) }}</p>
+                    <p class="tp-muted mb-0">{{ \Illuminate\Support\Str::limit(plain_text($notice->message), 120) }}</p>
                 </div>
                 @if(! empty($notice->payload['action_url']))
                     <a class="tp-btn tp-btn-ghost" href="{{ $notice->payload['action_url'] }}">Open</a>

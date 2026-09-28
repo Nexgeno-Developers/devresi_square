@@ -130,6 +130,8 @@ class NoticesHandoffHttpTest extends TestCase
             ->assertOk()
             ->assertSee('data-tenant-notices="list"', false)
             ->assertSee(route('tenant.rent.show', $invoice), false)
+            ->assertDontSee('&lt;p&gt;', false)
+            ->assertSee('is due on', false)
             ->assertSee(route('tenant.maintenance'), false)
             ->assertSee(route('tenant.calendar'), false);
     }

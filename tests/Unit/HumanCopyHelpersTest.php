@@ -37,6 +37,19 @@ class HumanCopyHelpersTest extends TestCase
         $this->assertSame('How to Rent', rs_document_title('How to Rent', 'Guide'));
     }
 
+    public function test_notice_html_becomes_a_sentence(): void
+    {
+        $html = '<p>Invoice RENT-0001 for £1,250.00 is due on 02/10/2026.</p><p><a href="http://127.0.0.1:8001/admin/portal/rent/206">Open in ResiSquare</a></p>';
+
+        $this->assertSame(
+            'Invoice RENT-0001 for £1,250.00 is due on 02/10/2026. Open in ResiSquare',
+            plain_text($html)
+        );
+        $this->assertStringContainsString('<p>', safe_html($html));
+        $this->assertStringContainsString('is due on', safe_html($html));
+        $this->assertStringNotContainsString('<script>', safe_html('<p>ok</p><script>alert(1)</script>'));
+    }
+
     public function test_rent_title_prefers_month_over_invoice_no(): void
     {
         $invoice = new RentInvoice([

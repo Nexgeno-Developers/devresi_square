@@ -234,6 +234,20 @@ if (!function_exists('safe_html')) {
     }
 }
 
+if (!function_exists('plain_text')) {
+    /**
+     * Readable text for a notice that may have been stored as email HTML.
+     */
+    function plain_text(?string $html): string
+    {
+        $withBreaks = str_replace('><', '> <', (string) $html);
+        $text = html_entity_decode(strip_tags($withBreaks), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/u', ' ', $text) ?? $text;
+
+        return trim($text);
+    }
+}
+
 if (!function_exists('ensureModelBelongsToCurrentAccount')) {
     /**
      * Abort when a normal user tries to access another account's model.
