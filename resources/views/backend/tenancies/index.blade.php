@@ -14,7 +14,7 @@
                 @else Tenancies
                 @endif
             </h4>
-            <p>Lets on your properties. Link any tenancy that has no property before inviting or issuing rent.</p>
+            <p>Tenancies on your properties. Link any tenancy that has no property before inviting or issuing rent.</p>
         </div>
         <a href="{{ route('admin.tenancies.create') }}" class="btn lw-btn-primary btn-sm">Add tenancy</a>
     </div>

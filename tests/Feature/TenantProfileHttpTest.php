@@ -63,6 +63,7 @@ class TenantProfileHttpTest extends TestCase
         $this->actingAs($tenant)->withSession($session)
             ->get(route('tenant.notifications'))
             ->assertOk()
+            ->assertSee('Notifications · Resisquare', false)
             ->assertSee('data-tenant-notifications="1"', false)
             ->assertDontSee('Account defaults', false)
             ->assertDontSee('View delivery log', false);

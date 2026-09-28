@@ -1332,6 +1332,7 @@ if (! function_exists('rs_page_title')) {
             'tenant.maintenance' => 'Maintenance',
             'tenant.documents' => 'Documents',
             'tenant.profile' => 'Profile',
+            'tenant.notifications' => 'Notifications',
             'admin.users.profile.show' => 'Profile',
             'admin.users.profile.edit' => 'Profile',
         ];

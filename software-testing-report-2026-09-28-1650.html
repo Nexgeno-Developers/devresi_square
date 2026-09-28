@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resisquare tenant and landlord retest — 28 Sep 2026</title>
+<style>
+  :root { --ink:#1c2430; --muted:#5c6778; --line:#e3e7ee; --bg:#f6f7f9; --card:#fff; --pass:#1f7a4d; --fail:#b42318; --high:#c2410c; --med:#b45309; --low:#3f4c6b; --nt:#667085; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 "Segoe UI", system-ui, sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:#142033; color:#fff; padding:28px 32px 22px; }
+  header h1 { margin:0 0 6px; font-size:26px; font-weight:650; }
+  header p { margin:0; color:#c9d2e0; }
+  .wrap { max-width:1100px; margin:0 auto; padding:24px 20px 64px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:650; letter-spacing:.02em; }
+  .pass { background:#e7f6ee; color:var(--pass); }
+  .fail { background:#fdecea; color:var(--fail); }
+  .critical { background:#7f1d1d; color:#fff; }
+  .high { background:#ffedd5; color:var(--high); }
+  .medium { background:#fef3c7; color:var(--med); }
+  .low { background:#eef2ff; color:var(--low); }
+  .nt, .blocked { background:#f2f4f7; color:var(--nt); }
+  .open { background:#fdecea; color:var(--fail); }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin:16px 0 8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .card strong { display:block; font-size:22px; }
+  .card span { color:var(--muted); font-size:13px; }
+  h2 { margin:32px 0 10px; font-size:20px; }
+  h3 { margin:18px 0 8px; font-size:16px; }
+  table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); margin:8px 0 16px; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--line); font-size:13.5px; }
+  th { background:#f0f3f8; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:#3d4a5c; }
+  tr:nth-child(even) td { background:#fbfcfe; }
+  code, .path { font-family: ui-monospace, Consolas, monospace; font-size:12px; }
+  .note { color:var(--muted); }
+  footer { margin-top:28px; color:var(--muted); font-size:13px; }
+  @media print { body { background:#fff; } header { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+  @media (max-width:700px) { table { display:block; overflow-x:auto; } header, .wrap { padding-left:14px; padding-right:14px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Resisquare tenant and landlord retest</h1>
+  <p>Live check of laravel.resisquare.co.uk after the latest push · 28 Sep 2026 · Cursor browser (Chromium)</p>
+  <p style="margin-top:10px"><span class="badge high">Core flows work · two gaps remain</span> &nbsp; Overall score <strong>81%</strong></p>
+</header>
+<div class="wrap">
+
+<h2>1. Project Information</h2>
+<table>
+  <tbody>
+    <tr><th>Application</th><td>Resisquare</td></tr>
+    <tr><th>URL</th><td>https://laravel.resisquare.co.uk/</td></tr>
+    <tr><th>Scope</th><td>Tenant portal, landlord workspace, and the handoff between them for property 11 (1 The Mall) and tenancy of Sabir Sayyed. Retest of the length cell, profile title, and status prompt that were pushed just before this run.</td></tr>
+    <tr><th>Accounts used</th><td>Existing tenant login (Sabir Sayyed) and existing landlord login (Webdev Nexgeno). Passwords are not recorded in this report.</td></tr>
+    <tr><th>Environment</th><td>Live staging over HTTPS. APP_DEBUG was not exposed. No new tenancy, invoice, repair, or certificate was created.</td></tr>
+    <tr><th>Date</th><td>28 Sep 2026</td></tr>
+  </tbody>
+</table>
+
+<h2>2. Testing Summary</h2>
+<div class="cards">
+  <div class="card"><strong>81%</strong><span>Overall (weighted, performance excluded)</span></div>
+  <div class="card"><strong>18 / 20</strong><span>Functional checks passed</span></div>
+  <div class="card"><strong>2</strong><span>Open issues</span></div>
+  <div class="card"><strong>0</strong><span>Critical issues</span></div>
+</div>
+<table>
+  <thead><tr><th>Area</th><th>Tested</th><th>Passed</th><th>Failed</th><th>Result</th></tr></thead>
+  <tbody>
+    <tr><td>Functional Testing</td><td>20</td><td>18</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Security Testing</td><td>3</td><td>2</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>UI/UX Testing</td><td>5</td><td>4</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Content Testing</td><td>2</td><td>1</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>SEO Testing</td><td>9</td><td>8</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Browser &amp; Device Testing</td><td>1</td><td>1</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+  </tbody>
+</table>
+<p class="note">Passed / applicable × 100. Not Tested rows are excluded. Performance was not measured and is excluded from the weight table. The same certificate-upload finding is counted in functional and security because both the page and the controller were checked.</p>
+
+<h2>3. Functional Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Test</th><th>Result</th><th>Evidence</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>F01</td><td>Tenant home</td><td><span class="badge pass">Pass</span></td><td>/admin/home. Title Home · Resisquare. Address 1 The Mall, outstanding £1,250.00, open repairs 0, move-in 28 Sep 2026 10:00.</td><td>-</td></tr>
+    <tr><td>F02</td><td>Tenant lease matches the landlord tenancy</td><td><span class="badge pass">Pass</span></td><td>/admin/portal/tenancy. Active, move-in 28 Sep 2026, move-out —, rent £1,250.00 monthly, due day 28, deposit £1,250.00, confirmed 28 Sep 2026. Deposit scheme not recorded.</td><td>-</td></tr>
+    <tr><td>F03</td><td>Tenant rent page shows the landlord invoice</td><td><span class="badge pass">Pass</span></td><td>/admin/portal/rent. RENT-0001, unpaid £1,250.00, due 28 Sep 2026, billed to Sabir Sayyed, Pay button present. Card was not charged.</td><td>-</td></tr>
+    <tr><td>F04</td><td>Tenant calendar shows the landlord visit</td><td><span class="badge pass">Pass</span></td><td>/admin/portal/calendar. 28 Sep, 10:00, Move-in — 1 The Mall, status Scheduled.</td><td>-</td></tr>
+    <tr><td>F05</td><td>Tenant maintenance form</td><td><span class="badge pass">Pass</span></td><td>/admin/portal/maintenance loads the report form. Category list includes General repair. No repair was submitted.</td><td>-</td></tr>
+    <tr><td>F06</td><td>Tenant documents empty state</td><td><span class="badge pass">Pass</span></td><td>/admin/portal/documents. “Your landlord has not shared a document yet.” Matches the landlord side, where no portal document was shared in this run.</td><td>-</td></tr>
+    <tr><td>F07</td><td>Tenant profile and rent notice</td><td><span class="badge pass">Pass</span></td><td>/admin/portal/profile. First name Sabir, last name Sayyed. Notices include Invoice RENT-0001 for £1,250.00 due 28/09/2026.</td><td>-</td></tr>
+    <tr><td>F08</td><td>Tenant blocked from landlord modules</td><td><span class="badge pass">Pass</span></td><td>/admin/dashboard and /admin/properties redirect to /admin/home. /admin/tenancies, /admin/finance, /admin/people, /admin/documents, and /admin/users return 403.</td><td>-</td></tr>
+    <tr><td>F09</td><td>Tenant cannot manage certificates</td><td><span class="badge fail">Fail</span></td><td>Logged-in tenant GET /admin/compliance returns 200 inside the tenant chrome, with three “Upload and share” forms posting to /admin/compliance/share-certificate. No file was uploaded.</td><td><span class="path">app/Http/Controllers/Backend/ComplianceController.php</span> certificates() and shareCertificate() only check that an account id exists. Gate both on the landlord role, the same way finance and people already do.</td></tr>
+    <tr><td>F10</td><td>Invoice notice appears in the header bell</td><td><span class="badge fail">Fail</span></td><td>Tenant and landlord pages both render “No unread notifications.” The same invoice is listed under profile Notices.</td><td>The bell reads Laravel unread notifications. The profile reads notification logs. <span class="path">resources/views/backend/partials/navbar.blade.php</span> should include the same notices the profile already shows, or the invoice job must write the row the bell queries.</td></tr>
+    <tr><td>F11</td><td>Landlord dashboard counts</td><td><span class="badge pass">Pass</span></td><td>/admin/dashboard. 1 property, 1 active tenancy, 0 open repairs, 1 person. “3 certificates need you” and “1 deposit needs you”.</td><td>-</td></tr>
+    <tr><td>F12</td><td>Property tenancy length after the push</td><td><span class="badge pass">Pass</span></td><td>/admin/properties?property_id=11&amp;tabname=tenancy. Length cell is “12 months”. Page HTML does not contain @if or @endif.</td><td>-</td></tr>
+    <tr><td>F13</td><td>Landlord profile title</td><td><span class="badge pass">Pass</span></td><td>/admin/users/profile title is Profile · Resisquare.</td><td>-</td></tr>
+    <tr><td>F14</td><td>Landlord finance matches the tenant invoice</td><td><span class="badge pass">Pass</span></td><td>/admin/finance. RENT-0001, Sabir Sayyed, 1 The Mall, issued and due 28 Sep 2026, £1,250.00 unpaid.</td><td>-</td></tr>
+    <tr><td>F15</td><td>New invoice form still carries the tenancy figures</td><td><span class="badge pass">Pass</span></td><td>/admin/finance/create returns 200, title New rent invoice · Resisquare, and the HTML includes 1250 and 2026-09-28. No invoice was saved.</td><td>-</td></tr>
+    <tr><td>F16</td><td>People shows the portal tenant</td><td><span class="badge pass">Pass</span></td><td>/admin/people. Sabir Sayyed, tenant, portal access Yes, 1 active tenancy, Resend and Revoke present. Invite was not sent.</td><td>-</td></tr>
+    <tr><td>F17</td><td>Tenancies list</td><td><span class="badge pass">Pass</span></td><td>/admin/tenancies. 1 The Mall, Sabir Sayyed, Active, move-in 28 Sep 2026, rent £1,250.00, confirmation Confirmed.</td><td>-</td></tr>
+    <tr><td>F18</td><td>Landlord calendar feed includes the visit the tenant sees</td><td><span class="badge pass">Pass</span></td><td>GET /admin/calendar/instances?start=2026-09-01&amp;end=2026-10-01 returns event 5, Move-in — 1 The Mall, 28 Sep 2026 10:00–11:00, Scheduled, invited user id 30 (Sabir Sayyed).</td><td>-</td></tr>
+    <tr><td>F19</td><td>Landlord repairs list</td><td><span class="badge pass">Pass</span></td><td>/admin/property-repairs/issue-list title Repairs · Resisquare. Dashboard open-repair count is 0, matching the tenant home.</td><td>-</td></tr>
+    <tr><td>F20</td><td>Landlord documents page loads</td><td><span class="badge pass">Pass</span></td><td>/admin/documents returns 200, title Documents · Resisquare. A new share was not created.</td><td>-</td></tr>
+  </tbody>
+</table>
+
+<h2>4. Bug / Issue Report</h2>
+<table>
+  <thead><tr><th>ID</th><th>Severity</th><th>Status</th><th>Issue</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>B01</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>Confirmed. A tenant session can open the certificate workspace and is shown upload forms for gas, EPC, and EICR on 1 The Mall. The POST target is /admin/compliance/share-certificate. A file was not submitted, so a stored upload was not observed.</td><td><span class="path">ComplianceController.php</span> certificates() around the account-id check, and shareCertificate(). Require a landlord (or staff) role before rendering or accepting the upload. Keep a read-only certificate status on the tenant lease if tenants should see expiry.</td></tr>
+    <tr><td>B02</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td>Confirmed. RENT-0001 is on the tenant profile and on /admin/portal/notifications, and the header bell on both roles still says “No unread notifications.”</td><td><span class="path">resources/views/backend/partials/navbar.blade.php</span> unreadNotifications() query. Surface the same notification log the profile already lists.</td></tr>
+    <tr><td>B03</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Confirmed. Tenancies index intro reads “Lets on your properties.”</td><td><span class="path">resources/views/backend/tenancies/index.blade.php</span> line 17. Change the sentence to “Tenancies on your properties.”</td></tr>
+    <tr><td>B04</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Confirmed. /admin/portal/notifications document title is only “Resisquare”.</td><td><span class="path">app/helpers.php</span> rs_page_title() map. Add the tenant notifications route as “Notifications”.</td></tr>
+  </tbody>
+</table>
+<p>Retested and no longer present: the property tenancy cell printing raw Blade, the status dialog reading “change status to ?” in its default markup, and the landlord profile title being only “Resisquare”.</p>
+
+<h2>5. Security Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>S01</td><td>Tenant cannot open finance, people, tenancy management, documents admin, or users</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>S02</td><td>Tenant hitting the landlord dashboard or property workspace is sent home</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>S03</td><td>Tenant cannot upload or share certificates</td><td><span class="badge fail">Fail</span></td><td>See B01. The live page rendered the upload forms. The controller method that accepts the file does not check role.</td></tr>
+  </tbody>
+</table>
+
+<h2>6. UI/UX Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>U01</td><td>Tenancy length reads as a duration</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>U02</td><td>Status confirm dialog is a complete sentence before a status is chosen</td><td><span class="badge pass">Pass</span></td><td>Live markup is “Are you sure you want to change the status?” The status name is inserted only after a status button is used. That button was not clicked in this run.</td></tr>
+    <tr><td>U03</td><td>Landlord profile title</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>U04</td><td>Dashboard alert wording</td><td><span class="badge pass">Pass</span></td><td>“3 certificates need you” and “1 deposit needs you”.</td></tr>
+    <tr><td>U05</td><td>Tenant notification page title</td><td><span class="badge fail">Fail</span></td><td>See B04.</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Performance Testing</h2>
+<p>Not Tested. No timing or server metrics were collected.</p>
+
+<h2>8. SEO Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Page</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>E01</td><td>Tenant home, tenancy, rent, calendar, maintenance, documents, profile</td><td><span class="badge pass">Pass</span></td><td>Each title is “Label · Resisquare”.</td></tr>
+    <tr><td>E02</td><td>Landlord dashboard, properties, tenancies, finance, new invoice, people, repairs, documents, profile</td><td><span class="badge pass">Pass</span></td><td>Each title is “Label · Resisquare”.</td></tr>
+    <tr><td>E03</td><td>Tenant notification preferences</td><td><span class="badge fail">Fail</span></td><td>See B04.</td></tr>
+    <tr><td>E04</td><td>Public meta description, headings, sitemap, canonical, Open Graph</td><td><span class="badge nt">Not Tested</span></td><td>This run stayed inside signed-in modules.</td></tr>
+  </tbody>
+</table>
+
+<h2>9. Content Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>C01</td><td>Tenant lease, rent, and home copy</td><td><span class="badge pass">Pass</span></td><td>Amounts, dates, and the address agree with the landlord records. No raw Blade, “user you”, or “Staging General Repair” on the pages opened.</td></tr>
+    <tr><td>C02</td><td>Tenancies index intro</td><td><span class="badge fail">Fail</span></td><td>See B03.</td></tr>
+  </tbody>
+</table>
+
+<h2>10. Browser &amp; Device Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>D01</td><td>Desktop Chromium</td><td><span class="badge pass">Pass</span></td><td>Tenant portal and landlord workspace both rendered and navigated.</td></tr>
+    <tr><td>D02</td><td>Mobile viewport and other browsers</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </tbody>
+</table>
+
+<h2>11. API Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>A01</td><td>Landlord calendar instances for September 2026</td><td><span class="badge pass">Pass</span></td><td>JSON includes the move-in shared with the tenant. See F18.</td></tr>
+    <tr><td>A02</td><td>Other JSON endpoints</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </tbody>
+</table>
+
+<h2>12. Database Testing</h2>
+<p>Not Tested. Checks used the rendered site and one calendar JSON response. The database was not queried directly.</p>
+
+<h2>13. Production / Deployment Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>Y01</td><td>Pushed tenancy length is what the live page renders</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>Y02</td><td>Pushed profile title is live</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>Y03</td><td>Pushed status sentence is in the live markup</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>Y04</td><td>HTTPS</td><td><span class="badge pass">Pass</span></td><td>All checks used https://laravel.resisquare.co.uk.</td></tr>
+  </tbody>
+</table>
+
+<h2>14. Overall Score</h2>
+<table>
+  <thead><tr><th>Category</th><th>Weight</th><th>Score</th><th>Included</th></tr></thead>
+  <tbody>
+    <tr><td>Functional</td><td>30%</td><td>90% (18/20)</td><td>Yes</td></tr>
+    <tr><td>Security</td><td>20%</td><td>67% (2/3)</td><td>Yes</td></tr>
+    <tr><td>UI/UX</td><td>15%</td><td>80% (4/5)</td><td>Yes</td></tr>
+    <tr><td>Performance</td><td>15%</td><td>-</td><td>Excluded. No measurement.</td></tr>
+    <tr><td>SEO</td><td>10%</td><td>94% (17/18)</td><td>Yes. Public SEO left Not Tested and excluded. Score is the 18 signed-in document titles actually read: 17 were “Label · Resisquare”, and the tenant notifications page was only “Resisquare”.</td></tr>
+    <tr><td>Compatibility</td><td>5%</td><td>100% (1/1)</td><td>Yes. Mobile and other browsers excluded.</td></tr>
+    <tr><td>Content</td><td>5%</td><td>50% (1/2)</td><td>Yes</td></tr>
+  </tbody>
+</table>
+<p>Weights used sum to 85%. Functional 27.0, security 13.3, UI 12.0, SEO 9.4, compatibility 5.0, and content 2.5 sum to 69.2. Divided by 0.85, that is <strong>81%</strong>.</p>
+<table>
+  <thead><tr><th>Score</th><th>Rating</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>81%</td><td><span class="badge high">High</span></td><td>Tenant and landlord handoff works. Close the certificate upload hole before treating the tenant boundary as finished.</td></tr>
+  </tbody>
+</table>
+
+<h2>15. Final Status</h2>
+<p><span class="badge high">Working, with one authorization gap</span></p>
+<p>The tenant can see their home, lease, the unpaid rent invoice, the move-in visit, and their profile. The landlord sees the same tenancy, the same invoice, and the same visit. The length cell now says “12 months”, and the landlord profile title is Profile · Resisquare.</p>
+<p>Still open: a tenant can open certificate upload for the landlord’s property, and the header bell does not list the rent notice that the profile already shows.</p>
+
+<h2>16. Testing Limitations</h2>
+<ul>
+  <li>No new repair, document share, invoice, or certificate was created, and the £1,250 card payment was not submitted.</li>
+  <li>The certificate upload form was displayed to the tenant. The file was not posted, so a stored upload was not observed.</li>
+  <li>The status dialog was checked in the page markup. A status change was not confirmed.</li>
+  <li>Mobile layout, other browsers, performance, and the public marketing site were not retested.</li>
+  <li>The database was not opened directly.</li>
+</ul>
+
+<footer>Generated 28 Sep 2026. Evidence is from the live site in this session. Passwords are omitted.</footer>
+</div>
+</body>
+</html>
