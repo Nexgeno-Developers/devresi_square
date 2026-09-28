@@ -48,13 +48,7 @@
                                     <td>{{ ($tenancy->deposit !== null && $tenancy->deposit !== '') ? rs_money($tenancy->deposit) : '—' }}</td>
                                     <td>{{ rs_date($tenancy->move_in) }}</td>
                                     <td>{{ $tenancy->move_out ? rs_date($tenancy->move_out) : '—' }}</td>
-                                    <td>
-                                        @if((int) $tenancy->term_months > 0 || (int) $tenancy->term_days > 0)
-                                            {{ (int) $tenancy->term_months }} months@if((int) $tenancy->term_days > 0), {{ (int) $tenancy->term_days }} days@endif
-                                        @else
-                                            —
-                                        @endif
-                                    </td>
+                                    <td>{{ $tenancy->termLengthLabel() }}</td>
                                     <td>{{ $tenancy->extension_date ? rs_date($tenancy->extension_date) : '—' }}</td>
                                     <td>
                                         <div class="d-flex justify-content-end">

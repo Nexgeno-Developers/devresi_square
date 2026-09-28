@@ -2246,7 +2246,8 @@ var_dump($propertyId);
             statusChangeData.id = $(this).data('id');
             statusChangeData.status = $(this).data('status');
 
-            $('#new-status-text').text(statusChangeData.status);
+            const nextStatus = String(statusChangeData.status || '').trim();
+            $('#new-status-text').text(nextStatus ? ` to ${nextStatus}` : '');
             $('#confirmStatusChangeModal').modal('show');
         });
 

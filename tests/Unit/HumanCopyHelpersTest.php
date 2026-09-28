@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\Property;
 use App\Models\RentInvoice;
+use App\Models\Tenancy;
 use App\Models\User;
 use Carbon\Carbon;
 use Tests\TestCase;
@@ -59,5 +60,17 @@ class HumanCopyHelpersTest extends TestCase
         ]);
         $this->assertSame('September 2026 rent', rs_rent_title($invoice));
         $this->assertStringNotContainsString('RENT-', rs_rent_title($invoice));
+    }
+
+    public function test_tenancy_length_label_skips_zero_days(): void
+    {
+        $tenancy = new Tenancy(['term_months' => 12, 'term_days' => 0]);
+        $this->assertSame('12 months', $tenancy->termLengthLabel());
+
+        $withDays = new Tenancy(['term_months' => 12, 'term_days' => 14]);
+        $this->assertSame('12 months, 14 days', $withDays->termLengthLabel());
+
+        $empty = new Tenancy(['term_months' => 0, 'term_days' => 0]);
+        $this->assertSame('—', $empty->termLengthLabel());
     }
 }

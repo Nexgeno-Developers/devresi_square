@@ -1332,6 +1332,8 @@ if (! function_exists('rs_page_title')) {
             'tenant.maintenance' => 'Maintenance',
             'tenant.documents' => 'Documents',
             'tenant.profile' => 'Profile',
+            'admin.users.profile.show' => 'Profile',
+            'admin.users.profile.edit' => 'Profile',
         ];
         $label = $labels[request()->route()?->getName() ?? ''] ?? null;
 

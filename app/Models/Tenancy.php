@@ -150,6 +150,23 @@ class Tenancy extends Model
         return 'Day '.$day.' of each month';
     }
 
+    public function termLengthLabel(): string
+    {
+        $months = (int) $this->term_months;
+        $days = (int) $this->term_days;
+
+        if ($months <= 0 && $days <= 0) {
+            return '—';
+        }
+
+        $label = $months.' months';
+        if ($days > 0) {
+            $label .= ', '.$days.' days';
+        }
+
+        return $label;
+    }
+
     /**
      * Next rent due date on or after the issue date, using the tenancy due day.
      */
