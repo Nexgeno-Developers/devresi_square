@@ -52,6 +52,10 @@
                         $accountService = app(\App\Services\Saas\CurrentAccountService::class);
                         $currentAccount = $accountService->current(auth()->user());
                         $availableAccounts = $accountService->availableAccounts(auth()->user());
+                        $accountMemberships = auth()->user()->accountUsers()
+                            ->where('status', 'active')
+                            ->get()
+                            ->keyBy('account_id');
                     @endphp
                     @if($availableAccounts->count() > 1)
                         <form action="{{ route('backend.accounts.switch') }}" method="POST" class="d-flex align-items-center gap-2 mb-0">
@@ -59,8 +63,18 @@
                             <label class="small text-muted mb-0" for="backend-current-account">Account</label>
                             <select id="backend-current-account" name="account_id" class="form-select form-select-sm" onchange="this.form.submit()">
                                 @foreach($availableAccounts as $account)
+                                    @php
+                                        $memberType = $accountMemberships->get($account->id)?->member_type;
+                                        $accountLabel = $account->account_name ?: 'Account #' . $account->id;
+                                        if ($memberType === \App\Support\AccountMembership::TENANT) {
+                                            $accountLabel = trim((string) preg_replace('/\s+Landlord Account$/', '', $accountLabel));
+                                            $accountLabel = ($accountLabel !== '' ? $accountLabel : 'Home').' · your home';
+                                        } elseif (in_array($memberType, \App\Support\AccountMembership::WORKSPACE_ADMIN_TYPES, true)) {
+                                            $accountLabel .= ' · your workspace';
+                                        }
+                                    @endphp
                                     <option value="{{ $account->id }}" @selected((int) $currentAccount?->id === (int) $account->id)>
-                                        {{ $account->account_name ?: 'Account #' . $account->id }}
+                                        {{ $accountLabel }}
                                     </option>
                                 @endforeach
                             </select>

@@ -497,7 +497,7 @@ class StagingSaasTestDataSeeder extends Seeder
     private function repair(Account $account, Property $property, User $tenant, User $contractor, User $createdBy): RepairIssue
     {
         $category = RepairCategory::firstOrCreate(
-            ['name' => 'Staging General Repair'],
+            ['name' => 'General repair'],
             [
                 'level' => 1,
                 'description' => 'General staging repair category.',
@@ -513,7 +513,7 @@ class StagingSaasTestDataSeeder extends Seeder
                 'account_id' => $account->id,
                 'property_id' => $property->id,
                 'repair_category_id' => $category->id,
-                'repair_navigation' => json_encode(['Staging General Repair']),
+                'repair_navigation' => json_encode(['General repair']),
                 'description' => 'Staging repair for contractor portal testing.',
                 'tenant_id' => $tenant->id,
                 'tenant_availability' => now()->addDays(2),

@@ -40,11 +40,11 @@
         <div class="tp-form-grid">
             <label>
                 <span class="tp-metric-label">First name</span>
-                <input type="text" name="first_name" class="form-control" value="{{ old('first_name', $user->first_name) }}" required maxlength="55">
+                <input type="text" name="first_name" class="form-control" value="{{ old('first_name', $profileFirstName) }}" required maxlength="55">
             </label>
             <label>
                 <span class="tp-metric-label">Last name</span>
-                <input type="text" name="last_name" class="form-control" value="{{ old('last_name', $user->last_name) }}" maxlength="55">
+                <input type="text" name="last_name" class="form-control" value="{{ old('last_name', $profileLastName) }}" maxlength="55">
             </label>
             <label>
                 <span class="tp-metric-label">Email</span>

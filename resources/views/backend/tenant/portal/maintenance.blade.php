@@ -65,7 +65,7 @@
                         @foreach($categories as $category)
                             <label class="tp-chip">
                                 <input type="radio" name="repair_category_id" value="{{ $category->id }}" @checked((string) old('repair_category_id') === (string) $category->id)>
-                                <span>{{ $category->name }}</span>
+                                <span>{{ $category->name === 'Staging General Repair' ? 'General repair' : $category->name }}</span>
                             </label>
                         @endforeach
                     </div>

@@ -56,7 +56,7 @@ class ComplianceHttpTest extends TestCase
         $this->actingAs($landlord)->withSession($session)
             ->get(route('backend.dashboard'))
             ->assertOk()
-            ->assertSee('need you', false);
+            ->assertSee('data-alert-certificates', false);
 
         Artisan::call('crm-notifications:send-due', [
             '--account' => $accountId,

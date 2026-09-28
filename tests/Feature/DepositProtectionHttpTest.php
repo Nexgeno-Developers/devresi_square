@@ -55,8 +55,7 @@ class DepositProtectionHttpTest extends TestCase
         $this->actingAs($landlord)->withSession($session)
             ->get(route('backend.dashboard'))
             ->assertOk()
-            ->assertSee('deposit', false)
-            ->assertSee('need you', false);
+            ->assertSee('deposit needs you', false);
 
         $show = $this->actingAs($landlord)->withSession($session)
             ->get(route('admin.tenancies.show', $tenancy->id));

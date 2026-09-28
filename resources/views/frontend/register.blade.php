@@ -238,10 +238,11 @@
     // ── Helpers ────────────────────────────────────────────────────────────
     function showFieldError(name, msg) {
         const el = regForm.querySelector('[name="' + name + '"]');
-        if (!el || el.type === 'hidden') return false;
-        el.classList.add('is-invalid');
+        if (!el || el.type === 'hidden' || el.type === 'radio') return false;
         const fb = el.nextElementSibling;
-        if (fb && fb.classList.contains('invalid-feedback')) fb.textContent = msg;
+        if (!fb || !fb.classList.contains('invalid-feedback')) return false;
+        el.classList.add('is-invalid');
+        fb.textContent = msg;
         return true;
     }
 

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resisquare UAT report — 28 Sep 2026</title>
+<style>
+  :root { --ink:#1c2430; --muted:#5c6778; --line:#e3e7ee; --bg:#f6f7f9; --card:#fff; --pass:#1f7a4d; --fail:#b42318; --high:#c2410c; --med:#b45309; --low:#3f4c6b; --nt:#667085; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 "Segoe UI", system-ui, sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:#142033; color:#fff; padding:28px 32px 22px; }
+  header h1 { margin:0 0 6px; font-size:26px; font-weight:650; }
+  header p { margin:0; color:#c9d2e0; }
+  .wrap { max-width:1100px; margin:0 auto; padding:24px 20px 64px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:650; letter-spacing:.02em; }
+  .pass { background:#e7f6ee; color:var(--pass); }
+  .fail { background:#fdecea; color:var(--fail); }
+  .critical { background:#7f1d1d; color:#fff; }
+  .high { background:#ffedd5; color:var(--high); }
+  .medium { background:#fef3c7; color:var(--med); }
+  .low { background:#eef2ff; color:var(--low); }
+  .nt, .blocked { background:#f2f4f7; color:var(--nt); }
+  .open { background:#fdecea; color:var(--fail); }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin:16px 0 8px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  .card strong { display:block; font-size:22px; }
+  .card span { color:var(--muted); font-size:13px; }
+  h2 { margin:32px 0 10px; font-size:20px; }
+  h3 { margin:18px 0 8px; font-size:16px; }
+  table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden; margin:8px 0 16px; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--line); font-size:13.5px; }
+  th { background:#f0f3f8; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:#3d4a5c; }
+  tr:nth-child(even) td { background:#fbfcfe; }
+  code, .path { font-family: ui-monospace, Consolas, monospace; font-size:12px; }
+  .note { color:var(--muted); }
+  footer { margin-top:28px; color:var(--muted); font-size:13px; }
+  @media print { body { background:#fff; } header { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+  @media (max-width:700px) { table { display:block; overflow-x:auto; } header, .wrap { padding-left:14px; padding-right:14px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Resisquare software testing report</h1>
+  <p>Live staging walk of laravel.resisquare.co.uk · 28 Sep 2026 · Cursor browser (Chromium)</p>
+  <p style="margin-top:10px"><span class="badge critical">Not ready for production</span> &nbsp; Overall score <strong>61%</strong></p>
+</header>
+<div class="wrap">
+
+<h2>1. Project Information</h2>
+<table>
+  <tr><th>Field</th><th>Value</th></tr>
+  <tr><td>Project</td><td>Resisquare (Laravel landlord and tenant workspace)</td></tr>
+  <tr><td>URL</td><td>https://laravel.resisquare.co.uk/</td></tr>
+  <tr><td>Codebase</td><td>devresi_square (local). Findings cite files only where that file was opened.</td></tr>
+  <tr><td>Environment</td><td>Staging site over HTTPS. Stripe sandbox. Chimnie live lookup. Mail delivery working at the time of this run.</td></tr>
+  <tr><td>Date</td><td>28 Sep 2026</td></tr>
+  <tr><td>Roles exercised</td><td>Landlord (new trial account) and tenant (existing invited user, tenancy confirmed this session).</td></tr>
+  <tr><td>Data created during the test</td><td>Property “1 The Mall, London, SW1A 1AA” (id 11). Active tenancy id 6 for Sabir Sayyed. Unpaid rent invoice RENT-0001 for £1,250.00 due 28 Sep 2026. Landlord Basic trial, £29/month, trial ends 5 Oct 2026.</td></tr>
+</table>
+
+<h2>2. Testing Summary</h2>
+<div class="cards">
+  <div class="card"><strong>61%</strong><span>Overall (weighted, performance excluded)</span></div>
+  <div class="card"><strong>0</strong><span>Critical issues</span></div>
+  <div class="card"><strong>4</strong><span>High issues</span></div>
+  <div class="card"><strong>17</strong><span>Open issues</span></div>
+</div>
+<table>
+  <thead><tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td>Functional Testing</td><td>22</td><td>15</td><td>7</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Security Testing</td><td>6</td><td>5</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>UI/UX Testing</td><td>6</td><td>3</td><td>3</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Performance Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>SEO Testing</td><td>6</td><td>2</td><td>4</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Content Testing</td><td>5</td><td>1</td><td>4</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Compatibility Testing</td><td>2</td><td>1</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>API Testing</td><td>2</td><td>2</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+    <tr><td>Database Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Deployment Testing</td><td>5</td><td>4</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+  </tbody>
+</table>
+<p class="note">Passed / applicable × 100. Not Tested rows are excluded. Sitemap is Not Applicable and is not in the SEO total. API, database, and deployment are reported here and are outside the weighted score.</p>
+
+<h2>3. Functional Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>F01</td><td>Landlord signs in and lands on the portfolio dashboard</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F02</td><td>Tenant signs in and lands on the tenant home</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F03</td><td>Logout returns to the sign-in page</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F04</td><td>Tenant requests to landlord finance, people, tenancies, users, and documents return 403</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F05</td><td>Tenant request to /admin/properties and /admin/dashboard ends on the tenant home</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F06</td><td>Postcode SW1A 1AA lookup, property save, owner save, and tenant invite complete</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F07</td><td>Property overview shows 1 The Mall, flat, 3 bed, 2 bath, £1,250/mo, EPC C, let agreed</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F08</td><td>Property tenancy tab lists the active tenancy (rechecked after the wizard closed)</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F09</td><td>Tenancy 6 shows Sabir Sayyed confirmed 28 Sep 2026, rent £1,250 monthly, term 12 months, deposit £1,250</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F10</td><td>Landlord issues invoice RENT-0001; tenant home then shows outstanding £1,250.00 and a Pay rent link</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F11</td><td>Certificates page lists Gas Safety, EPC, and EICR as Missing / Not on file for 1 The Mall</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F12</td><td>Share with tenant on a missing certificate</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td>Click focused a required empty field and did not share. Hide Share until a certificate file exists, or do not mark that field required and readonly.</td></tr>
+    <tr><td>F13</td><td>New invoice form defaults</td><td><span class="badge fail">Fail</span></td><td>High</td><td>After selecting the tenancy, amount stayed blank and due date stayed 2026-10-12. The tenancy due day is 28. Prefill rent and set the due date from the tenancy due day before the landlord can submit the form unchanged.</td></tr>
+    <tr><td>F14</td><td>Tenant profile contact form shows the saved name</td><td><span class="badge fail">Fail</span></td><td>High</td><td>Heading is “Sabir Sayyed” but first_name and last_name inputs are empty. Email and phone are filled. <span class="path">resources/views/backend/tenant/portal/profile.blade.php</span> lines 9 and 43–47 bind the inputs to first_name/last_name only, while the heading falls back to name.</td></tr>
+    <tr><td>F15</td><td>Tenant home upcoming appointments match the calendar</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td>Home says “No appointments yet.” Calendar lists “Move-in — 1 The Mall” on 28 Sep 2026 at 10:00 under Past. <span class="path">resources/views/backend/tenant/portal/home.blade.php</span> around line 115.</td></tr>
+    <tr><td>F16</td><td>In-app notification bell after the rent invoice</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td>Tenant bell and landlord bell both said “No unread notifications” after RENT-0001 was issued. Email was not checked.</td></tr>
+    <tr><td>F17</td><td>Tenant account switcher</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td>Options are “Sabir Sayyed Landlord Account” (value 4) and “Webdev Nexgeno Landlord Account” (value 7). The selected label is the landlord account while the sidebar role is Tenant. Changing the select did not open the landlord workspace.</td></tr>
+    <tr><td>F18</td><td>Registration when the verification email cannot be sent</td><td><span class="badge fail">Fail</span></td><td>High</td><td>Earlier this session the API returned the verify_via error and the form stayed on “Sending…” with no message. <span class="path">resources/views/frontend/register.blade.php</span> showFieldError (line 239) only writes into the next sibling if it has class invalid-feedback. Mail send itself later succeeded.</td></tr>
+    <tr><td>F19</td><td>Maintenance form blocks an empty report</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>Send request with no photo focused the file input. No repair was created. Category label is logged under content.</td></tr>
+    <tr><td>F20</td><td>People lists the tenant as Active, can login, one home</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+    <tr><td>F21</td><td>Billing shows Landlord Basic, monthly £29.00, trialing, trial 28 Sep–5 Oct 2026, properties 1/5</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>F22</td><td>Empty documents and repairs states render without an error</td><td><span class="badge pass">Pass</span></td><td>Low</td><td>-</td></tr>
+  </tbody>
+</table>
+
+<h2>4. Bug / Issue Report</h2>
+<table>
+  <thead><tr><th>ID</th><th>Issue</th><th>Severity</th><th>Status</th><th>Evidence</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>B01</td><td>Property card shows Compliance 0 in green while three required certificates are missing</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>Dashboard: “3 certificates need you”. Property stats: “0 Compliance” in the success colour. Certificates page: EICR, EPC, Gas Safety all Missing.</td><td><span class="path">resources/views/backend/properties/partials/detail-stats.blade.php</span> lines 7–66 count records on file and paint success when none are expiring. Count missing required certificates the same way the certificates page does.</td></tr>
+    <tr><td>B02</td><td>Rent invoice form does not use the tenancy rent or due day</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>/admin/finance/create. Tenancy selected, tenant became Sabir Sayyed, amount stayed empty, due date stayed 2026-10-12. Tenancy due day is day 28.</td><td>Prefill amount from the tenancy rent and set due date from the due day. The issued RENT-0001 used a due date that was typed in by the tester.</td></tr>
+    <tr><td>B03</td><td>Tenant profile name fields are blank</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>/admin/portal/profile. Inputs first_name and last_name are empty strings. Heading shows Sabir Sayyed. Phone 7666705662 is present. Save was not clicked.</td><td><span class="path">resources/views/backend/tenant/portal/profile.blade.php</span> lines 9, 43–47. Split the stored name into the fields, or save first and last name when the tenant is invited.</td></tr>
+    <tr><td>B04</td><td>Landlord dashboard text is clipped at a phone width</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>Emulated 390×844. window.innerWidth 390. The intro paragraph measured 483px wide and ended at x=515. document scrollWidth stayed 390, so the overflow is clipped. Screenshot showed “maintenance and t” cut off and the deposit alert cut off.</td><td>Let the dashboard column use the viewport width and wrap the alert copy. Header already collapses to a menu button.</td></tr>
+    <tr><td>B05</td><td>Share with tenant does not run on a missing certificate</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td>/admin/compliance. Clicking Share with tenant focused a required empty field. The page did not change.</td><td>Do not offer share for a row whose status is Missing.</td></tr>
+    <tr><td>B06</td><td>Move-in is on the calendar and missing from tenant home</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td>Calendar Past: Move-in, 1 The Mall, 28 Sep 2026, 10:00. Home: “No appointments yet.”</td><td><span class="path">resources/views/backend/tenant/portal/home.blade.php</span> around line 115. Include the move-in in the home list, including when it is earlier today.</td></tr>
+    <tr><td>B07</td><td>Bell stays empty after a new rent invoice</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td>Both bells: “No unread notifications.” Tenant home already showed RENT-0001.</td><td>Create an in-app notice when an invoice is issued. Email delivery of that notice was not checked.</td></tr>
+    <tr><td>B08</td><td>Tenant account switcher is labelled as landlord accounts</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td>Combobox value “Webdev Nexgeno Landlord Account” on tenant home, rent, documents, profile, and calendar. Role line remains Tenant. Selecting the other option did not open the landlord workspace.</td><td>Label the control with the home or the tenancy, and only list accounts this user can open.</td></tr>
+    <tr><td>B09</td><td>Registration hides a mail-send failure</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td>Earlier this session, POST /register returned the verify_via error and the page showed no message. Mail was fixed afterward and a later signup OTP arrived.</td><td><span class="path">resources/views/frontend/register.blade.php</span> showFieldError, line 239. Show verify_via errors in the visible error box.</td></tr>
+    <tr><td>B10</td><td>Homepage response is missing common security headers</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td>Same-origin fetch of / returned null for Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, and Referrer-Policy.</td><td>Set those headers on the staging and production responses.</td></tr>
+    <tr><td>B11</td><td>Singular dashboard alert uses “need”</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Visible copy: “1 deposit need you”.</td><td><span class="path">resources/views/backend/dashboard/account.blade.php</span> line 120. Use “needs” when the count is 1. Line 110 has the same verb for certificates.</td></tr>
+    <tr><td>B12</td><td>Public form success copy says “user you”</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Homepage HTML contains “Thank you! We will user you shortly.”</td><td><span class="path">resources/views/frontend/index.blade.php</span> line 75, <span class="path">resources/views/frontend/pricing.blade.php</span> line 194, <span class="path">resources/views/components/frontend/form.blade.php</span> line 95.</td></tr>
+    <tr><td>B13</td><td>Property tenancy table shows a raw timestamp and an unformatted deposit</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Row: Move In “2026-09-28 00:00:00”, Deposit “1250.00”, rent “1,250.00”. Tenancy length cells empty. Tenancy show page formats the same let as 28 Sep 2026 and £1,250.00 with term 12 months.</td><td>Use the same date and money formatting as the tenancy page, and show the 12 month term.</td></tr>
+    <tr><td>B14</td><td>Tenant maintenance category is labelled “Staging General Repair”</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Visible on /admin/portal/maintenance after the tenancy existed.</td><td>Use the live category name on this host.</td></tr>
+    <tr><td>B15</td><td>Most signed-in pages title the tab “Resisquare” only</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Dashboard, property, tenancy, people, certificates, documents, billing, and tenant home. Finance list is “Finance · Resisquare”. Login is “Sign in · Resisquare”.</td><td>Give each module a title the way Finance and Sign in already do.</td></tr>
+    <tr><td>B16</td><td>A missing URL while signed in drops the workspace</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>A bad /admin path showed “Page not found” and a Login link, with no sidebar. The friendly 404 did not show a stack trace.</td><td>Keep the signed-in shell on 404, with a link back to the dashboard.</td></tr>
+    <tr><td>B17</td><td>Repair status filter says “Under Process”</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>/admin/property-repairs/issue-list status navigation.</td><td>Use “In progress”.</td></tr>
+  </tbody>
+</table>
+<p class="note">Earlier in this session the property tenancy tab briefly read “No Active tenancies found” just after the wizard closed. A later visit listed the active row, so that is not an open defect. Password reset returned HTTP 500 before mail was fixed and HTTP 200 after. That 500 is not current.</p>
+
+<h2>5. Security Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>S01</td><td>Tenant session cannot open landlord finance, people, tenancies, users, or documents</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>S02</td><td>Account switcher does not open the other landlord workspace</td><td><span class="badge pass">Pass</span></td><td>High</td><td>Labelling is B08. Privilege change was not observed.</td></tr>
+    <tr><td>S03</td><td>Debug bar is absent on the landlord dashboard</td><td><span class="badge pass">Pass</span></td><td>High</td><td>-</td></tr>
+    <tr><td>S04</td><td>Security headers on the public homepage</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td>See B10.</td></tr>
+    <tr><td>S05</td><td>404 page does not show a stack trace</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>Shell behaviour is B16.</td></tr>
+    <tr><td>S06</td><td>Forms include a CSRF token</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>Observed on the tenant profile form and the compliance page. Token values are not recorded here.</td></tr>
+  </tbody>
+</table>
+
+<h2>6. UI/UX Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>U01</td><td>Landlord dashboard is readable at desktop width</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+    <tr><td>U02</td><td>Landlord dashboard at 390px width</td><td><span class="badge fail">Fail</span></td><td>High</td><td>See B04.</td></tr>
+    <tr><td>U03</td><td>Login labels, heading, and forgot-password link</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+    <tr><td>U04</td><td>Tenant can reach home, tenancy, rent, calendar, maintenance, documents, and profile from the nav</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+    <tr><td>U05</td><td>Property tenancy table formatting</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td>See B13.</td></tr>
+    <tr><td>U06</td><td>Document titles identify the page</td><td><span class="badge fail">Fail</span></td><td>Low</td><td>See B15.</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Performance Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>P01</td><td>Page load</td><td>Timed load, transfer size, and query count</td><td><span class="badge nt">Not Tested</span></td><td>-</td><td>Not Tested - Measurement unavailable in current environment.</td></tr>
+  </tbody>
+</table>
+
+<h2>8. SEO Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>SEO Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>E01</td><td>Homepage title</td><td><span class="badge fail">Fail</span></td><td>Title is only “Resisquare”.</td></tr>
+    <tr><td>E02</td><td>Meta description</td><td><span class="badge fail">Fail</span></td><td>No meta description on the homepage HTML.</td></tr>
+    <tr><td>E03</td><td>Canonical URL</td><td><span class="badge fail">Fail</span></td><td>No canonical link on the homepage HTML.</td></tr>
+    <tr><td>E04</td><td>Open Graph title</td><td><span class="badge fail">Fail</span></td><td>No og:title on the homepage HTML.</td></tr>
+    <tr><td>E05</td><td>H1</td><td><span class="badge pass">Pass</span></td><td>Homepage HTML contains one h1.</td></tr>
+    <tr><td>E06</td><td>robots.txt</td><td><span class="badge pass">Pass</span></td><td>HTTP 200. User-agent * Disallow: /. Correct for this staging host.</td></tr>
+    <tr><td>E07</td><td>sitemap.xml</td><td><span class="badge nt">Not Applicable</span></td><td>HTTP 404. Indexing is already disallowed, so a sitemap is not required on this host.</td></tr>
+  </tbody>
+</table>
+
+<h2>9. Content Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Content Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>C01</td><td>Public form success sentence</td><td><span class="badge fail">Fail</span></td><td>See B12. Change “user” to “contact”.</td></tr>
+    <tr><td>C02</td><td>Dashboard deposit alert grammar</td><td><span class="badge fail">Fail</span></td><td>See B11.</td></tr>
+    <tr><td>C03</td><td>Tenant repair category name</td><td><span class="badge fail">Fail</span></td><td>See B14.</td></tr>
+    <tr><td>C04</td><td>Repair status label</td><td><span class="badge fail">Fail</span></td><td>See B17.</td></tr>
+    <tr><td>C05</td><td>Money and plan figures on billing and the issued invoice</td><td><span class="badge pass">Pass</span></td><td>Billing £29.00. Invoice £1,250.00. Trial end 5 Oct 2026 matches the billing page.</td></tr>
+  </tbody>
+</table>
+
+<h2>10. Browser &amp; Device Testing</h2>
+<table>
+  <thead><tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>Chrome Desktop</td><td><span class="badge pass">Pass</span></td><td>Core landlord and tenant flows completed in the Cursor Chromium browser.</td></tr>
+    <tr><td>Phone-width viewport (390×844 emulation in the same browser)</td><td><span class="badge fail">Fail</span></td><td>See B04. This is not a separate phone browser.</td></tr>
+    <tr><td>Firefox Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Edge Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Safari</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Android Mobile</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>iPhone</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Tablet</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </tbody>
+</table>
+
+<h2>11. API Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>API / Feature</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>A01</td><td>Chimnie address lookup</td><td>Postcode SW1A 1AA returned live premises and the saved property was labelled filled from Chimnie</td><td><span class="badge pass">Pass</span></td><td>One result, Buckingham Palace, offered 240 bedrooms and 78 bathrooms. That was not saved. 1 The Mall (3 bed, 2 bath) was saved.</td></tr>
+    <tr><td>A02</td><td>Stripe Checkout</td><td>Landlord Basic trial checkout completed in the Stripe sandbox and billing shows Trialing</td><td><span class="badge pass">Pass</span></td><td>Checkout copy said “6 days free” while the pricing page said a 7-day trial. Billing now shows trial end 5 Oct 2026, which is seven days after 28 Sep. Not raised as a defect.</td></tr>
+  </tbody>
+</table>
+
+<h2>12. Database Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>D01</td><td>Direct queries, constraints, and migrations</td><td><span class="badge nt">Not Tested</span></td><td>No database connection was used. The blank profile names in B03 are visible through the UI only.</td></tr>
+  </tbody>
+</table>
+
+<h2>13. Production / Deployment Testing</h2>
+<table>
+  <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>Y01</td><td>Site loads on HTTPS</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>Y02</td><td>Debug UI hidden</td><td><span class="badge pass">Pass</span></td><td>No debug bar on the landlord dashboard.</td></tr>
+    <tr><td>Y03</td><td>Email delivery</td><td><span class="badge pass">Pass</span></td><td>After the mail fix: password reset returned HTTP 200, landlord signup OTP was accepted, and the tenant invite was sent.</td></tr>
+    <tr><td>Y04</td><td>Card checkout</td><td><span class="badge pass">Pass</span></td><td>Stripe sandbox trial completed. See A02.</td></tr>
+    <tr><td>Y05</td><td>Signed-in 404</td><td><span class="badge fail">Fail</span></td><td>See B16.</td></tr>
+  </tbody>
+</table>
+
+<h2>14. Overall Score</h2>
+<table>
+  <thead><tr><th>Category</th><th>Weight</th><th>Score</th><th>Included</th></tr></thead>
+  <tbody>
+    <tr><td>Functional</td><td>30%</td><td>68% (15/22)</td><td>Yes</td></tr>
+    <tr><td>Security</td><td>20%</td><td>83% (5/6)</td><td>Yes</td></tr>
+    <tr><td>UI/UX</td><td>15%</td><td>50% (3/6)</td><td>Yes</td></tr>
+    <tr><td>Performance</td><td>15%</td><td>-</td><td>Excluded. No measurement.</td></tr>
+    <tr><td>SEO</td><td>10%</td><td>33% (2/6)</td><td>Yes. Sitemap excluded as not applicable.</td></tr>
+    <tr><td>Compatibility</td><td>5%</td><td>50% (1/2)</td><td>Yes. Untested browsers excluded.</td></tr>
+    <tr><td>Content</td><td>5%</td><td>20% (1/5)</td><td>Yes</td></tr>
+  </tbody>
+</table>
+<p>Weights used sum to 85%. Weighted total 51.45, divided by 0.85, is <strong>61%</strong>. API (2/2) and deployment (4/5) are not in that weight table.</p>
+<table>
+  <thead><tr><th>Score</th><th>Rating</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr><td>61%</td><td>Critical</td><td>Not ready for production</td></tr>
+  </tbody>
+</table>
+
+<h2>15. Final Status</h2>
+<h3>Final Status</h3>
+<p><span class="badge critical">Not Ready for Production</span></p>
+<h3>Recommendation</h3>
+<p>The staging path from signup through a property, a confirmed tenancy, and a rent invoice works. The tenant sees RENT-0001 and £1,250 outstanding. Landlord pages that a tenant should not open returned 403 or sent the tenant home. Mail, Chimnie lookup, and the Stripe trial checkout succeeded.</p>
+<p>Fix before a production launch: the green “0 Compliance” pill while gas, EPC, and EICR are missing (B01); the invoice form’s blank amount and 12 Oct default due date (B02); blank tenant name fields (B03); and the phone-width dashboard clip (B04). Retest those four, plus share-certificate, the home appointment list, and the notification bell.</p>
+<p>No critical security bypass was shown. The open high issues are enough to keep this host out of production. Staging copy (“Staging General Repair”, “user you”) should be cleared on any client-facing URL.</p>
+
+<h2>16. Testing Limitations</h2>
+<ul>
+  <li>One Chromium browser. Firefox, Edge, Safari, and physical phones were not used. Phone layout was a 390×844 emulation only.</li>
+  <li>Performance numbers were not measured.</li>
+  <li>The database was not queried. Profile name mismatch is from the rendered form.</li>
+  <li>The invoice email and the tenant-invite email were not opened in a mailbox during this pass. The invite and the OTP were confirmed earlier in the session by the messages arriving and the product accepting them.</li>
+  <li>A tenant card payment was not completed. The landlord recorded no manual payment, so RENT-0001 is still unpaid on purpose.</li>
+  <li>Maintenance was not submitted with a photo, so no repair exists.</li>
+  <li>Password reset’s earlier HTTP 500 was not repeated after mail started working, beyond the successful 200 response.</li>
+  <li>rommankhan.nexgeno@gmail.com was not registered. Public signup creates a landlord, and the tenant seat was filled by the existing user.</li>
+</ul>
+
+<footer>Generated 28 Sep 2026 from the live browser walk. Passwords, card numbers, and CSRF tokens are omitted.</footer>
+</div>
+</body>
+</html>

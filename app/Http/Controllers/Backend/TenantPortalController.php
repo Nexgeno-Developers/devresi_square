@@ -28,7 +28,7 @@ class TenantPortalController extends Controller
         $repairs = $portal->repairsFor($user, $accountId, $tenancies);
         $openRepairs = $repairs->reject(fn ($repair) => in_array($repair->status, ['Closed', 'Invoice Paid'], true));
         $events = $portal->eventsFor($user, $accountId, $tenancies);
-        $upcomingEvents = $events->filter(fn ($event) => $event->start_datetime && $event->start_datetime->gte(now()))->take(4);
+        $upcomingEvents = $events->filter(fn ($event) => $event->start_datetime && $event->start_datetime->gte(now()->startOfDay()))->take(4);
 
         return view('backend.tenant.portal.home', $this->withConfirmation($request, [
             'tenancies' => $tenancies,
@@ -327,8 +327,8 @@ class TenantPortalController extends Controller
         }
 
         return view('backend.tenant.portal.calendar', $this->withConfirmation($request, [
-            'upcoming' => $events->filter(fn ($event) => $event->start_datetime && $event->start_datetime->gte(now()))->values(),
-            'past' => $events->filter(fn ($event) => $event->start_datetime && $event->start_datetime->lt(now()))->reverse()->values(),
+            'upcoming' => $events->filter(fn ($event) => $event->start_datetime && $event->start_datetime->gte(now()->startOfDay()))->values(),
+            'past' => $events->filter(fn ($event) => $event->start_datetime && $event->start_datetime->lt(now()->startOfDay()))->reverse()->values(),
             'monthCursor' => $monthStart,
             'prevMonth' => $monthStart->subMonth()->format('Y-m'),
             'nextMonth' => $monthStart->addMonth()->format('Y-m'),
@@ -339,9 +339,14 @@ class TenantPortalController extends Controller
 
     public function profile(Request $request): View
     {
+        $user = $request->user();
+        [$profileFirstName, $profileLastName] = $this->profileNameParts($user);
+
         return view('backend.tenant.portal.profile', $this->withConfirmation($request, [
-            'user' => $request->user(),
-            'notices' => $this->noticesFor($request->user(), 5),
+            'user' => $user,
+            'profileFirstName' => $profileFirstName,
+            'profileLastName' => $profileLastName,
+            'notices' => $this->noticesFor($user, 5),
         ]));
     }
 
@@ -491,6 +496,25 @@ class TenantPortalController extends Controller
             ->orderByDesc('id')
             ->limit($limit)
             ->get();
+    }
+
+    /**
+     * @return array{0: string, 1: string}
+     */
+    private function profileNameParts(\App\Models\User $user): array
+    {
+        $first = trim((string) $user->first_name);
+        $last = trim((string) $user->last_name);
+
+        if ($first === '') {
+            $parts = preg_split('/\s+/', trim((string) $user->name), 2) ?: [];
+            $first = (string) ($parts[0] ?? '');
+            if ($last === '') {
+                $last = (string) ($parts[1] ?? '');
+            }
+        }
+
+        return [$first, $last];
     }
 
     private function withConfirmation(Request $request, array $data): array

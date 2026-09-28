@@ -57,8 +57,11 @@
                                         @csrf
                                         <input type="hidden" name="property_id" value="{{ $row['property']->id }}">
                                         <input type="hidden" name="compliance_type_id" value="{{ $row['type']->id }}">
-                                        <input type="file" name="certificate" accept="application/pdf,image/*" required class="form-control form-control-sm">
-                                        <button type="submit" class="btn btn-sm lw-btn-primary">Share with tenant</button>
+                                        <input type="file" name="certificate" accept="application/pdf,image/*" required class="form-control form-control-sm"
+                                            oninvalid="this.setCustomValidity('Choose the certificate file before sharing it.')"
+                                            onchange="this.setCustomValidity('')">
+                                        <button type="submit" class="btn btn-sm lw-btn-primary">Upload and share</button>
+                                        <span class="small text-muted">Choose the PDF or photo first.</span>
                                     </form>
                                 </td>
                             </tr>

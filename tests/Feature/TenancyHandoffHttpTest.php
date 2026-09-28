@@ -296,7 +296,7 @@ class TenancyHandoffHttpTest extends TestCase
         $this->actingAs($landlord)->withSession($session)
             ->get(route('backend.dashboard'))
             ->assertOk()
-            ->assertSee('deposit need you', false);
+            ->assertSee('deposit needs you', false);
 
         $this->actingAs($landlord)->withSession($session)
             ->get(route('admin.tenancies.show', $tenancy->id))

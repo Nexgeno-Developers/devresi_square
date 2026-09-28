@@ -107,7 +107,7 @@
     @if(! empty($complianceAttentionCount))
         <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4" data-alert-certificates="{{ $complianceAttentionCount }}">
             <div>
-                <strong>{{ $complianceAttentionCount }} certificate{{ $complianceAttentionCount === 1 ? '' : 's' }} need you</strong>
+                <strong>{{ $complianceAttentionCount }} {{ \Illuminate\Support\Str::plural('certificate', $complianceAttentionCount) }} {{ $complianceAttentionCount === 1 ? 'needs' : 'need' }} you</strong>
                 <div class="small mb-0">Gas, EPC or EICR expired or due within 60 days.</div>
             </div>
             <a href="{{ route('admin.compliance.index') }}" class="btn btn-sm btn-dark">Review certificates</a>
@@ -117,7 +117,7 @@
     @if(! empty($depositAttentionCount))
         <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4" data-alert-deposits="{{ $depositAttentionCount }}">
             <div>
-                <strong>{{ $depositAttentionCount }} deposit{{ $depositAttentionCount === 1 ? '' : 's' }} need you</strong>
+                <strong>{{ $depositAttentionCount }} {{ \Illuminate\Support\Str::plural('deposit', $depositAttentionCount) }} {{ $depositAttentionCount === 1 ? 'needs' : 'need' }} you</strong>
                 <div class="small mb-0">Protection scheme, dates or prescribed information incomplete.</div>
             </div>
             <a href="{{ ! empty($depositAttentionTenancyId) ? route('admin.tenancies.show', $depositAttentionTenancyId) : route('admin.tenancies.all') }}" class="btn btn-sm btn-dark">Review deposit</a>

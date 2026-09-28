@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Console\Scheduling\Schedule;
 use App\Http\Middleware\EnsureTokenIsValid;
+use App\Http\Middleware\SecurityHeaders;
 use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\PermissionMiddleware;
 
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // Append global middleware
         $middleware->append(EnsureTokenIsValid::class);
+        $middleware->append(SecurityHeaders::class);
 
         // Laravel 11 already registers the standard web middleware group. Configure
         // its CSRF middleware directly so third-party webhooks can post safely.

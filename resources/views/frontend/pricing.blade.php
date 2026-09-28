@@ -191,7 +191,7 @@
 
                 <div class="modal-body">
                     <x-form-component action="{{ route('form.submit', 'book_demo') }}" formId="bookDemoForm"
-                        submitText="Book Now" successMessage="Thank you! We will user you shortly." />
+                        submitText="Book Now" successMessage="Thank you! We will contact you shortly." />
                 </div>
             </div>
         </div>

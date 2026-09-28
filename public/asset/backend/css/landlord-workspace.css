@@ -815,6 +815,38 @@ body.landlord-workspace .pcc-tab-content .lw-empty .lw-empty-title {
 }
 
 @media (max-width: 767.98px) {
+    body.landlord-workspace #wrapper.main_content,
+    body.landlord-workspace .account-dashboard,
+    body.landlord-workspace .account-dashboard .lw-hero,
+    body.landlord-workspace .account-dashboard .row,
+    body.landlord-workspace .account-dashboard [class*="col-"] {
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    body.landlord-workspace .account-dashboard .row {
+        flex-wrap: wrap;
+    }
+
+    body.landlord-workspace .account-dashboard .col-lg-8,
+    body.landlord-workspace .account-dashboard .col-lg-4 {
+        flex: 0 0 100%;
+        width: 100%;
+    }
+
+    body.landlord-workspace .account-dashboard .lw-hero p,
+    body.landlord-workspace .account-dashboard .alert,
+    body.landlord-workspace .account-dashboard .alert .small,
+    body.landlord-workspace .account-dashboard .alert strong {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    body.landlord-workspace .account-dashboard .alert > div {
+        min-width: 0;
+        flex: 1 1 12rem;
+    }
+
     .lw-page .lw-hero {
         padding: 1.1rem 1.15rem;
     }

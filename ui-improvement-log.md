@@ -724,3 +724,25 @@ Same dummy data as live (Lara, Tina, Flat 12 / E14 9RU, September rent £1,100, 
 5. **Then** occupancy vs Available, property photos, lazy property tabs.
 
 The lab is the picture. The Blade kit (`lw-hero`, `lw-card`, `lw-btn`, `lw-pill`, `lw-empty`, flattened sidebar) is the implementation. If a new screen cannot be built from those pieces, the design is not in the system yet.
+
+## 12. Live UAT — 28 Sep 2026
+
+Browser walk of https://laravel.resisquare.co.uk/ as a new landlord trial and the invited tenant. Full tables, scores, and file references are in `software-testing-report-2026-09-28-1630.html`. Score 61%. Not ready for production.
+
+Data left on the staging host: property 11 (1 The Mall, SW1A 1AA), tenancy 6 (Sabir Sayyed, confirmed), unpaid invoice RENT-0001 for £1,250 due 28 Sep 2026. Landlord Basic trial ends 5 Oct 2026.
+
+What worked: signup OTP, Chimnie lookup, property and tenancy, tenant confirmation, Stripe sandbox trial, tenant blocked from landlord finance/people/tenancies (403), invoice visible on the tenant home.
+
+Open defects from this walk:
+
+1. Property stats show Compliance 0 in green while Certificates lists gas, EPC, and EICR as missing. `resources/views/backend/properties/partials/detail-stats.blade.php`.
+2. New invoice leaves amount blank and defaults the due date to 12 Oct 2026, not the tenancy due day (28).
+3. Tenant profile heading is Sabir Sayyed but first name and last name inputs are empty. `resources/views/backend/tenant/portal/profile.blade.php`.
+4. At 390px the dashboard intro is 483px wide and clipped.
+5. Share with tenant on a missing certificate focuses a required empty field and does not share.
+6. Tenant home says there are no appointments. Calendar lists the move-in on 28 Sep 2026 at 10:00.
+7. Notification bell stayed empty for both roles after RENT-0001.
+8. Tenant account switcher is labelled with landlord account names. Selecting one did not open the landlord workspace.
+9. Registration still hides a verify_via mail error. `resources/views/frontend/register.blade.php` `showFieldError`. Mail itself was working by the end of the session.
+10. Homepage has no CSP, frame, content-type, HSTS, or referrer header.
+11. Copy: “1 deposit need you”, “We will user you shortly”, “Staging General Repair”, tenancy table datetime `2026-09-28 00:00:00` and deposit `1250.00`.

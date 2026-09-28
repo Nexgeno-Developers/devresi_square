@@ -44,12 +44,18 @@
                                     <td>{{ $loop->iteration }}</td>
                                     <td>{{ $tenancy->status }}</td>
                                     <td>{{ $tenancy->tenancySubStatus->name ?? $tenancy->sub_status ?? '-' }}</td>
-                                    <td class="text-end">{{ number_format((float) $tenancy->rent, 2) }}</td>
-                                    <td>{{ $tenancy->deposit }}</td>
-                                    <td>{{ $tenancy->move_in }}</td>
-                                    <td>{{ $tenancy->move_out }}</td>
-                                    <td>{{ $tenancy->tenancy_renewal_confirm_date }}</td>
-                                    <td>{{ $tenancy->extension_date }}</td>
+                                    <td class="text-end">{{ rs_money($tenancy->rent) }}</td>
+                                    <td>{{ ($tenancy->deposit !== null && $tenancy->deposit !== '') ? rs_money($tenancy->deposit) : '—' }}</td>
+                                    <td>{{ rs_date($tenancy->move_in) }}</td>
+                                    <td>{{ $tenancy->move_out ? rs_date($tenancy->move_out) : '—' }}</td>
+                                    <td>
+                                        @if((int) $tenancy->term_months > 0 || (int) $tenancy->term_days > 0)
+                                            {{ (int) $tenancy->term_months }} months@if((int) $tenancy->term_days > 0), {{ (int) $tenancy->term_days }} days@endif
+                                        @else
+                                            —
+                                        @endif
+                                    </td>
+                                    <td>{{ $tenancy->extension_date ? rs_date($tenancy->extension_date) : '—' }}</td>
                                     <td>
                                         <div class="d-flex justify-content-end">
                                             <a href="{{ route('admin.tenancies.rent-ledger', $tenancy->id) }}" class="btn btn-sm btn-outline-primary me-1" title="Rent Ledger">

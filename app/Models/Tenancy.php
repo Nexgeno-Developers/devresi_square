@@ -150,6 +150,28 @@ class Tenancy extends Model
         return 'Day '.$day.' of each month';
     }
 
+    /**
+     * Next rent due date on or after the issue date, using the tenancy due day.
+     */
+    public function suggestedInvoiceDueDate(?\Carbon\CarbonInterface $issueDate = null): \Carbon\Carbon
+    {
+        $issue = \Carbon\Carbon::parse($issueDate ?? now())->startOfDay();
+
+        if ($this->rentFrequencyLabel() === 'Weekly') {
+            return $issue;
+        }
+
+        $day = (int) ($this->rent_due_day ?: ($this->move_in?->day ?: $issue->day));
+        $day = max(1, min(28, $day));
+        $due = $issue->copy()->day($day);
+
+        if ($due->lt($issue)) {
+            $due = $issue->copy()->addMonthNoOverflow()->day($day);
+        }
+
+        return $due;
+    }
+
     public function depositSchemeLabel(): ?string
     {
         $scheme = strtolower(trim((string) $this->deposit_scheme));

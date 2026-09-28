@@ -192,6 +192,19 @@ class LandlordFinanceHttpTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_create_form_offers_the_tenancy_rent(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        [$tenant] = $this->createTenantOnAccount($accountId);
+        $this->createLet($accountId, $landlord, $tenant);
+
+        $this->actingAs($landlord)->withSession(['current_account_id' => $accountId])
+            ->get(route('admin.finance.create'))
+            ->assertOk()
+            ->assertSee('1200.00', false)
+            ->assertSee('New rent invoice', false);
+    }
+
     public function test_create_fails_without_billable_tenancy(): void
     {
         [$landlord, $accountId] = $this->createLandlord();

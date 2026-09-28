@@ -10,6 +10,14 @@
         ?? $property->complianceRecords()
             ->where('expiry_date','<=', now()->addMonths(2))
             ->where('expiry_date','>=', now())->count();
+    $certificateGaps = 0;
+    if ($property->account_id) {
+        $certificateGaps = collect(\App\Models\ComplianceRecord::certificateGapsForAccount((int) $property->account_id))
+            ->filter(fn ($row) => (int) ($row['property']->id ?? 0) === (int) $property->id)
+            ->count();
+    }
+    $complianceValue = $certificateGaps > 0 ? $certificateGaps : $complianceCount;
+    $complianceTone = ($certificateGaps > 0 || $expiringCompliance > 0) ? 'text-warning' : 'text-success';
     $activeTenancy = $property->relationLoaded('tenancies')
         ? $property->tenancies->first()
         : \App\Models\Tenancy::where('property_id', $property->id)
@@ -41,6 +49,9 @@
         $daysListed = max(0, (int) $property->created_at->copy()->startOfDay()->diffInDays(now()->startOfDay()));
     }
     $isLandlord = is_landlord_plan_user();
+    $complianceLabel = $certificateGaps > 0
+        ? ($certificateGaps === 1 ? 'Needs you' : 'Need you')
+        : ($isLandlord ? 'Certificates' : 'Compliance'.($expiringCompliance > 0 ? ' ('.$expiringCompliance.' expiring)' : ''));
 @endphp
 <div class="pcc-stats-bar" id="pccDetailStats">
     <a href="{{ route('admin.tenancies.index', ['propertyId'=>$property->id]) }}" class="pcc-stat-pill">
@@ -60,10 +71,10 @@
     <a href="{{ route('admin.properties.index', ['property_id'=>$property->id,'tabname'=>'Compliance']) }}" class="pcc-stat-pill">
         <div class="pcc-stat-icon"><i class="bi bi-shield-check"></i></div>
         <div class="pcc-stat-content">
-            <div class="pcc-stat-value {{ $expiringCompliance > 0 ? 'text-warning' : 'text-success' }}">
-                {{ $complianceCount }}
+            <div class="pcc-stat-value {{ $complianceTone }}">
+                {{ $complianceValue }}
             </div>
-            <div class="pcc-stat-label">Compliance {{ $expiringCompliance > 0 ? '('.$expiringCompliance.' expiring)' : '' }}</div>
+            <div class="pcc-stat-label">{{ $complianceLabel }}</div>
         </div>
     </a>
     <a href="{{ route('admin.property_repairs.index', ['property_id'=>$property->id]) }}" class="pcc-stat-pill">

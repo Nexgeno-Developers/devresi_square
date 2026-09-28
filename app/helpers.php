@@ -1303,6 +1303,52 @@ if (! function_exists('property_create_url')) {
     }
 }
 
+if (! function_exists('rs_page_title')) {
+    /**
+     * Browser tab title when a view does not set its own @section('title').
+     */
+    function rs_page_title(): string
+    {
+        $brand = get_setting('website_name') ?: 'Resisquare';
+        $labels = [
+            'backend.dashboard' => 'Dashboard',
+            'backend.home' => 'Home',
+            'backend.billing.index' => 'Settings',
+            'backend.events.calendar' => 'Calendar',
+            'admin.properties.index' => 'Properties',
+            'admin.tenancies.all' => 'Tenancies',
+            'admin.tenancies.show' => 'Tenancy',
+            'admin.tenancies.index' => 'Tenancies',
+            'admin.finance.index' => 'Finance',
+            'admin.finance.create' => 'New rent invoice',
+            'admin.finance.show' => 'Rent invoice',
+            'admin.people.index' => 'People',
+            'admin.compliance.index' => 'Certificates',
+            'admin.documents.index' => 'Documents',
+            'admin.property_repairs.index' => 'Repairs',
+            'tenant.tenancy' => 'My tenancy',
+            'tenant.rent' => 'Rent',
+            'tenant.calendar' => 'Calendar',
+            'tenant.maintenance' => 'Maintenance',
+            'tenant.documents' => 'Documents',
+            'tenant.profile' => 'Profile',
+        ];
+        $label = $labels[request()->route()?->getName() ?? ''] ?? null;
+
+        return $label ? $label.' · '.$brand : $brand;
+    }
+}
+
+if (! function_exists('rs_repair_status_label')) {
+    function rs_repair_status_label(?string $status): string
+    {
+        return match ($status) {
+            'Under Process' => 'In progress',
+            default => (string) $status,
+        };
+    }
+}
+
 if (! function_exists('rs_money')) {
     /**
      * Always show sterling with £ for IN UI (minor units optional).

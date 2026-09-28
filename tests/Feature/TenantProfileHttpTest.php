@@ -52,6 +52,14 @@ class TenantProfileHttpTest extends TestCase
 
         $this->assertTrue(Hash::check('NewPass123!', $tenant->fresh()->password));
 
+        $tenant->forceFill(['first_name' => '', 'last_name' => '', 'name' => 'Sabir Sayyed'])->save();
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('tenant.profile'))
+            ->assertOk()
+            ->assertSee('value="Sabir"', false)
+            ->assertSee('value="Sayyed"', false);
+
         $this->actingAs($tenant)->withSession($session)
             ->get(route('tenant.notifications'))
             ->assertOk()

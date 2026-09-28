@@ -66,7 +66,7 @@
                 <div class="col-md-6">
                     <div class="form-group mb-3">
                         <label for="due_date">Due date</label>
-                        <input type="date" name="due_date" id="due_date" class="form-control @error('due_date') is-invalid @enderror" value="{{ old('due_date', now()->addDays(14)->toDateString()) }}" required>
+                        <input type="date" name="due_date" id="due_date" class="form-control @error('due_date') is-invalid @enderror" value="{{ old('due_date', now()->toDateString()) }}" required>
                         @error('due_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                     </div>
                 </div>
@@ -122,14 +122,30 @@
                 ->values(),
         ];
     });
+    $tenancyDefaults = $tenancies->mapWithKeys(function ($tenancy) {
+        $rent = is_numeric($tenancy->rent) ? (float) $tenancy->rent : 0;
+
+        return [
+            $tenancy->id => [
+                'rent' => $rent >= 0.01 ? number_format($rent, 2, '.', '') : '',
+                'due_date' => $tenancy->suggestedInvoiceDueDate()->toDateString(),
+            ],
+        ];
+    });
 @endphp
 @push('scripts')
 <script>
 (function () {
     const tenancy = document.getElementById('tenancy_id');
     const tenant = document.getElementById('tenant_user_id');
+    const amount = document.getElementById('amount');
+    const due = document.getElementById('due_date');
     const selected = @json(old('tenant_user_id'));
+    const keepTyped = @json(old('tenancy_id') !== null);
     const map = @json($tenancyTenants);
+    const defaults = @json($tenancyDefaults);
+    let amountTouched = keepTyped;
+    let dueTouched = keepTyped;
 
     function fillTenants() {
         const tenants = map[tenancy.value] || [];
@@ -144,8 +160,15 @@
         if (tenants.length === 1 && !selected) {
             tenant.value = tenants[0].id;
         }
+
+        const info = defaults[tenancy.value];
+        if (!info) return;
+        if (!amountTouched && info.rent) amount.value = info.rent;
+        if (!dueTouched && info.due_date) due.value = info.due_date;
     }
 
+    amount.addEventListener('input', function () { amountTouched = true; });
+    due.addEventListener('input', function () { dueTouched = true; });
     tenancy.addEventListener('change', fillTenants);
     fillTenants();
 })();
