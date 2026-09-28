@@ -580,6 +580,10 @@
     min-width: 0;
 }
 
+.tp-report-note[hidden] {
+    display: none;
+}
+
 .tp-report-note textarea {
     flex: 1;
     min-height: 108px;

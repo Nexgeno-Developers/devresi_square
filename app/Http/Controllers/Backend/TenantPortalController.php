@@ -229,9 +229,13 @@ class TenantPortalController extends Controller
         $classifier = app(RepairComplaintClassifier::class);
         $validated = $request->validate([
             'property_id' => 'required|integer',
-            'description' => 'required|string|max:2000',
+            'description' => ['nullable', 'string', 'max:2000', Rule::requiredIf(function () use ($request, $classifier) {
+                $code = (string) $request->input('complaint_code', '');
+
+                return $code === '' || $code === 'other' || ! in_array($code, $classifier->codes(), true);
+            })],
             'priority' => 'nullable|in:low,medium,high,critical',
-            'complaint_code' => ['nullable', 'string', Rule::in($classifier->codes())],
+            'complaint_code' => ['nullable', 'string', Rule::in(array_merge($classifier->codes(), ['other']))],
             'repair_category_id' => 'nullable|integer|exists:repair_categories,id',
             'access_details' => 'nullable|string|max:2000',
             'tenant_availability' => ['nullable', 'date_format:Y-m-d\TH:i', function (string $attribute, mixed $value, \Closure $fail): void {
@@ -248,6 +252,13 @@ class TenantPortalController extends Controller
             }],
             'photo' => 'required|image|max:10240',
         ]);
+
+        if (($validated['complaint_code'] ?? null) === 'other') {
+            $validated['complaint_code'] = null;
+        }
+        if (blank($validated['description'] ?? null) && filled($validated['complaint_code'] ?? null)) {
+            $validated['description'] = (string) ($classifier->complaints()[$validated['complaint_code']]['title'] ?? 'Repair');
+        }
 
         $payload = $validated;
         $payload['photo'] = $request->file('photo');

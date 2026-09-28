@@ -36,9 +36,12 @@ class RepairPriorityComplaintHttpTest extends TestCase
         $this->actingAs($tenant)->withSession($session)
             ->get(route('tenant.maintenance'))
             ->assertOk()
-            ->assertSee('Priority complaint', false)
+            ->assertSee('What is wrong?', false)
+            ->assertSee('name="complaint_code"', false)
             ->assertSee('Something else', false)
-            ->assertSee('Gas leak or suspected escape', false);
+            ->assertSee('Gas leak or suspected escape', false)
+            ->assertSee('data-other-note hidden', false)
+            ->assertDontSee('tp-complaint-grid', false);
 
         $this->actingAs($tenant)->withSession($session)
             ->post(route('tenant.maintenance.store'), [
@@ -59,6 +62,35 @@ class RepairPriorityComplaintHttpTest extends TestCase
             ->get(route('admin.property_repairs.show', $repair->id))
             ->assertOk()
             ->assertDontSee('Dispatch trade', false);
+    }
+
+    public function test_a_listed_problem_does_not_need_a_note(): void
+    {
+        Storage::fake('public');
+        [$landlord, $accountId] = $this->createLandlord();
+        [$tenant] = $this->createTenantOnAccount($accountId);
+        [, $tenancy] = $this->createLet($accountId, $landlord, $tenant);
+        $session = ['current_account_id' => $accountId];
+
+        $this->actingAs($tenant)->withSession($session)
+            ->post(route('tenant.maintenance.store'), [
+                'property_id' => $tenancy->property_id,
+                'complaint_code' => 'gas_leak',
+                'photo' => UploadedFile::fake()->image('gas.jpg'),
+            ])
+            ->assertRedirect(route('tenant.maintenance'));
+
+        $repair = RepairIssue::query()->forAccount($accountId)->first();
+        $this->assertSame('gas_leak', $repair->complaint_code);
+        $this->assertSame('Gas leak or suspected escape', $repair->description);
+
+        $this->actingAs($tenant)->withSession($session)
+            ->post(route('tenant.maintenance.store'), [
+                'property_id' => $tenancy->property_id,
+                'complaint_code' => 'other',
+                'photo' => UploadedFile::fake()->image('other.jpg'),
+            ])
+            ->assertSessionHasErrors('description');
     }
 
     public function test_priority_complaint_sets_the_clock_and_ignores_the_tenant_priority(): void

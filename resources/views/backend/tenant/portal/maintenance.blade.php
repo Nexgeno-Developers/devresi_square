@@ -49,13 +49,6 @@
                         <div class="text-danger small mt-1">{{ $message }}</div>
                     @enderror
                 </div>
-                <label class="tp-report-note">
-                    <span class="tp-metric-label">What needs attention?</span>
-                    <textarea name="description" class="form-control" rows="3" required maxlength="2000" placeholder="Leaking tap in the kitchen…">{{ old('description') }}</textarea>
-                    @error('description')
-                        <div class="text-danger small mt-1">{{ $message }}</div>
-                    @enderror
-                </label>
             </div>
 
             @if($categories->isNotEmpty())
@@ -74,23 +67,28 @@
 
             <div class="tp-report-grid">
                 @if(!empty($priorityComplaints))
+                    @php $chosenComplaint = old('complaint_code'); @endphp
                     <fieldset class="tp-report-complaints" data-priority-complaints>
-                        <legend class="tp-metric-label">Priority complaint</legend>
-                        <div class="tp-complaint-grid">
+                        <legend class="tp-metric-label">What is wrong?</legend>
+                        <select name="complaint_code" class="form-control" required>
+                            <option value="" disabled @selected($chosenComplaint === null)>Choose a problem</option>
                             @foreach($priorityComplaints as $complaint)
-                                <label class="tp-chip {{ ($complaint['clock'] ?? '') === 'make_safe_24' ? 'is-24h' : 'is-72h' }}">
-                                    <input type="radio" name="complaint_code" value="{{ $complaint['code'] }}"
-                                        data-clock="{{ $complaint['clock_label'] }}"
-                                        data-safety="{{ $complaint['safety_notice'] }}"
-                                        @checked(old('complaint_code') === $complaint['code'])>
-                                    <span><em>{{ ($complaint['clock'] ?? '') === 'make_safe_24' ? '24 hours' : '72 hours' }}</em>{{ $complaint['title'] }}</span>
-                                </label>
+                                <option value="{{ $complaint['code'] }}"
+                                    data-clock="{{ $complaint['clock_label'] }}"
+                                    data-safety="{{ $complaint['safety_notice'] }}"
+                                    @selected($chosenComplaint === $complaint['code'])>
+                                    {{ $complaint['title'] }} — {{ ($complaint['clock'] ?? '') === 'make_safe_24' ? '24 hours' : '72 hours' }}
+                                </option>
                             @endforeach
-                            <label class="tp-chip is-usual">
-                                <input type="radio" name="complaint_code" value="" data-clock="" data-safety="" @checked(old('complaint_code', '') === '')>
-                                <span><em>Usual repair</em>Something else</span>
-                            </label>
-                        </div>
+                            <option value="other" @selected($chosenComplaint === 'other')>Something else</option>
+                        </select>
+                        <label class="tp-report-note mt-2" data-other-note{{ $chosenComplaint === 'other' ? '' : ' hidden' }}>
+                            <span class="tp-metric-label">What needs attention?</span>
+                            <textarea name="description" class="form-control" rows="3" maxlength="2000" placeholder="Leaking tap in the kitchen…">{{ old('description') }}</textarea>
+                            @error('description')
+                                <div class="text-danger small mt-1">{{ $message }}</div>
+                            @enderror
+                        </label>
                         <p class="tp-priority-clock mb-0" data-priority-clock hidden></p>
                         <p class="tp-safety-note" data-priority-safety hidden></p>
                     </fieldset>
@@ -201,21 +199,31 @@ document.addEventListener('DOMContentLoaded', function () {
     if (complaints) {
         var clock = complaints.querySelector('[data-priority-clock]');
         var safety = complaints.querySelector('[data-priority-safety]');
+        var select = complaints.querySelector('select[name="complaint_code"]');
+        var note = complaints.querySelector('[data-other-note]');
+        var noteInput = note ? note.querySelector('textarea') : null;
         var priority = document.querySelector('select[name="priority"]');
 
         function sync() {
-            var chosen = complaints.querySelector('input[name="complaint_code"]:checked');
-            var isPriority = chosen && chosen.value !== '';
+            var option = select && select.selectedIndex >= 0 ? select.options[select.selectedIndex] : null;
+            var value = select ? select.value : '';
+            var isOther = value === 'other';
+            var isPriority = value !== '' && !isOther;
+            if (note) note.hidden = !isOther;
+            if (noteInput) {
+                noteInput.disabled = !isOther;
+                noteInput.required = isOther;
+            }
             if (clock) {
                 clock.hidden = !isPriority;
-                clock.textContent = isPriority ? (chosen.getAttribute('data-clock') || '') : '';
+                clock.textContent = isPriority ? (option.getAttribute('data-clock') || '') : '';
             }
             if (safety) {
-                var notice = isPriority ? (chosen.getAttribute('data-safety') || '') : '';
+                var notice = isPriority ? (option.getAttribute('data-safety') || '') : '';
                 safety.hidden = notice === '';
                 safety.textContent = notice;
             }
-            if (priority) priority.disabled = !!isPriority;
+            if (priority) priority.disabled = isPriority;
         }
 
         complaints.addEventListener('change', sync);
