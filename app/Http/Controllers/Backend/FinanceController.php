@@ -15,12 +15,21 @@ use Illuminate\View\View;
 
 class FinanceController extends Controller
 {
-    public function index(Request $request, RentFinanceService $finance): View
+    public function index(Request $request, RentFinanceService $finance, RentStripeCheckoutService $rentCheckout): View
     {
         $this->authorize('viewAny', RentInvoice::class);
 
         $accountId = (int) current_account_id();
         $filter = (string) $request->query('status', 'all');
+
+        $rentCheckout->reconcileOpenCheckouts(
+            RentInvoice::query()
+                ->forAccount($accountId)
+                ->whereIn('status', [RentInvoice::STATUS_ISSUED, RentInvoice::STATUS_PARTIAL])
+                ->where('balance', '>', 0)
+                ->whereNotNull('stripe_checkout_session_id')
+                ->get()
+        );
 
         $query = RentInvoice::query()
             ->with(['property', 'tenant', 'tenancy'])
@@ -161,10 +170,12 @@ class FinanceController extends Controller
         return redirect()->route('admin.finance.show', $invoice);
     }
 
-    public function show(RentInvoice $rentInvoice): View
+    public function show(RentInvoice $rentInvoice, RentStripeCheckoutService $rentCheckout): View
     {
         $this->authorize('view', $rentInvoice);
         ensureModelBelongsToCurrentAccount($rentInvoice);
+        $rentCheckout->reconcileOpenCheckouts([$rentInvoice]);
+        $rentInvoice->refresh();
 
         $rentInvoice->load(['property', 'tenant', 'tenancy', 'payments.recordedBy']);
 

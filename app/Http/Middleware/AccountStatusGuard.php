@@ -56,7 +56,13 @@ class AccountStatusGuard
 
     private function isAllowedWhileBlocked(Request $request, int $accountId, int $userId): bool
     {
-        if ($request->routeIs('backend.billing.*', 'backend.accounts.switch', 'backend.logout', 'admin.users.profile.*')) {
+        if ($request->routeIs(
+            'backend.billing.*',
+            'backend.saas.subscription.checkout',
+            'backend.accounts.switch',
+            'backend.logout',
+            'admin.users.profile.*'
+        )) {
             return true;
         }
 

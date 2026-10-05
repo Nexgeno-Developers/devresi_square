@@ -3,7 +3,7 @@
         ?? \App\Models\Tenancy::where('property_id', $property->id)->where('status','Active')->count();
     $openRepairs = $property->open_repairs_count
         ?? \App\Models\RepairIssue::where('property_id', $property->id)
-            ->whereIn('status', ['Pending','Reported','Under Process'])->count();
+            ->open()->count();
     $complianceCount = $property->compliance_records_count
         ?? $property->complianceRecords()->count();
     $expiringCompliance = $property->expiring_compliance_count

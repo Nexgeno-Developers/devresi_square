@@ -3,390 +3,362 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Resisquare QA report — 25 Sep 2026</title>
+<title>QA Report · Resisquare landlord and tenant · 5 Oct 2026</title>
 <style>
-:root { --ink:#1c2430; --muted:#5c6b7a; --line:#e2e8ef; --bg:#f4f7fa; --card:#fff; --pass:#157347; --fail:#b42318; --high:#c2410c; --med:#b45309; --low:#1d4ed8; --nt:#64748b; --blocked:#c2410c; }
-* { box-sizing: border-box; }
-body { margin:0; font:16px/1.5 "Segoe UI", sans-serif; color:var(--ink); background:var(--bg); }
-header { background:#0f172a; color:#fff; padding:28px 24px 22px; }
-header h1 { margin:0 0 6px; font-size:1.7rem; }
-header p { margin:0; color:#cbd5e1; }
-.wrap { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
-.badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:700; color:#fff; }
-.pass { background:var(--pass); } .fail { background:var(--fail); } .nt { background:var(--nt); } .blocked { background:var(--blocked); }
-.critical { background:#7f1d1d; } .high { background:var(--high); } .medium { background:var(--med); } .low { background:var(--low); } .open { background:var(--fail); }
-.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin:16px 0 24px; }
-.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
-.card strong { display:block; font-size:1.4rem; }
-.card span { color:var(--muted); font-size:13px; }
-section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 16px; margin:0 0 16px; }
-h2 { margin:0 0 12px; font-size:1.2rem; }
-table { width:100%; border-collapse:collapse; font-size:14px; }
-th, td { border-bottom:1px solid var(--line); text-align:left; padding:8px 6px; vertical-align:top; }
-th { background:#f8fafc; }
-tr:nth-child(even) td { background:#fbfcfe; }
-code, .path { font-family:Consolas, monospace; font-size:12px; }
-.rec { color:#334155; }
-footer { color:var(--muted); font-size:13px; margin-top:8px; }
-@media print { body { background:#fff; } section, .card { break-inside:avoid; } header { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
-@media (max-width:700px) { table { display:block; overflow-x:auto; } }
+  :root { --ink:#1c2430; --muted:#5c6b7a; --line:#e3e8ee; --bg:#f4f6f8; --card:#fff; --green:#0f7a45; --greenbg:#e7f6ee; --red:#b42318; --redbg:#fdecea; --darkred:#7a1212; --orange:#b54708; --orangebg:#fff4e5; --yellow:#8a5a00; --gray:#667085; --graybg:#f2f4f7; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 "Segoe UI", system-ui, sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:#142033; color:#fff; padding:28px 32px 22px; }
+  header h1 { margin:0 0 6px; font-size:1.6rem; }
+  header p { margin:0; color:#c5d0dc; }
+  .wrap { max-width:1180px; margin:0 auto; padding:24px 20px 48px; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; font-weight:650; letter-spacing:.02em; }
+  .pass { background:var(--greenbg); color:var(--green); }
+  .fail { background:var(--redbg); color:var(--red); }
+  .critical { background:#f8d0d0; color:var(--darkred); }
+  .high { background:#ffe1d6; color:#9a3412; }
+  .medium { background:#fff3cd; color:var(--yellow); }
+  .low { background:#e8eef8; color:#1d4e89; }
+  .blocked, .not-tested, .open { }
+  .not-tested, .blocked { background:var(--graybg); color:var(--gray); }
+  .open { background:var(--redbg); color:var(--red); }
+  .retest { background:var(--orangebg); color:var(--orange); }
+  .status-pill { display:inline-block; margin-top:12px; background:#7a1212; color:#fff; padding:6px 12px; border-radius:8px; font-weight:700; }
+  .score { font-size:2rem; font-weight:750; margin:8px 0 0; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin:18px 0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
+  .card strong { display:block; font-size:1.3rem; }
+  .card span { color:var(--muted); font-size:13px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 18px 8px; margin:16px 0; }
+  h2 { margin:0 0 10px; font-size:1.15rem; }
+  p, li { color:#243140; }
+  .note { color:var(--muted); font-size:14px; }
+  table { width:100%; border-collapse:collapse; margin:8px 0 16px; font-size:13.5px; }
+  th, td { border-bottom:1px solid var(--line); text-align:left; vertical-align:top; padding:8px 8px; }
+  th { background:#f7f9fb; font-size:12px; text-transform:uppercase; letter-spacing:.03em; color:#3d4c5c; }
+  tr:nth-child(even) td { background:#fbfcfd; }
+  .rec { min-width:220px; }
+  code, .path { font-family:Consolas, ui-monospace, monospace; font-size:12px; background:#f3f5f7; padding:1px 4px; border-radius:4px; }
+  footer { color:var(--muted); font-size:13px; padding:8px 4px 24px; }
+  @media print { body { background:#fff; } header { -webkit-print-color-adjust:exact; print-color-adjust:exact; } section { break-inside:avoid; } }
+  @media (max-width:720px) { header, .wrap { padding-left:14px; padding-right:14px; } table { display:block; overflow-x:auto; } }
 </style>
 </head>
 <body>
 <header>
-<h1>Software testing report</h1>
-<p>Resisquare · 25 Sep 2026 · local staging on http://127.0.0.1:8001</p>
+  <h1>Software testing report</h1>
+  <p>Resisquare · landlord and tenant module · in-browser user acceptance</p>
+  <div class="status-pill">Not Ready for Production</div>
+  <div class="score">69%</div>
+  <p>Weighted score of categories that were actually executed. Performance was excluded. Critical rating because the score is under 70%. Second pass on 5 October 2026 covered the items left unchecked after the first walkthrough.</p>
 </header>
 <div class="wrap">
+
 <section>
-<h2>1. Project Information</h2>
-<table>
-<tr><th>Project</th><td>Resisquare (Laravel 11 landlord and tenant workspace)</td></tr>
-<tr><th>Date</th><td>25 Sep 2026</td></tr>
-<tr><th>Environment</th><td>Local app server http://127.0.0.1:8001. Signed in as the documented staging tenant, landlord owner, and super admin. Estate-agent and contractor routes were checked with those staging accounts over HTTP.</td></tr>
-<tr><th>Build under test</th><td>Working tree on this machine. Mail and Stripe were not charged. Debug is on because APP_ENV is local.</td></tr>
-<tr><th>Overall status</th><td><span class="badge fail">Needs Fixes and Retesting</span></td></tr>
-<tr><th>Overall score</th><td><strong>77%</strong> — Poor. Performance was excluded because no timed measurements were taken. Weights were renormalised across the categories that were scored.</td></tr>
-</table>
-<div class="cards">
-<div class="card"><strong>77%</strong><span>Overall score</span></div>
-<div class="card"><strong>0</strong><span>Critical</span></div>
-<div class="card"><strong>3</strong><span>High</span></div>
-<div class="card"><strong>12</strong><span>Open issues</span></div>
+  <h2>1. Project information</h2>
+  <table>
+    <tr><th>Project</th><td>Resisquare landlord workspace and tenant portal</td></tr>
+    <tr><th>Date</th><td>5 October 2026</td></tr>
+    <tr><th>Environment</th><td>Local Laravel 11.56.1, PHP 8.2.12, <span class="path">http://127.0.0.1:8000</span>, <span class="path">APP_ENV=local</span>, debug on. Chrome via the Cursor browser, plus a 390×844 phone-sized viewport for the tenant rent page.</td></tr>
+    <tr><th>Accounts used</th><td>Staging landlord owner, tenant, landlord contact, contractor, property manager, and estate owner from <span class="path">php artisan saas:create-staging-test-data</span>. Password is the documented staging password and is not repeated here.</td></tr>
+    <tr><th>Stripe</th><td>Sandbox on purpose. Platform and rent secrets are test-mode keys. Subscription checkout and rent checkout were completed with Stripe’s public test card. No live charge was made. An unsigned rent webhook post was rejected.</td></tr>
+    <tr><th>Data change made so testing could continue</th><td>The seeder was re-run. Seven orphan <span class="path">account_users</span> rows for the staging emails, pointing at deleted accounts, were deleted. Later writes stayed on Staging Landlord Account: property 563, invoices 210 and 211, bank details, invitee disabled, repairs 133 and 134, event 29, document 160, an EICR compliance row, correction 45 rejected, and the tenant phone. Tenancy 261 move-out was restored to 31 Dec 2026 after the edit script set it to the move-in date.</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. Testing summary</h2>
+  <div class="cards">
+    <div class="card"><strong>69%</strong><span>Overall score</span></div>
+    <div class="card"><strong>0</strong><span>Critical issues</span></div>
+    <div class="card"><strong>6</strong><span>High issues</span></div>
+    <div class="card"><strong>15</strong><span>Open issues</span></div>
+    <div class="card"><strong>26 / 32</strong><span>Functional passed</span></div>
+  </div>
+  <table>
+    <thead><tr><th>Testing type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Functional Testing</td><td>32</td><td>26</td><td>6</td><td><span class="badge fail">Fail</span></td></tr>
+      <tr><td>Security Testing</td><td>11</td><td>8</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+      <tr><td>UI/UX Testing</td><td>13</td><td>7</td><td>6</td><td><span class="badge fail">Fail</span></td></tr>
+      <tr><td>Performance Testing</td><td>4</td><td>0</td><td>0</td><td><span class="badge not-tested">Not Tested</span></td></tr>
+      <tr><td>SEO Testing</td><td>3</td><td>1</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+      <tr><td>Content Testing</td><td>6</td><td>2</td><td>4</td><td><span class="badge fail">Fail</span></td></tr>
+      <tr><td>Compatibility Testing</td><td>8</td><td>2</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+      <tr><td>API Testing</td><td>3</td><td>2</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+      <tr><td>Database Testing</td><td>6</td><td>3</td><td>3</td><td><span class="badge fail">Fail</span></td></tr>
+      <tr><td>Production / Deployment Testing</td><td>6</td><td>2</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+    </tbody>
+  </table>
+  <p class="note">Compatibility “Pass” is only the two browsers that were used. Six other browsers were not tested and are excluded from that category score. Performance is excluded from the overall score. One security check was not tested and is excluded. The first-pass functional count was 15 of 21; recounting those rows is 16 passed and 5 failed. This report uses that recount plus the second-pass rows.</p>
+</section>
+
+<section>
+  <h2>3. Functional testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Module</th><th>Test case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>FT-001</td><td>Auth</td><td>Wrong password stays on login and shows “The provided credentials do not match our records.”</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-002</td><td>Auth</td><td>Staging landlord owner can open the workspace</td><td><span class="badge fail">Fail</span></td><td><span class="badge high">High</span></td><td class="rec">See BUG-001. <span class="path">CurrentAccountService.php</span> → <span class="path">current()</span> uses the oldest active membership and returns null when that account row is gone.</td></tr>
+      <tr><td>FT-003</td><td>Dashboard</td><td>Landlord dashboard shows portfolio, one property, one tenancy, and quick actions</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-004</td><td>Properties</td><td>Portfolio opens Staging Landlord Property with rent, beds, and tenancy dates</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-005</td><td>Tenancies</td><td>Tenancy list and detail show Tina Tenant, £1,250, Active, confirmed 25 Sep 2026</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-006</td><td>Tenancies</td><td>Landlord can save a tenancy edit from the button with no property manager</td><td><span class="badge fail">Fail</span></td><td><span class="badge high">High</span></td><td class="rec">See BUG-002. The Save button never posts a main tenant, so the server returns “The is main person field is required.” A direct post with that field and no property manager did save.</td></tr>
+      <tr><td>FT-007</td><td>Finance</td><td>Issuing a rent invoice for the staging tenancy creates RENT-0001 for £1,250 due 1 Nov 2026</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-008</td><td>Repairs</td><td>Repair list shows the staging issue STG-REP-001 as Open</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-009</td><td>People</td><td>People page lists landlord contact, tenant, contractor, and property manager with resend and revoke</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-010</td><td>Certificates</td><td>Certificates page lists missing EICR, EPC, and Gas Safety with upload actions</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-011</td><td>Documents</td><td>Documents page shows an empty state and a link back to properties</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-012</td><td>Calendar</td><td>Landlord calendar loads filters and the event list</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-013</td><td>Billing</td><td>Stripe sandbox subscription checkout saves a card and leaves the account trialing until 12 Oct 2026</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-014</td><td>Access</td><td>Landlord is blocked from SaaS plans and branches</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-015</td><td>Properties</td><td>Add-property form opens while usage is 1 of 5</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-016</td><td>Tenant portal</td><td>Tenant home, tenancy, rent, maintenance, documents, calendar, profile, and notifications all load</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-017</td><td>Tenant portal</td><td>Tenant cannot open landlord finance, and landlord property URLs show the tenant home</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-018</td><td>Rent</td><td>Stripe sandbox rent payment of £1,250 marks RENT-0001 paid and outstanding £0.00</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td class="rec">-</td></tr>
+      <tr><td>FT-019</td><td>Rent</td><td>Tenant sees landlord bank details and can pay an open invoice by bank transfer</td><td><span class="badge fail">Fail</span></td><td><span class="badge high">High</span></td><td class="rec">See BUG-004. Details are saved, and the landlord can record a bank payment. The tenant invoice still hides them while card checkout is ready.</td></tr>
+      <tr><td>FT-020</td><td>Maintenance</td><td>Tenant maintenance form lists real areas only</td><td><span class="badge fail">Fail</span></td><td><span class="badge medium">Medium</span></td><td class="rec">See BUG-007. <span class="path">repair_categories</span> contains Handoff rows and repeated Kitchen rows from tests.</td></tr>
+      <tr><td>FT-021</td><td>Repairs</td><td>Property page open-repair count matches the dashboard for STG-REP-001</td><td><span class="badge fail">Fail</span></td><td><span class="badge medium">Medium</span></td><td class="rec">See BUG-005. Property counts only Pending, Reported, and Under Process. STG-REP-001 is still Open. The two new tenant repairs are Pending, so they fall inside the property query.</td></tr>
+      <tr><td>FT-022</td><td>Properties</td><td>Create a second property while usage is under the limit of 5</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">Quick create stored property 563, 2 Staging Landlord Street, ST1 1AB.</td></tr>
+      <tr><td>FT-023</td><td>People</td><td>Invite a person, resend access, then revoke login</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">Invitee is disabled and cannot log in. Resend wrote a password reset token. Mail arrival was not observed.</td></tr>
+      <tr><td>FT-024</td><td>Documents</td><td>Upload a certificate and a shared document, then download it as the tenant</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">EICR compliance stored with upload 165. Document 160 downloaded as image/png, 112 bytes, HTTP 200.</td></tr>
+      <tr><td>FT-025</td><td>Finance</td><td>Record a bank payment and void an invoice</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">RENT-0002 £10 paid by bank transfer, reference QA-BANK, balance 0. RENT-0003 £5 void, note QA void, balance 0.</td></tr>
+      <tr><td>FT-026</td><td>Maintenance</td><td>Tenant submits a maintenance report</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">Repairs 133 and 134 are Pending. The form was submitted twice with the same description. Area names remain BUG-007.</td></tr>
+      <tr><td>FT-027</td><td>Calendar</td><td>A landlord event marked visible to the tenant appears on the tenant calendar</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">Event 29, QA inspection, 20 Oct 2026 10:00, shown as Inspection.</td></tr>
+      <tr><td>FT-028</td><td>Compliance</td><td>Save right to rent and record a written-information notice</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">Member 229 required, checked 1 Oct 2026, follow-up 20 Oct 2026. Notice 1 served 5 Oct 2026.</td></tr>
+      <tr><td>FT-029</td><td>Profile</td><td>Tenant updates phone, password, and a notification preference</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">Phone is +440000000099. Password was changed and set back to the staging password. Appointment invites are in-app only.</td></tr>
+      <tr><td>FT-030</td><td>Tenancies</td><td>Tenant asks to correct rent, and the landlord declines it</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">Request 45 is rejected. Rent on tenancy 261 stays 1250.00.</td></tr>
+      <tr><td>FT-031</td><td>Auth</td><td>Landlord contact, property manager, and estate owner reach their own workspace and cannot open the other account</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">Contact finance is 403. Estate property 323 is 200. Landlord property 322 and estate property 323 are 403 from the other account.</td></tr>
+      <tr><td>FT-032</td><td>Auth</td><td>Contractor login opens a contractor workspace</td><td><span class="badge fail">Fail</span></td><td><span class="badge medium">Medium</span></td><td class="rec">See BUG-014. Landing page is <span class="path">/admin/home</span> with “This area is only available to tenants.”</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Functional score 26 / 32 = 81%. After a server-side tenancy save, property 322 let status is Let Agreed. BUG-006 from the first pass is closed.</p>
+</section>
+
+<section>
+  <h2>4. Bug / issue report</h2>
+  <table>
+    <thead><tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>BUG-001</td><td>Auth</td><td>Confirmed. Staging landlord login returned 403 “No active SaaS account found for this user.” Membership 867 was still active for deleted account 619. A newer valid account existed and was ignored.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">app/Services/Saas/CurrentAccountService.php</span> → <span class="path">current()</span> — skip memberships whose account row is missing and use the next active one. <span class="path">StagingSaasTestDataSeeder.php</span> → <span class="path">account()</span> — do not leave the old membership behind when the account row was deleted.</td></tr>
+      <tr><td>BUG-002</td><td>Tenancies</td><td>Confirmed again. The edit page still marks property manager required. The inline script calls select2 before <span class="path">select2.min.js</span> loads, so the main-tenant radio is never drawn. Save then fails with “The is main person field is required.” The server accepts the same update when that field is present and property manager is omitted.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">resources/views/backend/tenancies/edit.blade.php</span> — load select2 before the inline script, render the main-tenant control without that call, and hide <span class="path">property_manager[]</span> for landlord plan users as in <span class="path">_create-form.blade.php</span>. <span class="path">TenancyController.php</span> → <span class="path">update()</span> already allows a null manager.</td></tr>
+      <tr><td>BUG-003</td><td>Billing</td><td>Confirmed on Settings and on Stripe Checkout. Landlord Basic description says “one property”. Usage and the stored plan limit are 5. Price shown in checkout was £29.00 per month after trial.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">plans</span> row <span class="path">landlord_basic</span> — make <span class="path">description</span> match <span class="path">property_limit</span> 5, or set the limit back to 1 if that is the product.</td></tr>
+      <tr><td>BUG-004</td><td>Rent</td><td>Refined. Bank details now save (Staging Bank, sort code 00-00-00). The landlord recorded a £10 bank payment. The tenant rent list still says pay by card or bank transfer. Paid invoice 209 does not show the sort code. The template prints bank details only when the invoice is open and card checkout is not ready.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">resources/views/backend/tenant/portal/invoice-show.blade.php</span> and <span class="path">rent.blade.php</span> — show saved bank details on an open invoice, and drop the bank-transfer sentence when details are hidden.</td></tr>
+      <tr><td>BUG-005</td><td>Repairs</td><td>Confirmed. Dashboard open repairs was 1. The property pane showed 0. The repair list status is Open. The property query ignores Open.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">app/Http/Controllers/Backend/PropertyController.php</span> <span class="path">open_repairs_count</span> and <span class="path">resources/views/backend/properties/index.blade.php</span> — count the same statuses as <span class="path">DashboardController.php</span> <span class="path">openRepairsCount</span>, which excludes only Closed and Invoice Paid.</td></tr>
+      <tr><td>BUG-006</td><td>Properties</td><td>Retest passed. The first screen showed Available beside an active tenancy because the seed row had not been synced. After a successful tenancy update, <span class="path">syncPropertyLettingStatus</span> set letting status to Let Agreed, and the property page shows Let Agreed.</td><td><span class="badge medium">Medium</span></td><td><span class="badge pass">Closed</span></td><td class="rec">No code change. A new property still starts with a null letting status until a tenancy is saved.</td></tr>
+      <tr><td>BUG-007</td><td>Maintenance</td><td>Confirmed on the tenant maintenance form. Area choices include “Handoff” plus hex ids, and Kitchen is repeated. Those rows are in <span class="path">repair_categories</span>.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec">Remove test categories from the local catalog. Stop feature tests inserting into the application database. The form reads <span class="path">RepairCategory</span> in <span class="path">TenantPortalController.php</span> → <span class="path">maintenance()</span>.</td></tr>
+      <tr><td>BUG-008</td><td>Notifications</td><td>Confirmed. Tenant profile and the bell (count 2) showed the same sentence twice: invoice RENT-0001 for £1,250.00 is due on 01/11/2026.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">app/Console/Commands/SendDueCrmNotifications.php</span> → <span class="path">processRentInvoices()</span> and <span class="path">app/Services/Finance/RentInvoiceNotifier.php</span> — store one in-app notice per invoice and due event.</td></tr>
+      <tr><td>BUG-009</td><td>Stripe</td><td>Confirmed. <span class="path">STRIPE_RENT_WEBHOOK_SECRET</span> is empty. POST <span class="path">/stripe/rent/webhook</span> with an empty body returns 400 “Stripe signature header is missing.” A signed event was not sent. The success URL still marked the card payment paid.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td class="rec">Set <span class="path">STRIPE_RENT_WEBHOOK_SECRET</span> and point Stripe test webhooks at <span class="path">POST /stripe/rent/webhook</span>.</td></tr>
+      <tr><td>BUG-010</td><td>Deployment</td><td>Confirmed. This environment has debug enabled. Acceptable locally. Not acceptable on a public host.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td class="rec">Set <span class="path">APP_DEBUG=false</span> before any shared or production deploy.</td></tr>
+      <tr><td>BUG-011</td><td>Tenancies</td><td>Confirmed in the edit form accessible names. Deposit type options contain long runs of spaces, for example “No of Weeks Deposit”.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">resources/views/backend/tenancies/edit.blade.php</span> deposit type and deposit service option labels — collapse the extra whitespace.</td></tr>
+      <tr><td>BUG-012</td><td>Pages</td><td>Confirmed. Tenancy edit, rent pay settings, and rent ledger use the document title “Resisquare” only.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td class="rec">Set a specific <span class="path">&lt;title&gt;</span> on those three Blade views, matching Finance and Tenancies.</td></tr>
+      <tr><td>BUG-013</td><td>Content</td><td>Confirmed. In-app notice links say “Open in ResiSquare”. The product name on the sign-in page is Resisquare. The same link text was still on the landlord bell during the second pass.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">database/seeders/CrmNotificationTemplatesSeeder.php</span> — change the link text to Resisquare and re-seed templates.</td></tr>
+      <tr><td>BUG-014</td><td>Auth</td><td>Confirmed. Contractor login lands on <span class="path">/admin/home</span> and the page says “This area is only available to tenants.” The same account’s property 322 returns 200. Finance returns 403.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec">Send contractors to their repair or property workspace. <span class="path">/admin/home</span> is the tenant portal.</td></tr>
+      <tr><td>BUG-015</td><td>SEO</td><td>Confirmed on the public homepage. Title is “Resisquare”. There is no meta description. The h1 is “Book a Demo”. <span class="path">robots.txt</span> disallows every listed crawler, including <span class="path">User-agent: *</span>. <span class="path">/sitemap.xml</span> returns 404.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">public/robots.txt</span> — allow the public marketing pages. Add a meta description on the homepage and a sitemap.</td></tr>
+      <tr><td>BUG-016</td><td>Tenancies</td><td>Confirmed by running the edit-page script. <span class="path">initializeForm()</span> calls <span class="path">calculateMoveOutDate()</span> on load. With an empty term it writes the move-in date into move-out. Tenancy 261 move-out became 1 Jan 2026 and was restored to 31 Dec 2026. On a normal page load this function does not run, because the script throws on select2 first.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">resources/views/backend/tenancies/edit.blade.php</span> → <span class="path">calculateMoveOutDate()</span> — do not replace an existing move-out when term months and term days are empty. Avoid <span class="path">toISOString()</span> for a date-only field.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>5. Security testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Security check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>SEC-001</td><td>CSRF token on login and finance forms</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+      <tr><td>SEC-002</td><td>Invalid login rejected</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>SEC-003</td><td>Tenant direct access to <span class="path">/admin/finance</span></td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>SEC-004</td><td>Landlord direct access to SaaS plans and branches</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>SEC-005</td><td>Tenant opening properties or dashboard sees only the portal home</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+      <tr><td>SEC-006</td><td>Logout returns to the sign-in page</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+      <tr><td>SEC-007</td><td>Stripe keys are test mode, not live</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td class="rec">-</td></tr>
+      <tr><td>SEC-008</td><td>Rent webhook secret configured</td><td><span class="badge fail">Fail</span></td><td><span class="badge high">High</span></td><td class="rec">See BUG-009.</td></tr>
+      <tr><td>SEC-009</td><td>Debug mode exposure</td><td><span class="badge fail">Fail</span></td><td><span class="badge high">High</span></td><td class="rec">See BUG-010. 403 pages in this run did not show a stack trace.</td></tr>
+      <tr><td>SEC-010</td><td>SQL injection, XSS, malicious file upload, login rate limit, MFA</td><td><span class="badge not-tested">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+      <tr><td>SEC-011</td><td>Another account’s property or invoice</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">Landlord GET <span class="path">/admin/properties/view/323</span> and <span class="path">/324</span> returned 403 “You cannot open this page”. GET <span class="path">/admin/finance/1</span> returned 403. Estate owner GET property 322 returned 403.</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Security score 8 / 10 = 80%. SEC-010 is excluded. An unsigned rent webhook is rejected; the missing secret remains SEC-008.</p>
+</section>
+
+<section>
+  <h2>6. UI/UX testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>UX-001</td><td>Landlord navigation</td><td>Dashboard, properties, tenancies, finance, repairs, people, certificates, documents, and settings are reachable</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>UX-002</td><td>Tenant phone nav</td><td>At 390px the rent page shows Home, Rent, Repairs, Docs, and Me, and the paid invoice is readable</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>UX-003</td><td>Invoice form</td><td>Choosing the tenancy fills tenant Tina Tenant, amount 1250.00, and due date 2026-11-01</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>UX-004</td><td>Empty states</td><td>Documents, tenant calendar, and the unpaid finance list explain what to do next</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>UX-005</td><td>Paid state</td><td>After checkout the invoice badge reads Paid and outstanding is £0.00</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>UX-006</td><td>Billing copy</td><td>After checkout, settings say the card is saved and the trial continues until 12 Oct 2026</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>UX-007</td><td>Tenancy edit</td><td>Save does not complete: property manager looks required and the main-tenant choice never appears</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-002.</td></tr>
+      <tr><td>UX-008</td><td>Property status</td><td>After a tenancy save, let status reads Let Agreed beside the active tenancy</td><td><span class="badge pass">Pass</span></td><td class="rec">BUG-006 closed on retest.</td></tr>
+      <tr><td>UX-009</td><td>Maintenance form</td><td>Area list contains test labels</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-007.</td></tr>
+      <tr><td>UX-010</td><td>Notices</td><td>The same rent-due notice is listed twice and the bell shows 2</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-008.</td></tr>
+      <tr><td>UX-011</td><td>Deposit fields</td><td>Option labels contain large gaps</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-011.</td></tr>
+      <tr><td>UX-012</td><td>Page titles</td><td>Three landlord pages have a generic title</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-012.</td></tr>
+      <tr><td>UX-013</td><td>Contractor home</td><td>After login the page tells a contractor the area is only for tenants</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-014.</td></tr>
+    </tbody>
+  </table>
+  <p class="note">UI/UX score 7 / 13 = 54%.</p>
+</section>
+
+<section>
+  <h2>7. Performance testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>PF-001</td><td>Page load</td><td>Measured load time</td><td><span class="badge not-tested">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td class="rec">Not Tested - Measurement unavailable in current environment.</td></tr>
+      <tr><td>PF-002</td><td>API</td><td>Timed API samples</td><td><span class="badge not-tested">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td class="rec">Not Tested - Measurement unavailable in current environment.</td></tr>
+      <tr><td>PF-003</td><td>Database</td><td>N+1 and large lists</td><td><span class="badge not-tested">Not Tested</span></td><td><span class="badge low">Low</span></td><td class="rec">Not Tested - Measurement unavailable in current environment.</td></tr>
+      <tr><td>PF-004</td><td>Assets</td><td>CSS and JavaScript weight</td><td><span class="badge not-tested">Not Tested</span></td><td><span class="badge low">Low</span></td><td class="rec">Not Tested - Measurement unavailable in current environment.</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Performance is excluded from the overall score. Pages did render during the walkthrough. That is not a measurement.</p>
+</section>
+
+<section>
+  <h2>8. SEO testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>SEO check</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>SEO-001</td><td>Sign-in document title “Sign in · Resisquare”</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>SEO-002</td><td>Tenancy edit, rent pay, and rent ledger titles</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-012.</td></tr>
+      <tr><td>SEO-003</td><td>Public homepage title, meta description, robots, and sitemap</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-015. Homepage title is “Resisquare”, meta description is absent, h1 is “Book a Demo”, robots disallows all crawlers, sitemap is 404.</td></tr>
+    </tbody>
+  </table>
+  <p class="note">SEO score 1 / 3 = 33%.</p>
+</section>
+
+<section>
+  <h2>9. Content testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Content check</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>CT-001</td><td>Rent amount £1,250 is the same on the property, tenancy, invoice, and tenant portal</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>CT-002</td><td>Paid invoice copy matches a zero balance</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>CT-003</td><td>Landlord Basic description matches the property limit</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-003.</td></tr>
+      <tr><td>CT-004</td><td>Bank transfer instructions match saved bank details</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-004.</td></tr>
+      <tr><td>CT-005</td><td>Maintenance area names are customer language</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-007.</td></tr>
+      <tr><td>CT-006</td><td>Product name spelling in notices</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-013.</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Content score 2 / 6 = 33%. Deposit protection correctly says it is not recorded. That is incomplete staging data, not a false label.</p>
+</section>
+
+<section>
+  <h2>10. Browser and device testing</h2>
+  <table>
+    <thead><tr><th>Browser / device</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>Chrome desktop</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>Chrome mobile viewport 390×844, tenant rent page only</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>Firefox desktop</td><td><span class="badge not-tested">Not Tested</span></td><td class="rec">-</td></tr>
+      <tr><td>Edge desktop</td><td><span class="badge not-tested">Not Tested</span></td><td class="rec">-</td></tr>
+      <tr><td>Safari</td><td><span class="badge not-tested">Not Tested</span></td><td class="rec">-</td></tr>
+      <tr><td>Android device</td><td><span class="badge not-tested">Not Tested</span></td><td class="rec">-</td></tr>
+      <tr><td>iPhone device</td><td><span class="badge not-tested">Not Tested</span></td><td class="rec">-</td></tr>
+      <tr><td>Tablet</td><td><span class="badge not-tested">Not Tested</span></td><td class="rec">-</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Compatibility score 2 / 2 = 100% of browsers actually used. The other six rows are excluded.</p>
+</section>
+
+<section>
+  <h2>11. API testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>API / feature</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>API-001</td><td>Stripe subscription Checkout</td><td>Landlord Basic trial session opened in sandbox, test card accepted, return to billing, local subscription id stored with prefix sub_</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>API-002</td><td>Stripe rent Checkout</td><td>RENT-0001 session for £1,250, test card accepted, local payment row method card, invoice status paid, balance 0.00</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>API-003</td><td>Stripe rent webhook</td><td>Secret present and a signed event updates the invoice</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-009. Unsigned POST returned 400. A signed event was not sent because the secret is empty.</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Stripe first showed INR because the browser region is India, including a conversion fee line. Switching to GBP showed £29.00 for the plan and £1,250.00 for rent. That is Stripe adaptive pricing, not an application price change. API score 2 / 3 = 67%. API is reported here and is outside the default weighted score.</p>
+</section>
+
+<section>
+  <h2>12. Database testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>DB-001</td><td>Rent invoice insert for account 926, tenancy 261, tenant user, amount 1250.00</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>DB-002</td><td>Card payment updates balance to 0.00 and status to paid</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>DB-003</td><td>Staging property, tenancy, and tenant belong to the new landlord account</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>DB-004</td><td>Active memberships point at an existing account</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-001. Staging rows for the deleted account were removed during this run so the rest of the test could proceed. The code path remains.</td></tr>
+      <tr><td>DB-005</td><td>Plan description and property_limit agree</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-003. <span class="path">property_limit</span> is 5.</td></tr>
+      <tr><td>DB-006</td><td>Repair categories are free of test fixtures</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-007.</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Database score 3 / 6 = 50%. Database is outside the default weighted score.</p>
+</section>
+
+<section>
+  <h2>13. Production / deployment testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>DP-001</td><td>Local site responds and login works after the orphan memberships are gone</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>DP-002</td><td>Stripe test mode is what this environment is configured to use</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+      <tr><td>DP-003</td><td>Debug mode off</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-010.</td></tr>
+      <tr><td>DP-004</td><td>Rent webhook secret set</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-009.</td></tr>
+      <tr><td>DP-005</td><td>HTTPS on a public host</td><td><span class="badge not-tested">Not Tested</span></td><td class="rec">-</td></tr>
+      <tr><td>DP-006</td><td>Outbound email delivery, queue workers, and backups</td><td><span class="badge not-tested">Not Tested</span></td><td class="rec">Invite and resend created a password reset token. Mailer is SMTP and the queue is sync. No inbox was opened, and no backup job was run.</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Deployment score 2 / 4 = 50%. DP-005 and DP-006 are excluded. Deployment is outside the default weighted score.</p>
+</section>
+
+<section>
+  <h2>14. Overall score</h2>
+  <table>
+    <thead><tr><th>Category</th><th>Weight</th><th>Score</th><th>Weighted</th></tr></thead>
+    <tbody>
+      <tr><td>Functional</td><td>30%</td><td>81%</td><td>24.3</td></tr>
+      <tr><td>Security</td><td>20%</td><td>80%</td><td>16.0</td></tr>
+      <tr><td>UI/UX</td><td>15%</td><td>54%</td><td>8.1</td></tr>
+      <tr><td>Performance</td><td>15% excluded</td><td>Not Tested</td><td>—</td></tr>
+      <tr><td>SEO</td><td>10%</td><td>33%</td><td>3.3</td></tr>
+      <tr><td>Compatibility</td><td>5%</td><td>100%</td><td>5.0</td></tr>
+      <tr><td>Content</td><td>5%</td><td>33%</td><td>1.7</td></tr>
+      <tr><td>Total</td><td>85% of the default weights</td><td></td><td>58.4 / 85 = 69%</td></tr>
+    </tbody>
+  </table>
+  <p>API 67%, database 50%, and deployment 50% are shown in their sections and are not folded into this 69%.</p>
+  <table>
+    <thead><tr><th>Score</th><th>Rating</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>69%</td><td>Critical</td><td>Not ready for production</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>15. Final status</h2>
+  <p><strong>Not Ready for Production</strong></p>
+  <p>The second pass saved a tenancy on the server, created a second property, invited and revoked a person, stored an EICR and a shared document the tenant could download, recorded a bank payment, voided an invoice, accepted a tenant repair, showed a calendar event to the tenant, saved right to rent and a notice, updated the tenant profile, and declined a rent correction without changing the £1,250 rent. Landlord contact, property manager, and estate owner reached their own workspaces. Opening another account’s property or invoice returned 403.</p>
+  <p>What must be fixed before a public release: orphan memberships must not lock a valid account out (BUG-001); the tenancy edit button must save without a property manager (BUG-002); the Landlord Basic description must match the limit of 5 properties (BUG-003); bank details must show on an open tenant invoice when they are saved (BUG-004); the rent webhook secret must be set (BUG-009); debug must be off outside local machines (BUG-010).</p>
+  <p>No Critical defect blocked a core flow after the orphan staging rows were removed. High issues remain, so this build is not production-ready. The contractor still lands on a tenant-only page. Public robots.txt blocks crawlers and there is no sitemap.</p>
+</section>
+
+<section>
+  <h2>16. Testing limitations</h2>
+  <ul>
+    <li>Stripe sandbox was intentional. Checkout was completed with the public test card. Live mode was not used.</li>
+    <li>The first landlord login failed until orphan staging memberships were deleted. Results after that point use the repaired local rows.</li>
+    <li>The staging seeder was run on this local database before the walkthrough. It created Staging Landlord Account and related rows.</li>
+    <li>Invite, revoke, an EICR upload, a shared document, a bank payment, a void, a second property, a tenant repair, a calendar event, right to rent, a notice, profile changes, and a correction rejection were submitted on the staging landlord account.</li>
+    <li>Mail delivery was not confirmed. A password reset token exists for the invitee. The queue connection is sync. Backups were not run.</li>
+    <li>A signed rent webhook was not sent because the rent webhook secret is empty. An unsigned post returned 400.</li>
+    <li>No Firefox, Edge, Safari, Android, iPhone, or tablet device was used. Mobile coverage is still one emulated Chrome viewport of the tenant rent page.</li>
+    <li>No timing, query, or asset-size measurements were taken.</li>
+    <li>The public homepage, robots.txt, and sitemap were fetched. Open Graph was not checked.</li>
+    <li>A separate live landlord account exists in this database and was not logged into.</li>
+  </ul>
+</section>
+
 </div>
-</section>
-
-<section>
-<h2>2. Testing Summary</h2>
-<table>
-<thead><tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Not Tested</th><th>Status</th></tr></thead>
-<tbody>
-<tr><td>Functional Testing</td><td>98</td><td>75</td><td>14</td><td>9</td><td>Fail</td></tr>
-<tr><td>Security Testing</td><td>11</td><td>9</td><td>2</td><td>0</td><td>Fail</td></tr>
-<tr><td>UI/UX Testing</td><td>4</td><td>4</td><td>0</td><td>0</td><td>Pass</td></tr>
-<tr><td>Performance Testing</td><td>1</td><td>0</td><td>0</td><td>1</td><td>Not Tested</td></tr>
-<tr><td>SEO Testing</td><td>8</td><td>2</td><td>6</td><td>0</td><td>Fail</td></tr>
-<tr><td>Content Testing</td><td>7</td><td>2</td><td>5</td><td>0</td><td>Fail</td></tr>
-<tr><td>Compatibility Testing</td><td>7</td><td>2</td><td>0</td><td>5</td><td>Pass</td></tr>
-<tr><td>API Testing</td><td>3</td><td>2</td><td>0</td><td>1</td><td>Pass</td></tr>
-<tr><td>Database Testing</td><td>6</td><td>4</td><td>1</td><td>1</td><td>Fail</td></tr>
-<tr><td>Production / Deployment Testing</td><td>8</td><td>5</td><td>0</td><td>3</td><td>Pass</td></tr>
-</tbody>
-</table>
-<p>Not Tested rows are left out of each category score. API, database, and deployment are reported and are not part of the weighted score.</p>
-</section>
-
-<section>
-<h2>3. Functional Testing</h2>
-<p>Each inventory feature was opened with a staging login, or marked Not Tested where the action would charge a card, send a reset email, archive a home, or create a new signup.</p>
-<table>
-<thead><tr><th>ID</th><th>Module</th><th>Test case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>F01</td><td>Auth</td><td>Tenant signs in and lands on the portal home</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F02</td><td>Auth</td><td>Landlord signs in and lands on the portfolio dashboard</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F03</td><td>Auth</td><td>Invalid login shows a generic mismatch message</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F04</td><td>Auth</td><td>Empty login fields stay on the form</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F05</td><td>Auth</td><td>Logout returns to the sign-in page</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F06</td><td>Auth</td><td>Forgot-password page opens</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F07</td><td>Auth</td><td>Register without a plan returns to pricing</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F08</td><td>Auth</td><td>Signed-out visits to the dashboard, rent, and operator accounts redirect to login</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F09</td><td>Tenant</td><td>Portal home shows the staging address, £1,250 outstanding, and one open repair</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F10</td><td>Tenant</td><td>My tenancy shows rent, dates, deposit, and household</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F11</td><td>Tenant</td><td>Confirm details: Looks correct saved and the lease shows Confirmed on 25 Sep 2026</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F12</td><td>Tenant</td><td>Send a correction request</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td class="rec">The form was on the confirm dialog. The request was not sent, so the landlord approve and reject path was not exercised.</td></tr>
-<tr><td>F13</td><td>Tenant</td><td>Invoice list shows RENT-0001 unpaid, due 2 Oct 2026</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F14</td><td>Tenant</td><td>Invoice detail shows property, balance, note, print, and pay</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F15</td><td>Tenant</td><td>Card payment</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td class="rec">The Pay button is present. It was not submitted, so no Stripe session was created.</td></tr>
-<tr><td>F16</td><td>Tenant</td><td>Bank transfer details on the invoice</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td class="rec">The card stays hidden until a rent bank record exists. None was saved during this run. <span class="path">resources/views/backend/tenant/portal/_bank-transfer.blade.php</span></td></tr>
-<tr><td>F17</td><td>Tenant</td><td>Payment return page</td><td><span class="badge nt">Not Tested</span></td><td>Medium</td><td class="rec">Needs a completed Stripe Checkout session.</td></tr>
-<tr><td>F18</td><td>Tenant</td><td>Repair list shows the staging repair and status steps</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F19</td><td>Tenant</td><td>Raise-a-repair form requires a photo and lists complaint windows</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">The form was not submitted. See BUG-010 for the category list.</td></tr>
-<tr><td>F20</td><td>Tenant</td><td>Shared documents empty state</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F21</td><td>Tenant</td><td>Visits calendar for September 2026, empty state</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F22</td><td>Tenant</td><td>Contact details form is filled with the staging name, email, and phone</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">Save was not submitted.</td></tr>
-<tr><td>F23</td><td>Tenant</td><td>Password form is present</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">The password was not changed.</td></tr>
-<tr><td>F24</td><td>Tenant</td><td>In-app rent notice is readable</td><td><span class="badge fail">Fail</span></td><td>High</td><td class="rec">Store plain text, or sanitise before display. <span class="path">resources/views/backend/tenant/portal/notifications.blade.php</span> line 21 prints the stored HTML as text.</td></tr>
-<tr><td>F25</td><td>Tenant</td><td>Email and in-app preference toggles and Save preferences</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">Save was not submitted. Labels are covered under content.</td></tr>
-<tr><td>F26</td><td>Tenant</td><td>Phone bar: Home, Rent, Repairs, Docs, Me. At 390px, scroll width equals the viewport</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F27</td><td>Landlord</td><td>Dashboard shows Lara Landlord, plan usage, certificates, and deposit attention links</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F28</td><td>Landlord</td><td>Portfolio</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F29</td><td>Landlord</td><td>Create property page</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">A property was not saved.</td></tr>
-<tr><td>F30</td><td>Landlord</td><td>Quick create</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F31</td><td>Landlord</td><td>Create page includes address and postcode fields</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">A live lookup was not submitted.</td></tr>
-<tr><td>F32</td><td>Landlord</td><td>Deleted properties screen</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F33</td><td>Landlord</td><td>Property control centre for the staging home</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F34</td><td>Landlord</td><td>Edit property</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">Changes were not saved.</td></tr>
-<tr><td>F35</td><td>Landlord</td><td>Brochure downloads as a PDF</td><td><span class="badge pass">Pass</span></td><td>Low</td><td class="rec">-</td></tr>
-<tr><td>F36</td><td>Landlord</td><td>Archive and restore</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td class="rec">Not submitted. It would soft-delete the staging home and void open rent invoices.</td></tr>
-<tr><td>F37</td><td>Landlord</td><td>Tenancy list</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F38</td><td>Landlord</td><td>Create tenancy page</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">A tenancy was not saved.</td></tr>
-<tr><td>F39</td><td>Landlord</td><td>Tenancy detail, including deposit and correction area</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F40</td><td>Landlord</td><td>Tenancy edit includes rent due day</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F41</td><td>Landlord</td><td>Rent ledger shows RENT-0001</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F42</td><td>Landlord</td><td>Deposit protection is shown as not recorded on the tenant lease</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F43</td><td>Landlord</td><td>Finance list includes the new invoice</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F44</td><td>Landlord</td><td>Create rent invoice. RENT-0001 was issued for tenancy 261</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F45</td><td>Landlord</td><td>Invoice screen has record-payment and void controls</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">Neither payment nor void was submitted.</td></tr>
-<tr><td>F46</td><td>Landlord</td><td>Recurring invoice command exits 0 and reports 0 created on 25 Sep 2026</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F47</td><td>Landlord</td><td>Issuing the invoice created an in-app notice for the tenant</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">The mailbox was not checked on this run. The notice body is BUG-009.</td></tr>
-<tr><td>F48</td><td>Landlord</td><td>Rent-pay settings page includes sort code</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">Bank details were not saved.</td></tr>
-<tr><td>F49</td><td>Landlord</td><td>Repair desk</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F50</td><td>Landlord</td><td>Raise repair page</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">Not submitted.</td></tr>
-<tr><td>F51</td><td>Landlord</td><td>Repair detail for the staging issue</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F52</td><td>Landlord</td><td>Scope-of-work PDF returns HTTP 200</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F53</td><td>Landlord</td><td>Document library</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">A file was not uploaded.</td></tr>
-<tr><td>F54</td><td>Landlord</td><td>Certificates lists missing Gas, EPC, and EICR with Share with tenant</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">Share was not submitted, so the tenant document list stayed empty.</td></tr>
-<tr><td>F55</td><td>Landlord</td><td>People page includes invite</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">Invite, resend, and revoke were not submitted.</td></tr>
-<tr><td>F56</td><td>Landlord</td><td>Owner groups</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F57</td><td>Landlord</td><td>Calendar</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">A visit was not created.</td></tr>
-<tr><td>F58</td><td>Landlord</td><td>Notification inbox</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">Mark read was not submitted.</td></tr>
-<tr><td>F59</td><td>Landlord</td><td>Notification preferences at /admin/notification-preferences</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F60</td><td>Landlord</td><td>Billing page</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">Stripe billing portal and add-on checkout were not opened.</td></tr>
-<tr><td>F61</td><td>Landlord</td><td>Profile edit includes a password field</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">Password was not changed.</td></tr>
-<tr><td>F62</td><td>Landlord</td><td>Staff, roles, offers, SMTP, and SaaS plans return 403</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F63</td><td>Landlord</td><td>Signup, OTP, and plan checkout</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td class="rec">Would create an account and a Stripe session.</td></tr>
-<tr><td>F64</td><td>Landlord</td><td>Password reset email</td><td><span class="badge nt">Not Tested</span></td><td>Medium</td><td class="rec">The form is available. Submit was not used.</td></tr>
-<tr><td>F65</td><td>Landlord</td><td>First-home onboarding overlay</td><td><span class="badge nt">Not Tested</span></td><td>Medium</td><td class="rec">This landlord already has a home, so the first-home overlay was not shown.</td></tr>
-<tr><td>F66</td><td>Admin</td><td>Operator accounts list includes the staging landlord account</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F67</td><td>Admin</td><td>Plans list and create-plan page</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">A plan was not saved.</td></tr>
-<tr><td>F68</td><td>Admin</td><td>Add-ons list and create-add-on page</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">An add-on was not saved.</td></tr>
-<tr><td>F69</td><td>Admin</td><td>Subscriptions list and the staging subscription</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">Trial was not extended.</td></tr>
-<tr><td>F70</td><td>Admin</td><td>Platform billing</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F71</td><td>Admin</td><td>Signup registrations queue</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">Approve and reject were not submitted.</td></tr>
-<tr><td>F72</td><td>Admin</td><td>Account detail for the staging landlord account</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F73</td><td>Admin</td><td>Super admin opens staff, roles, and SMTP</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F74</td><td>Admin</td><td>DSAR delete dry-run for the staging tenant prints the anonymise plan and writes nothing</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">--force was not used.</td></tr>
-<tr><td>F75</td><td>Admin</td><td>launch:assert-money-config and launch:assert-ops both succeed for env=local. failed_jobs is 0</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F76</td><td>Admin</td><td>Login as another account</td><td><span class="badge nt">Not Tested</span></td><td>High</td><td class="rec">Impersonation was not started.</td></tr>
-<tr><td>F77</td><td>Estate</td><td>Branches, offers, and trial balance open for the estate owner</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F78</td><td>Estate</td><td>Estate owner opens staff</td><td><span class="badge fail">Fail</span></td><td>High</td><td class="rec">HTTP 403. Staff index requires the view all staffs permission. <span class="path">app/Http/Controllers/Backend/StaffController.php</span> lines 27–28. Super admin can open the same URL.</td></tr>
-<tr><td>F79</td><td>Estate</td><td>Estate owner opens roles</td><td><span class="badge fail">Fail</span></td><td>High</td><td class="rec">HTTP 403. Super admin receives 200 on /admin/roles.</td></tr>
-<tr><td>F80</td><td>Estate</td><td>Estate owner opens SMTP settings</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td class="rec">HTTP 403. Super admin receives 200 on /admin/smtp-settings.</td></tr>
-<tr><td>F81</td><td>Contractor</td><td>Contractor repairs page opens</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F82</td><td>Public</td><td>Pricing shows only customer-facing paid plans</td><td><span class="badge fail">Fail</span></td><td>High</td><td class="rec">Active landlord plans named Billing Limit and Money Guard are listed at £0, including “1 properties included”. <span class="path">resources/views/frontend/pricing.blade.php</span> line 58. Deactivate internal plans or filter them out of the public query.</td></tr>
-<tr><td>F83</td><td>Gap</td><td>Two-factor sign-in</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td class="rec">The sign-in form is email and password only. No second step was found.</td></tr>
-<tr><td>F84</td><td>Gap</td><td>Tenant data export or delete-my-data screen</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td class="rec">Profile has contact and password only. Delete exists as the artisan dry-run in F74, not as a tenant screen.</td></tr>
-<tr><td>F85</td><td>Gap</td><td>Repair follow-up after the first report</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td class="rec">The tenant repair card shows status steps and does not offer a follow-up message.</td></tr>
-<tr><td>F86</td><td>Gap</td><td>Deposit return or dispute</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td class="rec">The lease only says protection has not been recorded. No return or dispute action was found.</td></tr>
-<tr><td>F87</td><td>Gap</td><td>Second landlord login on the same account</td><td><span class="badge fail">Fail</span></td><td>Low</td><td class="rec">People invite is for portal access. A second landlord login was not found as its own flow.</td></tr>
-<tr><td>F88</td><td>Gap</td><td>Tenant confirm or decline a visit</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td class="rec">The calendar is view-only. No confirm or decline control exists on the empty calendar.</td></tr>
-<tr><td>F89</td><td>Gap</td><td>Rent-change notice</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td class="rec">Tenancy edit can change rent. No separate rent-change notice workflow was found.</td></tr>
-<tr><td>F90</td><td>Gap</td><td>Move-out checklist</td><td><span class="badge fail">Fail</span></td><td>Low</td><td class="rec">The lease shows the move-out date and no checklist.</td></tr>
-<tr><td>F91</td><td>Tenant</td><td>Signed-in tenant opening /admin/dashboard is sent to the portal home</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>F92</td><td>Health</td><td>/up returns 200</td><td><span class="badge pass">Pass</span></td><td>Low</td><td class="rec">-</td></tr>
-<tr><td>F93</td><td>Errors</td><td>Unknown URL shows a branded 404 without a stack trace</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F94</td><td>Landlord</td><td>Notification delivery log opens</td><td><span class="badge pass">Pass</span></td><td>Low</td><td class="rec">Retry was not submitted.</td></tr>
-<tr><td>F95</td><td>Tenant</td><td>Right to rent is not a separate tenant screen; tenancy type is shown as Assured Shorthold</td><td><span class="badge pass">Pass</span></td><td>Low</td><td class="rec">-</td></tr>
-<tr><td>F96</td><td>Admin</td><td>Operator dashboard opens for the super admin</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>F97</td><td>Estate</td><td>Job types reference data opens for the estate owner</td><td><span class="badge pass">Pass</span></td><td>Low</td><td class="rec">-</td></tr>
-<tr><td>F98</td><td>Landlord</td><td>Compliance reminder command notifies on days that are not exact milestones</td><td><span class="badge fail">Fail</span></td><td>High</td><td class="rec"><span class="path">app/Console/Commands/SendDueCrmNotifications.php</span> deadlineMilestone at line 424 only continues on the configured days, the day after due, and weekly overdue. A certificate at 45 days produces no notice. Confirmed by ComplianceHttpTest on the isolated database.</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>4. Bug / Issue Report</h2>
-<table>
-<thead><tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>BUG-001</td><td>Pricing</td><td>Public pricing lists many active Billing Limit and Money Guard plans at £0, and the line “1 properties included”.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td class="rec">Stop publishing internal £0 plans. Pluralise the property line in <span class="path">resources/views/frontend/pricing.blade.php</span> line 58.</td></tr>
-<tr><td>BUG-002</td><td>Auth</td><td>Login accepts unlimited attempts. No rate limiter on AuthController::login.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td class="rec">Throttle <span class="path">app/Http/Controllers/Auth/AuthController.php</span> login() at line 25, and the login route.</td></tr>
-<tr><td>BUG-003</td><td>Compliance</td><td>Certificate reminders are skipped unless the date is an exact milestone or a weekly overdue point.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">app/Console/Commands/SendDueCrmNotifications.php</span> line 424. Notify for the whole window inside 60 days, or change the test if exact days are the product rule.</td></tr>
-<tr><td>BUG-004</td><td>Security</td><td>Login responses send X-Powered-By: PHP/8.2.12 and do not send Content-Security-Policy, X-Frame-Options, or X-Content-Type-Options.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec">Remove the powered-by header and add the three response headers in the HTTP stack.</td></tr>
-<tr><td>BUG-005</td><td>Marketing</td><td>The homepage sells a letting-agency workflow. The landlord plan blocks those routes.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">resources/views/frontend/index.blade.php</span> around line 124. Match the page to the landlord product.</td></tr>
-<tr><td>BUG-006</td><td>SEO</td><td>Public pages use a bare title, no meta description, no canonical, robots.txt disallows every agent, and /sitemap.xml is 404.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">public/robots.txt</span> and the public layout. Allow indexing only if this site should be public.</td></tr>
-<tr><td>BUG-007</td><td>Tests</td><td>LandlordFinanceHttpTest still expects “No rent invoices yet”. The rent screen says “Your landlord has not sent a rent invoice yet”.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">tests/Feature/LandlordFinanceHttpTest.php</span> around line 458. Update the expected copy.</td></tr>
-<tr><td>BUG-008</td><td>Seed</td><td>NoteTypeSeeder inserts “General” again and fails when the row already exists.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">database/seeders/NoteTypeSeeder.php</span>. Use updateOrCreate.</td></tr>
-<tr><td>BUG-009</td><td>Notices</td><td>The tenant sees the invoice notice as raw tags, including a paragraph and an anchor, twice for the same invoice.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">resources/views/backend/tenant/portal/notifications.blade.php</span> line 21. Save plain text. The Open link already uses payload action_url.</td></tr>
-<tr><td>BUG-010</td><td>Repairs</td><td>The tenant raise form lists global categories, including “Handoff …”, “Isolation test”, and several Kitchen rows.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">app/Http/Controllers/Backend/TenantPortalController.php</span> lines 214–223. Limit categories to ones meant for tenants.</td></tr>
-<tr><td>BUG-011</td><td>Estate</td><td>The estate owner receives 403 on staff, roles, and SMTP. The super admin receives 200.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td class="rec">Give the Estate Agent role the staff and role permissions if agencies should manage their own team. <span class="path">app/Http/Controllers/Backend/StaffController.php</span> line 28.</td></tr>
-<tr><td>BUG-012</td><td>Notices</td><td>Preference names are title-cased event keys such as “Tenancy Details Correction Requested”.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td class="rec"><span class="path">resources/views/backend/tenant/portal/notifications.blade.php</span> line 46. Use the human label from the notification config.</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>5. Security Testing</h2>
-<table>
-<thead><tr><th>ID</th><th>Security check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>S01</td><td>Failed login does not say which field was wrong</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">-</td></tr>
-<tr><td>S02</td><td>Session cookie is HttpOnly and SameSite=Lax</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">Secure is absent because this server is HTTP. Set it when the site is served over HTTPS.</td></tr>
-<tr><td>S03</td><td>Login is throttled</td><td><span class="badge fail">Fail</span></td><td>High</td><td class="rec">BUG-002. <span class="path">app/Http/Controllers/Auth/AuthController.php</span> line 25.</td></tr>
-<tr><td>S04</td><td>Security headers on /login</td><td><span class="badge fail">Fail</span></td><td>Medium</td><td class="rec">BUG-004.</td></tr>
-<tr><td>S05</td><td>Unsigned Stripe webhook posts are rejected</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">Both webhook URLs returned 400 without a signature.</td></tr>
-<tr><td>S06</td><td>Tenant dashboard URL redirects into the portal</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>S07</td><td>Landlord is denied staff, roles, offers, SMTP, and plans</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-<tr><td>S08</td><td>Isolation and portal payment tests on the separate QA database</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">Those PHPUnit classes passed after roles were seeded. They were not a substitute for the signed-in walk.</td></tr>
-<tr><td>S09</td><td>Passwords are checked with Auth::attempt</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec"><span class="path">app/Http/Controllers/Auth/AuthController.php</span> line 34.</td></tr>
-<tr><td>S10</td><td>Debug bar is not rendered on the local app pages that were opened</td><td><span class="badge pass">Pass</span></td><td>Medium</td><td class="rec">APP_DEBUG remains true in this local environment. Non-local boot forces it off in AppServiceProvider.</td></tr>
-<tr><td>S11</td><td>Login form posts a CSRF token</td><td><span class="badge pass">Pass</span></td><td>High</td><td class="rec">-</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>6. UI/UX Testing</h2>
-<table>
-<thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>U01</td><td>Tenant home</td><td>Welcome, address, outstanding rent, and repair are readable on desktop</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
-<tr><td>U02</td><td>Tenant phone</td><td>390px width does not overflow. Bottom navigation is in the page</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
-<tr><td>U03</td><td>Login</td><td>Sign-in heading, email, password, and forgot-password link are present</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
-<tr><td>U04</td><td>Landlord invoice</td><td>Record payment and void are labelled and reachable</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>7. Performance Testing</h2>
-<table>
-<thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>P01</td><td>Page timing</td><td>Measured load time, query count, and asset weight</td><td><span class="badge nt">Not Tested</span></td><td>Medium</td><td class="rec">Not Tested - Measurement unavailable in current environment. Pages returned without a timeout. No millisecond figures were recorded.</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>8. SEO Testing</h2>
-<table>
-<thead><tr><th>ID</th><th>SEO check</th><th>Status</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>SEO01</td><td>Public page title</td><td><span class="badge fail">Fail</span></td><td class="rec">Homepage title is only “Resisquare”.</td></tr>
-<tr><td>SEO02</td><td>Meta description</td><td><span class="badge fail">Fail</span></td><td class="rec">No meta description in the public views that were searched.</td></tr>
-<tr><td>SEO03</td><td>H1</td><td><span class="badge fail">Fail</span></td><td class="rec">The homepage H1 is the Book a Demo dialog, not the page subject.</td></tr>
-<tr><td>SEO04</td><td>Canonical and Open Graph</td><td><span class="badge fail">Fail</span></td><td class="rec">Not present on the public layout.</td></tr>
-<tr><td>SEO05</td><td>robots.txt</td><td><span class="badge fail">Fail</span></td><td class="rec"><span class="path">public/robots.txt</span> disallows / for every agent.</td></tr>
-<tr><td>SEO06</td><td>Sitemap</td><td><span class="badge fail">Fail</span></td><td class="rec">/sitemap.xml returned 404.</td></tr>
-<tr><td>SEO07</td><td>Login title</td><td><span class="badge pass">Pass</span></td><td class="rec">Title is “Sign in · Resisquare”.</td></tr>
-<tr><td>SEO08</td><td>404</td><td><span class="badge pass">Pass</span></td><td class="rec">Branded 404, no stack trace.</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>9. Content Testing</h2>
-<table>
-<thead><tr><th>ID</th><th>Content check</th><th>Status</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>C01</td><td>Public prices</td><td><span class="badge fail">Fail</span></td><td class="rec">BUG-001.</td></tr>
-<tr><td>C02</td><td>Homepage service description</td><td><span class="badge fail">Fail</span></td><td class="rec">BUG-005.</td></tr>
-<tr><td>C03</td><td>Tenant notice body</td><td><span class="badge fail">Fail</span></td><td class="rec">BUG-009.</td></tr>
-<tr><td>C04</td><td>Preference labels</td><td><span class="badge fail">Fail</span></td><td class="rec">BUG-012.</td></tr>
-<tr><td>C05</td><td>Repair category names shown to a tenant</td><td><span class="badge fail">Fail</span></td><td class="rec">BUG-010.</td></tr>
-<tr><td>C06</td><td>Tenant empty states for documents, calendar, and payments</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
-<tr><td>C07</td><td>Certificate page copy names Gas, EPC, and EICR in plain language</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>10. Browser &amp; Device Testing</h2>
-<table>
-<thead><tr><th>Browser / device</th><th>Status</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>Chrome desktop</td><td><span class="badge pass">Pass</span></td><td class="rec">Tenant, landlord, and login flows were used in the Cursor browser.</td></tr>
-<tr><td>Phone-sized viewport, 390px</td><td><span class="badge pass">Pass</span></td><td class="rec">Tenant home. No horizontal overflow.</td></tr>
-<tr><td>Firefox desktop</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
-<tr><td>Edge desktop</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
-<tr><td>Safari</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
-<tr><td>Android and iPhone devices</td><td><span class="badge nt">Not Tested</span></td><td class="rec">Only a resized viewport was used.</td></tr>
-<tr><td>Tablet</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>11. API Testing</h2>
-<table>
-<thead><tr><th>ID</th><th>API / feature</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>A01</td><td>Stripe webhooks</td><td>POST without a signature</td><td><span class="badge pass">Pass</span></td><td class="rec">HTTP 400 on both webhook URLs.</td></tr>
-<tr><td>A02</td><td>Login</td><td>Valid and invalid form posts</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
-<tr><td>A03</td><td>Rent card checkout</td><td>Create a Checkout session</td><td><span class="badge nt">Not Tested</span></td><td class="rec">The pay button was not used.</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>12. Database Testing</h2>
-<table>
-<thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>D01</td><td>Rent invoice insert for tenancy 261</td><td><span class="badge pass">Pass</span></td><td class="rec">RENT-0001, id 206, unpaid £1,250.</td></tr>
-<tr><td>D02</td><td>Tenancy confirmation update</td><td><span class="badge pass">Pass</span></td><td class="rec">details_status became confirmed and the lease shows 25 Sep 2026.</td></tr>
-<tr><td>D03</td><td>DSAR dry-run writes nothing</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
-<tr><td>D04</td><td>Recurring generator does not invent an invoice when none is due</td><td><span class="badge pass">Pass</span></td><td class="rec">Created 0.</td></tr>
-<tr><td>D05</td><td>NoteTypeSeeder can run twice</td><td><span class="badge fail">Fail</span></td><td class="rec">BUG-008.</td></tr>
-<tr><td>D06</td><td>Archive, void, and forced DSAR delete</td><td><span class="badge nt">Not Tested</span></td><td class="rec">Those writes were not performed.</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>13. Production / Deployment Testing</h2>
-<table>
-<thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>R01</td><td>Local site responds</td><td><span class="badge pass">Pass</span></td><td class="rec">http://127.0.0.1:8001</td></tr>
-<tr><td>R02</td><td>HTTPS</td><td><span class="badge nt">Not Tested</span></td><td class="rec">This host is HTTP.</td></tr>
-<tr><td>R03</td><td>SMTP send from an earlier check in this audit</td><td><span class="badge pass">Pass</span></td><td class="rec">Two test messages were accepted. This walk did not send another.</td></tr>
-<tr><td>R04</td><td>Money and ops assert commands on local</td><td><span class="badge pass">Pass</span></td><td class="rec">Both commands said OK for env=local. That is not a production sign-off.</td></tr>
-<tr><td>R05</td><td>Scheduler entries listed by the ops assert</td><td><span class="badge pass">Pass</span></td><td class="rec">Recurring rent, CRM notifications, retry, reminders, and penalties are listed. Cron was not watched on a server.</td></tr>
-<tr><td>R06</td><td>failed_jobs</td><td><span class="badge pass">Pass</span></td><td class="rec">Count reported as 0.</td></tr>
-<tr><td>R07</td><td>Production host, backups, and workers</td><td><span class="badge nt">Not Tested</span></td><td class="rec">No production host was provided.</td></tr>
-<tr><td>R08</td><td>Card payment gateway</td><td><span class="badge nt">Not Tested</span></td><td class="rec">No charge was made.</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>14. Overall Score</h2>
-<table>
-<thead><tr><th>Category</th><th>Weight</th><th>Passed / applicable</th><th>Category score</th></tr></thead>
-<tbody>
-<tr><td>Functional</td><td>30%</td><td>75 / 89</td><td>84%</td></tr>
-<tr><td>Security</td><td>20%</td><td>9 / 11</td><td>82%</td></tr>
-<tr><td>UI/UX</td><td>15%</td><td>4 / 4</td><td>100%</td></tr>
-<tr><td>Performance</td><td>15%</td><td>Excluded</td><td>Not Tested</td></tr>
-<tr><td>SEO</td><td>10%</td><td>2 / 8</td><td>25%</td></tr>
-<tr><td>Compatibility</td><td>5%</td><td>2 / 2</td><td>100%</td></tr>
-<tr><td>Content</td><td>5%</td><td>2 / 7</td><td>29%</td></tr>
-</tbody>
-</table>
-<p>Tested weights sum to 85%. Weighted points are 65.57. Divided by 0.85, the overall score is <strong>77%</strong>.</p>
-<table>
-<thead><tr><th>Score</th><th>Rating</th><th>Recommendation</th></tr></thead>
-<tbody>
-<tr><td>77%</td><td>Poor</td><td>More testing required, and the open high issues have to be fixed before deployment.</td></tr>
-</tbody>
-</table>
-</section>
-
-<section>
-<h2>15. Final Status</h2>
-<p><strong>Needs Fixes and Retesting</strong></p>
-<p>Signed-in tenant, landlord, and super-admin screens for the built inventory open and show the staging home, tenancy, invoice, repair, certificates, and operator tools. Landlord plan blocks on staff, roles, offers, SMTP, and plans hold.</p>
-<p>Three high issues are still open: public £0 plans, login with no throttle, and compliance reminders that skip dates between milestones. Medium issues include raw HTML in tenant notices, test repair categories on the tenant form, missing security headers, and the estate owner being unable to open staff, roles, or SMTP.</p>
-<p>Retest those defects after they are fixed. A production deploy is not recommended from this run. Card pay, payment return, archive, signup checkout, and password-reset email were not executed.</p>
-</section>
-
-<section>
-<h2>16. Testing Limitations</h2>
-<ul>
-<li>No production host was used. Port 8000 on this machine is a different application and was not part of this test.</li>
-<li>Card payment, Stripe billing portal, signup OTP, and password-reset email were not submitted.</li>
-<li>Archive, void, revoke, password change, and DSAR --force were not run.</li>
-<li>A £1,250 invoice, RENT-0001, was created on the staging tenancy so the tenant invoice screens could be opened. The tenant confirmation was submitted and now shows Confirmed on 25 Sep 2026.</li>
-<li>Bank-transfer details were not shown because no rent bank record was saved.</li>
-<li>Correction-request submit, visit booking, document upload, and certificate share were not posted.</li>
-<li>Firefox, Edge, Safari, and physical phones were not used.</li>
-<li>Page-load timings were not measured, so performance is excluded from the score.</li>
-<li>The first full PHPUnit run failed mostly because the isolated database had no roles. Those failures are not product defects. After the role seed, two tests remained failed: compliance reminders (BUG-003) and a stale rent empty-state string (BUG-007).</li>
-</ul>
-</section>
-<footer>Generated 25 Sep 2026. Evidence is from the local server and the files named in the recommendation column. Secrets are not included.</footer>
-</div>
+<footer>Report generated 5 October 2026. Resisquare landlord and tenant module. Standalone HTML, no external assets.</footer>
 </body>
 </html>

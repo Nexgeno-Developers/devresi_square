@@ -7,6 +7,7 @@ use App\Models\Registration;
 use App\Models\User;
 use App\Services\Onboarding\LandlordOnboardingService;
 use App\Services\Saas\StripeCheckoutService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use RuntimeException;
@@ -19,6 +20,8 @@ use Tests\TestCase;
  */
 class SignupTrialFirstHomeHttpTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_otp_verify_without_stripe_lands_in_trial_with_first_home_overlay(): void
     {
         Mail::fake();

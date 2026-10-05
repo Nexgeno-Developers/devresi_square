@@ -3,7 +3,7 @@
         'landlord' => [
             'eyebrow' => 'Landlord workspace', 'title' => 'Your property portfolio',
             'subtitle' => 'Keep an eye on occupancy, maintenance and the day-to-day health of your properties.',
-            'gradient' => 'linear-gradient(120deg,#064e3b,#0f766e)', 'icon' => 'bi-house-heart',
+            'gradient' => 'linear-gradient(120deg,#0f173a,#ff5c1d)', 'icon' => 'bi-house-heart',
             'metrics' => [
                 ['Portfolio properties', $propertiesCount, 'bi-buildings', 'primary'],
                 ['Active tenancies', $activeTenanciesCount, 'bi-key', 'success'],

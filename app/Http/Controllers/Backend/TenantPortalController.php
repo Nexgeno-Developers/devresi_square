@@ -88,6 +88,8 @@ class TenantPortalController extends Controller
         $accountId = current_account_id();
         $tenancies = $portal->tenanciesFor($user, $accountId);
         $invoices = $portal->invoicesFor($user, $accountId, $tenancies);
+        $rentCheckout->reconcileOpenCheckouts($invoices);
+        $invoices = $portal->invoicesFor($user, $accountId, $tenancies);
         $outstanding = $invoices->sum(fn ($invoice) => (float) ($invoice->balance_amount ?? $invoice->total_amount ?? 0));
         $cardReady = $rentCheckout->isConfigured();
         $cardPaused = $this->cardPaymentsPaused();
@@ -120,6 +122,8 @@ class TenantPortalController extends Controller
         $user = $request->user();
         $accountId = current_account_id();
         $this->assertTenantInvoice($portal, $user, $accountId, $rentInvoice);
+        $rentCheckout->reconcileOpenCheckouts([$rentInvoice]);
+        $rentInvoice->refresh();
 
         $rentInvoice->load(['property', 'tenancy', 'tenant', 'payments']);
 
@@ -211,16 +215,7 @@ class TenantPortalController extends Controller
             'tenancies' => $tenancies,
             'canRaise' => true,
             'priorityComplaints' => app(RepairComplaintClassifier::class)->tenantOptions(),
-            'categories' => \App\Models\RepairCategory::query()
-                ->whereNull('parent_id')
-                ->where('name', '!=', 'Tenant reported')
-                ->where(function ($query) {
-                    $query->where('status', 1)->orWhereNull('status');
-                })
-                ->orderBy('position')
-                ->orderBy('name')
-                ->limit(12)
-                ->get(),
+            'categories' => \App\Models\RepairCategory::tenantAreaChoices(),
         ]));
     }
 
@@ -250,7 +245,7 @@ class TenantPortalController extends Controller
                     $fail('Choose a morning, afternoon, or evening in the next 60 days.');
                 }
             }],
-            'photo' => 'required|image|max:10240',
+            'photo' => 'nullable|image|max:10240',
         ]);
 
         if (($validated['complaint_code'] ?? null) === 'other') {
@@ -504,6 +499,7 @@ class TenantPortalController extends Controller
             ->where('account_id', $accountId)
             ->where('notifiable_id', $user->id)
             ->where('notifiable_type', $user->getMorphClass())
+            ->where('channel', 'system')
             ->orderByDesc('id')
             ->limit($limit)
             ->get();

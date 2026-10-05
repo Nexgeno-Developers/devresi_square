@@ -4,12 +4,15 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Services\Saas\ProductionMoneyConfig;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class LaunchMoneyConfigHttpTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_assert_money_config_fails_when_production_mail_is_log(): void
     {
         config([

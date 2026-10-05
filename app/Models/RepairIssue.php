@@ -70,6 +70,11 @@ class RepairIssue extends Model
     /**
      * Get the associated property for this repair issue.
      */
+    public function scopeOpen($query)
+    {
+        return $query->whereNotIn('status', ['Closed', 'Invoice Paid']);
+    }
+
     public function property()
     {
         return $this->belongsTo(Property::class);

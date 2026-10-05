@@ -42,7 +42,7 @@
          <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('backend.dashboard') ? 'active' : '' }}"
                 href="{{ route('backend.dashboard') }}" >
-                <span class="icon_wrapper"><i class="fa-solid fa-tachometer-alt"></i>Dashboard</span>
+                <span class="icon_wrapper"><i class="bi bi-grid"></i>Dashboard</span>
             </a>
         </li>
         @endunless
@@ -1157,9 +1157,9 @@
 
         @endunless
     </ul>
-     <div class="footer_user_profile_menu position-relative">
+     <div class="footer_user_profile_menu position-relative{{ is_landlord_plan_user() ? ' dropup' : '' }}">
     
-        <div class="pointer" data-bs-toggle="dropdown" aria-expanded="false">
+        <div class="pointer" data-bs-toggle="dropdown" @if(is_landlord_plan_user()) data-bs-display="static" @endif aria-expanded="false">
              @if(auth()->user()->profile_picture)
                 <img src="{{ asset('storage/' . auth()->user()->profile_picture) }}" alt="Profile" class="rounded-circle profile-img" />
             @elseif(is_landlord_plan_user())
@@ -1180,17 +1180,17 @@
             <div class="flex-grow-1 text-start user-info">
                 <h6 class="mb-0 text-truncate" title="{{ $authUser->name }}">{{ $authUser->name }}</h6>
                 <small title="{{ $authUser->email }}" class="d-block text-truncate">{{ $authUser->email }}</small>
-                <small title="{{ $authUser->access_label }}" class="role-text">{{ $authUser->access_label_type }}: {{ $authUser->access_label }}</small>
+                <small title="{{ $authUser->access_label }}" class="role-text">{{ is_landlord_plan_user() ? $authUser->access_label : $authUser->access_label_type.': '.$authUser->access_label }}</small>
             </div>
         </div>
 
         <ul class="dropdown-menu dropdown-menu-end shadow border-0 user-dropdown-menu">
             <li><a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('admin.users.profile.show') }}">
-                <i class="fas fa-user fa-fw"></i> My Profile
+                <i class="bi bi-person"></i> {{ is_landlord_plan_user() ? 'Profile' : 'My Profile' }}
             </a></li>
 
             <li><a class="dropdown-item d-flex align-items-center gap-2" href="{{ route('admin.users.profile.edit') }}">
-                <i class="fas fa-edit fa-fw"></i> Edit Profile
+                <i class="bi bi-pencil"></i> {{ is_landlord_plan_user() ? 'Edit profile' : 'Edit Profile' }}
             </a></li>
 
             <li><hr class="dropdown-divider"></li>
@@ -1199,7 +1199,7 @@
                 <form action="{{ route('logout') }}" method="POST" class="m-0">
                     @csrf
                     <button type="submit" class="dropdown-item d-flex align-items-center gap-2 text-danger">
-                        <i class="fa-solid fa-sign-out-alt fa-fw"></i> Logout
+                        <i class="bi bi-box-arrow-right"></i> {{ is_landlord_plan_user() ? 'Log out' : 'Logout' }}
                     </button>
                 </form>
             </li>

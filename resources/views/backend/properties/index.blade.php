@@ -162,7 +162,7 @@
                         $activeTenancies = \App\Models\Tenancy::where('property_id', $property->id)
                             ->where('status', 'Active')->count();
                         $openRepairs = \App\Models\RepairIssue::where('property_id', $property->id)
-                            ->whereIn('status', ['Pending', 'Reported', 'Under Process'])->count();
+                            ->open()->count();
                         $complianceCount = $property->complianceRecords()->count();
                         $expiringCompliance = $property->complianceRecords()
                             ->where('expiry_date', '<=', now()->addMonths(2))

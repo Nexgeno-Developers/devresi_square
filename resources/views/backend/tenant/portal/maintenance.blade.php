@@ -10,7 +10,7 @@
         <div>
             <p class="tp-kicker">Maintenance</p>
             <h1>Something broken?</h1>
-            <p>Photo, a short note, and when you can be in.</p>
+            <p>A short note, and when you can be in. A photo is optional.</p>
         </div>
     </div>
 
@@ -39,10 +39,11 @@
             <div class="tp-report-top">
                 <div class="tp-photo-field">
                     <label class="tp-photo-capture">
-                        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment" required>
+                        <input type="file" name="photo" accept="image/jpeg,image/png,image/webp,image/gif" capture="environment">
                         <span class="tp-photo-capture-label">
                             <i class="bi bi-camera"></i>
                             Take or choose a photo
+                            <span class="tp-muted">Optional</span>
                         </span>
                     </label>
                     @error('photo')
@@ -170,10 +171,14 @@
         <div class="tp-request-list">
         @forelse($openRepairs->groupBy(fn ($repair) => (int) ($repair->property_id ?: 0)) as $rows)
             @php $groupAddress = $rows->first()->property?->line_1 ?: 'Repair'; @endphp
-            <h3 class="h6 mt-3" data-address-group="{{ $groupAddress }}">{{ $groupAddress }}</h3>
-            @foreach($rows as $repair)
-            @include('backend.tenant.portal._repair-card', ['repair' => $repair, 'list' => 'open'])
-            @endforeach
+            <section class="tp-request-group">
+                <h3 class="tp-request-home" data-address-group="{{ $groupAddress }}">{{ $groupAddress }}</h3>
+                <div class="tp-request-cards">
+                    @foreach($rows as $repair)
+                        @include('backend.tenant.portal._repair-card', ['repair' => $repair, 'list' => 'open'])
+                    @endforeach
+                </div>
+            </section>
         @empty
             <div class="tp-card">
                 <p class="tp-empty mb-0">No open repairs. Use the form above when something needs fixing.</p>
@@ -183,9 +188,11 @@
         @if($historyRepairs->isNotEmpty())
             <h2 class="tp-section-title mt-4">History</h2>
             <div class="tp-request-list">
-                @foreach($historyRepairs as $repair)
-                    @include('backend.tenant.portal._repair-card', ['repair' => $repair, 'list' => 'history'])
-                @endforeach
+                <div class="tp-request-cards">
+                    @foreach($historyRepairs as $repair)
+                        @include('backend.tenant.portal._repair-card', ['repair' => $repair, 'list' => 'history'])
+                    @endforeach
+                </div>
             </div>
         @endif
     </div>

@@ -141,7 +141,37 @@ class RentStripeCheckoutService
             throw new RuntimeException('Stripe did not return a checkout URL.');
         }
 
+        $invoice->forceFill([
+            'stripe_checkout_session_id' => (string) $session->id,
+        ])->save();
+
         return (string) $session->url;
+    }
+
+    /**
+     * Mark open invoices paid when Stripe already collected the card,
+     * even if the browser never returned from Checkout.
+     *
+     * @param  iterable<int, RentInvoice>  $invoices
+     */
+    public function reconcileOpenCheckouts(iterable $invoices): void
+    {
+        foreach ($invoices as $invoice) {
+            if (! $invoice instanceof RentInvoice || ! $invoice->isOpen()) {
+                continue;
+            }
+
+            $sessionId = trim((string) $invoice->stripe_checkout_session_id);
+            if ($sessionId === '' || ! $this->isConfigured()) {
+                continue;
+            }
+
+            try {
+                $this->fulfillCheckoutSessionId($sessionId);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
     }
 
     public function fulfillCheckoutSessionId(string $sessionId): ?RentPayment

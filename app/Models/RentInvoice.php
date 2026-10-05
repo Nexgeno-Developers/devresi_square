@@ -30,6 +30,7 @@ class RentInvoice extends Model
         'balance',
         'status',
         'note',
+        'stripe_checkout_session_id',
     ];
 
     protected $casts = [

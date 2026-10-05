@@ -6,10 +6,10 @@
     --lab-wash: #f7f7f5;
     --lab-card: #ffffff;
     --lab-brand: #ea580c;
-    --lab-accent: #0f766e;
-    --lab-accent-hot: #0d9488;
-    --lab-accent-2: #115e59;
-    --lab-accent-soft: #f0fdfa;
+    --lab-accent: #0f173a;
+    --lab-accent-hot: #ff5c1d;
+    --lab-accent-2: #1a2454;
+    --lab-accent-soft: #ffefe8;
     --lab-navy: #0b1220;
     --lab-radius: 10px;
     --lab-radius-lg: 12px;
@@ -500,7 +500,7 @@ button.lab-btn,
     height: 140px;
     object-fit: cover;
     display: block;
-    background: #d1fae5;
+    background: #ffccb9;
 }
 
 .prop-card .body { padding: 1rem 1.1rem 1.15rem; }
@@ -548,7 +548,7 @@ button.lab-btn,
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    background: #ccfbf1;
+    background: #ffccb9;
     color: var(--lab-accent-2);
     display: grid;
     place-items: center;
@@ -568,7 +568,7 @@ button.lab-btn,
     height: 52px;
     margin: 0 auto 0.7rem;
     border-radius: 14px;
-    background: #ecfdf5;
+    background: #ffefe8;
     color: var(--lab-accent);
     display: grid;
     place-items: center;
@@ -721,7 +721,7 @@ button.lab-btn,
     font-size: 0.82rem;
     font-weight: 600;
 }
-.cal i.today { background: #ccfbf1; border-color: #99f6e4; }
+.cal i.today { background: #ffefe8; border-color: #ff5c1d; }
 .cal i.event { box-shadow: inset 0 -3px 0 var(--lab-accent); }
 .cal i.mute { color: #cbd5e1; }
 
@@ -761,7 +761,7 @@ button.lab-btn,
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: #ecfdf5;
+    background: #ffefe8;
     color: var(--lab-accent-2);
     display: grid;
     place-items: center;
@@ -777,7 +777,7 @@ button.lab-btn,
     background: #fff;
     cursor: default;
 }
-.choice.is-on { border-color: var(--lab-accent); box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12); }
+.choice.is-on { border-color: var(--lab-accent-hot); box-shadow: 0 0 0 3px rgba(255, 92, 29, 0.28); }
 .choice h3 { margin: 0 0 0.2rem; font-size: 1rem; }
 
 .qa { display: grid; grid-template-columns: 42px 1fr auto; gap: 0.8rem; align-items: center; }
@@ -785,7 +785,7 @@ button.lab-btn,
     width: 42px;
     height: 42px;
     border-radius: 12px;
-    background: #ecfdf5;
+    background: #ffefe8;
     display: grid;
     place-items: center;
     font-weight: 700;
@@ -803,7 +803,7 @@ button.lab-btn,
 }
 
 .login-brand {
-    background: linear-gradient(160deg, #064e3b 0%, #0f766e 55%, #134e4a 100%);
+    background: linear-gradient(160deg, #0f173a 0%, #ff5c1d 100%);
     color: #fff;
     padding: 2.5rem;
     display: flex;
@@ -981,7 +981,7 @@ button.qa {
     object-fit: cover;
     border-radius: 12px;
     flex: 0 0 auto;
-    background: #ecfdf5;
+    background: #ffefe8;
 }
 
 /* One-page landlord home experiment */
@@ -1023,7 +1023,7 @@ button.qa {
     width: 34px;
     height: 34px;
     border-radius: 999px;
-    background: #ccfbf1;
+    background: #ffccb9;
     color: var(--lab-accent-2);
     display: grid;
     place-items: center;

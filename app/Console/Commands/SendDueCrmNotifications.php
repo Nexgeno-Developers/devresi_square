@@ -398,6 +398,10 @@ class SendDueCrmNotifications extends Command
                         continue;
                     }
 
+                    if ($milestone === 'due-0' && $invoice->issue_date && $invoice->issue_date->isSameDay($now)) {
+                        continue;
+                    }
+
                     $created += $notifier->send(
                         $event,
                         $invoice,

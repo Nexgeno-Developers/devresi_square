@@ -1,0 +1,13 @@
+---
+description: Check the live database schema before designing or restyling forms and pages that read or save data
+alwaysApply: true
+---
+
+# Check the table schema before designing UI
+
+Before adding, keeping, or restyling a form, profile, or any screen that reads or saves records, inspect the real table columns. Do this before writing the page.
+
+- Read the live schema (`Schema::getColumnListing` or the database), not only the model `$fillable`, an old Blade form, or a UI mock.
+- Every input name must match a column that exists, or a column you add in the same change.
+- If the old form posts a field the table does not have, do not copy that field. Say which column is missing.
+- A model relationship or fillable entry is not proof the column exists. Example: `users` had `country` (text) and no `country_id` or `title` until those columns were migrated.

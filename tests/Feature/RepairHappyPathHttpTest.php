@@ -150,7 +150,7 @@ class RepairHappyPathHttpTest extends TestCase
                 $repair->reference_number,
             ], false)
             ->assertSee('12 Repair Road', false)
-            ->assertSee('high', false)
+            ->assertSee('High', false)
             ->assertSee($photoUrl, false);
 
         $this->actingAs($tenant)->withSession($session)
@@ -269,7 +269,33 @@ class RepairHappyPathHttpTest extends TestCase
             ->assertSee('data-open-repairs="1"', false);
     }
 
-    public function test_tenant_cannot_raise_repair_without_photo(): void
+    public function test_tenant_area_list_skips_fixture_names_and_duplicate_labels(): void
+    {
+        RepairCategory::create([
+            'name' => 'Handoff '.uniqid(),
+            'parent_id' => null,
+            'level' => 1,
+            'description' => 'Test',
+            'status' => 1,
+            'position' => 0,
+        ]);
+        RepairCategory::create([
+            'name' => 'Kitchen',
+            'parent_id' => null,
+            'level' => 1,
+            'description' => 'Test',
+            'status' => 1,
+            'position' => 0,
+        ]);
+
+        $names = RepairCategory::tenantAreaChoices()->pluck('name');
+
+        $this->assertFalse($names->contains(fn ($name) => str_starts_with($name, 'Handoff ')));
+        $this->assertFalse($names->contains('Isolation test'));
+        $this->assertSame(1, $names->filter(fn ($name) => $name === 'Kitchen')->count());
+    }
+
+    public function test_tenant_can_raise_repair_without_photo(): void
     {
         Storage::fake('public');
 
@@ -281,8 +307,13 @@ class RepairHappyPathHttpTest extends TestCase
             ->post(route('tenant.maintenance.store'), [
                 'property_id' => $tenancy->property_id,
                 'description' => 'No photo attached',
+                'complaint_code' => 'other',
             ])
-            ->assertSessionHasErrors('photo');
+            ->assertRedirect(route('tenant.maintenance'));
+
+        $repair = RepairIssue::query()->where('description', 'No photo attached')->first();
+        $this->assertNotNull($repair);
+        $this->assertSame(0, RepairPhoto::query()->where('repair_issue_id', $repair->id)->count());
     }
 
     /**

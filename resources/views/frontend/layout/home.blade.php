@@ -3,6 +3,7 @@
 
 <head>
     <title>@yield('title', 'Resisquare')</title>
+    <meta name="description" content="@yield('meta_description', 'Resisquare helps landlords manage homes, rent, and repairs in one workspace.')">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 	<meta name="app-url" content="{{ getBaseURL() }}">
 	<meta name="file-base-url" content="{{ getFileBaseURL() }}">

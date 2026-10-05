@@ -1,84 +1,50 @@
 @if(!isset($editMode) || !$editMode)
     <!-- Display View Mode -->
-    <h5 class="fw-bold fs-4 my-3">Issue In</h5>
+    @php
+        $issueCategory = getRepairCategoryDetails($repairIssue->repair_category_id);
+        if ($issueCategory === 'Staging General Repair') {
+            $issueCategory = 'General repair';
+        }
+        $issueNavigation = getFormattedRepairNavigation($repairIssue->repair_navigation);
+    @endphp
+    <dl class="lw-repair-dl">
+        @if($issueCategory)
+            <dt>Area</dt>
+            <dd>{{ $issueCategory }}</dd>
+        @endif
+        @if(filled($issueNavigation) && $issueNavigation !== $issueCategory && ! str_contains($issueNavigation, 'Staging'))
+            <dt>Where</dt>
+            <dd>{{ $issueNavigation }}</dd>
+        @endif
+        <dt>What is wrong</dt>
+        <dd>{{ $repairIssue->description ?: '—' }}</dd>
+        <dt>Priority</dt>
+        <dd>{{ $repairIssue->priority ? ucfirst($repairIssue->priority) : 'Medium' }}</dd>
+        <dt>Status</dt>
+        <dd>{{ rs_repair_status_label($repairIssue->status) }}</dd>
+        @if(filled($repairIssue->landlord_note))
+            <dt>Note for the tenant</dt>
+            <dd>{{ $repairIssue->landlord_note }}</dd>
+        @endif
+        @if(filled($repairIssue->estimated_price))
+            <dt>Estimated price</dt>
+            <dd>{{ rs_money($repairIssue->estimated_price) }}</dd>
+        @endif
+        @if ($repairIssue->vat_type == 'exclusive' && filled($repairIssue->vat_percentage))
+            <dt>VAT</dt>
+            <dd>{{ ucfirst($repairIssue->vat_percentage) }}</dd>
+        @endif
+        @if($repairIssue->tenantAvailabilityLabel())
+            <dt>When they are in</dt>
+            <dd>{{ $repairIssue->tenantAvailabilityLabel() }}</dd>
+        @endif
+        @if(filled($repairIssue->access_details))
+            <dt>Access</dt>
+            <dd>{{ $repairIssue->access_details }}</dd>
+        @endif
+    </dl>
 
-    <p class="mb-2 fs-6">
-      <span class="fw-semibold">Category:</span>
-      <span class="bg-light text-dark px-2 py-1 rounded">
-        {{ getRepairCategoryDetails($repairIssue->repair_category_id) }}
-      </span>
-    </p>
-    
-    <p class="mb-4 fs-6">
-      <span class="fw-semibold">Navigation:</span>
-      <span class="bg-light text-dark px-2 py-1 rounded">
-        {{ getFormattedRepairNavigation($repairIssue->repair_navigation) }}
-      </span>
-    </p>
-    
-    <h5 class="fw-bold fs-4 my-3 pt-2 border-top">Repair Details</h5>
-    
-    <p class="mb-1 fs-6 fw-semibold">Description:</p>
-    <p class="mb-3 fs-6">
-      <span class="bg-light text-dark px-2 py-1 rounded">
-        {{ $repairIssue->description }}
-      </span>
-    </p>
-    
-    <p class="mb-2 fs-6">
-      <span class="fw-semibold">Priority:</span>
-      <span class="bg-light text-dark px-2 py-1 rounded">
-        {{ ucfirst($repairIssue->priority) }}
-      </span>
-    </p>
-    
-    <p class="mb-2 fs-6">
-      <span class="fw-semibold">Status:</span>
-      <span class="bg-light text-dark px-2 py-1 rounded">
-        {{ $repairIssue->status }}
-      </span>
-    </p>
-    @if(filled($repairIssue->landlord_note))
-    <p class="mb-1 fs-6 fw-semibold">Note for the tenant:</p>
-    <p class="mb-3 fs-6">{{ $repairIssue->landlord_note }}</p>
-    @endif
-    
-    <p class="mb-2 fs-6">
-      <span class="fw-semibold">Estimated Price:</span>
-      <span class="bg-light text-dark px-2 py-1 rounded">
-        {{ $repairIssue->estimated_price }}
-      </span>
-    </p>
-    
-    @if ($repairIssue->vat_type == 'exclusive')
-      <p class="mb-2 fs-6">
-        <span class="fw-semibold">VAT Percentage:</span>
-        <span class="bg-light text-dark px-2 py-1 rounded">
-          {{ ucfirst($repairIssue->vat_percentage) }}
-        </span>
-      </p>    
-    @endif
-    
-    @if($repairIssue->tenantAvailabilityLabel())
-      <p class="mb-2 fs-6">
-        <span class="fw-semibold">Tenant Availability:</span>
-        <span class="bg-light text-dark px-2 py-1 rounded">
-          {{ $repairIssue->tenantAvailabilityLabel() }}
-        </span>
-      </p>
-    @endif
-    
-    @if($repairIssue->access_details)
-      <p class="mb-2 fs-6">
-        <span class="fw-semibold">Access Details:</span>
-        <span class="bg-light text-dark px-2 py-1 rounded">
-          {{ $repairIssue->access_details }}
-        </span>
-      </p>
-    @endif
-    
-    
-    <h5 class="fw-bold fs-4 my-3 pt-2 border-top">Repair Photos</h5>
+    <h3 class="lw-repair-photos-title">Photos</h3>
 
     @if($repairIssue->repairPhotos->count())
 

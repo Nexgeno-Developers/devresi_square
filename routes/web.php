@@ -44,6 +44,34 @@ Route::group(['middleware' => 'web'], function () {
     // Frontend routes
     Route::get('/', [FrontendController::class, 'index'])->name('home');
     Route::get('/pricing', [FrontendController::class, 'pricing'])->name('pricing');
+    Route::get('/robots.txt', function () {
+        $body = implode("\n", [
+            'User-agent: *',
+            'Allow: /',
+            'Disallow: /admin',
+            'Disallow: /aiz-uploader',
+            'Disallow: /contractor',
+            'Disallow: /_debug',
+            '',
+            'Sitemap: '.url('/sitemap.xml'),
+            '',
+        ]);
+
+        return response($body, 200, ['Content-Type' => 'text/plain; charset=UTF-8']);
+    })->name('robots');
+    Route::get('/sitemap.xml', function () {
+        $locs = collect([
+            route('home'),
+            route('pricing'),
+            route('login'),
+            route('register'),
+        ])->map(fn (string $url) => '<url><loc>'.e($url).'</loc></url>')->implode('');
+
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'
+            .'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'.$locs.'</urlset>';
+
+        return response($xml, 200, ['Content-Type' => 'application/xml; charset=UTF-8']);
+    })->name('sitemap');
     // Handle GET /logout gracefully (e.g. from email links or direct URL)
     Route::get('/logout', function () {
         \Illuminate\Support\Facades\Auth::logout();

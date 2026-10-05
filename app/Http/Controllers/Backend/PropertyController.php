@@ -2542,7 +2542,7 @@ class PropertyController
         $property->loadMissing('localAuthority');
         $property->loadCount([
             'tenancies as active_tenancies_count' => fn ($q) => $q->where('status', 'Active'),
-            'repairIssues as open_repairs_count' => fn ($q) => $q->whereIn('status', ['Pending', 'Reported', 'Under Process']),
+            'repairIssues as open_repairs_count' => fn ($q) => $q->open(),
             'complianceRecords as compliance_records_count',
             'complianceRecords as expiring_compliance_count' => fn ($q) => $q
                 ->where('expiry_date', '>=', now())

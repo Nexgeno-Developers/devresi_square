@@ -58,7 +58,9 @@
         </div>
     </div>
 
-    @if($subscription?->status === 'trialing' && ! $subscription->stripe_subscription_id)
+    @if($subscription?->status === 'trialing' && $subscription->stripe_subscription_id)
+        <div class="alert alert-lw mb-3">Your card is saved. The trial continues until {{ $formatDate($subscription->trial_ends_at) }}. The plan price is charged when the trial ends.</div>
+    @elseif($subscription?->status === 'trialing' && ! $subscription->stripe_subscription_id)
         <div class="alert alert-lw mb-3">You are on a trial. Add a payment method before it ends to keep access.</div>
     @elseif($subscription?->status === 'past_due')
         <div class="alert alert-danger mb-3">Payment failed. Update your card in Manage billing.</div>

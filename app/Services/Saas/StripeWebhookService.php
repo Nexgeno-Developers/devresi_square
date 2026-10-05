@@ -69,14 +69,17 @@ class StripeWebhookService
             return;
         }
 
-        $stripeSubscriptionId = $this->stripeId($session->subscription ?? null);
+        $stripeSubscription = $session->subscription ?? null;
+        $stripeSubscriptionId = $this->stripeId($stripeSubscription);
         if ($stripeSubscriptionId) {
             $subscription->forceFill([
                 'stripe_subscription_id' => $stripeSubscriptionId,
             ])->save();
 
-            if ($stripeSubscription = $this->retrieveSubscription($stripeSubscriptionId)) {
+            if (is_object($stripeSubscription) && isset($stripeSubscription->status)) {
                 $this->syncSubscriptionFromStripe($stripeSubscription, $subscription);
+            } elseif ($retrieved = $this->retrieveSubscription($stripeSubscriptionId)) {
+                $this->syncSubscriptionFromStripe($retrieved, $subscription);
             }
         }
     }

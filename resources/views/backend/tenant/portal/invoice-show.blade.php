@@ -92,7 +92,7 @@
         @endif
     </div>
 
-    @if($invoice->isOpen() && ! $cardReady)
+    @if($invoice->isOpen() && (($rentBank ?? null) || ! $cardReady))
         @if($cardPaused ?? false)
             <p class="tp-banner" data-card-paused="1">Card payments are paused because this account is suspended or cancelled. Bank transfer is still available.</p>
         @endif

@@ -54,6 +54,53 @@ class TenantRentPaymentHttpTest extends TestCase
             ->assertRedirect('https://checkout.stripe.test/pay-rent');
     }
 
+    public function test_open_invoice_shows_bank_details_while_card_checkout_is_on(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        [$tenant] = $this->createTenantOnAccount($accountId);
+        [, $tenancy] = $this->createLet($accountId, $landlord, $tenant);
+        $session = ['current_account_id' => $accountId];
+
+        config([
+            'services.stripe.rent.secret' => 'sk_test_rent',
+            'services.stripe.secret' => 'sk_test_platform',
+        ]);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.finance.rent-pay.bank'), [
+                'bank_name' => 'Staging Bank',
+                'account_name' => 'Staging Landlord',
+                'sort_code' => '00-00-00',
+                'account_no' => '12345678',
+            ])
+            ->assertRedirect(route('admin.finance.rent-pay'));
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.finance.store'), [
+                'tenancy_id' => $tenancy->id,
+                'tenant_user_id' => $tenant->id,
+                'amount' => 80,
+                'issue_date' => now()->toDateString(),
+                'due_date' => now()->addDays(7)->toDateString(),
+            ]);
+
+        $invoice = RentInvoice::query()->forAccount($accountId)->firstOrFail();
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('tenant.rent'))
+            ->assertOk()
+            ->assertSee('Pay by bank transfer', false)
+            ->assertSee('00-00-00', false)
+            ->assertSee('12345678', false);
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('tenant.rent.show', $invoice))
+            ->assertOk()
+            ->assertSee('Staging Bank', false)
+            ->assertSee('00-00-00', false)
+            ->assertSee('Pay £', false);
+    }
+
     public function test_tenant_cannot_pay_someone_elses_invoice(): void
     {
         [$landlord, $accountId] = $this->createLandlord();
@@ -273,6 +320,115 @@ class TenantRentPaymentHttpTest extends TestCase
         $this->assertEquals(1000.0, $breakdown['rent']);
         $this->assertEquals(10.5, $breakdown['fee']);
         $this->assertEquals(1010.5, $breakdown['total']);
+    }
+
+    public function test_rent_page_fulfills_a_paid_checkout_when_the_browser_never_returns(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        [$tenant] = $this->createTenantOnAccount($accountId);
+        [, $tenancy] = $this->createLet($accountId, $landlord, $tenant);
+        $session = ['current_account_id' => $accountId];
+
+        $invoice = app(\App\Services\Finance\RentFinanceService::class)->createInvoice($accountId, [
+            'tenancy_id' => $tenancy->id,
+            'tenant_user_id' => $tenant->id,
+            'amount' => 640,
+            'issue_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+        ]);
+        $invoice->forceFill([
+            'stripe_checkout_session_id' => 'cs_test_returnless_'.$invoice->id,
+        ])->save();
+
+        $this->app->bind(RentStripeCheckoutService::class, function ($app) {
+            return new class($app->make(\App\Services\Finance\RentFinanceService::class)) extends RentStripeCheckoutService
+            {
+                public function isConfigured(): bool
+                {
+                    return true;
+                }
+
+                public function fulfillCheckoutSessionId(string $sessionId): ?RentPayment
+                {
+                    $invoice = RentInvoice::query()->where('stripe_checkout_session_id', $sessionId)->first();
+
+                    return $this->fulfillSession((object) [
+                        'id' => $sessionId,
+                        'payment_status' => 'paid',
+                        'payment_intent' => 'pi_returnless',
+                        'metadata' => [
+                            'type' => 'rent_payment',
+                            'rent_invoice_id' => (string) $invoice->id,
+                            'tenant_user_id' => (string) $invoice->tenant_user_id,
+                            'rent_amount' => number_format((float) $invoice->amount, 2, '.', ''),
+                            'fee_amount' => '0.00',
+                        ],
+                    ]);
+                }
+            };
+        });
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('tenant.rent'))
+            ->assertOk()
+            ->assertDontSee('Pay by card', false);
+
+        $invoice->refresh();
+        $this->assertSame(RentInvoice::STATUS_PAID, $invoice->status);
+        $this->assertEquals(0.0, (float) $invoice->balance);
+        $this->assertSame(1, $invoice->payments()->count());
+    }
+
+    public function test_scheduled_reconcile_marks_a_paid_checkout_without_anyone_opening_rent(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        [$tenant] = $this->createTenantOnAccount($accountId);
+        [, $tenancy] = $this->createLet($accountId, $landlord, $tenant);
+
+        $invoice = app(\App\Services\Finance\RentFinanceService::class)->createInvoice($accountId, [
+            'tenancy_id' => $tenancy->id,
+            'tenant_user_id' => $tenant->id,
+            'amount' => 420,
+            'issue_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+        ]);
+        $invoice->forceFill([
+            'stripe_checkout_session_id' => 'cs_test_scheduled_'.$invoice->id,
+        ])->save();
+
+        $this->app->bind(RentStripeCheckoutService::class, function ($app) {
+            return new class($app->make(\App\Services\Finance\RentFinanceService::class)) extends RentStripeCheckoutService
+            {
+                public function isConfigured(): bool
+                {
+                    return true;
+                }
+
+                public function fulfillCheckoutSessionId(string $sessionId): ?RentPayment
+                {
+                    $invoice = RentInvoice::query()->where('stripe_checkout_session_id', $sessionId)->first();
+
+                    return $this->fulfillSession((object) [
+                        'id' => $sessionId,
+                        'payment_status' => 'paid',
+                        'payment_intent' => 'pi_scheduled',
+                        'metadata' => [
+                            'type' => 'rent_payment',
+                            'rent_invoice_id' => (string) $invoice->id,
+                            'tenant_user_id' => (string) $invoice->tenant_user_id,
+                            'rent_amount' => number_format((float) $invoice->amount, 2, '.', ''),
+                            'fee_amount' => '0.00',
+                        ],
+                    ]);
+                }
+            };
+        });
+
+        $this->artisan('rent:reconcile-checkouts')->assertSuccessful();
+
+        $invoice->refresh();
+        $this->assertSame(RentInvoice::STATUS_PAID, $invoice->status);
+        $this->assertEquals(0.0, (float) $invoice->balance);
     }
 
     /**

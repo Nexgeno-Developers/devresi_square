@@ -207,15 +207,9 @@ class PropertyRepairController
             return view('backend.repair.list.cards', compact('repairIssues', 'selectedRepairId'))->render();
         }
 
-        // Auto load the first repair issue if not an AJAX request and there is at least one issue
         $firstRepairIssue = null;
         $assignedManagers = null;
         $contractorAssignments = null;
-        if (!$request->ajax() && $repairIssues->count() > 0) {
-            $firstRepairIssue = $repairIssues->first();
-            $assignedManagers = RepairIssuePropertyManager::where('repair_issue_id', $firstRepairIssue->id)->pluck('property_manager_id')->toArray();
-            $contractorAssignments = RepairIssueContractorAssignment::where('repair_issue_id', $firstRepairIssue->id)->get();
-        }
 
         // if ($request->ajax()) {
         //     return view('backend.repair.index', [

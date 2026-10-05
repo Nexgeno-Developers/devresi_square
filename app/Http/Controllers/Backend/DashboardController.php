@@ -70,7 +70,7 @@ class DashboardController extends Controller
             ->where('status', 'Active')
             ->whereHas('property')
             ->count();
-        $openRepairsCount = RepairIssue::forAccount($accountId)->whereNotIn('status', ['Closed', 'Invoice Paid'])->count();
+        $openRepairsCount = RepairIssue::forAccount($accountId)->open()->count();
         $branchesCount = Branch::forAccount($accountId)->count();
         $staffCount = Staff::forAccount($accountId)->where('status', 'active')->count();
 

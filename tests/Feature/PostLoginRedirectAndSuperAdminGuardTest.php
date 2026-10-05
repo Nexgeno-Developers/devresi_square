@@ -42,6 +42,39 @@ class PostLoginRedirectAndSuperAdminGuardTest extends TestCase
         $this->assertSame('backend.home', PostLoginRedirect::routeName($tenant));
     }
 
+    public function test_login_sends_contractor_to_repair_list(): void
+    {
+        [$landlord, $accountId] = $this->createLandlordOwner();
+
+        $contractor = User::create([
+            'name' => 'Contractor Redirect',
+            'email' => 'contractor-redirect-'.uniqid().'@resisquare.test',
+            'password' => bcrypt('password'),
+            'status' => 1,
+        ]);
+        Role::findOrCreate('Contractor', 'web');
+        $contractor->assignRole('Contractor');
+
+        \DB::table('account_users')->insert([
+            'account_id' => $accountId,
+            'user_id' => $contractor->id,
+            'member_type' => 'contractor',
+            'access_level' => 'view',
+            'can_login' => 1,
+            'status' => 'active',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($contractor)->withSession(['current_account_id' => $accountId]);
+        $this->assertSame('contractor.repairs.index', PostLoginRedirect::routeName($contractor));
+
+        $this->actingAs($contractor)->withSession(['current_account_id' => $accountId])
+            ->get(route('contractor.repairs.index'))
+            ->assertOk()
+            ->assertDontSee('This area is only available to tenants.', false);
+    }
+
     public function test_login_sends_super_admin_to_saas_accounts(): void
     {
         $role = Role::findOrCreate('Super Admin', 'web');

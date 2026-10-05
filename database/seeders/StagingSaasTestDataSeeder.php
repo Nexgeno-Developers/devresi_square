@@ -83,7 +83,7 @@ class StagingSaasTestDataSeeder extends Seeder
             $landlordPlan = $this->plan('landlord_basic', [
                 'name' => 'Landlord Basic',
                 'target_account_type' => 'landlord',
-                'description' => 'Staging landlord plan with one property and no branch or staff access.',
+                'description' => 'Staging landlord plan with five properties and no branch or staff access.',
                 'monthly_price_minor' => 2900,
                 'annual_price_minor' => 29000,
                 'property_limit' => 5,

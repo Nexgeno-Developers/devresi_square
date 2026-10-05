@@ -9,7 +9,15 @@
         <div>
             <p class="tp-kicker">Rent &amp; payments</p>
             <h1>What you owe</h1>
-            <p>Pay an open invoice by card, or by bank transfer to your landlord. A small card fee may apply.</p>
+            @if(($cardReady ?? false) && ($rentBank ?? null))
+                <p>Pay an open invoice by card, or by bank transfer using the details below. A small card fee may apply.</p>
+            @elseif($cardReady ?? false)
+                <p>Pay an open invoice by card. A small card fee may apply.</p>
+            @elseif($rentBank ?? null)
+                <p>Pay an open invoice by bank transfer using the details below.</p>
+            @else
+                <p>Your landlord has not published card payment or bank transfer details yet.</p>
+            @endif
         </div>
         <div class="tp-card" style="min-width: 200px;">
             <p class="tp-metric-label">Outstanding</p>
@@ -140,7 +148,7 @@
         @endif
     </div>
 
-    @if(! ($cardReady ?? false))
+    @if(($rentBank ?? null) || ! ($cardReady ?? false))
         @php
             $openForReference = $invoices->filter(fn ($row) => $row->isOpen());
         @endphp

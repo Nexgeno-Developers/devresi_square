@@ -1,5 +1,8 @@
 @extends('frontend.layout.home')
 
+@section('title', 'Resisquare')
+@section('meta_description', 'Resisquare helps landlords manage homes, rent, and repairs in one workspace.')
+
 @php
     $hero_card = [
         [
@@ -44,9 +47,9 @@
     <section class="hero_section px-4">
         <div class="main_hero_section">
             <div class="">
-                <div class="hero_title">Revolutionize Your <br />Property Management <br>
+                <h1 class="hero_title">Revolutionize Your <br />Property Management <br>
                     <span> Experience</span>
-                </div>
+                </h1>
                 <p class="hero_description">Streamline operations, enhance tenant satisfaction, and maximize returns with
                     ResiSquare's innovative property management solutions.</p>
                 <div class="hero_btns">
@@ -64,7 +67,7 @@
                         <div class="modal-dialog modal-dialog-centered">
                             <div class="modal-content border-0 shadow-lg rounded-4">
                                 <div class="modal-header">
-                                    <h1 class="modal-title fs-5" id="bookDemoModalLabel">Book a Demo</h1>
+                                    <h2 class="modal-title fs-5" id="bookDemoModalLabel">Book a Demo</h2>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal"
                                         aria-label="Close"></button>
                                 </div>

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Mail\MailManager;
 use App\Models\Tenancy;
 use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -14,6 +15,8 @@ use Tests\TestCase;
 
 class LandlordOnboardingHttpTest extends TestCase
 {
+    use DatabaseTransactions;
+
     protected function setUp(): void
     {
         parent::setUp();

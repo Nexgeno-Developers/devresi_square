@@ -334,11 +334,11 @@
 
             </div>
         </div>
+        @if(! is_landlord_plan_user())
         <div class="mb-3">
-            <div class="form-group field-property_manager required has-success">
+            <div class="form-group field-property_manager has-success">
                 <label class="control-label" for="property_manager">Property Manager</label>
-                <select name="property_manager[]" id="property_manager" multiple class="form-control select2"
-                    required>
+                <select name="property_manager[]" id="property_manager" multiple class="form-control select2">
                     @foreach ($property_managers as $property_manager)
                         <option value="{{ $property_manager->id }}" @if (in_array($property_manager->id, $currentPropertyManagers)) selected @endif>
                             {{ $property_manager->name }}
@@ -347,6 +347,7 @@
                 </select>
             </div>
         </div>
+        @endif
 
 </div>
 <button type="submit" form="editTenancyForm" class="float-end mt-3 btn btn_secondary">Save</button>
@@ -377,13 +378,23 @@
 </div>
 
 <script>
+(function () {
+    var select2Src = @json(asset('asset/js/select2.min.js'));
+
+    function bootTenancyEdit() {
+    var $ = window.jQuery;
+    if (! $ || typeof $.fn.select2 !== 'function') {
+        return;
+    }
 
     if (typeof initSelect3 === 'function') {
         initSelect3('.select2');
     }
 
 
-    // Re-initialize tenant_id with Select2 that properly shows pre-selected values
+    if ($('#tenant_id').hasClass('select2-hidden-accessible')) {
+        $('#tenant_id').select2('destroy');
+    }
     $('#tenant_id').select2({
         placeholder: 'Start typing at least 3 characters',
         minimumInputLength: 3,
@@ -458,16 +469,16 @@
 
         if (selected === 'number_of_scheme_or_number_of_reference') {
             $('#referenceNumberSchemeField').removeClass('d-none');
-            $('#referenceNumber').attr('required', true);
+            $('#referenceNumber').removeAttr('required');
 
             $('#depositSchemeDropdown').removeClass('d-none');
-            $('#depositScheme').attr('required', true);
+            $('#depositScheme').removeAttr('required');
 
             $('#tds_dps_numberField').addClass('d-none');
             $('#tds_dps_number').removeAttr('required');
         } else if (selected === 'tds_dps_number') {
             $('#tds_dps_numberField').removeClass('d-none');
-            $('#tds_dps_number').attr('required', true);
+            $('#tds_dps_number').removeAttr('required');
 
             $('#referenceNumberSchemeField').addClass('d-none');
             $('#referenceNumber').removeAttr('required');
@@ -486,34 +497,43 @@
         if (!moveInInput || !termMonthsInput || !termDaysInput || !moveOutInput) return;
 
         // Function to calculate the "Move Out" date
-        function calculateMoveOutDate() {
-            const moveInDate = new Date(moveInInput.value);
-            const termMonths = parseInt(termMonthsInput.value, 10) || 0; // Default to 0 if empty
-            const termDays = parseInt(termDaysInput.value, 10) || 0; // Default to 0 if empty
+        function parseDateInput(value) {
+            const parts = String(value || '').split('-').map(function (part) { return parseInt(part, 10); });
+            if (parts.length !== 3 || parts.some(function (part) { return ! part; })) {
+                return null;
+            }
+            return new Date(parts[0], parts[1] - 1, parts[2]);
+        }
 
-            if (isNaN(moveInDate.getTime())) {
-                moveOutInput.value = '';
+        function formatDateInput(date) {
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return date.getFullYear() + '-' + month + '-' + day;
+        }
+
+        function calculateMoveOutDate() {
+            const moveInDate = parseDateInput(moveInInput.value);
+            const termMonths = parseInt(termMonthsInput.value, 10) || 0;
+            const termDays = parseInt(termDaysInput.value, 10) || 0;
+
+            if (! moveInDate || (termMonths === 0 && termDays === 0)) {
                 return;
             }
 
-            // Add months and days to the "Move In" date
-            const resultDate = new Date(moveInDate);
+            const resultDate = new Date(moveInDate.getTime());
             if (termMonths > 0) {
                 resultDate.setMonth(resultDate.getMonth() + termMonths);
-                // Subtract 1 day for tenancy default behavior
                 resultDate.setDate(resultDate.getDate() - 1);
             }
             if (termDays > 0) resultDate.setDate(resultDate.getDate() + termDays);
 
-            // Set the calculated "Move Out" date
-            moveOutInput.value = resultDate.toISOString().split('T')[0];
+            moveOutInput.value = formatDateInput(resultDate);
         }
-        // Function to calculate the term in months and days based on Move In and Move Out dates
         function recalculateTerm() {
-            const moveInDate = new Date(moveInInput.value);
-            const moveOutDate = new Date(moveOutInput.value);
+            const moveInDate = parseDateInput(moveInInput.value);
+            const moveOutDate = parseDateInput(moveOutInput.value);
 
-            if (isNaN(moveInDate.getTime()) || isNaN(moveOutDate.getTime())) return;
+            if (! moveInDate || ! moveOutDate) return;
 
             const timeDifference = moveOutDate - moveInDate; // Difference in milliseconds
             const daysDifference = timeDifference / (1000 * 3600 * 24); // Convert to days
@@ -528,10 +548,10 @@
 
         // Function to validate the "Move Out" date and ensure it's after the "Move In" date
         function validateMoveOutDate() {
-            const moveInDate = new Date(moveInInput.value);
-            const moveOutDate = new Date(moveOutInput.value);
+            const moveInDate = parseDateInput(moveInInput.value);
+            const moveOutDate = parseDateInput(moveOutInput.value);
 
-            if (isNaN(moveInDate.getTime()) || isNaN(moveOutDate.getTime())) return;
+            if (! moveInDate || ! moveOutDate) return;
 
             if (moveOutDate <= moveInDate) {
                 // Show error message or reset the Move Out date if it's invalid
@@ -569,19 +589,45 @@
             calculateMoveOutDate();
         });
         moveOutInput.addEventListener('change', () => {
-            calculateMoveOutDate();
             recalculateTerm();
-            validateMoveOutDate(); // Validate if Move Out Date is after Move In Date
+            validateMoveOutDate();
         });
 
-        // Initial calculation if values are already filled
-        calculateMoveOutDate();
+        if ((parseInt(termMonthsInput.value, 10) || 0) > 0 || (parseInt(termDaysInput.value, 10) || 0) > 0) {
+            calculateMoveOutDate();
+        }
 
-        // Trigger the change event on load to initialize correct fields for edit mode
         $('#depositService').trigger('change');
     }
 
-    // Initialize the form only once the content is fully loaded
     initializeForm();
-    // });
+    }
+
+    function startTenancyEdit() {
+        var $ = window.jQuery;
+        if (! $) {
+            return;
+        }
+        if (typeof $.fn.select2 === 'function') {
+            bootTenancyEdit();
+            return;
+        }
+        var existing = document.querySelector('script[data-tenancy-edit-select2]');
+        if (existing) {
+            existing.addEventListener('load', bootTenancyEdit);
+            return;
+        }
+        var script = document.createElement('script');
+        script.src = select2Src;
+        script.setAttribute('data-tenancy-edit-select2', '1');
+        script.onload = bootTenancyEdit;
+        document.head.appendChild(script);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startTenancyEdit);
+    } else {
+        startTenancyEdit();
+    }
+})();
 </script>

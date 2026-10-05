@@ -684,6 +684,7 @@ Frontend
         padding: 50px 16px;
         margin: 0 auto;
         .hero_title{
+            margin: 0;
             font-size: 5.8rem;
             line-height: 115px;
             font-weight: 600;
@@ -988,6 +989,7 @@ Responsive
             display: block;
             padding: 0;
             .hero_title{
+            margin: 0;
             font-size: 3rem;
             line-height: 58px;
             }

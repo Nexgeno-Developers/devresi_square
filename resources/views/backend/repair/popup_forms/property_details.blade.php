@@ -3,14 +3,18 @@
     <!-- Display View Mode -->
 
     @if($repairIssue->property)
-        <p><strong>Property:</strong> {{ $repairIssue->property->prop_name ?? 'N/A' }}</p>
-        <p><strong>Address:</strong>
-            {{ $repairIssue->property->line_1 ?? '' }} {{ $repairIssue->property->line_2 ?? '' }},
-            {{ $repairIssue->property->city ?? '' }},
-            {{ $repairIssue->property->postcode ?? '' }}
-        </p>
-        <p><strong>Type:</strong> {{ $repairIssue->property->specific_property_type ?? 'N/A' }}</p>
-        <p><strong>Availability:</strong> {{ $repairIssue->property->availability ?? 'N/A' }}</p>
+        <dl class="lw-repair-dl">
+            <dt>Address</dt>
+            <dd>{{ rs_property_title($repairIssue->property) }}</dd>
+            @if(filled($repairIssue->property->specific_property_type))
+                <dt>Type</dt>
+                <dd>{{ ucfirst($repairIssue->property->specific_property_type) }}</dd>
+            @endif
+            @if(filled($repairIssue->property->availability) && $repairIssue->property->availability !== 'N/A')
+                <dt>Availability</dt>
+                <dd>{{ $repairIssue->property->availability }}</dd>
+            @endif
+        </dl>
     @else
         <p>No property selected.</p>
     @endif

@@ -1,8 +1,9 @@
-<p class="lab-note">This is the language every landlord and tenant page should use: navy ink, teal accent, wash background, black primary buttons, quiet status pills. Lists stay as pages. Add, invite, pay and inspect open as overlays.</p>
+<p class="lab-note">This is the language every landlord and tenant page should use: navy ink, orange accent, wash background, sidebar-blue primary buttons, quiet status pills. Lists stay as pages. Add, invite, pay and inspect open as overlays.</p>
 
 <div class="lab-grid-3" style="margin-bottom: 1rem;">
     <div class="swatch" style="background:#0b1220;">Ink #0b1220</div>
-    <div class="swatch" style="background:#0f766e;">Teal #0f766e</div>
+    <div class="swatch" style="background:#0f173a;">Blue #0f173a</div>
+    <div class="swatch" style="background:#ff5c1d;">Orange #ff5c1d</div>
     <div class="swatch" style="background:#f4f6f8;color:#0b1220;border:1px solid #e6e9ef;">Wash #f4f6f8</div>
 </div>
 

@@ -279,9 +279,9 @@ class TenantPortalService
         }
 
         $photo = $payload['photo'] ?? null;
-        if (! $photo instanceof UploadedFile) {
+        if ($photo !== null && ! $photo instanceof UploadedFile) {
             throw ValidationException::withMessages([
-                'photo' => 'Add a photo of the issue so your landlord can triage it.',
+                'photo' => 'The photo must be an image.',
             ]);
         }
 
@@ -359,21 +359,23 @@ class TenantPortalService
             app(RepairSlaRecorder::class)->reported($repair, $classification, $user->id);
         }
 
-        $stored = app(SecureUploadService::class)->store($photo);
-        $upload = new Upload;
-        $upload->account_id = $accountId;
-        $upload->file_original_name = pathinfo($stored['original_name'], PATHINFO_FILENAME) ?: 'repair-photo';
-        $upload->extension = $stored['extension'];
-        $upload->file_name = $stored['path'];
-        $upload->user_id = $user->id;
-        $upload->type = $stored['type'];
-        $upload->file_size = $stored['size'];
-        $upload->save();
+        if ($photo instanceof UploadedFile) {
+            $stored = app(SecureUploadService::class)->store($photo);
+            $upload = new Upload;
+            $upload->account_id = $accountId;
+            $upload->file_original_name = pathinfo($stored['original_name'], PATHINFO_FILENAME) ?: 'repair-photo';
+            $upload->extension = $stored['extension'];
+            $upload->file_name = $stored['path'];
+            $upload->user_id = $user->id;
+            $upload->type = $stored['type'];
+            $upload->file_size = $stored['size'];
+            $upload->save();
 
-        RepairPhoto::create([
-            'repair_issue_id' => $repair->id,
-            'photos' => (string) $upload->id,
-        ]);
+            RepairPhoto::create([
+                'repair_issue_id' => $repair->id,
+                'photos' => (string) $upload->id,
+            ]);
+        }
 
         app(CrmNotificationService::class)->dispatch(
             CrmNotificationEvent::RepairReported,

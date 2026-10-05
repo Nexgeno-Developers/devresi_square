@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class PropertyPlanLimitHttpTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_landlord_cannot_open_create_when_property_limit_is_full(): void
     {
         [$user, $accountId] = $this->createLimitedLandlord(1);

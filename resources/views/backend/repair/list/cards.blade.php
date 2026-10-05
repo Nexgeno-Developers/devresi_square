@@ -1,26 +1,14 @@
 <div id="card-list">
     @if($repairIssues->count())
-    <table class="table lw-table align-middle mb-0">
-        <thead>
-            <tr>
-                <th>Property</th>
-                <th>Issue</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Posted on</th>
-                <th class="text-end">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
+        <div class="lw-repair-grid">
             @foreach ($repairIssues as $item)
-                <x-backend.repair-card :repair="$item" :selectedRepairId="$selectedRepairId" />
+                <x-backend.repair-card :repair="$item" :selectedRepairId="$selectedRepairId ?? null" />
             @endforeach
-        </tbody>
-    </table>
+        </div>
 
-    <div class="d-flex justify-content-center mt-3">
-        {{ $repairIssues->appends(request()->query())->links() }}
-    </div>
+        <div class="d-flex justify-content-center mt-3">
+            {{ $repairIssues->appends(request()->query())->links() }}
+        </div>
     @else
         <x-lw.empty title="No repairs yet">
             When something needs fixing, raise it here or wait for a tenant report.

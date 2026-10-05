@@ -7,15 +7,21 @@ use App\Models\Property;
 use App\Models\User;
 use App\Services\Saas\AccountLimitService;
 use App\Services\Saas\PortalAccessService;
+use App\Services\Saas\StripeCheckoutService;
 use App\Services\Saas\StripeWebhookService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Stripe\Checkout\Session as StripeCheckoutSession;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class SaasBillingAndLimitsHttpTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_landlord_owner_can_open_billing_and_staff_or_admin_cannot(): void
     {
         [$owner, $accountId] = $this->createLandlord('owner');
@@ -63,9 +69,108 @@ class SaasBillingAndLimitsHttpTest extends TestCase
             ->withSession(['current_account_id' => $accountId])
             ->get(route('backend.billing.success', ['checkout_ref' => 'cs_test_should_not_activate']))
             ->assertOk()
+            ->assertSee('Confirming your card', false)
             ->assertSee('Payment processing', false);
 
         $this->assertSame('past_due', \DB::table('accounts')->where('id', $accountId)->value('status'));
+    }
+
+    public function test_checkout_return_unlocks_a_suspended_trial(): void
+    {
+        Mail::fake();
+        [$user, $accountId] = $this->createLandlord('owner');
+        \DB::table('accounts')->where('id', $accountId)->update(['status' => 'suspended']);
+        $subscriptionId = \DB::table('account_subscriptions')->where('account_id', $accountId)->value('id');
+
+        $this->mock(StripeCheckoutService::class, function ($mock) use ($accountId, $subscriptionId) {
+            $mock->shouldReceive('retrieveCheckoutSession')
+                ->once()
+                ->with('cs_test_return')
+                ->andReturn(StripeCheckoutSession::constructFrom([
+                    'id' => 'cs_test_return',
+                    'object' => 'checkout.session',
+                    'status' => 'complete',
+                    'mode' => 'subscription',
+                    'client_reference_id' => (string) $accountId,
+                    'metadata' => [
+                        'type' => 'plan_subscription',
+                        'account_id' => (string) $accountId,
+                        'account_subscription_id' => (string) $subscriptionId,
+                    ],
+                    'subscription' => [
+                        'id' => 'sub_test_return',
+                        'object' => 'subscription',
+                        'status' => 'trialing',
+                        'cancel_at_period_end' => false,
+                        'metadata' => [
+                            'account_id' => (string) $accountId,
+                            'account_subscription_id' => (string) $subscriptionId,
+                        ],
+                        'items' => ['object' => 'list', 'data' => []],
+                    ],
+                ]));
+        });
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('backend.billing.success', ['checkout_ref' => 'cs_test_return']))
+            ->assertRedirect(route('backend.billing.index'));
+
+        $this->assertSame('trialing', \DB::table('accounts')->where('id', $accountId)->value('status'));
+        $this->assertSame('sub_test_return', \DB::table('account_subscriptions')->where('id', $subscriptionId)->value('stripe_subscription_id'));
+    }
+
+    public function test_checkout_return_ignores_another_accounts_session(): void
+    {
+        [$user, $accountId] = $this->createLandlord('owner');
+        \DB::table('accounts')->where('id', $accountId)->update(['status' => 'suspended']);
+
+        $this->mock(StripeCheckoutService::class, function ($mock) {
+            $mock->shouldReceive('retrieveCheckoutSession')
+                ->once()
+                ->andReturn(StripeCheckoutSession::constructFrom([
+                    'id' => 'cs_test_other',
+                    'object' => 'checkout.session',
+                    'status' => 'complete',
+                    'client_reference_id' => '999999',
+                    'metadata' => [
+                        'type' => 'plan_subscription',
+                        'account_id' => '999999',
+                    ],
+                    'subscription' => [
+                        'id' => 'sub_test_other',
+                        'object' => 'subscription',
+                        'status' => 'active',
+                    ],
+                ]));
+        });
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('backend.billing.success', ['checkout_ref' => 'cs_test_other']))
+            ->assertOk()
+            ->assertSee('Confirming your card', false)
+            ->assertSee('Payment processing', false);
+
+        $this->assertSame('suspended', \DB::table('accounts')->where('id', $accountId)->value('status'));
+        $this->assertNull(\DB::table('account_subscriptions')->where('account_id', $accountId)->value('stripe_subscription_id'));
+    }
+
+    public function test_suspended_account_can_start_subscription_checkout(): void
+    {
+        [$user, $accountId] = $this->createLandlord('owner');
+        \DB::table('accounts')->where('id', $accountId)->update(['status' => 'suspended']);
+
+        $this->mock(StripeCheckoutService::class, function ($mock) {
+            $mock->shouldReceive('createPlanCheckoutSession')
+                ->once()
+                ->andReturn('https://checkout.stripe.test/session');
+        });
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->post(route('backend.saas.subscription.checkout'))
+            ->assertRedirect('https://checkout.stripe.test/session');
     }
 
     public function test_webhook_replay_is_ignored(): void
