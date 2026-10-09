@@ -29,6 +29,7 @@ class RepairIssue extends Model
         'property_id',
         'tenant_id',
         'final_contractor_id',
+        'awarded_offer_id',
         'reference_number',
         'created_by',
         'updated_by',
@@ -124,6 +125,14 @@ class RepairIssue extends Model
         static::deleting(function ($repairIssue) {
             $repairIssue->repairPhotos()->delete();
         });
+
+        static::updated(function (RepairIssue $repairIssue) {
+            if ($repairIssue->wasChanged('status') && in_array($repairIssue->status, ['Closed', 'Cancelled', 'Rejected'], true)) {
+                app(\App\Services\Contractors\RepairJobOfferService::class)->closeForRepair($repairIssue);
+            } elseif ($repairIssue->wasChanged(['description', 'access_details', 'tenant_availability', 'repair_category_id', 'repair_navigation'])) {
+                app(\App\Services\Contractors\RepairJobOfferService::class)->detailsChanged($repairIssue);
+            }
+        });
     }
     /**
      * Get the property manager assignments for this repair issue.
@@ -139,6 +148,21 @@ class RepairIssue extends Model
     public function repairIssueContractorAssignments()
     {
         return $this->hasMany(RepairIssueContractorAssignment::class);
+    }
+
+    public function jobOffers()
+    {
+        return $this->hasMany(RepairJobOffer::class);
+    }
+
+    public function awardedOffer()
+    {
+        return $this->belongsTo(RepairJobOffer::class, 'awarded_offer_id');
+    }
+
+    public function contractorRequest()
+    {
+        return $this->hasOne(RepairContractorRequest::class);
     }
 
     public function repairHistories()
@@ -171,22 +195,32 @@ class RepairIssue extends Model
     }
 
     /**
-     * Visit window chosen by the tenant: morning, afternoon, or evening.
+     * The tenant form writes one of three times into tenant_availability.
+     * 09:00 morning, 13:00 afternoon, 17:00 evening. Any other clock time is not a window.
      */
+    public function tenantAvailabilityWindow(): ?string
+    {
+        if (! $this->tenant_availability) {
+            return null;
+        }
+
+        return match ($this->tenant_availability->format('H:i')) {
+            '09:00' => 'morning',
+            '13:00' => 'afternoon',
+            '17:00' => 'evening',
+            default => null,
+        };
+    }
+
     public function tenantAvailabilityLabel(): ?string
     {
         if (! $this->tenant_availability) {
             return null;
         }
 
-        $slot = match ((int) $this->tenant_availability->format('G')) {
-            9 => 'morning',
-            13 => 'afternoon',
-            17 => 'evening',
-            default => $this->tenant_availability->format('H:i'),
-        };
+        $when = $this->tenantAvailabilityWindow() ?: $this->tenant_availability->format('H:i');
 
-        return $this->tenant_availability->format('j M Y').', '.$slot;
+        return $this->tenant_availability->format('j M Y').', '.$when;
     }
 
     public function repairIssueUsers()

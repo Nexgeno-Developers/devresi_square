@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Backend;
 
 use App\Mail\MailManager;
 use App\Models\Company;
+use App\Models\ContractorProfile;
 use App\Models\Registration;
 use App\Models\User;
+use App\Support\ContractorCompliance;
 use App\Services\Saas\AccountProvisioningService;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -75,14 +77,62 @@ class RegistrationController extends Controller
             ? $registration->user->getDirectPermissions()->pluck('name')->toArray()
             : [];
 
+        $contractorReview = $this->contractorReview($registration);
+
         return view('backend.registrations.show',
-            compact('registration', 'permissions', 'userPermissions', 'roles', 'suggestedRole'));
+            compact('registration', 'permissions', 'userPermissions', 'roles', 'suggestedRole', 'contractorReview'));
+    }
+
+    /**
+     * Documents and trades a contractor submitted. Approval is based on these, not a role assignment.
+     *
+     * @return array{profile: ?ContractorProfile, types: array<int, string>, required: array<int, string>, block: ?string, rejectReasons: array<string, string>}|null
+     */
+    private function contractorReview(Registration $registration): ?array
+    {
+        if ($registration->type !== 'contractor') {
+            return null;
+        }
+
+        $user = $registration->user ?: User::query()->where('email', $registration->email)->first();
+        $profile = $user?->contractorProfile;
+        if (! $profile) {
+            return [
+                'profile' => null,
+                'types' => [],
+                'required' => [],
+                'block' => 'No documents have been submitted yet.',
+                'rejectReasons' => [],
+            ];
+        }
+
+        $profile->load(['documents', 'tradeApprovals']);
+        $required = ContractorCompliance::requiredDocuments($profile);
+        $uploaded = $profile->documents->pluck('type')->map(fn ($type) => str_replace('.renewal', '', (string) $type));
+        $probe = $profile->replicate();
+        $probe->approval_status = ContractorProfile::APPROVED;
+        $probe->setRelation('documents', $profile->documents);
+        $probe->setRelation('tradeApprovals', $profile->tradeApprovals);
+
+        return [
+            'profile' => $profile,
+            'types' => collect($required)->merge($uploaded)->unique()->values()->all(),
+            'required' => $required,
+            'block' => ContractorCompliance::blockReason($probe),
+            'rejectReasons' => config('contractor_marketplace.reject_reasons', []),
+        ];
     }
 
     // ─── Approve ──────────────────────────────────────────────────────────────
     public function approve(Request $request, $id, AccountProvisioningService $accountProvisioningService)
     {
         $registration = Registration::with(['plan', 'account', 'user.roles'])->findOrFail($id);
+
+        if ($registration->type === 'contractor') {
+            flash('Contractor accounts are approved from Contractor checks, after their documents are submitted.')->error();
+
+            return redirect()->route('admin.registrations.contractors.index');
+        }
 
         if ($registration->account_id) {
             flash('This registration has already been provisioned.')->error();

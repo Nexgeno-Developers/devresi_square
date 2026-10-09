@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('notifications:retry')->everyFiveMinutes();
         $schedule->command('events:send-reminders')->everyMinute()->withoutOverlapping();
         $schedule->command('sale-invoices:apply-penalties')->dailyAt('00:10');
+        $schedule->command('contractors:sweep')->hourly()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware) {
         // Append global middleware
@@ -65,6 +66,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'landlord.restricted' => \App\Http\Middleware\RestrictLandlordRoutes::class,
             'tenancy.manage' => \App\Http\Middleware\RestrictTenancyManagement::class,
             'portal.tenant' => \App\Http\Middleware\EnsureTenantPortal::class,
+            'legacy.contractors' => \App\Http\Middleware\LegacyContractorModule::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

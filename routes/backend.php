@@ -72,7 +72,9 @@ use App\Http\Controllers\Backend\EventSubTypeController;
 use App\Http\Controllers\Backend\UserCategoryController;
 use App\Http\Controllers\Backend\AccountHeaderController;
 use App\Http\Controllers\Backend\EmailTemplateController;
+use App\Http\Controllers\Backend\ContractorReviewController;
 use App\Http\Controllers\Backend\PropertyRepairController;
+use App\Http\Controllers\Backend\RepairJobOfferController;
 use App\Http\Controllers\Backend\RepairSlaController;
 use App\Http\Controllers\Backend\PurchaseInvoiceController;
 use App\Http\Controllers\Backend\BusinessSettingsController;
@@ -518,9 +520,11 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
                 Route::get('/get-repair-categories', 'getCategories')->name('property_repairs.categories');
                 Route::get('/selected-property/tenants', 'getPropertyTenants')->name('property_repairs.tenants');
                 Route::get('/repair/{repair}/workorder-invoice', 'workOrderInvoice')->name('property_repairs.workorder.invoice');
-                Route::post('/quote-contractors', 'storeQuoteContractor')->name('property_repairs.quote_contractors.store');
-                Route::post('/{repairIssue}/quote-requests', 'sendQuoteRequests')->name('property_repairs.quote_requests.store');
-                Route::post('/{repairIssue}/contractor-assignments/{assignment}/finalize', 'finalizeContractor')->name('property_repairs.contractors.finalize');
+                Route::middleware('legacy.contractors')->group(function () {
+                    Route::post('/quote-contractors', 'storeQuoteContractor')->name('property_repairs.quote_contractors.store');
+                    Route::post('/{repairIssue}/quote-requests', 'sendQuoteRequests')->name('property_repairs.quote_requests.store');
+                    Route::post('/{repairIssue}/contractor-assignments/{assignment}/finalize', 'finalizeContractor')->name('property_repairs.contractors.finalize');
+                });
                 Route::get('/{repairIssue}/scope-of-work-pdf', 'scopeOfWorkPdf')->name('property_repairs.scope_of_work_pdf');
 
                 Route::get('/load-form', 'loadForm')->name('property_repairs.loadForm');
@@ -532,6 +536,29 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::post('/{repairIssue}/sla/{event}', [RepairSlaController::class, 'store'])
                 ->whereIn('event', ['dispatched', 'made_safe', 'resolved'])
                 ->name('property_repairs.sla.store');
+
+            Route::controller(RepairJobOfferController::class)->group(function () {
+                Route::get('/{repairIssue}/find-contractor', 'find')->name('property_repairs.marketplace.find');
+                Route::post('/{repairIssue}/job-offers', 'store')->name('property_repairs.job_offers.store');
+                Route::post('/{repairIssue}/invite-contractor', 'invite')->name('property_repairs.marketplace.invite');
+                Route::post('/{repairIssue}/contractor-request/close', 'close')->name('property_repairs.marketplace.close');
+                Route::post('/contractors/{contractor}/favourite', 'favourite')->name('property_repairs.marketplace.favourite');
+                Route::get('/job-offers/{offer}/confirm', 'confirm')->name('property_repairs.job_offers.confirm');
+                Route::post('/job-offers/{offer}/accept', 'accept')->name('property_repairs.job_offers.accept');
+                Route::post('/job-offers/{offer}/decline', 'decline')->name('property_repairs.job_offers.decline');
+                Route::post('/job-offers/{offer}/reconfirm', 'reconfirm')->name('property_repairs.job_offers.reconfirm');
+                Route::post('/job-offers/{offer}/withdraw', 'withdraw')->name('property_repairs.job_offers.withdraw');
+                Route::post('/job-offers/{offer}/cancel', 'cancel')->name('property_repairs.job_offers.cancel');
+                Route::post('/job-offers/{offer}/complete', 'complete')->name('property_repairs.job_offers.complete');
+                Route::post('/job-offers/{offer}/dispute', 'dispute')->name('property_repairs.job_offers.dispute');
+                Route::post('/job-offers/{offer}/messages', 'message')->middleware('throttle:30,1')->name('property_repairs.job_offers.message');
+                Route::post('/job-offers/{offer}/variations/{variation}', 'decideVariation')->name('property_repairs.job_offers.variation');
+                Route::post('/job-offers/{offer}/reschedule', 'reschedule')->name('property_repairs.job_offers.reschedule');
+                Route::post('/job-offers/{offer}/rate', 'rate')->name('property_repairs.job_offers.rate');
+                Route::get('/job-offers/{offer}/completion-photos/{index}', 'completionPhoto')->whereNumber('index')->name('property_repairs.job_offers.completion_photo');
+                Route::get('/job-offers/{offer}/invoice', 'invoice')->name('property_repairs.job_offers.invoice');
+                Route::post('/job-offers/{offer}/invoice/paid', 'invoicePaid')->name('property_repairs.job_offers.invoice.paid');
+            });
         });
 
         Route::prefix('/job-types')->group(function () {
@@ -853,6 +880,31 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
     Route::get('/staffs/destroy/{id}', [StaffController::class, 'destroy'])
         ->middleware(['current.account', 'account.status', 'not.portal'])
         ->name('staffs.destroy');
+
+    // Contractor compliance review (no SaaS account is created)
+    Route::prefix('registrations/contractors')->name('admin.registrations.contractors.')
+        ->controller(ContractorReviewController::class)
+        ->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/all', 'listContractors')->name('directory');
+            Route::get('/settings', 'settings')->name('settings');
+            Route::post('/settings', 'saveSettings')->name('settings.save');
+            Route::get('/coverage', 'coverage')->name('coverage');
+            Route::get('/jobs', 'jobs')->name('jobs');
+            Route::post('/jobs/{offer}/override', 'override')->name('jobs.override');
+            Route::post('/legacy-invitations', 'inviteLegacy')->name('legacy');
+            Route::get('/{profile}', 'show')->whereNumber('profile')->name('show');
+            Route::get('/{profile}/documents/{document}', 'document')->whereNumber('profile')->name('document');
+            Route::post('/{profile}/documents/{document}', 'decideDocument')->whereNumber('profile')->name('document.decide');
+            Route::post('/{profile}/trades/{trade}', 'decideTrade')->whereNumber('profile')->name('trade.decide');
+            Route::post('/{profile}/approve', 'approve')->whereNumber('profile')->name('approve');
+            Route::post('/{profile}/pack', 'decidePack')->whereNumber('profile')->name('pack');
+            Route::post('/{profile}/changes', 'requestChanges')->whereNumber('profile')->name('changes');
+            Route::post('/{profile}/reject', 'reject')->whereNumber('profile')->name('reject');
+            Route::post('/{profile}/suspend', 'suspend')->whereNumber('profile')->name('suspend');
+            Route::post('/{profile}/reinstate', 'reinstate')->whereNumber('profile')->name('reinstate');
+            Route::post('/{profile}/remove', 'remove')->whereNumber('profile')->name('remove');
+        });
 
     // Registrations (public sign-up approvals)
     Route::prefix('registrations')->name('admin.registrations.')

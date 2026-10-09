@@ -109,49 +109,9 @@
         </div>
     </div>
 
-    <div class="card lw-card mb-3">
-        <div class="card-body">
-            <div class="lw-section-title mt-0">Contractors</div>
-            @if($repairIssue->repairIssueContractorAssignments->count())
-                <table class="table lw-table align-middle mb-0">
-                    <thead><tr><th>#</th><th>Contractor</th><th>Cost</th><th>Availability</th><th>Status</th><th>Quote</th></tr></thead>
-                    <tbody>
-                        @foreach($repairIssue->repairIssueContractorAssignments as $index => $assignment)
-                            <tr>
-                                <td>{{ $index + 1 }}</td>
-                                <td>{{ $assignment->contractor->name ?? '—' }}</td>
-                                <td>{{ $assignment->cost_price ?: '—' }}</td>
-                                <td>{{ $assignment->contractor_preferred_availability ?: '—' }}</td>
-                                <td><x-lw.pill tone="idle">{{ $assignment->status }}</x-lw.pill></td>
-                                <td>
-                                    @if($assignment->quote_attachment)
-                                        <a href="{{ uploaded_asset($assignment->quote_attachment) }}" target="_blank" rel="noopener">View</a>
-                                    @else
-                                        —
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            @else
-                <p class="mb-0 text-muted">None assigned.</p>
-            @endif
-        </div>
-    </div>
-
-    <div class="card lw-card mb-3">
-        <div class="card-body">
-            <div class="lw-section-title mt-0">Final contractor</div>
-            @if ($repairIssue->final_contractor_id && $repairIssue->finalContractor)
-                <p class="mb-0"><strong>{{ $repairIssue->finalContractor->name }}</strong></p>
-                <p class="mb-0 small text-muted">{{ $repairIssue->finalContractor->email }} · {{ $repairIssue->finalContractor->phone }}</p>
-            @else
-                <p class="mb-0 text-muted">Not selected.</p>
-            @endif
-        </div>
-    </div>
     @endunless
+
+    @include('backend.repair.partials.marketplace')
 
     <div class="card lw-card mb-3">
         <div class="card-body">

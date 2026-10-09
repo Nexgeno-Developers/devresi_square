@@ -43,8 +43,7 @@
             ['key' => 'property_details', 'title' => 'Home', 'order' => 1],
             ['key' => 'property_issue_details', 'title' => 'The issue', 'order' => 2],
             ['key' => 'manager_assign', 'title' => 'Managers', 'order' => 3],
-            ['key' => 'contractor_assign', 'title' => 'Contractor Assignments', 'order' => 4],
-            ['key' => 'final_contractor', 'title' => 'Final Contractor', 'order' => 5],
+            ['key' => 'marketplace', 'title' => 'Contractors', 'order' => 4],
             ['key' => 'repair_history', 'title' => 'History', 'order' => 6],
             ['key' => 'work_order_detail', 'title' => 'Work Order Detail', 'order' => 7],
             ['key' => 'invoice_detail', 'title' => 'Invoice Detail', 'order' => 8],
@@ -55,6 +54,7 @@
                 return in_array($section['key'], [
                     'property_details',
                     'property_issue_details',
+                    'marketplace',
                     'repair_history',
                 ], true);
             }));

@@ -30,7 +30,7 @@
 @if($repairIssue->tenant_availability || $repairIssue->access_details)
     <p>
         <strong>Preferred Availability:</strong>
-        {{ optional($repairIssue->tenant_availability)->format('d M Y, H:i') ?: '-' }}<br>
+        {{ $repairIssue->tenantAvailabilityLabel() ?: '-' }}<br>
         <strong>Access Details:</strong> {{ $repairIssue->access_details ?: '-' }}
     </p>
 @endif

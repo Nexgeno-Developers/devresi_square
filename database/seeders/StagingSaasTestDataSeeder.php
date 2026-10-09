@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\AccountContractor;
 use App\Models\Account;
 use App\Models\AccountSubscription;
 use App\Models\AccountSubscriptionAddon;
@@ -9,11 +10,16 @@ use App\Models\AccountUser;
 use App\Models\Addon;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\ContractorDocument;
+use App\Models\ContractorProfile;
+use App\Models\ContractorTrade;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\PropertyParticipant;
 use App\Models\RepairCategory;
+use App\Models\RepairContractorRequest;
 use App\Models\RepairIssue;
+use App\Models\RepairJobOffer;
 use App\Models\RepairIssueContractorAssignment;
 use App\Models\RepairIssuePropertyManager;
 use App\Models\Staff;
@@ -22,6 +28,7 @@ use App\Models\TenancySubStatus;
 use App\Models\TenancyType;
 use App\Models\TenantMember;
 use App\Models\User;
+use App\Support\PostcodeGeo;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -56,6 +63,12 @@ class StagingSaasTestDataSeeder extends Seeder
             'repair_categories',
             'repair_issues',
             'repair_issue_contractor_assignments',
+            'contractor_profiles',
+            'contractor_documents',
+            'contractor_trades',
+            'account_contractors',
+            'repair_contractor_requests',
+            'repair_job_offers',
         ]);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
@@ -174,6 +187,7 @@ class StagingSaasTestDataSeeder extends Seeder
             $this->propertyManagerTenancy($tenancy, $propertyManager, $landlordProperty);
 
             $repair = $this->repair($landlordAccount, $landlordProperty, $tenant, $contractor, $landlordOwner);
+            $this->marketplaceContractor($landlordAccount, $landlordProperty, $repair, $contractor, $landlordOwner);
             $this->contractorAssignment($landlordAccount, $repair, $contractor, $propertyManager);
             $this->propertyManagerRepairAssignment($landlordAccount, $repair, $propertyManager, $landlordOwner);
             $this->workOrder($landlordAccount, $repair, $contractor, $landlordOwner);
@@ -516,7 +530,7 @@ class StagingSaasTestDataSeeder extends Seeder
                 'repair_navigation' => json_encode(['General repair']),
                 'description' => 'Staging repair for contractor portal testing.',
                 'tenant_id' => $tenant->id,
-                'tenant_availability' => now()->addDays(2),
+                'tenant_availability' => now()->addDays(2)->setTime(9, 0),
                 'access_details' => 'Use staging lockbox code 0000.',
                 'estimated_price' => 150,
                 'vat_type' => 'exclusive',
@@ -529,6 +543,127 @@ class StagingSaasTestDataSeeder extends Seeder
                 'updated_by' => $createdBy->id,
             ])
         );
+    }
+
+    /**
+     * Approved marketplace profile plus an open invite, so the staging landlord
+     * and contractor can walk the job without a fresh registration.
+     */
+    private function marketplaceContractor(Account $account, Property $property, RepairIssue $repair, User $contractor, User $landlord): void
+    {
+        $postcode = PostcodeGeo::normalise($property->postcode ?: 'ST1 1AA');
+        $location = PostcodeGeo::locate($postcode);
+        $profileAttributes = [
+            'trading_type' => 'sole_trader',
+            'legal_name' => $contractor->name,
+            'vat_registered' => false,
+            'cis_status' => 'unverified',
+            'employs_staff' => false,
+            'postcode' => $postcode,
+            'coverage_radius_miles' => 25,
+            'phone' => '07700900123',
+            'trades' => ['general', 'plumbing'],
+            'approval_status' => ContractorProfile::APPROVED,
+            'terms_accepted_at' => now(),
+            'privacy_version' => config('contractor_marketplace.privacy_version'),
+            'paused_at' => null,
+            'pause_reason' => null,
+            'removed_at' => null,
+        ];
+        if ($location) {
+            $profileAttributes['latitude'] = $location[0];
+            $profileAttributes['longitude'] = $location[1];
+        }
+        $profile = ContractorProfile::updateOrCreate(
+            ['user_id' => $contractor->id],
+            $profileAttributes
+        );
+        foreach (['general', 'plumbing'] as $trade) {
+            ContractorTrade::updateOrCreate(
+                ['contractor_profile_id' => $profile->id, 'trade' => $trade],
+                ['status' => ContractorTrade::APPROVED, 'reviewed_at' => now()]
+            );
+        }
+        $this->marketplaceDocument($profile, ContractorDocument::PHOTO_ID, []);
+        $this->marketplaceDocument($profile, ContractorDocument::PUBLIC_LIABILITY, [
+            'cover_amount' => 2000000,
+            'expires_at' => now()->addYear(),
+        ]);
+        AccountContractor::updateOrCreate(
+            ['account_id' => $account->id, 'contractor_user_id' => $contractor->id],
+            [
+                'email' => $contractor->email,
+                'name' => $contractor->name,
+                'invited' => true,
+                'favourite' => true,
+                'claimed_at' => now(),
+            ]
+        );
+
+        $offer = RepairJobOffer::query()
+            ->where('repair_issue_id', $repair->id)
+            ->where('contractor_user_id', $contractor->id)
+            ->first();
+        if ($offer && ! in_array($offer->status, [RepairJobOffer::INVITED, RepairJobOffer::VIEWED, RepairJobOffer::EXPIRED], true)) {
+            return;
+        }
+
+        $respondBy = now()->addHours(72);
+        $request = RepairContractorRequest::updateOrCreate(
+            ['repair_issue_id' => $repair->id],
+            [
+                'account_id' => $account->id,
+                'urgency' => 'routine',
+                'trade' => 'general',
+                'respond_by' => $respondBy,
+                'access_notes' => $repair->access_details,
+                'availability_to_arrange' => false,
+                'status' => RepairContractorRequest::SENT,
+                'sent_by' => $landlord->id,
+                'first_sent_at' => now(),
+                'last_sent_at' => now(),
+            ]
+        );
+        RepairJobOffer::updateOrCreate(
+            ['repair_issue_id' => $repair->id, 'contractor_user_id' => $contractor->id],
+            [
+                'account_id' => $account->id,
+                'repair_contractor_request_id' => $request->id,
+                'invited_by' => $landlord->id,
+                'status' => RepairJobOffer::INVITED,
+                'job_status' => null,
+                'pricing_type' => null,
+                'net_amount' => null,
+                'vat_amount' => null,
+                'gross_amount' => null,
+                'availability_snapshot' => $repair->tenant_availability,
+                'invited_at' => now(),
+                'viewed_at' => null,
+                'invite_expires_at' => $respondBy,
+                'offer_sent_at' => null,
+                'offer_expires_at' => null,
+            ]
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function marketplaceDocument(ContractorProfile $profile, string $type, array $attributes): void
+    {
+        $document = ContractorDocument::query()->firstOrNew([
+            'contractor_profile_id' => $profile->id,
+            'type' => $type,
+        ]);
+        $document->fill($attributes + [
+            'status' => ContractorDocument::APPROVED,
+            'disk' => 'local',
+            'submitted_at' => $document->submitted_at ?: now(),
+        ]);
+        if (blank($document->path)) {
+            $document->path = null;
+        }
+        $document->save();
     }
 
     private function contractorAssignment(Account $account, RepairIssue $repair, User $contractor, User $assignedBy): RepairIssueContractorAssignment

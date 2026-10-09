@@ -6,6 +6,9 @@
         <div class="col-md-6">
             <h1 class="h3">Registrations</h1>
             <small class="text-muted">Only verified registrations are shown here.</small>
+            <div class="mt-2">
+                <a href="{{ route('admin.registrations.contractors.index') }}">Contractor compliance queue</a>
+            </div>
         </div>
     </div>
 </div>
@@ -119,10 +122,12 @@
                         <td class="text-right text-nowrap">
                             {{-- Only View button — approve/reject is done on the detail page --}}
                             <a href="{{ route('admin.registrations.show', $reg->id) }}"
-                               class="btn btn-sm btn-outline-primary" title="Review">
-                                <i class="fas fa-eye"></i>
+                               class="btn btn-sm btn-outline-primary"
+                               title="{{ $reg->status === 'verified' ? 'Review registration' : 'View registration' }}">
                                 @if($reg->status === 'verified')
-                                    Review
+                                    <i class="fas fa-clipboard-check"></i> Review
+                                @else
+                                    <i class="fas fa-eye"></i> View
                                 @endif
                             </a>
                             @if($reg->status === 'approved' && $reg->account)

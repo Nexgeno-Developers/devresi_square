@@ -67,10 +67,18 @@ class PostLoginRedirectAndSuperAdminGuardTest extends TestCase
         ]);
 
         $this->actingAs($contractor)->withSession(['current_account_id' => $accountId]);
-        $this->assertSame('contractor.repairs.index', PostLoginRedirect::routeName($contractor));
+        $this->assertSame('contractor.jobs.index', PostLoginRedirect::routeName($contractor));
 
         $this->actingAs($contractor)->withSession(['current_account_id' => $accountId])
             ->get(route('contractor.repairs.index'))
+            ->assertRedirect(route('contractor.jobs.index'));
+
+        $this->actingAs($contractor)->withSession(['current_account_id' => $accountId])
+            ->get(route('contractor.jobs.index'))
+            ->assertRedirect(route('contractor.profile.edit'));
+
+        $this->actingAs($contractor)->withSession(['current_account_id' => $accountId])
+            ->get(route('contractor.profile.edit'))
             ->assertOk()
             ->assertDontSee('This area is only available to tenants.', false);
     }

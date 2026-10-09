@@ -90,7 +90,7 @@
                 <th>Access Details</th>
                 <td>
                     <strong>Access:</strong> {{ $repairIssue->access_details ?: '-' }}<br>
-                    <strong>Availability:</strong> {{ optional($repairIssue->tenant_availability)->format('d M Y, H:i') ?: '-' }}
+                    <strong>Availability:</strong> {{ $repairIssue->tenantAvailabilityLabel() ?: '-' }}
                 </td>
             </tr>
         </tbody>

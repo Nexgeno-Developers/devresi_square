@@ -41,6 +41,7 @@
     @if(auth()->check() && (is_landlord_plan_user() || is_tenant_portal_user()))
         <link href="{{ asset('asset/backend/css/landlord-workspace.css') }}?v={{ filemtime(public_path('asset/backend/css/landlord-workspace.css')) }}" rel="stylesheet">
     @endif
+    <link href="{{ asset('asset/backend/css/resi-shell.css') }}?v={{ filemtime(public_path('asset/backend/css/resi-shell.css')) }}" rel="stylesheet">
     {{-- <link href="{{ asset('asset/backend/css/media.css') }}" rel="stylesheet"> --}}
     {{-- <link href="{{ asset('asset/backend/css/vendors.css') }}" rel="stylesheet"> --}}
 </head>

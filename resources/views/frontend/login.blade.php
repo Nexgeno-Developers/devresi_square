@@ -33,5 +33,7 @@
     <p class="auth-muted mb-0">
         Don’t have an account?
         <a class="auth-link" href="{{ route('register') }}">Sign up</a>
+        ·
+        <a class="auth-link" href="{{ route('register.contractor') }}">Contractor sign up</a>
     </p>
 @endsection

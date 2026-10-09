@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Mail\MailManager;
+use App\Models\AccountContractor;
+use App\Models\ContractorProfile;
 use App\Models\OtpConfiguration;
 use App\Models\Plan;
 use App\Models\Registration;
@@ -226,7 +228,17 @@ class RegistrationController extends Controller
         $registration = Registration::with('plan')->findOrFail($regId);
 
         if ($registration->isVerified()) {
+            if ($registration->type === 'contractor' && $registration->user) {
+                Auth::login($registration->user);
+
+                return redirect()->route('contractor.jobs.index');
+            }
+
             return view('frontend.register-pending-approval');
+        }
+
+        if ($registration->type === 'contractor') {
+            return view('frontend.contractor.verify-otp', compact('registration'));
         }
 
         return view('frontend.register-verify-otp', compact('registration'));
@@ -252,6 +264,12 @@ class RegistrationController extends Controller
 
         $registration = Registration::with(['plan', 'account', 'user'])->findOrFail($regId);
 
+        if ($registration->type === 'contractor' && $registration->user_id && $registration->otp_verified_at && $registration->user) {
+            Auth::login($registration->user);
+
+            return redirect()->route('contractor.jobs.index');
+        }
+
         if ($registration->status === 'approved' && $registration->user && $registration->account) {
             Auth::login($registration->user);
             $currentAccountService->setCurrentAccount($registration->user, $registration->account->id);
@@ -268,6 +286,10 @@ class RegistrationController extends Controller
         // Check code
         if ($registration->otp_code !== $request->otp) {
             return back()->withErrors(['otp' => 'Invalid OTP. Please try again.']);
+        }
+
+        if ($registration->type === 'contractor') {
+            return $this->completeContractorSignup($registration, $currentAccountService);
         }
 
         $now = now();
@@ -352,6 +374,155 @@ class RegistrationController extends Controller
         }
     }
 
+    public function showContractorForm(Request $request)
+    {
+        $invite = null;
+        if ($request->filled('invite')) {
+            $invite = AccountContractor::query()
+                ->where('token', $request->string('invite')->toString())
+                ->whereNull('contractor_user_id')
+                ->first();
+            if ($invite) {
+                session(['contractor_invite' => $invite->token]);
+            }
+        }
+
+        return view('frontend.register-contractor', compact('invite'));
+    }
+
+    public function submitContractor(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => ['required', 'string', 'max:200'],
+            'email' => [
+                'required',
+                'email:rfc,dns',
+                Rule::unique('registrations', 'email')->where(fn ($q) => $q->whereNotIn('status', ['rejected'])),
+                'unique:users,email',
+            ],
+            'phone' => ['required', 'string', 'regex:/^\+?[0-9\s\-\(\)]{10,20}$/'],
+            'password' => ['required', 'string', 'min:8'],
+            'terms' => ['accepted'],
+        ], [
+            'email.unique' => 'This email is already registered. Log in instead.',
+            'phone.regex' => 'Enter a UK mobile number, for example 07700 900123.',
+            'terms.accepted' => 'Please accept the contractor terms and privacy notice.',
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator)->withInput($request->except('password'));
+        }
+
+        $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $this->logDebugOtp($request->email, $otp);
+
+        [$firstName, $lastName] = $this->splitName($request->string('name')->toString());
+
+        $registration = Registration::create([
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $request->email,
+            'phone' => preg_replace('/[^\d+]/', '', (string) $request->phone),
+            'type' => 'contractor',
+            'verify_via' => 'email',
+            'password_hash' => Hash::make($request->password),
+            'otp_code' => $otp,
+            'otp_expires_at' => now()->addMinutes(2),
+            'status' => 'pending',
+            'ip' => $request->ip(),
+            'ref_url' => $request->headers->get('referer'),
+        ]);
+
+        try {
+            $this->sendEmailOtp($registration, $otp);
+        } catch (\Throwable $e) {
+            Log::error('Failed to send contractor registration OTP: '.$e->getMessage());
+            $registration->delete();
+
+            return back()->withErrors(['email' => 'We could not send a verification email. Please try again in a moment.'])->withInput();
+        }
+
+        session(['reg_id' => $registration->id]);
+
+        return redirect()->route('register.verify.otp');
+    }
+
+    private function completeContractorSignup(Registration $registration, CurrentAccountService $currentAccountService)
+    {
+        if ($registration->user_id && $registration->user) {
+            Auth::login($registration->user);
+
+            return redirect()->route('contractor.jobs.index');
+        }
+
+        DB::beginTransaction();
+        try {
+            $now = now();
+            $registration->update([
+                'otp_verified_at' => $now,
+                'otp_code' => null,
+                'email_verified_at' => $now,
+                'status' => 'verified',
+            ]);
+
+            $user = User::create([
+                'first_name' => $registration->first_name,
+                'last_name' => $registration->last_name,
+                'name' => trim($registration->first_name.' '.$registration->last_name),
+                'email' => $registration->email,
+                'phone' => $registration->phone,
+                'user_type' => 'contractor',
+                'status' => 1,
+                'can_login' => 1,
+                'password' => $registration->password_hash,
+                'email_verified_at' => $now,
+            ]);
+
+            $role = Role::findOrCreate('Contractor', 'web');
+            $user->assignRole($role);
+
+            $profile = ContractorProfile::create([
+                'user_id' => $user->id,
+                'legal_name' => trim($registration->first_name.' '.$registration->last_name),
+                'phone' => $registration->phone,
+                'approval_status' => ContractorProfile::DRAFT,
+                'terms_accepted_at' => $now,
+                'privacy_version' => config('contractor_marketplace.privacy_version'),
+            ]);
+            $profile->log('signed_up', $user, null, 'Accepted contractor terms and privacy notice '.config('contractor_marketplace.privacy_version').'.');
+
+            $registration->update([
+                'user_id' => $user->id,
+                'password_hash' => null,
+            ]);
+
+            app(\App\Services\Contractors\ContractorDirectory::class)->claimInvites($user, session('contractor_invite'));
+
+            DB::commit();
+        } catch (\Throwable $exception) {
+            DB::rollBack();
+            Log::error('Contractor signup failed', [
+                'registration_id' => $registration->id,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return back()->withErrors(['otp' => 'We could not create your account. Please try again or contact support.']);
+        }
+
+        session()->forget(['reg_id', 'contractor_invite']);
+        Auth::login($user);
+        $currentAccountService->clearCurrentAccount();
+
+        app(\App\Services\Contractors\ContractorMail::class)->toUser(
+            $user,
+            'Welcome to '.config('app.name').' for contractors',
+            '<p>Hi '.e($user->first_name).',</p><p>Your account is set up. Next, tell us your trades and add the documents they need. It takes a few minutes and works from your phone.</p>'
+                .'<p><a href="'.e(route('contractor.profile.edit')).'">Finish your profile</a></p>'
+        );
+
+        return redirect()->route('contractor.profile.edit');
+    }
+
     // ─── Resend OTP ───────────────────────────────────────────────────────────
     public function resendOtp(Request $request)
     {
@@ -398,6 +569,15 @@ class RegistrationController extends Controller
 
         flash($msg)->success();
         return back();
+    }
+
+    private function splitName(string $name): array
+    {
+        $parts = preg_split('/\s+/', trim($name), 2) ?: [];
+        $first = $parts[0] ?? 'Contractor';
+        $last = $parts[1] ?? $first;
+
+        return [$first, $last];
     }
 
     // ─── Send OTP via email ───────────────────────────────────────────────────

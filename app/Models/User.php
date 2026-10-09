@@ -118,6 +118,11 @@ class User extends Authenticatable
         return $this->hasMany(AccountUser::class);
     }
 
+    public function contractorProfile()
+    {
+        return $this->hasOne(ContractorProfile::class);
+    }
+
     public function activeAccountUsers(): HasMany
     {
         return $this->accountUsers()->where('status', 'active');

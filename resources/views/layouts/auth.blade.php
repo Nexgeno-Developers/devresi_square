@@ -11,13 +11,13 @@
 </head>
 <body class="auth-body">
     <div class="auth-shell">
-        <div class="auth-login">
+        <div class="auth-login @yield('shell_class')">
             <div class="auth-brand">
                 <p class="auth-kicker">{{ get_setting('website_name') ?: 'Resisquare' }}</p>
                 <h1>@yield('brand_headline', 'Homes, rent and repairs in one workspace.')</h1>
                 <p>@yield('brand_copy', 'Landlords see the portfolio. Tenants only see their home.')</p>
             </div>
-            <div class="auth-form">
+            <div class="auth-form @yield('form_class')">
                 @yield('content')
             </div>
         </div>

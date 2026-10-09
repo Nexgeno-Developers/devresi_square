@@ -63,12 +63,16 @@ class CommandController extends Controller
         return "✅ View cache stored!";
     }
 
-    // public function migrate()
-    // {
-    //     $this->checkAccess();
-    //     Artisan::call('migrate', ['--force' => true]);
-    //     return "✅ Database migrated!";
-    // }
+    public function migrate()
+    {
+        $exit = Artisan::call('migrate', ['--force' => true]);
+        $output = trim(Artisan::output());
+
+        return response(
+            $output !== '' ? $output : 'Nothing to migrate.',
+            $exit === 0 ? 200 : 500
+        )->header('Content-Type', 'text/plain; charset=UTF-8');
+    }
 
     public function storageLink()
     {

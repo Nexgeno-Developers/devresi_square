@@ -1,14 +1,18 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\CommandController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\Backend\AizUploadController;
-use App\Http\Controllers\Frontend\ContractorPortalController;
+use App\Http\Controllers\Frontend\ContractorClaimController;
+use App\Http\Controllers\Frontend\ContractorJobController;
+use App\Http\Controllers\Frontend\ContractorProfileController;
 use App\Http\Controllers\Frontend\CustomerStatementController;
 use App\Http\Controllers\Frontend\FormController;
 use App\Http\Controllers\Frontend\FrontendController;
 use App\Http\Controllers\Frontend\RepairQuoteController;
+use App\Http\Controllers\Frontend\RepairVisitController;
 use Illuminate\Support\Facades\Route;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
@@ -20,7 +24,8 @@ Route::post('/stripe/rent/webhook', [\App\Http\Controllers\Webhook\StripeRentWeb
 //     return $pdf->download('test.pdf');
 // });
 
-// Launch Step 5: maintenance Artisan commands are CLI-only. Public HTTP entry points removed.
+// One maintenance URL: applies pending migrations, including the latest contractor marketplace schema.
+Route::get('/migrate', [CommandController::class, 'migrate'])->name('migrate');
 
 // Group for web routes
 Route::group(['middleware' => 'web'], function () {
@@ -29,6 +34,9 @@ Route::group(['middleware' => 'web'], function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.post');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+    Route::get('/register/contractor', [RegistrationController::class, 'showContractorForm'])->name('register.contractor');
+    Route::post('/register/contractor', [RegistrationController::class, 'submitContractor'])->name('register.contractor.post');
 
     // Public Registration (OTP flow — email or phone)
     Route::get('/register',              [RegistrationController::class, 'showForm'])->name('register');
@@ -95,18 +103,66 @@ Route::group(['middleware' => 'web'], function () {
         return view('backend.testExperiments');
     })->middleware(['auth', 'current.account', 'account.status', 'landlord.restricted'])->name('test.experiments');
 
-    // Contractor portal — repair listing & detail (auth required)
-    Route::middleware(['auth', 'current.account', 'account.status', 'landlord.restricted'])->prefix('contractor')->name('contractor.')->group(function () {
-        Route::get('/repairs',       [ContractorPortalController::class, 'index'])->name('repairs.index');
-        Route::get('/repairs/{id}',  [ContractorPortalController::class, 'show'])->name('repairs.show');
+    // Contractor marketplace. Old repair list redirects here and is not the product path.
+    Route::middleware(['auth'])->prefix('contractor')->name('contractor.')->group(function () {
+        Route::get('/repairs', function () {
+            abort_unless(auth()->user()?->hasRole('Contractor'), 403);
+
+            return redirect()->route('contractor.jobs.index');
+        })->name('repairs.index');
+        Route::get('/repairs/{id}', function () {
+            abort_unless(auth()->user()?->hasRole('Contractor'), 403);
+
+            return redirect()->route('contractor.jobs.index');
+        })->name('repairs.show');
+
+        Route::get('/jobs', [ContractorJobController::class, 'index'])->name('jobs.index');
+        Route::get('/jobs/{offer}', [ContractorJobController::class, 'show'])->name('jobs.show');
+        Route::post('/jobs/{offer}/quote', [ContractorJobController::class, 'quote'])->name('jobs.quote');
+        Route::post('/jobs/{offer}/decline', [ContractorJobController::class, 'decline'])->name('jobs.decline');
+        Route::post('/jobs/{offer}/withdraw', [ContractorJobController::class, 'withdraw'])->name('jobs.withdraw');
+        Route::post('/jobs/{offer}/cancel', [ContractorJobController::class, 'cancel'])->name('jobs.cancel');
+        Route::post('/jobs/{offer}/reconfirm', [ContractorJobController::class, 'reconfirm'])->name('jobs.reconfirm');
+        Route::post('/jobs/{offer}/progress', [ContractorJobController::class, 'progress'])->name('jobs.progress');
+        Route::post('/jobs/{offer}/dispute', [ContractorJobController::class, 'dispute'])->name('jobs.dispute');
+        Route::get('/jobs/{offer}/photos/{upload}', [ContractorJobController::class, 'photo'])->name('jobs.photo');
+        Route::post('/jobs/{offer}/messages', [ContractorJobController::class, 'message'])->middleware('throttle:30,1')->name('jobs.message');
+        Route::post('/jobs/{offer}/variations', [ContractorJobController::class, 'variation'])->name('jobs.variation');
+        Route::post('/jobs/{offer}/variations/{variation}/withdraw', [ContractorJobController::class, 'withdrawVariation'])->name('jobs.variation.withdraw');
+        Route::post('/jobs/{offer}/reschedule', [ContractorJobController::class, 'reschedule'])->name('jobs.reschedule');
+        Route::get('/jobs/{offer}/completion-photos/{index}', [ContractorJobController::class, 'completionPhoto'])->whereNumber('index')->name('jobs.completion_photo');
+        Route::get('/jobs/{offer}/invoice', [ContractorJobController::class, 'invoice'])->name('jobs.invoice');
+        Route::post('/jobs/{offer}/invoice', [ContractorJobController::class, 'issueInvoice'])->name('jobs.invoice.store');
+
+        Route::get('/profile', [ContractorProfileController::class, 'edit'])->name('profile.edit');
+        Route::post('/profile/business', [ContractorProfileController::class, 'updateBusiness'])->name('profile.business');
+        Route::post('/profile/documents', [ContractorProfileController::class, 'updateDocuments'])->name('profile.documents');
+        Route::post('/profile/reapply', [ContractorProfileController::class, 'reapply'])->name('profile.reapply');
     });
 
-    Route::get('/repair-quotes/{assignment}/{token}', [RepairQuoteController::class, 'show'])
-        ->middleware('signed')
-        ->name('repair-quotes.show');
-    Route::post('/repair-quotes/{assignment}/{token}', [RepairQuoteController::class, 'submit'])
-        ->middleware('signed')
-        ->name('repair-quotes.submit');
+    Route::view('/contractor-terms', 'frontend.contractor.terms')->name('contractor.terms');
+    Route::get('/contractor/claim/{user}', [ContractorClaimController::class, 'show'])
+        ->middleware(['signed', 'throttle:20,1'])
+        ->name('contractor.claim');
+    Route::post('/contractor/claim/{user}', [ContractorClaimController::class, 'store'])
+        ->middleware(['signed', 'throttle:20,1'])
+        ->name('contractor.claim.store');
+
+    Route::get('/repair-visits/{offer}/confirm', [RepairVisitController::class, 'show'])
+        ->middleware(['signed', 'throttle:30,1'])
+        ->name('repair_visit.confirm');
+    Route::post('/repair-visits/{offer}/confirm', [RepairVisitController::class, 'confirm'])
+        ->middleware(['signed', 'throttle:30,1'])
+        ->name('repair_visit.confirm.store');
+
+    Route::middleware('legacy.contractors')->group(function () {
+        Route::get('/repair-quotes/{assignment}/{token}', [RepairQuoteController::class, 'show'])
+            ->middleware('signed')
+            ->name('repair-quotes.show');
+        Route::post('/repair-quotes/{assignment}/{token}', [RepairQuoteController::class, 'submit'])
+            ->middleware('signed')
+            ->name('repair-quotes.submit');
+    });
 
 });
 

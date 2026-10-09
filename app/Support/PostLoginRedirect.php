@@ -19,11 +19,11 @@ final class PostLoginRedirect
         }
 
         if ($membership && $membership->member_type === AccountMembership::CONTRACTOR) {
-            return 'contractor.repairs.index';
+            return 'contractor.jobs.index';
         }
 
         if ($user->hasRole('Contractor') && ! $user->hasRole('Tenant')) {
-            return 'contractor.repairs.index';
+            return 'contractor.jobs.index';
         }
 
         if ($user->hasRole('Tenant')) {

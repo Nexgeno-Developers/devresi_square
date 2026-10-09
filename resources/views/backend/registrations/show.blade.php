@@ -39,7 +39,7 @@
                 </span>
             </div>
             <div class="card-body p-0">
-                <table class="table table-sm table-borderless mb-0">
+                <table class="table table-sm table-borderless mb-0" style="word-break: break-word;">
                     <tr>
                         <th class="text-muted ps-3" width="42%">Name</th>
                         <td>{{ $registration->full_name }}</td>
@@ -111,6 +111,7 @@
             </div>
         </div>
 
+        @if($registration->type !== 'contractor')
         <div class="card mb-3">
             <div class="card-header">
                 <h5 class="mb-0 h6">Selected SaaS Plan</h5>
@@ -200,9 +201,24 @@
                 </table>
             </div>
         </div>
+        @endif
 
-        {{-- Approve form (with role picker) --}}
-        @if(!in_array($registration->status, ['approved','rejected']))
+        {{-- Approve form (with role picker). Contractors are approved from their documents. --}}
+        @if($registration->type === 'contractor')
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0 h6">Contractor check</h5>
+                </div>
+                <div class="card-body">
+                    @if($contractorReview['profile'] ?? null)
+                        <p class="mb-1">Status: <strong>{{ $contractorReview['profile']->statusLabel() }}</strong></p>
+                        <p class="text-muted small mb-0">Look through the documents on the right, then approve or reject the contractor once.</p>
+                    @else
+                        <p class="text-muted small mb-0">No documents yet. They appear on the right after the contractor submits their checks.</p>
+                    @endif
+                </div>
+            </div>
+        @elseif(!in_array($registration->status, ['approved','rejected']))
             <div class="card mb-3 border-success">
                 <div class="card-header bg-success bg-opacity-10">
                     <h5 class="mb-0 h6 text-success">
@@ -280,9 +296,11 @@
 
     </div>
 
-    {{-- ── Right column: permissions ── --}}
+    {{-- ── Right column: contractor documents, or permissions after a normal approval ── --}}
     <div class="col-lg-8">
-        @if($registration->status === 'approved' && $registration->user)
+        @if($registration->type === 'contractor')
+            @include('backend.registrations.contractor-documents')
+        @elseif($registration->status === 'approved' && $registration->user)
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0 h6">

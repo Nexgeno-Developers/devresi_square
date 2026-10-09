@@ -33,18 +33,12 @@
                 </svg>
             </div>
             @auth
-                @unless(is_tenant_portal_user() || is_landlord_plan_user())
-                    <a class="btn btn-soft-danger btn-sm d-flex align-items-center" href="{{ route('cache.clear')}}">
-                        <i class="fa-regular fa-hard-drive fs-20"></i>
-                        <span class="fw-500 mx-2">Clear Cache</span>
-                    </a>
-                @endunless
                 @if(session()->has('impersonator_user_id'))
                     <span class="small text-muted text-nowrap">Viewing {{ current_account()?->account_name ?: 'customer account' }}</span>
                     <form action="{{ route('backend.accounts.leave-login') }}" method="POST" class="mb-0">
                         @csrf
-                        <button type="submit" class="btn btn-sm btn-warning text-nowrap">
-                            <i class="bi bi-arrow-return-left me-1"></i> Return to Super Admin
+                        <button type="submit" class="rs-return-admin text-nowrap">
+                            <i class="bi bi-arrow-return-left"></i> Return to Super Admin
                         </button>
                     </form>
                 @elseif(! auth()->user()->isSuperAdmin())
@@ -58,10 +52,10 @@
                             ->keyBy('account_id');
                     @endphp
                     @if($availableAccounts->count() > 1)
-                        <form action="{{ route('backend.accounts.switch') }}" method="POST" class="d-flex align-items-center gap-2 mb-0">
+                        <form action="{{ route('backend.accounts.switch') }}" method="POST" class="rs-account-switch mb-0">
                             @csrf
-                            <label class="small text-muted mb-0" for="backend-current-account">Account</label>
-                            <select id="backend-current-account" name="account_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <label class="visually-hidden" for="backend-current-account">Account</label>
+                            <select id="backend-current-account" name="account_id" onchange="this.form.submit()">
                                 @foreach($availableAccounts as $account)
                                     @php
                                         $memberType = $accountMemberships->get($account->id)?->member_type;
@@ -95,7 +89,7 @@
                     $appointmentNotifications = $appointmentNotificationQuery->latest()->take(5)->get();
                 @endphp
                 <div class="dropdown">
-                    <button class="btn btn-light position-relative" type="button" data-bs-toggle="dropdown"
+                    <button class="rs-notify position-relative" type="button" data-bs-toggle="dropdown"
                         aria-expanded="false" aria-label="Notifications">
                         <i class="bi bi-bell"></i>
                         @if($appointmentNotificationCount)
@@ -125,50 +119,77 @@
                             <div class="px-3 py-3 text-muted small">No unread notifications.</div>
                         @endforelse
                         <div class="px-3 py-2 border-top d-flex justify-content-between">
+                            @if(is_tenant_portal_user())
+                            <a href="{{ route('tenant.notifications') }}" class="small">Preferences</a>
+                            @elseif(! auth()->user()->hasRole('Contractor'))
                             <a href="{{ route('backend.notifications.index') }}" class="small">View all</a>
                             <a href="{{ route('backend.notifications.preferences') }}" class="small">Preferences</a>
+                            @endif
                         </div>
                     </div>
                 </div>
-                @if(is_landlord_plan_user())
-                    @php
-                        $lwUser = auth()->user();
-                        $lwInitials = collect(preg_split('/\s+/', trim((string) $lwUser->name)))
-                            ->filter()
-                            ->take(2)
-                            ->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))
-                            ->implode('');
-                    @endphp
-                    <div class="dropdown">
-                        <a class="lw-account-chip" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">
-                            <span class="lw-account-avatar">{{ $lwInitials ?: 'LL' }}</span>
-                            <span class="lw-account-copy">
-                                <span class="lw-account-name">{{ $lwUser->name }}</span>
-                                <span class="lw-account-plan">{{ current_account()?->account_name ?: 'Landlord' }}</span>
-                            </span>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2">
-                            <li><a class="dropdown-item" href="{{ route('admin.users.profile.show') }}">Profile</a></li>
-                            <li><a class="dropdown-item" href="{{ route('backend.notifications.index') }}">Notifications</a></li>
-                            <li><a class="dropdown-item" href="{{ route('backend.billing.index') }}">Billing</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <form action="{{ route('logout') }}" method="POST" class="m-0">
-                                    @csrf
-                                    <button type="submit" class="dropdown-item text-danger">Logout</button>
-                                </form>
-                            </li>
-                        </ul>
-                    </div>
-                @else
-                    @unless(is_tenant_portal_user())
-                        <a class="nav-link px-2" href="{{ route('customer.statements') }}">My Statement</a>
-                    @endunless
-                    <form action="{{ route('logout') }}" method="POST" class="mb-0">
-                        @csrf
-                        <button type="submit" class="btn btn-light">Logout</button>
-                    </form>
-                @endif
+                @php
+                    $navUser = auth()->user();
+                    $navInitials = collect(preg_split('/\s+/', trim((string) $navUser->name)))
+                        ->filter()
+                        ->take(2)
+                        ->map(fn ($part) => mb_strtoupper(mb_substr($part, 0, 1)))
+                        ->implode('');
+                    $navIsContractor = $navUser->hasRole('Contractor');
+                    $navIsTenant = is_tenant_portal_user();
+                    $navIsLandlord = is_landlord_plan_user();
+                    $navContractorHold = $navIsContractor && $navUser->contractorProfile?->approval_status === \App\Models\ContractorProfile::SUBMITTED;
+                    if ($navIsLandlord) {
+                        $navSubtitle = current_account()?->account_name ?: 'Landlord';
+                    } elseif ($navIsTenant) {
+                        $navSubtitle = 'Tenant';
+                    } elseif ($navIsContractor) {
+                        $navSubtitle = 'Contractor';
+                    } else {
+                        $navSubtitle = $navUser->access_label;
+                    }
+                @endphp
+                <div class="dropdown">
+                    <a class="rs-account-chip" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Account menu">
+                        <span class="rs-account-avatar">{{ $navInitials ?: 'RS' }}</span>
+                        <span class="rs-account-copy">
+                            <span class="rs-account-name">{{ $navUser->name }}</span>
+                            <span class="rs-account-plan">{{ $navSubtitle }}</span>
+                        </span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end rs-account-menu">
+                        <li>
+                            @if($navContractorHold)
+                                <span class="dropdown-item rs-account-hold">Compliance</span>
+                            @elseif($navIsContractor)
+                                <a class="dropdown-item" href="{{ route('contractor.profile.edit') }}">Compliance</a>
+                            @elseif($navIsTenant)
+                                <a class="dropdown-item" href="{{ route('tenant.profile') }}">Profile</a>
+                            @else
+                                <a class="dropdown-item" href="{{ route('admin.users.profile.show') }}">Profile</a>
+                            @endif
+                        </li>
+                        @unless($navIsContractor)
+                        <li>
+                            <a class="dropdown-item" href="{{ $navIsTenant ? route('tenant.notifications') : route('backend.notifications.index') }}">Notifications</a>
+                        </li>
+                        @endunless
+                        @if($navIsLandlord)
+                        <li><a class="dropdown-item" href="{{ route('backend.billing.index') }}">Billing</a></li>
+                        @endif
+                        @unless($navIsTenant || $navIsContractor || $navIsLandlord)
+                        <li><a class="dropdown-item" href="{{ route('customer.statements') }}">My Statement</a></li>
+                        <li><a class="dropdown-item" href="{{ route('cache.clear') }}">Clear Cache</a></li>
+                        @endunless
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form action="{{ route('logout') }}" method="POST" class="m-0">
+                                @csrf
+                                <button type="submit" class="dropdown-item text-danger">Log out</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
             @else
                 <a class="nav-link" href="{{ route('login') }}">Login</a>
                 <a class="nav-link" href="{{ route('register') }}">Register</a>
