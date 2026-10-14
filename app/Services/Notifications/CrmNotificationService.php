@@ -81,7 +81,10 @@ class CrmNotificationService
             }
             $subjectText = $this->render($template?->subject ?: $definition['subject'], $recipientPayload);
             $message = $this->render($template?->default_text ?: $definition['message'], $recipientPayload);
-            foreach ($this->preferences->channels($accountId, $recipient, $eventKey, $definition) as $channel) {
+            $channels = collect($this->preferences->channels($accountId, $recipient, $eventKey, $definition))
+                ->sortBy(fn (string $channel) => $channel === 'system' ? 0 : 1)
+                ->values();
+            foreach ($channels as $channel) {
                 $milestone = (string) ($context['milestone'] ?? $context['version'] ?? 'event');
                 $idempotencyKey = hash('sha256', implode('|', [
                     $accountId, $eventKey, $subject->getMorphClass(), $subject->getKey(),
@@ -111,8 +114,8 @@ class CrmNotificationService
                 );
 
                 if ($log->wasRecentlyCreated) {
-                    SendNotificationJob::dispatch($log)->afterCommit();
                     $created++;
+                    SendNotificationJob::deliver($log);
                 }
             }
         }

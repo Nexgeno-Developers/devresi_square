@@ -100,6 +100,83 @@ class CrmNotificationPipelineTest extends TestCase
         $this->assertEqualsCanonicalizing(['email', 'system'], $channels);
     }
 
+    public function test_email_failure_still_delivers_the_in_app_notification(): void
+    {
+        config([
+            'queue.default' => 'sync',
+            'mail.default' => 'failing',
+            'mail.mailers.failing' => ['transport' => 'failing'],
+        ]);
+        \Illuminate\Support\Facades\Mail::extend('failing', function () {
+            return new class implements \Symfony\Component\Mailer\Transport\TransportInterface {
+                public function send(\Symfony\Component\Mime\RawMessage $message, ?\Symfony\Component\Mailer\Envelope $envelope = null): ?\Symfony\Component\Mailer\SentMessage
+                {
+                    throw new \Symfony\Component\Mailer\Exception\TransportException('smtp down');
+                }
+
+                public function __toString(): string
+                {
+                    return 'failing';
+                }
+            };
+        });
+        app()->forgetInstance('mailer');
+        Schema::create('notifications', function (Blueprint $table): void {
+            $table->uuid('id')->primary();
+            $table->unsignedBigInteger('account_id')->nullable();
+            $table->string('type');
+            $table->string('event_key')->nullable();
+            $table->string('category')->nullable();
+            $table->string('priority')->nullable();
+            $table->text('action_url')->nullable();
+            $table->string('notifiable_type');
+            $table->unsignedBigInteger('notifiable_id');
+            $table->text('data');
+            $table->timestamp('read_at')->nullable();
+            $table->timestamps();
+        });
+
+        $user = User::query()->create(['name' => 'Landlord', 'email' => 'landlord@example.test', 'password' => 'unused']);
+        DB::table('account_users')->insert([
+            'account_id' => 10, 'user_id' => $user->id, 'status' => 'active', 'can_login' => true,
+        ]);
+        $subject = PipelineSubject::query()->create(['account_id' => 10]);
+        $resolver = Mockery::mock(NotificationRecipientResolver::class);
+        $resolver->shouldReceive('resolve')->once()->andReturn(collect([$user]));
+        $preferences = Mockery::mock(NotificationPreferenceService::class);
+        $preferences->shouldReceive('channels')->once()->andReturn(['email', 'system']);
+
+        $created = (new CrmNotificationService($resolver, $preferences))->dispatch('offer.accepted', $subject, [
+            'account_id' => 10,
+            'milestone' => 'mail-down',
+            'property_address' => '1 Test Street',
+            'action_url' => '/offers',
+        ]);
+        $this->app->terminate();
+
+        $this->assertSame(2, $created);
+        $this->assertSame('failed', DB::table('notification_logs')->where('channel', 'email')->value('status'));
+        $this->assertSame('sent', DB::table('notification_logs')->where('channel', 'system')->value('status'));
+        $this->assertSame(1, DB::table('notifications')->count());
+    }
+
+    public function test_contractor_without_an_account_membership_still_gets_in_app_notifications(): void
+    {
+        $user = User::query()->create(['name' => 'Contractor', 'email' => 'contractor@example.test', 'password' => 'unused']);
+        $roleId = DB::table('roles')->insertGetId(['name' => 'Contractor', 'guard_name' => 'web']);
+        DB::table('model_has_roles')->insert([
+            'role_id' => $roleId,
+            'model_type' => $user->getMorphClass(),
+            'model_id' => $user->id,
+        ]);
+
+        $channels = app(RealNotificationPreferenceService::class)->channels(10, $user, 'repair.job_invited', [
+            'channels' => ['email', 'system'],
+        ]);
+
+        $this->assertEqualsCanonicalizing(['email', 'system'], $channels);
+    }
+
     private function createSchema(): void
     {
         Schema::create('users', function (Blueprint $table): void {

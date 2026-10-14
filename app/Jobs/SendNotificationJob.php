@@ -17,6 +17,7 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Testing\Fakes\QueueFake;
 use App\Support\AccountMembership;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -33,6 +34,47 @@ class SendNotificationJob implements ShouldQueue
     public function __construct(public NotificationLog $notificationLog)
     {
         $this->tries = (int) ($notificationLog->max_attempts ?? $this->tries);
+    }
+
+    /**
+     * Send one channel without letting a failure cancel the other channels.
+     * The sync driver runs the job inline, so an SMTP error used to abort the
+     * in-app notification that was still waiting in the same loop.
+     */
+    public static function deliver(NotificationLog $log): void
+    {
+        try {
+            $queued = app()->bound('queue') && app('queue') instanceof QueueFake;
+            if ($queued || config('queue.default') !== 'sync') {
+                self::dispatch($log)->afterCommit();
+                return;
+            }
+
+            if ($log->channel === 'email') {
+                app()->terminating(function () use ($log) {
+                    try {
+                        self::dispatchSync($log);
+                    } catch (\Throwable $exception) {
+                        Log::error('Notification delivery failed', [
+                            'notification_log_id' => $log->id,
+                            'channel' => $log->channel,
+                            'identifier' => $log->identifier,
+                            'error' => $exception->getMessage(),
+                        ]);
+                    }
+                });
+                return;
+            }
+
+            self::dispatchSync($log);
+        } catch (\Throwable $exception) {
+            Log::error('Notification delivery failed', [
+                'notification_log_id' => $log->id,
+                'channel' => $log->channel,
+                'identifier' => $log->identifier,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     public function handle(): void

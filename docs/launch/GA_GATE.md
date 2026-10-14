@@ -29,8 +29,8 @@
 
 ## Public message
 
-- Scope stays landlord MVP + tenant portal (`SCOPE_CONTRACT.md`).
-- Do not market agency GL, TDS APIs, or contractor marketplace at GA.
+- Scope stays the landlord workspace, tenant portal, and contractor marketplace (`SCOPE_CONTRACT.md`, `FRD-LANDLORD-LAUNCH.md`).
+- Do not market agency GL or TDS APIs at GA.
 
 ## Final gate
 

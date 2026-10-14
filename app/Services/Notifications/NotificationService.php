@@ -129,7 +129,7 @@ class NotificationService
                 'max_attempts' => (int) config('notification_system.max_attempts', 3),
             ]);
 
-            SendNotificationJob::dispatch($log)->afterCommit();
+            SendNotificationJob::deliver($log);
         }
     }
 }

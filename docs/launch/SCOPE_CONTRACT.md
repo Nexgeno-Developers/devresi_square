@@ -1,8 +1,10 @@
 # Resisquare Launch Scope Contract
 
-**Status:** Active (Step 1 complete)  
+**Status:** Active (Step 1 complete; marketplace added 14 October 2026)  
 **Product:** Landlord–tenant SaaS (Resisquare)  
 **Bar:** Functionality, integrity, and usability are equal launch gates. Nothing IN scope ships incomplete.
+
+The launch behavior is defined in `docs/launch/FRD-LANDLORD-LAUNCH.md`. That FRD includes the contractor marketplace and the integrity rules required on launch day.
 
 ## Pillars (all required)
 
@@ -29,6 +31,7 @@
 - Calendar / visits + reminders
 - Notifications (email + in-app) for IN events
 - Settings / Billing & Plan (landlord self-serve only)
+- Contractor marketplace on a landlord repair (find, send, exclusive access, firm award, completion), as specified in the FRD
 
 ### Tenant portal
 - Home, My Tenancy (confirm / correction), Rent (list / detail / pay), Maintenance (photo-first), Documents, Calendar, Profile + notification prefs
@@ -45,7 +48,6 @@
 - Agency double-entry accounting / GL / client-money ledgers as a product
 - Sales / offers CRM
 - Branches, staff designations, company profile as landlord features
-- Contractor marketplace
 - Auto-generated AST / How to Rent packs via third-party APIs
 - TDS / DPS / MyDeposits **API** integrations (manual deposit workflow remains IN)
 - AML / KYC productisation for estate agents

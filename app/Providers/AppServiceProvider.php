@@ -6,8 +6,12 @@ use OwenIt\Auditing\Auditor;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
+use Symfony\Component\Mailer\Transport\Dsn;
+use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransportFactory;
+use Symfony\Component\Mailer\Transport\Smtp\Stream\SocketStream;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use OwenIt\Auditing\Contracts\Auditor as AuditorContract;
@@ -80,6 +84,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->stabiliseSmtpTransport();
         Event::observe(EventObserver::class);
         Blade::component('components.frontend.form', 'form-component');
         Blade::component('components.backend.notes.notes', 'backend-notes-component');
@@ -177,5 +182,37 @@ class AppServiceProvider extends ServiceProvider
             'App\\Models\\SysPurchaseInvoice' => SysPurchaseInvoice::class,
             'App\\Models\\SysReceipt'         => SysReceipt::class,
         ]);
+    }
+
+    /**
+     * Gmail's STARTTLS handshake fails on this PHP build when the mailer
+     * offers TLS 1.0 and 1.1. Pin the socket to TLS 1.2 and 1.3.
+     */
+    private function stabiliseSmtpTransport(): void
+    {
+        Mail::extend('smtp', function (array $config) {
+            $scheme = $config['scheme'] ?? (((int) ($config['port'] ?? 0)) === 465 ? 'smtps' : 'smtp');
+            $port = $config['port'] ?? null;
+            $transport = (new EsmtpTransportFactory)->create(new Dsn(
+                $scheme,
+                (string) ($config['host'] ?? '127.0.0.1'),
+                $config['username'] ?? null,
+                $config['password'] ?? null,
+                $port !== null && $port !== '' ? (int) $port : null,
+                $config,
+            ));
+
+            $stream = $transport->getStream();
+            if ($stream instanceof SocketStream) {
+                $options = $stream->getStreamOptions();
+                $options['ssl']['crypto_method'] = STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT | STREAM_CRYPTO_METHOD_TLSv1_3_CLIENT;
+                $stream->setStreamOptions($options);
+                if (isset($config['timeout']) && $config['timeout'] !== null) {
+                    $stream->setTimeout((float) $config['timeout']);
+                }
+            }
+
+            return $transport;
+        });
     }
 }

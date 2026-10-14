@@ -81,10 +81,12 @@
         <div class="rs-topbar-right">
             @auth
                 @php
+                    $notificationViewer = auth()->user();
                     $notificationAccountId = current_account_id();
-                    $appointmentNotificationQuery = auth()->user()->unreadNotifications()
-                        ->when($notificationAccountId, fn ($query) => $query->where('account_id', $notificationAccountId))
-                        ->when(!$notificationAccountId, fn ($query) => $query->whereRaw('1 = 0'));
+                    $notificationShowsEveryAccount = $notificationViewer->hasRole('Contractor');
+                    $appointmentNotificationQuery = $notificationViewer->unreadNotifications()
+                        ->when(! $notificationShowsEveryAccount && $notificationAccountId, fn ($query) => $query->where('account_id', $notificationAccountId))
+                        ->when(! $notificationShowsEveryAccount && ! $notificationAccountId, fn ($query) => $query->whereRaw('1 = 0'));
                     $appointmentNotificationCount = (clone $appointmentNotificationQuery)->count();
                     $appointmentNotifications = $appointmentNotificationQuery->latest()->take(5)->get();
                 @endphp

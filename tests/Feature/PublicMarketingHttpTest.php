@@ -11,7 +11,7 @@ class PublicMarketingHttpTest extends TestCase
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('<meta name="description" content="Resisquare helps landlords manage homes, rent, and repairs in one workspace.">', false)
-            ->assertSee('Revolutionize Your', false)
+            ->assertSee('The operating system', false)
             ->assertDontSee('<h1 class="modal-title', false);
     }
 

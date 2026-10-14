@@ -43,14 +43,18 @@ class NotificationPreferenceService
 
     private function canUsePortal(User $user, int $accountId): bool
     {
-        if ($user->isSuperAdmin()) {
+        if ($user->isSuperAdmin() || $user->hasRole('Contractor')) {
             return true;
         }
 
-        return $user->accountUsers()
+        if ($user->accountUsers()
             ->where('account_id', $accountId)
             ->where('status', 'active')
             ->where('can_login', true)
-            ->exists();
+            ->exists()) {
+            return true;
+        }
+
+        return $user->contractorProfile()->exists();
     }
 }

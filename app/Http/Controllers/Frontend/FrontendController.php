@@ -18,7 +18,7 @@ class FrontendController
 
             // If the user is already on the home page, don't redirect again
             if (request()->routeIs('home') && !in_array($user->role_id, [1, 2, 3])) {
-                return view('frontend.index');
+                return view('frontend.landing');
             }
 
             if (in_array($user->role_id, [1, 2, 3])) { // Admin roles
@@ -27,7 +27,7 @@ class FrontendController
                 return redirect()->route('home');
             }
         }
-        return view('frontend.index');
+        return view('frontend.landing');
     }
 
     public function pricing()
