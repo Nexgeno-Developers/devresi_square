@@ -106,6 +106,11 @@ class RepairIssue extends Model
     {
         return $this->hasMany(RepairAssignment::class);
     }
+
+    public function deskRequests()
+    {
+        return $this->hasMany(RepairDeskRequest::class);
+    }
     protected static function boot()
     {
         parent::boot();

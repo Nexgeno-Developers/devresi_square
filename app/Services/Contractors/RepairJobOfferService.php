@@ -512,7 +512,7 @@ class RepairJobOfferService
         foreach ($others as $other) {
             $other->loadMissing('contractor');
             $next = $other->isAwaitingResponse() ? RepairJobOffer::WITHDRAWN : RepairJobOffer::NOT_SELECTED;
-            $this->transition($other, $next, $landlord, 'Another offer was accepted.');
+            $this->transition($other, $next, $landlord, 'The landlord chose another contractor.');
             if ($other->contractor) {
                 $losers[] = $other->contractor;
             }
@@ -1097,6 +1097,7 @@ class RepairJobOfferService
 
     private function assertAssignable(RepairIssue $repair): void
     {
+        app(\App\Services\Repairs\RepairDeskService::class)->assertMarketplaceAvailable($repair);
         if ($repair->awarded_offer_id) {
             throw new ContractorMarketplaceException('This repair already has an accepted contractor.');
         }

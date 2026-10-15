@@ -64,10 +64,10 @@
             <strong>Move In:</strong> {{ rs_date($tenancy->move_in) }}
         </div>
         <div class="col">
-            <strong>Term:</strong> {{ $tenancy->term_months ?? 0 }} months, {{ $tenancy->term_days ?? 0 }} days
+            <strong>Term:</strong> {{ $tenancy->displayTerm() }}
         </div>
         <div class="col">
-            <strong>Move Out:</strong> {{ $tenancy->move_out }}
+            <strong>Move Out:</strong> {{ rs_date($tenancy->move_out) }}
         </div>
     </div>
 

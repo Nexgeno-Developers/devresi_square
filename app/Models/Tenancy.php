@@ -168,6 +168,41 @@ class Tenancy extends Model
     }
 
     /**
+     * Term shown on the tenancy and the tenant confirm screen.
+     * Uses the saved months when they are set, otherwise the move-in and move-out dates.
+     */
+    public function displayTerm(): string
+    {
+        if ((int) $this->term_months > 0 || (int) $this->term_days > 0) {
+            return $this->termLengthLabel();
+        }
+
+        if (! $this->move_in || ! $this->move_out) {
+            return 'Not set';
+        }
+
+        $start = $this->move_in->copy()->startOfDay();
+        $end = $this->move_out->copy()->startOfDay()->addDay();
+        if ($end->lte($start)) {
+            return 'Not set';
+        }
+
+        $interval = $start->diff($end);
+        $months = ($interval->y * 12) + $interval->m;
+        $days = $interval->d;
+        if ($months <= 0 && $days <= 0) {
+            return 'Not set';
+        }
+
+        $label = $months.' months';
+        if ($days > 0) {
+            $label .= ', '.$days.' days';
+        }
+
+        return $label;
+    }
+
+    /**
      * Next rent due date on or after the issue date, using the tenancy due day.
      */
     public function suggestedInvoiceDueDate(?\Carbon\CarbonInterface $issueDate = null): \Carbon\Carbon

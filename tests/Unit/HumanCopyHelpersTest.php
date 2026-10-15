@@ -72,5 +72,18 @@ class HumanCopyHelpersTest extends TestCase
 
         $empty = new Tenancy(['term_months' => 0, 'term_days' => 0]);
         $this->assertSame('—', $empty->termLengthLabel());
+
+        $fromDates = new Tenancy;
+        $fromDates->move_in = '2026-01-01';
+        $fromDates->move_out = '2026-12-31';
+        $this->assertSame('12 months', $fromDates->displayTerm());
+        $this->assertSame('Not set', $empty->displayTerm());
+    }
+
+    public function test_notice_copy_uses_the_product_name_and_a_written_date(): void
+    {
+        $text = rs_notice_text('<p>Invoice RENT-0001 for £1,250.00 is due on 01/11/2026.</p><p><a href="http://example.test">Open in ResiSquare</a></p>');
+
+        $this->assertSame('Invoice RENT-0001 for £1,250.00 is due on 1 Nov 2026. Open in Resisquare', $text);
     }
 }

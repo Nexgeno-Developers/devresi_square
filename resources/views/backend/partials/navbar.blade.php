@@ -181,7 +181,6 @@
                         @endif
                         @unless($navIsTenant || $navIsContractor || $navIsLandlord)
                         <li><a class="dropdown-item" href="{{ route('customer.statements') }}">My Statement</a></li>
-                        <li><a class="dropdown-item" href="{{ route('cache.clear') }}">Clear Cache</a></li>
                         @endunless
                         <li><hr class="dropdown-divider"></li>
                         <li>

@@ -55,7 +55,7 @@ class AccountController extends BaseSaasController
             ->paginate(20)
             ->withQueryString();
 
-        $plans = Plan::query()->orderBy('name')->get();
+        $plans = Plan::query()->orderBy('name')->orderBy('id')->get()->unique('name')->values();
         $accountTypes = self::ACCOUNT_TYPES;
         $statuses = self::STATUSES;
 

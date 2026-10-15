@@ -179,9 +179,39 @@
                     @if($contractorRequest->availability_to_arrange) · visit time to be arranged @endif
                 </p>
             @endif
-            <a class="btn btn-primary btn-sm" href="{{ route('admin.property_repairs.marketplace.find', $repairIssue) }}">
-                {{ $contractorRequest && $open ? 'Add more contractors' : ($contractorRequest ? 'Send again' : 'Find a contractor') }}
-            </a>
+            @php
+                $desk = app(\App\Services\Repairs\RepairDeskService::class)->openFor($repairIssue);
+                $marketplaceOpen = $contractorRequest && $open;
+            @endphp
+            @if($desk)
+                <div class="alert alert-info small mb-2">
+                    With the Resisquare team · {{ $desk->statusLabel() }}
+                    @if($desk->landlord_note)<div>{{ $desk->landlord_note }}</div>@endif
+                    @if($desk->team_note)<div>Team: {{ $desk->team_note }}</div>@endif
+                </div>
+                @if($desk->status === \App\Models\RepairDeskRequest::REQUESTED)
+                    <form method="POST" action="{{ route('admin.property_repairs.desk.withdraw', $repairIssue) }}">
+                        @csrf
+                        <button class="btn btn-outline-secondary btn-sm" type="submit">Take it back</button>
+                    </form>
+                @endif
+            @else
+                <div class="d-flex flex-wrap gap-2 align-items-start">
+                    <a class="btn btn-primary btn-sm" href="{{ route('admin.property_repairs.marketplace.find', $repairIssue) }}">
+                        {{ $marketplaceOpen ? 'Add more contractors' : ($contractorRequest ? 'Send again' : 'Find a contractor') }}
+                    </a>
+                    @unless($marketplaceOpen)
+                        <form method="POST" action="{{ route('admin.property_repairs.desk.store', $repairIssue) }}" class="d-flex flex-wrap gap-2">
+                            @csrf
+                            <input name="note" maxlength="1000" class="form-control form-control-sm" style="max-width:280px" placeholder="Note for the Resisquare team (optional)">
+                            <button class="btn btn-outline-primary btn-sm" type="submit">Send to Resisquare</button>
+                        </form>
+                    @endunless
+                </div>
+                @if($marketplaceOpen)
+                    <p class="small text-muted mt-2 mb-0">Contractors have been asked. Close that request before sending this repair to Resisquare.</p>
+                @endif
+            @endif
         @endif
     </div>
 </div>

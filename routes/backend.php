@@ -196,6 +196,8 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         Route::resource('plans', \App\Http\Controllers\Backend\Saas\PlanController::class);
         Route::resource('addons', \App\Http\Controllers\Backend\Saas\AddonController::class);
         Route::get('accounts', [\App\Http\Controllers\Backend\Saas\AccountController::class, 'index'])->name('accounts.index');
+        Route::get('repair-desk', [\App\Http\Controllers\Backend\RepairDeskController::class, 'index'])->name('repair_desk.index');
+        Route::post('repair-desk/{repairDeskRequest}', [\App\Http\Controllers\Backend\RepairDeskController::class, 'update'])->name('repair_desk.update');
         Route::get('accounts/{account}', [\App\Http\Controllers\Backend\Saas\AccountController::class, 'show'])->name('accounts.show');
         Route::post('accounts/{account}/login-as', [AccountSwitchController::class, 'loginAs'])->name('accounts.login-as');
         Route::get('subscriptions', [\App\Http\Controllers\Backend\Saas\SubscriptionController::class, 'index'])->name('subscriptions.index');
@@ -540,6 +542,9 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::post('/{repairIssue}/sla/{event}', [RepairSlaController::class, 'store'])
                 ->whereIn('event', ['dispatched', 'made_safe', 'resolved'])
                 ->name('property_repairs.sla.store');
+
+            Route::post('/{repairIssue}/resisquare', [\App\Http\Controllers\Backend\RepairDeskController::class, 'store'])->name('property_repairs.desk.store');
+            Route::post('/{repairIssue}/resisquare/withdraw', [\App\Http\Controllers\Backend\RepairDeskController::class, 'withdraw'])->name('property_repairs.desk.withdraw');
 
             Route::controller(RepairJobOfferController::class)->group(function () {
                 Route::get('/{repairIssue}/find-contractor', 'find')->name('property_repairs.marketplace.find');

@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\EmailChangeController;
-use App\Http\Controllers\CommandController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
 use App\Http\Controllers\Backend\AizUploadController;
@@ -25,8 +24,8 @@ Route::post('/stripe/rent/webhook', [\App\Http\Controllers\Webhook\StripeRentWeb
 //     return $pdf->download('test.pdf');
 // });
 
-// One maintenance URL: applies pending migrations, including the latest contractor marketplace schema.
-Route::get('/migrate', [CommandController::class, 'migrate'])->name('migrate');
+// Schema changes run with `php artisan migrate`. That applies pending migrations only.
+// It does not seed, refresh, or wipe existing rows. There is no public /migrate URL.
 
 // Group for web routes
 Route::group(['middleware' => 'web'], function () {

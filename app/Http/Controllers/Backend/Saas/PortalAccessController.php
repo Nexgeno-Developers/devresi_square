@@ -39,8 +39,7 @@ class PortalAccessController
                     ->where('property_participants.status', 'active'),
             ])
             ->where('account_id', $account->id)
-            ->whereIn('member_type', AccountMembership::PORTAL_TYPES)
-            ->orderBy('member_type')
+            ->where('member_type', AccountMembership::TENANT)
             ->orderByDesc('id')
             ->paginate(25);
 
@@ -133,7 +132,7 @@ class PortalAccessController
         $membership = AccountUser::query()
             ->where('account_id', $account->id)
             ->where('user_id', $user->id)
-            ->whereIn('member_type', AccountMembership::PORTAL_TYPES)
+            ->where('member_type', AccountMembership::TENANT)
             ->where('status', 'active')
             ->first();
 
@@ -191,6 +190,15 @@ class PortalAccessController
         $this->ensureCanManagePortal($actor, $account, $portalAccessService);
 
         abort_unless((int) $user->id !== (int) $actor->id, 403, 'You cannot revoke your own access.');
+
+        $membership = AccountUser::query()
+            ->where('account_id', $account->id)
+            ->where('user_id', $user->id)
+            ->where('member_type', AccountMembership::TENANT)
+            ->where('status', 'active')
+            ->first();
+
+        abort_unless($membership, 404, 'That person does not have an active tenant login on this account.');
 
         $mailed = $portalAccessService->revokePortalAccess($account, $user);
 

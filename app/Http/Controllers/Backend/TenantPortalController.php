@@ -531,6 +531,15 @@ class TenantPortalController extends Controller
     private function noticesFor(\App\Models\User $user, int $limit)
     {
         $accountId = (int) current_account_id();
+        $tenancies = app(TenantPortalService::class)->tenanciesFor($user, $accountId);
+        $tenancyIds = $tenancies->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $propertyIds = $tenancies->pluck('property_id')->filter()->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $repairIds = $propertyIds === []
+            ? []
+            : \App\Models\RepairIssue::query()->whereIn('property_id', $propertyIds)->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $invoiceIds = $tenancyIds === []
+            ? []
+            : RentInvoice::query()->whereIn('tenancy_id', $tenancyIds)->pluck('id')->map(fn ($id) => (int) $id)->all();
 
         return \App\Models\NotificationLog::query()
             ->where('account_id', $accountId)
@@ -538,8 +547,35 @@ class TenantPortalController extends Controller
             ->where('notifiable_type', $user->getMorphClass())
             ->where('channel', 'system')
             ->orderByDesc('id')
-            ->limit($limit)
-            ->get();
+            ->limit(80)
+            ->get()
+            ->filter(fn ($notice) => $this->noticeBelongsToTenant($notice, $tenancyIds, $propertyIds, $repairIds, $invoiceIds))
+            ->unique(fn ($notice) => mb_strtolower(trim(rs_notice_text($notice->subject).'|'.rs_notice_text($notice->message))))
+            ->take($limit)
+            ->values();
+    }
+
+    /**
+     * @param  list<int>  $tenancyIds
+     * @param  list<int>  $propertyIds
+     * @param  list<int>  $repairIds
+     * @param  list<int>  $invoiceIds
+     */
+    private function noticeBelongsToTenant($notice, array $tenancyIds, array $propertyIds, array $repairIds, array $invoiceIds): bool
+    {
+        $type = class_basename((string) $notice->subject_type);
+        $id = (int) $notice->subject_id;
+        if ($id <= 0 || $type === '') {
+            return true;
+        }
+
+        return match ($type) {
+            'Tenancy' => in_array($id, $tenancyIds, true),
+            'Property' => in_array($id, $propertyIds, true),
+            'RepairIssue' => in_array($id, $repairIds, true),
+            'RentInvoice' => in_array($id, $invoiceIds, true),
+            default => true,
+        };
     }
 
     /**

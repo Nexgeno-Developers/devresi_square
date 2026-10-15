@@ -65,13 +65,9 @@ class CommandController extends Controller
 
     public function migrate()
     {
-        $exit = Artisan::call('migrate', ['--force' => true]);
-        $output = trim(Artisan::output());
-
-        return response(
-            $output !== '' ? $output : 'Nothing to migrate.',
-            $exit === 0 ? 200 : 500
-        )->header('Content-Type', 'text/plain; charset=UTF-8');
+        // Pending schema changes are applied with `php artisan migrate` on the server.
+        // That command never seeds and never refreshes existing rows. This URL stays closed.
+        abort(404);
     }
 
     public function storageLink()

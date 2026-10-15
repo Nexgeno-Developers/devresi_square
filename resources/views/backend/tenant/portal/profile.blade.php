@@ -17,8 +17,8 @@
         @forelse($notices as $notice)
             <div class="tp-row" data-notice="{{ $notice->id }}">
                 <div>
-                    <p class="mb-0">{{ $notice->subject }}</p>
-                    <p class="tp-muted mb-0">{{ \Illuminate\Support\Str::limit(plain_text($notice->message), 120) }}</p>
+                    <p class="mb-0">{{ rs_notice_text($notice->subject) }}</p>
+                    <p class="tp-muted mb-0">{{ \Illuminate\Support\Str::limit(rs_notice_text($notice->message), 120) }}</p>
                 </div>
                 <a class="tp-btn tp-btn-ghost" href="{{ \App\Support\PortalNoticeLink::forTenant($notice->payload['action_url'] ?? null) }}">Open</a>
             </div>

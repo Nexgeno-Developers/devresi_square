@@ -31,6 +31,6 @@ class CrmNotificationTemplatesSeeder extends Seeder
 
     private function layout(string $message): string
     {
-        return '<p>'.$message.'</p><p><a href="[[action_url]]">Open in ResiSquare</a></p>';
+        return '<p>'.$message.'</p><p><a href="[[action_url]]">Open in Resisquare</a></p>';
     }
 }

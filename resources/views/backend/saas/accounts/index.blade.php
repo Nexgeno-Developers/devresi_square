@@ -72,10 +72,22 @@
                     @php($subscription = $account->currentSubscription ?? $account->latestSubscription)
                     <tr>
                         <td>{{ $accounts->firstItem() + $loop->index }}</td>
-                        <td>{{ $account->account_name ?: '-' }}</td>
+                        <td>
+                            @php
+                                $accountLabel = trim((string) $account->account_name);
+                                if ($accountLabel === '') {
+                                    $accountLabel = trim((string) ($account->owner?->name ?: $account->billing_email ?: ('Account '.$account->id)));
+                                }
+                                $ownerName = trim((string) ($account->owner?->name ?: ''));
+                                if ($ownerName === '') {
+                                    $ownerName = $account->owner?->email ?: '—';
+                                }
+                            @endphp
+                            {{ $accountLabel }}
+                        </td>
                         <td>{{ ucwords(str_replace('_', ' ', $account->account_type)) }}</td>
                         <td>
-                            {{ $account->owner?->name ?: '-' }}<br>
+                            {{ $ownerName }}<br>
                             <small class="text-muted">{{ $account->owner?->email }}</small>
                         </td>
                         <td>{{ $account->billing_email ?: '-' }}</td>
@@ -84,8 +96,8 @@
                         </td>
                         <td>{{ $subscription?->plan?->name ?: '-' }}</td>
                         <td>{{ $subscription ? ucwords(str_replace('_', ' ', $subscription->status)) : '-' }}</td>
-                        <td>{{ $account->trial_ends_at ? $account->trial_ends_at->format('Y-m-d') : '-' }}</td>
-                        <td>{{ $account->created_at ? $account->created_at->format('Y-m-d') : '-' }}</td>
+                        <td>{{ $account->trial_ends_at ? rs_date($account->trial_ends_at) : '—' }}</td>
+                        <td>{{ $account->created_at ? rs_date($account->created_at) : '—' }}</td>
                         <td class="text-center">
                             <a href="{{ route('backend.saas.accounts.show', $account) }}" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye"></i> View

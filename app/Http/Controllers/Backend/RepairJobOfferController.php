@@ -35,6 +35,11 @@ class RepairJobOfferController extends Controller
     public function find(Request $request, RepairIssue $repairIssue)
     {
         $this->authorizeRepair($repairIssue);
+        if (app(\App\Services\Repairs\RepairDeskService::class)->openFor($repairIssue)) {
+            return redirect()
+                ->to(route('admin.property_repairs.show', $repairIssue).'#contractors')
+                ->with('error', 'This repair is with the Resisquare team. Take it back before you send it to contractors.');
+        }
         $filters = $request->only(['trade', 'distance', 'badges', 'only']);
         $result = $this->panel->find($repairIssue, (int) current_account_id(), $filters);
         if ($result['gap']) {

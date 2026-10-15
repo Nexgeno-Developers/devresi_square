@@ -56,7 +56,7 @@ class TenancyDetailsConfirmationService
                 'key' => $key,
                 'label' => $meta['label'],
                 'value' => $value,
-                'display' => $this->displayValue($key, $value),
+                'display' => $key === 'term_months' ? $tenancy->displayTerm() : $this->displayValue($key, $value),
                 'editable' => $meta['editable'],
                 'type' => $meta['type'],
             ];

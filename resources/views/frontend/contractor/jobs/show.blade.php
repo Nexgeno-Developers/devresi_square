@@ -103,7 +103,12 @@
         : trim(collect([$property?->city, $district])->filter()->implode(', '));
     $urgency = $request?->urgency ?: 'routine';
     $tenantSlot = $repair->tenant_availability;
-    $canQuote = $offer->canQuote() && ! $block && ! $repair->awarded_offer_id;
+    $lostToAnother = \App\Models\RepairJobOffer::query()
+        ->where('repair_issue_id', $repair->id)
+        ->whereKeyNot($offer->id)
+        ->whereIn('status', [\App\Models\RepairJobOffer::JOB_ACCEPTED, \App\Models\RepairJobOffer::INSPECTION_ACCEPTED])
+        ->exists();
+    $canQuote = $offer->canQuote() && ! $block && ! $repair->awarded_offer_id && ! $lostToAnother;
     $firmAfterInspection = $offer->status === 'inspection_accepted';
     $type = old('pricing_type', $firmAfterInspection ? 'fixed' : ($offer->pricing_type ?: 'fixed'));
     $vatRegistered = (bool) $profile?->vat_registered;
@@ -391,6 +396,7 @@
         @if($offer->events->isNotEmpty())
             <ul class="list-unstyled mb-0">
                 @foreach($offer->events->sortByDesc('id') as $event)
+                    @continue($canQuote && in_array((string) $event->note, ['Another offer was accepted.', 'The landlord chose another contractor.'], true))
                     <li>{{ $event->created_at?->format('j M H:i') }} · {{ $event->note ?: str_replace('_', ' ', $event->to_status) }}</li>
                 @endforeach
             </ul>
@@ -401,6 +407,9 @@
 
     </div>
     <div class="contractor-job-col">
+    @if($lostToAnother)
+        <div class="alert alert-info small">The landlord chose another contractor for this repair.</div>
+    @endif
     @if($canQuote)
         <section class="contractor-panel">
             <h2 class="h6 mb-3">{{ $firmAfterInspection ? 'Your firm price' : ($offer->status === 'offer_sent' ? 'Update your offer' : 'Your offer') }}</h2>

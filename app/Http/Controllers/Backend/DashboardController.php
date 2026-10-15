@@ -15,6 +15,7 @@ use App\Models\Tenancy;
 use App\Models\WorkOrder;
 use App\Models\RepairIssue;
 use App\Services\Saas\AccountLimitService;
+use App\Support\AccountMembership;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -55,12 +56,12 @@ class DashboardController extends Controller
         $accountId = $planUsageAccount?->id;
 
         $usersCount = AccountUser::where('account_id', $accountId)->where('status', 'active')->count();
-        if ($user->hasRole('Landlord') && $accountId) {
-            $usersCount = \App\Models\PropertyParticipant::query()
+        if (($user->hasRole('Landlord') || is_landlord_plan_user($user)) && $accountId) {
+            $usersCount = AccountUser::query()
                 ->where('account_id', $accountId)
-                ->whereIn('participant_type', ['owner', 'tenant'])
-                ->distinct()
-                ->count('user_id');
+                ->where('status', 'active')
+                ->where('member_type', AccountMembership::TENANT)
+                ->count();
         }
         $propertiesCount = Property::forAccount($accountId)->count();
         $invoicesCount = Invoice::whereHas('workOrder', fn ($query) => $query->forAccount($accountId))->count();

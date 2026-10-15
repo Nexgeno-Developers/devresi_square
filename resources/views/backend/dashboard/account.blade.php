@@ -108,7 +108,7 @@
         <div class="alert alert-warning d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4" data-alert-certificates="{{ $complianceAttentionCount }}">
             <div>
                 <strong>{{ $complianceAttentionCount }} {{ \Illuminate\Support\Str::plural('certificate', $complianceAttentionCount) }} {{ $complianceAttentionCount === 1 ? 'needs' : 'need' }} your attention</strong>
-                <div class="small mb-0">Gas, EPC or EICR expired or due within 60 days.</div>
+                <div class="small mb-0">Gas, EPC or EICR missing, expired, or due within 60 days.</div>
             </div>
             <a href="{{ route('admin.compliance.index') }}" class="btn btn-sm btn-dark">Review certificates</a>
         </div>

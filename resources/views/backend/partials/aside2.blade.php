@@ -341,6 +341,11 @@
                     @slot('link_name') Accounts @endslot
                 @endcomponent
                 @component('components.backend.common.sidebar-sublink')
+                    @slot('class') {{ request()->routeIs('backend.saas.repair_desk.*') ? 'active submenu-link' : 'submenu-link' }} @endslot
+                    @slot('link') {{ route('backend.saas.repair_desk.index') }} @endslot
+                    @slot('link_name') Repair desk @endslot
+                @endcomponent
+                @component('components.backend.common.sidebar-sublink')
                     @slot('class') {{ request()->routeIs('backend.saas.subscriptions.*') ? 'active submenu-link' : 'submenu-link' }} @endslot
                     @slot('link') {{ route('backend.saas.subscriptions.index') }} @endslot
                     @slot('link_name') Subscriptions @endslot

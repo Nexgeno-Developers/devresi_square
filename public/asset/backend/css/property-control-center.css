@@ -669,9 +669,8 @@ body:has(.pcc-root) #wrapper.main_content {
     font-size: 1.2rem;
     letter-spacing: -0.02em;
     margin: 0.15rem 0 0.2rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow: visible;
     color: var(--pcc-ink);
 }
 .pcc-detail-meta {
@@ -709,13 +708,12 @@ body:has(.pcc-root) #wrapper.main_content {
 /* ── Stats bar ───────────────────────────── */
 .pcc-stats-bar {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     padding: 0.75rem 1.25rem;
     background: #f8f9fa;
     border-bottom: 1px solid #dee2e6;
     flex-shrink: 0;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
 }
 .pcc-stat-pill {
     display: flex;
@@ -727,8 +725,8 @@ body:has(.pcc-root) #wrapper.main_content {
     border-radius: 0.5rem;
     text-decoration: none;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    min-width: 140px;
-    flex: 1 0 auto;
+    min-width: 0;
+    flex: 1 1 8.5rem;
 }
 .pcc-stat-pill:hover {
     border-color: var(--pcc-line);
@@ -751,9 +749,9 @@ body:has(.pcc-root) #wrapper.main_content {
 .pcc-stat-label {
     font-size: 0.75rem;
     color: #6c757d;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow: visible;
+    line-height: 1.25;
 }
 
 /* ── Quick actions ───────────────────────── */

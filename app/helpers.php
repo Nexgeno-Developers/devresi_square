@@ -1409,6 +1409,8 @@ if (! function_exists('rs_page_title')) {
             'admin.finance.create' => 'New rent invoice',
             'admin.finance.show' => 'Rent invoice',
             'admin.people.index' => 'People',
+            'backend.saas.accounts.index' => 'Accounts',
+            'backend.saas.repair_desk.index' => 'Repair desk',
             'admin.compliance.index' => 'Certificates',
             'admin.documents.index' => 'Documents',
             'admin.property_repairs.index' => 'Repairs',
@@ -1473,6 +1475,31 @@ if (! function_exists('rs_date')) {
         }
 
         return $dt->format('j M Y');
+    }
+}
+
+if (! function_exists('rs_notice_html')) {
+    /**
+     * Tenant notice HTML: one brand spelling, and dates as 1 Nov 2026.
+     */
+    function rs_notice_html(?string $html): string
+    {
+        $html = str_replace('ResiSquare', 'Resisquare', (string) $html);
+
+        return (string) preg_replace_callback(
+            '/\b(\d{2})\/(\d{2})\/(\d{4})\b/',
+            function (array $match): string {
+                return rs_date($match[3].'-'.$match[2].'-'.$match[1], $match[0]);
+            },
+            $html
+        );
+    }
+}
+
+if (! function_exists('rs_notice_text')) {
+    function rs_notice_text(?string $value): string
+    {
+        return plain_text(rs_notice_html($value));
     }
 }
 

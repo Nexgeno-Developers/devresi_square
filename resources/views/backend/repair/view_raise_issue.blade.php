@@ -6,7 +6,7 @@
     $address = $property
         ? trim(collect([$property->line_1, $property->city, $property->postcode])->filter()->implode(', '))
         : null;
-    $title = $address ?: ($property?->prop_name ?: 'Repair');
+    $title = $property?->short_title ?: ($address ?: 'Repair');
     $statusTone = match (true) {
         in_array($repairIssue->status, ['Completed', 'Closed', 'Resolved'], true) => 'ok',
         in_array($repairIssue->status, ['Cancelled', 'Rejected'], true) => 'idle',
@@ -31,7 +31,7 @@
         <div class="card-body">
             <div class="lw-section-title mt-0">Property</div>
             @if($property)
-                <p class="mb-0"><strong>{{ $address ?: ($property->prop_name ?? 'Property') }}</strong></p>
+                <p class="mb-0"><strong>{{ $property->short_title ?: ($address ?: 'Property') }}</strong></p>
             @else
                 <p class="mb-0 text-muted">No property linked.</p>
             @endif

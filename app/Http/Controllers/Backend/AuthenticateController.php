@@ -43,7 +43,8 @@ class AuthenticateController
     public function logout()
     {
         Auth::logout();
-        return redirect()->route('backend.login');
+
+        return redirect()->route('login');
     }
 }
 

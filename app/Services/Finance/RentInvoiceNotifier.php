@@ -80,7 +80,7 @@ class RentInvoiceNotifier
             'invoice_id' => $invoice->id,
             'invoice_number' => $invoice->invoice_no ?: (string) $invoice->id,
             'invoice_amount' => rs_money($invoice->balance > 0 ? $invoice->balance : $invoice->amount),
-            'due_date' => $invoice->due_date?->format('d/m/Y') ?? '',
+            'due_date' => rs_date($invoice->due_date, ''),
             'property_address' => $invoice->property?->full_address ?: ($invoice->property?->line_1 ?: ''),
             'customer_name' => $invoice->tenant?->name ?: '',
             'action_url' => route('admin.finance.show', $invoice),

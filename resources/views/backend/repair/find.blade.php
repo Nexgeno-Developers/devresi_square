@@ -3,7 +3,9 @@
 @section('content')
 @php
     $property = $repairIssue->property;
-    $address = trim(collect([$property?->line_1, $property?->city, $property?->postcode])->filter()->implode(', '));
+    $address = $property?->short_title
+        ? trim($property->short_title.($property->short_address ? ' · '.$property->short_address : ''))
+        : trim(collect([$property?->line_1, $property?->city, $property?->postcode])->filter()->implode(', '));
     $trades = \App\Support\ContractorCompliance::trades();
     $guidance = config('contractor_marketplace.emergency_guidance');
     $remaining = max(0, $cap - $openCount);
