@@ -40,29 +40,62 @@
             <div class="container pricing_container">
                 <div class="pricing_tables dynamic-pricing-tables pricing_cards pricing_plan_cards">
                     @foreach($plans as $plan)
-                        <div class="price_table plan_table">
+                        @php
+                            $limit = (int) $plan->property_limit;
+                            $band = match (true) {
+                                $limit <= 3 => 'starter',
+                                $limit <= 10 => 'growth',
+                                $limit <= 25 => 'pro',
+                                default => 'business',
+                            };
+                            $bandCopy = [
+                                'starter' => ['For landlords managing a small portfolio.', null, ['Properties & Tenancies', 'Rent Tracking', 'Repairs & Maintenance', 'Compliance & Documents', 'Calendar & Tenant Access']],
+                                'growth' => ['For landlords growing their portfolio.', 'Everything in Starter, plus:', ['Contractor Access', 'Property CSV Imports', 'Payment Tracking & Priority Support', 'Additional User Access']],
+                                'pro' => ['For professional landlords and independent agents.', 'Everything in Growth, plus:', ['Team Access & Advanced Permissions', 'Portfolio Reporting', 'Bulk Actions', 'Advanced Document Workflows']],
+                                'business' => ['For larger portfolios and property teams.', 'Everything in Pro, plus:', ['Additional Team Members', 'Advanced Reporting', 'Priority Onboarding', 'Enhanced Portfolio Controls']],
+                            ][$band];
+                            $lowerBandShown = match ($band) {
+                                'growth' => $plans->contains(fn ($item) => (int) $item->property_limit <= 3),
+                                'pro' => $plans->contains(fn ($item) => (int) $item->property_limit > 3 && (int) $item->property_limit <= 10),
+                                'business' => $plans->contains(fn ($item) => (int) $item->property_limit > 10 && (int) $item->property_limit <= 25),
+                                default => false,
+                            };
+                            $showPopular = $band === 'growth' && $plans->count() > 1;
+                            $starterFeatures = ['Properties & Tenancies', 'Rent Tracking', 'Repairs & Maintenance', 'Compliance & Documents', 'Calendar & Tenant Access'];
+                            $features = ($band !== 'starter' && ! $lowerBandShown)
+                                ? array_merge($starterFeatures, $bandCopy[2])
+                                : $bandCopy[2];
+                        @endphp
+                        <div class="price_table plan_table {{ $showPopular ? 'is-popular' : '' }}">
                             <div class="price_table_header">
-                                <span class="pricing_badge">{{ $planGroups[$plan->target_account_type] ?? ucwords(str_replace('_', ' ', $plan->target_account_type)) }}</span>
+                                @if($showPopular)
+                                    <span class="pricing_badge">Most Popular</span>
+                                @else
+                                    <span class="pricing_badge">{{ $planGroups[$plan->target_account_type] ?? ucwords(str_replace('_', ' ', $plan->target_account_type)) }}</span>
+                                @endif
                                 <h3>{{ $plan->name }}</h3>
-                                <h5>{{ ucwords(str_replace('_', ' ', $plan->target_account_type)) }}</h5>
+                                <h5>Up to {{ $limit }} {{ \Illuminate\Support\Str::plural('property', $limit) }}</h5>
                             </div>
                             <div class="price_table_content">
-                                <p class="desc">{{ $plan->description ?: 'Property management tools for your selected account type.' }}</p>
+                                <p class="desc">{{ $bandCopy[0] }}</p>
                                 <p class="price">
                                     <span class="js-plan-price"
                                         data-monthly="{{ $plan->formattedMonthlyPrice() }}"
                                         data-annual="{{ $plan->formattedAnnualPrice() }}">
                                         {{ $plan->formattedMonthlyPrice() }}
                                     </span>
-                                    <span class="js-plan-period">/mo</span>
+                                    <span class="js-plan-period">/month</span>
                                 </p>
-                                <p class="trial_note">{{ $plan->trial_days }}-day trial</p>
+                                <p class="trial_note">{{ $plan->trial_days }}-day free trial</p>
 
                                 <div class="pricing_features_wrapper">
                                     <ul class="pricing_features">
-                                        <li>{{ $plan->property_limit }} properties included</li>
-                                        <li>Tenant portal for rent, repairs and documents</li>
-                                        <li>Rent invoices and bank or card pay</li>
+                                        @if($bandCopy[1] && $lowerBandShown)
+                                            <li class="is-lead">{{ $bandCopy[1] }}</li>
+                                        @endif
+                                        @foreach($features as $feature)
+                                            <li>{{ $feature }}</li>
+                                        @endforeach
                                     </ul>
                                 </div>
                             </div>
@@ -70,13 +103,22 @@
                                 href="{{ route('register', ['plan_id' => $plan->id, 'billing_cycle' => 'monthly', 'account_type' => $plan->target_account_type]) }}"
                                 data-monthly-url="{{ route('register', ['plan_id' => $plan->id, 'billing_cycle' => 'monthly', 'account_type' => $plan->target_account_type]) }}"
                                 data-annual-url="{{ route('register', ['plan_id' => $plan->id, 'billing_cycle' => 'annual', 'account_type' => $plan->target_account_type]) }}">
-                                Start Trial
+                                Start Free Trial
                             </a>
                         </div>
                     @endforeach
                 </div>
 
-                <p class="pricing_trial_footer">7-day free trial is available on eligible plans.</p>
+                <div class="pricing_portfolio">
+                    <p class="pricing_kicker">Enterprise &amp; Large Agencies</p>
+                    <h3>Portfolio — Custom Pricing</h3>
+                    <p>For portfolios above 50 properties or businesses with custom requirements (Data migration, custom integrations, volume pricing).</p>
+                    <button type="button" class="btn btn_secondary" data-bs-toggle="modal" data-bs-target="#bookDemoModal">Contact Sales</button>
+                </div>
+
+                @php $trialDays = (int) $plans->max('trial_days'); @endphp
+                <p class="pricing_trial_footer">Eligible plans include a {{ $trialDays }}-day free trial. No card details required to start.</p>
+                <p class="pricing_trial_footer">Prices shown exclude VAT where applicable.</p>
             </div>
         @endif
     </section>
@@ -84,16 +126,24 @@
     <section class="pricing_section pricing_page_section addons_section">
         <div class="container pricing_container">
             <div class="pricing_intro">
-                <h2>Available addons</h2>
+                <h2>Optional Add-Ons</h2>
+                <p class="pricing_lead">Expand your plan as your requirements grow. Simple, clear, and transparent.</p>
             </div>
 
             @if($addons->isNotEmpty())
                 <div class="pricing_tables dynamic-pricing-tables pricing_cards pricing_addon_cards">
                     @foreach($addons as $addon)
+                        @php
+                            $addonBlurbs = [
+                                'extra_property' => 'Add individual properties as your portfolio expands.',
+                                'extra_staff' => 'Grant access to managers, co-landlords or staff.',
+                                'extra_branch' => 'Separate operations across regional offices.',
+                                'property_manager' => 'Grant access to managers, co-landlords or staff.',
+                            ];
+                        @endphp
                         <div class="price_table addon_table">
                             <div class="price_table_header">
                                 <h3>{{ $addon->name }}</h3>
-                                <h5>{{ ucwords(str_replace('_', ' ', $addon->addon_type)) }}</h5>
                             </div>
                             <div class="price_table_content">
                                 <p class="price addon-price">
@@ -102,17 +152,22 @@
                                         data-annual="{{ $addon->formattedAnnualPrice() }}">
                                         {{ $addon->formattedMonthlyPrice() }}
                                     </span>
-                                    <span class="js-plan-period">/mo</span>
+                                    <span class="js-plan-period">/month</span>
                                 </p>
-                                <div class="pricing_features_wrapper">
-                                    <ul class="pricing_features">
-                                        <li>Grant quantity: {{ $addon->grant_quantity }}</li>
-                                        <li>Stackable: {{ $addon->is_stackable ? 'Yes' : 'No' }}</li>
-                                    </ul>
-                                </div>
+                                <p class="desc">{{ $addonBlurbs[$addon->code] ?? 'Expand your plan as your requirements grow.' }}</p>
                             </div>
                         </div>
                     @endforeach
+                    <div class="price_table addon_table">
+                        <div class="price_table_header">
+                            <h3>Assisted Import / Setup</h3>
+                        </div>
+                        <div class="price_table_content">
+                            <p class="price addon-price">Custom Pricing</p>
+                            <p class="desc">Dedicated data migration and workspace onboarding.</p>
+                        </div>
+                        <button type="button" class="btn btn_secondary pricing_btn" data-bs-toggle="modal" data-bs-target="#bookDemoModal">Contact Sales</button>
+                    </div>
                 </div>
             @else
                 <div class="alert alert-info text-center">No active addons are available right now.</div>
@@ -120,62 +175,86 @@
         </div>
     </section>
 
-    <section class="pricing_section pricing_page_section why_us_section">
+    <section class="pricing_section pricing_page_section">
         <div class="container pricing_container">
             <div class="pricing_intro">
-                <h2>Why choose Resisquare?</h2>
+                <h2>Compare Plan Features</h2>
+                <p class="pricing_lead">Detailed breakdown of what is included in every plan tier.</p>
             </div>
-            <div class="pricing_tables pricing_cards why_us_cards">
-                <div class="price_table why_us_table">
-                    <div class="price_table_header">
-                        <h3>All-inclusive</h3>
-                    </div>
-                    <div class="price_table_content">
-                        <div>
-                            <img src="{{ static_asset('asset/img/icons/no-hidden-fees.svg')}}" alt="">
-                            <p class="desc">No hidden fees</p>
-                        </div>
-                        <div>
-                            <img src="{{ static_asset('asset/img/icons/full_access.svg')}}" alt="">
-                            <p class="desc">Full platform access</p>
-                        </div>
-                    </div>
-                </div>
+            <div class="table-responsive">
+                <table class="table pricing_compare">
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Starter</th>
+                            <th>Growth</th>
+                            <th>Pro</th>
+                            <th>Business</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach([
+                            ['Managed Properties', '3', '10', '25', '50'],
+                            ['Tenancies & Lease Tracking', '✓', '✓', '✓', '✓'],
+                            ['Rent Tracking & Ledgers', '✓', '✓', '✓', '✓'],
+                            ['Repairs & Maintenance', '✓', '✓', '✓', '✓'],
+                            ['Compliance Tracking', '✓', '✓', '✓', '✓'],
+                            ['Document Vault', '✓', '✓', '✓', '✓'],
+                            ['Tenant Portal Access', '✓', '✓', '✓', '✓'],
+                            ['Contractor Portal Access', '—', '✓', '✓', '✓'],
+                            ['Property CSV Imports', '—', '✓', '✓', '✓'],
+                            ['Team Access', '—', 'Limited', '✓', '✓'],
+                            ['Advanced Permissions', '—', '—', '✓', '✓'],
+                            ['Portfolio Reporting Export', '—', '—', '✓', '✓'],
+                            ['Bulk Actions', '—', '—', '✓', '✓'],
+                            ['Priority Onboarding', '—', '—', '—', '✓'],
+                        ] as $row)
+                            <tr>
+                                @foreach($row as $cell)
+                                    <td>{{ $cell }}</td>
+                                @endforeach
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
 
-                <div class="price_table why_us_table">
-                    <div class="price_table_header">
-                        <h3>Easy Management</h3>
-                    </div>
-                    <div class="price_table_content">
-                        <div>
-                            <img src="{{ static_asset('asset/img/icons/streamline-lettings.svg')}}" alt="">
-                            <p class="desc">Streamline lettings</p>
-                        </div>
-                        <div>
-                            <img src="{{ static_asset('asset/img/icons/sales.svg')}}" alt="">
-                            <p class="desc">Sales</p>
-                        </div>
-                        <div>
-                            <img src="{{ static_asset('asset/img/icons/maintenance-app.svg')}}" alt="">
-                            <p class="desc">Maintenance in one app</p>
-                        </div>
-                    </div>
+    <section class="pricing_section pricing_page_section">
+        <div class="container pricing_container">
+            <div class="pricing_intro">
+                <h2>Frequently Asked Questions</h2>
+            </div>
+            <div class="pricing_faq">
+                <div>
+                    <h3>Is there a free trial?</h3>
+                    <p>Yes. Eligible plans include a {{ $trialDays ?? ($plans->max('trial_days') ?: 14) }}-day free trial. No card details required to start.</p>
                 </div>
+                <div>
+                    <h3>Do you take a percentage of rent?</h3>
+                    <p>No. ResiSquare charges a flat subscription, never a percentage of your rental income.</p>
+                </div>
+                <div>
+                    <h3>Can I change plans later?</h3>
+                    <p>Yes. You can upgrade your plan instantly as your portfolio grows.</p>
+                </div>
+                <div>
+                    <h3>Is ResiSquare suitable for independent agents?</h3>
+                    <p>Yes. Pro, Business, and Portfolio plans are built specifically for professional landlords and independent letting agencies.</p>
+                </div>
+            </div>
+        </div>
+    </section>
 
-                <div class="price_table why_us_table">
-                    <div class="price_table_header">
-                        <h3>Expert Support</h3>
-                    </div>
-                    <div class="price_table_content">
-                        <div>
-                            <img src="{{ static_asset('asset/img/icons/manage-property.svg')}}" alt="">
-                            <p class="desc">Dedicated property managers</p>
-                        </div>
-                        <div>
-                            <img src="{{ static_asset('asset/img/icons/plans.svg')}}" alt="">
-                            <p class="desc">Premium plans</p>
-                        </div>
-                    </div>
+    <section class="pricing_section pricing_page_section">
+        <div class="container pricing_container">
+            <div class="pricing_intro">
+                <h2>Ready to Bring Your Portfolio Together?</h2>
+                <p class="pricing_lead">Manage your properties, tenancies, rent, repairs, compliance and documents from one connected workspace.</p>
+                <div class="pricing_cta">
+                    <a class="btn btn_secondary" href="{{ route('register') }}">Start {{ $trialDays ?? ($plans->max('trial_days') ?: 14) }}-Day Free Trial</a>
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bookDemoModal">Book a Demo</button>
                 </div>
             </div>
         </div>
@@ -222,6 +301,79 @@
             font-size: 32px;
             font-weight: 700;
             line-height: 1.2;
+        }
+        .pricing_kicker {
+            margin: 0 0 8px;
+            color: var(--secondary, #ff5c1d);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        .pricing_lead {
+            max-width: 720px;
+            margin: 12px auto 0;
+            color: var(--primary-600, #475569);
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        .pricing_save {
+            display: inline-block;
+            margin-left: 6px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(255, 92, 29, 0.12);
+            color: var(--secondary, #ff5c1d);
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .billing-toggle .btn.active .pricing_save {
+            background: rgba(255, 255, 255, 0.2);
+            color: #fff;
+        }
+        .pricing_portfolio {
+            margin-top: 24px;
+            padding: 24px;
+            border: 1px solid var(--primary-200, #e2e8f0);
+            border-radius: 8px;
+            background: #fff;
+            text-align: center;
+        }
+        .pricing_portfolio h3 {
+            margin: 0 0 8px;
+        }
+        .pricing_faq {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+            text-align: left;
+        }
+        .pricing_faq h3 {
+            margin: 0 0 6px;
+            font-size: 16px;
+        }
+        .pricing_faq p,
+        .pricing_portfolio p {
+            margin: 0;
+            color: var(--primary-600, #475569);
+        }
+        .pricing_cta {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .pricing_compare th,
+        .pricing_compare td {
+            text-align: center;
+        }
+        .pricing_compare td:first-child,
+        .pricing_compare th:first-child {
+            text-align: left;
+        }
+        .pricing_features li.is-lead {
+            font-weight: 700;
         }
         .pricing_toggle_wrapper {
             display: flex;
@@ -453,7 +605,7 @@
         });
 
         periodNodes.forEach(node => {
-            node.textContent = cycle === 'annual' ? '/yr' : '/mo';
+            node.textContent = cycle === 'annual' ? '/year' : '/month';
         });
 
         registerLinks.forEach(link => {
