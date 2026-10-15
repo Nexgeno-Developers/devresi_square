@@ -23,7 +23,7 @@ Record for each run: date, build/commit, actor, pass/fail, screenshots for failu
 11. Record deposit protection fields + attach prescribed-info doc.
 12. Create a calendar visit; reminder fires (mail or in-app).
 13. Open Billing & Plan; see trial/plan without raw Stripe IDs as primary UI.
-14. Log out / log in as co-owner (if used) → portfolio still correct.
+14. Co-owner saved in onboarding appears as a contact. They have no Owner role and cannot sign in.
 
 **Pass:** Steps 1–14 without support, no Debugbar, no staff copy, no blank pages.
 
@@ -74,6 +74,24 @@ Record for each run: date, build/commit, actor, pass/fail, screenshots for failu
 
 ---
 
+## E. Contractor marketplace
+
+1. Approve a contractor whose radius covers the property and whose trade matches a non-gas repair.
+2. Landlord finds them and sends the job. The contractor sees town and outward postcode only, with no street, access notes, tenant phone, or tenant email.
+3. A second contractor outside the radius is skipped and has no offer. A favourite outside the radius is skipped the same way.
+4. A plumbing-only contractor is skipped on a gas repair. An electrical repair skips a contractor with no electrical registration.
+5. Two inspection offers exist. Accepting one closes the other. Only the accepted contractor sees the street. `awarded_offer_id` is empty.
+6. Firm-accept one price. The award id matches that offer. The other offer is not open. A decline that started from the older status leaves the award in place. Accepting a stale revision shows the new price and does not award.
+7. Cancel the inspection. The street disappears for that contractor. The closed offer cannot be accepted. A new send is how another contractor is chosen.
+8. Tenant cannot open find-contractor or accept an offer.
+9. Claim link works once within 72 hours and fails on the second use.
+10. Approved contractor changes radius and can no longer be sent a new job until review.
+11. Two profiles cannot save the same company number. Emergency send of 16 contractors creates no offers. Emergency send of 6 still does.
+
+**Pass:** Steps 1–11 on the release candidate, with probe data removed afterwards.
+
+---
+
 ## Sign-off
 
 | Script | Staging | Prod dress-rehearsal | Signer |
@@ -82,3 +100,4 @@ Record for each run: date, build/commit, actor, pass/fail, screenshots for failu
 | B Tenant Happy Path | | | |
 | C Money Path | | | |
 | D Failure Path | | | |
+| E Contractor marketplace | | | |

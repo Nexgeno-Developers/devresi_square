@@ -146,11 +146,15 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
     //     return response()->json(get_users_by_property_and_category($propertyId, $categoryId));
     // })->name('admin.getUsersByProperty');
     Route::get('/get_users_info_by_property/{propertyId}/users/{roleId}', function ($propertyId, $roleId) {
+        abort_unless(property_lookup_on_current_account($propertyId), 403);
+
         return response()->json(get_users_by_property_and_role($propertyId, $roleId));
     })->middleware(['current.account', 'account.status'])->name('admin.getUsersByProperty');
 
 
     Route::get('/get_tenants_by_property/{propertyId}', function ($propertyId) {
+        abort_unless(property_lookup_on_current_account($propertyId), 403);
+
         return response()->json(get_tenants_by_property($propertyId));
     })->middleware(['current.account', 'account.status'])->name('admin.getTenantsByProperty');
 

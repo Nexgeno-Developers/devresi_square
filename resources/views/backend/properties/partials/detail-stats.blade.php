@@ -50,7 +50,7 @@
     }
     $isLandlord = is_landlord_plan_user();
     $complianceLabel = $certificateGaps > 0
-        ? ($certificateGaps === 1 ? 'Needs you' : 'Need you')
+        ? ($certificateGaps === 1 ? 'Needs your attention' : 'Need your attention')
         : ($isLandlord ? 'Certificates' : 'Compliance'.($expiringCompliance > 0 ? ' ('.$expiringCompliance.' expiring)' : ''));
 @endphp
 <div class="pcc-stats-bar" id="pccDetailStats">

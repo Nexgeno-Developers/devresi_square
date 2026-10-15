@@ -113,7 +113,7 @@
                 <div class="pcc-empty-icon"><i class="bi bi-building"></i></div>
                 @if(isset($properties) && $properties->isEmpty())
                     <h5>No homes yet</h5>
-                    <p>Add your first property. Tenancies, certificates and repairs hang off that home.</p>
+                    <p>Add your first property. Tenancies, certificates and repairs are recorded on that home.</p>
                     @if(is_landlord_plan_user() || auth()->user()?->can('create properties'))
                         <a href="{{ property_create_url() }}" class="btn lw-btn-primary mt-2" data-next-action="add-property">Add a property</a>
                     @endif

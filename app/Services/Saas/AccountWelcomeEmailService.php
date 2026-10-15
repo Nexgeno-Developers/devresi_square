@@ -28,39 +28,34 @@ class AccountWelcomeEmailService
 
         $ownerName = trim((string) ($account->owner?->first_name ?: $account->owner?->name));
         $greetingName = e($ownerName ?: 'there');
-        $appName = e((string) config('app.name'));
-        $loginId = e((string) $recipient);
-        $loginUrl = e(url('/login'));
-        $passwordResetUrl = e(url('/password/forgot'));
+        $trialDays = (int) ($account->subscriptions()->latest('id')->first()?->plan?->trial_days ?: 7);
+        $onTrial = $account->status === 'trialing' || ($account->trial_ends_at && $account->trial_ends_at->isFuture());
+        $trialLine = $onTrial
+            ? 'Your workspace is set up and your <strong>'.$trialDays.'-day Pro trial</strong> is active.'
+            : 'Your workspace is set up.';
+        $addProperty = e(route('admin.properties.create'));
+        $tenancies = e(route('admin.tenancies.create'));
+        $dashboard = e(route('backend.dashboard'));
+        $walkthrough = e(config('services.calendly.url') ?: route('home'));
 
         $content = "
             <p>Hi {$greetingName},</p>
-            <p>Welcome to <strong>{$appName}</strong>. Your account has been created.</p>
-            <p>Your login details are:</p>
-            <table style='border-collapse:collapse; margin:16px 0;'>
-                <tr>
-                    <td style='padding:6px 12px; font-weight:bold; background:#f8f9fa; border:1px solid #dee2e6;'>Login ID</td>
-                    <td style='padding:6px 12px; border:1px solid #dee2e6;'>{$loginId}</td>
-                </tr>
-                <tr>
-                    <td style='padding:6px 12px; font-weight:bold; background:#f8f9fa; border:1px solid #dee2e6;'>Password</td>
-                    <td style='padding:6px 12px; border:1px solid #dee2e6;'>Use the password you created during registration</td>
-                </tr>
-            </table>
-            <p style='text-align:center; margin:24px 0;'>
-                <a href='{$loginUrl}' style='background:#0b60bd; color:#fff; padding:12px 28px; border-radius:4px; text-decoration:none; font-size:15px;'>
-                    Login to Your Account
-                </a>
-            </p>
-            <p style='color:#6c757d; font-size:13px;'>
-                Forgotten your password? <a href='{$passwordResetUrl}'>Reset it securely</a>.
-            </p>
-            <p>&mdash; The {$appName} Team</p>
+            <p>Welcome to ResiSquare. {$trialLine}</p>
+            <p>ResiSquare brings your entire property operation into one connected workspace—giving you a single source of truth for every property, tenancy, rent ledger, and repair.</p>
+            <h3>Get started in 3 quick steps:</h3>
+            <ol>
+                <li><strong>Add your first property:</strong> Create a property record manually or import your portfolio via CSV.<br>
+                    <a href=\"{$addProperty}\">Add Property</a></li>
+                <li><strong>Attach a tenancy:</strong> <a href=\"{$tenancies}\">Connect tenant details</a>, contract terms, rent schedules, and deposits directly to the property.</li>
+                <li><strong>Check your dashboard:</strong> <a href=\"{$dashboard}\">Monitor occupancy, rent collections, and maintenance alerts</a> in one clear view.</li>
+            </ol>
+            <p>Need help getting started? <a href=\"{$walkthrough}\">Book a live 15-minute walkthrough</a> or reply to this email.</p>
+            <p>Welcome aboard,<br>The ResiSquare Team</p>
         ";
 
         try {
             Mail::to($recipient)->send(new MailManager([
-                'subject' => 'Welcome to '.config('app.name').' — Your Account is Ready',
+                'subject' => 'Welcome to ResiSquare',
                 'content' => $content,
                 'attachments' => [],
             ]));

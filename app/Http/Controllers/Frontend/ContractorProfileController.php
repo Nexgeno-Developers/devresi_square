@@ -70,6 +70,8 @@ class ContractorProfileController extends Controller
             'coverage_radius_miles' => ['required', 'integer', Rule::in([5, 10, 15, 25, 50])],
             'vat_registered' => ['required', 'boolean'],
             'vat_number' => ['nullable', 'string', 'max:20'],
+            'phone' => ['nullable', 'string', 'max:32'],
+            'employs_staff' => ['nullable', 'boolean'],
         ], [
             'postcode.regex' => 'Enter a full UK postcode, for example M1 1AA.',
         ]);
@@ -93,6 +95,14 @@ class ContractorProfileController extends Controller
 
         $postcode = PostcodeGeo::normalise($data['postcode']);
         $location = $postcode !== $profile->postcode || $profile->latitude === null ? PostcodeGeo::locate($postcode) : null;
+        $tradesChanged = collect($profile->trades ?? [])->sort()->values()->all()
+            !== collect($data['trades'])->sort()->values()->all();
+        $returnToReview = $profile->approval_status === ContractorProfile::APPROVED && (
+            $tradesChanged
+            || $postcode !== (string) $profile->postcode
+            || (int) $data['coverage_radius_miles'] !== (int) $profile->coverage_radius_miles
+            || $companyNumber !== ($profile->company_number ?: null)
+        );
 
         $profile->fill([
             'trading_type' => $data['trading_type'],
@@ -102,12 +112,21 @@ class ContractorProfileController extends Controller
             'coverage_radius_miles' => (int) $data['coverage_radius_miles'],
             'vat_registered' => $vat,
             'vat_number' => $vat ? strtoupper(str_replace(' ', '', (string) ($data['vat_number'] ?? ''))) : null,
+            'employs_staff' => $request->boolean('employs_staff'),
+            'phone' => $request->exists('phone') ? ($data['phone'] ?: null) : $profile->phone,
         ]);
         if ($location) {
             [$profile->latitude, $profile->longitude] = $location;
         }
         $profile->save();
         ContractorCompliance::syncTrades($profile, $data['trades']);
+        if ($returnToReview) {
+            $profile->forceFill([
+                'approval_status' => ContractorProfile::SUBMITTED,
+                'submitted_at' => now(),
+            ])->save();
+            $profile->log('changes_submitted', $request->user(), null, 'Trade, postcode, radius, or company number changed.');
+        }
 
         $gaps = ContractorCompliance::basicsGaps($profile->fresh());
         if ($gaps !== []) {

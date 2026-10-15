@@ -17,33 +17,25 @@ class EnsureTenantPortal
 
         abort_unless($user, 403, 'This area is only available to tenants.');
 
-        if ($user->isSuperAdmin()) {
-            return $next($request);
-        }
-
-        $membership = current_account_membership($user);
-        $isTenant = ($membership && AccountMembership::isTenant($membership->member_type))
-            || $user->hasRole('Tenant');
-
-        if (! $isTenant) {
-            abort(403, 'This area is only available to tenants.');
-        }
-
         $accountId = current_account_id();
-        if ($accountId) {
-            $tenantMembership = AccountUser::query()
+        $tenantMembership = $accountId
+            ? AccountUser::query()
                 ->where('account_id', $accountId)
                 ->where('user_id', $user->id)
                 ->where('member_type', AccountMembership::TENANT)
-                ->first();
+                ->first()
+            : null;
 
-            if ($tenantMembership && ($tenantMembership->status !== 'active' || ! $tenantMembership->can_login)) {
-                Auth::logout();
-                $request->session()->invalidate();
-                $request->session()->regenerateToken();
+        if ($tenantMembership && ($tenantMembership->status !== 'active' || ! $tenantMembership->can_login)) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
 
-                return redirect()->route('login');
-            }
+            return redirect()->route('login');
+        }
+
+        if (! $tenantMembership || $tenantMembership->status !== 'active' || ! $tenantMembership->can_login) {
+            abort(403, 'This area is only available to tenants.');
         }
 
         return $next($request);

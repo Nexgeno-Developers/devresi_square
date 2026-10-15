@@ -39,11 +39,11 @@
         </div>
         <div class="col-sm-3">
             <div class="text-muted">Issued</div>
-            <div>{{ $invoice->issued_on?->format('j M Y') }}</div>
+            <div>{{ rs_date($invoice->issued_on) }}</div>
         </div>
         <div class="col-sm-3">
-            <div class="text-muted">Due</div>
-            <div class="{{ $invoice->isOverdue() ? 'text-danger fw-semibold' : '' }}">{{ $invoice->due_on?->format('j M Y') }}</div>
+            <div class="text-muted">Due date</div>
+            <div class="{{ $invoice->isOverdue() ? 'text-danger fw-semibold' : '' }}">{{ rs_date($invoice->due_on) }}</div>
         </div>
     </div>
 
@@ -65,7 +65,7 @@
                     <tr><th colspan="3" class="text-end fw-normal">Net</th><td class="text-end">£{{ number_format((float) $invoice->net_amount, 2) }}</td></tr>
                     <tr><th colspan="3" class="text-end fw-normal">VAT</th><td class="text-end">£{{ number_format((float) $invoice->vat_amount, 2) }}</td></tr>
                 @endif
-                <tr><th colspan="{{ $invoice->vat_number ? 3 : 2 }}" class="text-end">Total due</th><td class="text-end fw-semibold fs-5">£{{ number_format((float) $invoice->gross_amount, 2) }}</td></tr>
+                <tr><th colspan="{{ $invoice->vat_number ? 3 : 2 }}" class="text-end">Amount due</th><td class="text-end fw-semibold fs-5">£{{ number_format((float) $invoice->gross_amount, 2) }}</td></tr>
             </tfoot>
         </table>
     </div>
@@ -80,7 +80,7 @@
         <div class="small border-top pt-2" style="white-space: pre-line">{{ $invoice->notes }}</div>
     @endif
     @if($invoice->paid_at)
-        <p class="small text-success mt-2 mb-0">Paid on {{ $invoice->paid_at->format('j M Y') }}.</p>
+        <p class="small text-success mt-2 mb-0">Paid on {{ rs_date($invoice->paid_at) }}.</p>
     @endif
     <p class="small text-muted mt-3 mb-0">Issued through Resisquare. Payment is made directly between the landlord and the contractor.</p>
 </div></div>

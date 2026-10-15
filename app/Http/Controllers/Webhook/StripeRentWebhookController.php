@@ -38,6 +38,11 @@ class StripeRentWebhookController extends Controller
         }
 
         $type = $event->type ?? null;
+        if ($type === 'checkout.session.async_payment_failed') {
+            $rentCheckout->noteFailed($event->data->object ?? null);
+
+            return response('Rent Stripe webhook handled.', 200);
+        }
         if (! in_array($type, ['checkout.session.completed', 'checkout.session.async_payment_succeeded'], true)) {
             return response('Rent Stripe webhook ignored.', 200);
         }

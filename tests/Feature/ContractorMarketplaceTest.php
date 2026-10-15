@@ -6,6 +6,7 @@ use App\Mail\MailManager;
 use App\Models\ContractorDocument;
 use App\Models\ContractorProfile;
 use App\Models\ContractorTrade;
+use App\Models\PostcodeLocation;
 use App\Models\Property;
 use App\Models\RepairCategory;
 use App\Models\RepairContractorRequest;
@@ -23,6 +24,7 @@ use App\Services\Contractors\RepairJobOfferService;
 use App\Services\SendSmsService;
 use Mockery\MockInterface;
 use App\Support\ContractorCompliance;
+use App\Support\PostcodeGeo;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -107,6 +109,12 @@ class ContractorMarketplaceTest extends TestCase
             ->assertSessionHas('success');
         $this->assertSame(RepairJobVariation::APPROVED, $variation->fresh()->status);
         $this->assertSame(150.0, $offer->fresh()->load('variations')->finalGross());
+
+        $this->actingAs($contractor)->post(route('contractor.jobs.progress', $offer), [
+            'step' => 'complete',
+            'completion_note' => 'Replaced valve and washer',
+        ])->assertSessionHasErrors('photos');
+        $this->assertNotSame(RepairJobOffer::JOB_COMPLETED, $offer->fresh()->job_status);
 
         $this->actingAs($contractor)->post(route('contractor.jobs.progress', $offer), [
             'step' => 'complete',
@@ -289,7 +297,8 @@ class ContractorMarketplaceTest extends TestCase
         $this->assertSame(1, (int) $offer->fresh()->revision);
 
         $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.accept', $offer), ['revision' => 0])
-            ->assertSessionHas('error', 'This offer was just updated. Check the new price, then accept.');
+            ->assertSessionHas('error');
+        $this->assertStringContainsString('£110.00', (string) session('error'));
         $this->assertSame(RepairJobOffer::OFFER_SENT, $offer->fresh()->status);
 
         $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.accept', $offer), ['revision' => 1])
@@ -356,7 +365,7 @@ class ContractorMarketplaceTest extends TestCase
         Storage::fake('local');
         $user = $this->contractorUser('newbie');
 
-        $this->actingAs($user)->get(route('contractor.profile.edit'))->assertOk()->assertSee('Step 2 of 3', false);
+        $this->actingAs($user)->get(route('contractor.profile.edit'))->assertOk()->assertSee('Step 2 of 3', false)->assertSee('Do you employ staff?', false);
 
         $this->actingAs($user)->post(route('contractor.profile.business'), [
             'trading_type' => 'sole_trader',
@@ -730,10 +739,20 @@ class ContractorMarketplaceTest extends TestCase
         $profile = $legacy->fresh()->contractorProfile;
         $this->assertTrue($profile->legacy_contractor);
         $this->assertNotNull($profile->claim_invited_at);
-        Mail::assertSent(MailManager::class, fn (MailManager $mail) => $mail->hasTo($legacy->email));
+        $link = null;
+        Mail::assertSent(MailManager::class, function (MailManager $mail) use (&$link, $legacy) {
+            if (! $mail->hasTo($legacy->email)) {
+                return false;
+            }
+            if (preg_match('/href="([^"]+)"/', (string) ($mail->array['content'] ?? ''), $match)) {
+                $link = html_entity_decode($match[1]);
+            }
+
+            return str_contains((string) ($mail->array['content'] ?? ''), '72 hours');
+        });
+        $this->assertNotNull($link);
 
         auth()->logout();
-        $link = URL::temporarySignedRoute('contractor.claim', now()->addDay(), ['user' => $legacy->id]);
         $this->get($link)->assertOk()->assertSee('Claim your account', false);
         $this->post($link, ['password' => 'new-password-1', 'password_confirmation' => 'new-password-1', 'terms' => 1])
             ->assertRedirect(route('contractor.profile.edit', ['step' => 'business']));
@@ -766,6 +785,14 @@ class ContractorMarketplaceTest extends TestCase
         $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.accept', $offer), ['revision' => 0])->assertSessionHas('success');
 
         return [$landlord, $accountId, $repair, $contractor, $offer->fresh()];
+    }
+
+    private function pin(string $postcode, float $lat, float $lng): void
+    {
+        PostcodeLocation::query()->updateOrCreate(
+            ['postcode' => PostcodeGeo::normalise($postcode)],
+            ['latitude' => $lat, 'longitude' => $lng]
+        );
     }
 
     private function landlord(User $landlord, int $accountId): static
@@ -804,6 +831,8 @@ class ContractorMarketplaceTest extends TestCase
             'cis_status' => 'unverified',
             'employs_staff' => false,
             'postcode' => 'M1 1AA',
+            'latitude' => 53.4808,
+            'longitude' => -2.2426,
             'coverage_radius_miles' => 15,
             'phone' => '07123456789',
             'trades' => $trades,
@@ -818,6 +847,7 @@ class ContractorMarketplaceTest extends TestCase
         if (in_array('gas', $trades, true)) {
             $this->doc($profile, 'gas_safe', ['reference' => '123456', 'expires_at' => now()->addYear(), 'path' => null]);
         }
+        $this->pin('M1 1AA', 53.4808, -2.2426);
 
         return $user->fresh();
     }
@@ -868,6 +898,7 @@ class ContractorMarketplaceTest extends TestCase
             'status' => 1,
         ]);
         $tenant->assignRole(Role::findOrCreate('Tenant', 'web'));
+        $this->pin('M1 2AB', 53.4795, -2.2440);
         $property = Property::create([
             'account_id' => $accountId,
             'created_by' => $landlord->id,

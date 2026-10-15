@@ -21,6 +21,7 @@
         @endif
         <span>{{ $repairIssue->priority ? ucfirst($repairIssue->priority) : 'Medium' }}</span>
         <span>Reported {{ rs_date($repairIssue->created_at) }}</span>
+        <span>Tenant available {{ $repairIssue->tenantAvailabilityLabel() ?: 'to be arranged' }}</span>
         @if($repairIssue->reference_number)
             <span class="lw-repair-ref">{{ $repairIssue->reference_number }}</span>
         @endif

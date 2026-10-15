@@ -46,7 +46,7 @@ Resisquare uses **two** Stripe surfaces:
 | **Operating** | `STRIPE_KEY`, `STRIPE_SECRET`, `STRIPE_WEBHOOK_SECRET` | `POST /stripe/webhook` | Landlord subscriptions, Customer Portal, plan add-ons |
 | **Client-money / rent** | `STRIPE_RENT_KEY`, `STRIPE_RENT_SECRET`, `STRIPE_RENT_WEBHOOK_SECRET` | `POST /stripe/rent/webhook` | Tenant rent Checkout; payouts to client/trust bank |
 
-Staging may reuse test keys for both. **Production must use two different Stripe accounts** (or Connect with `STRIPE_RENT_CONNECTED_ACCOUNT_ID` so rent lands on the client-money account). The assert command fails GA if secrets are identical.
+Staging may reuse test keys for both. **Production must use two different Stripe accounts** (or Connect with `STRIPE_RENT_CONNECTED_ACCOUNT_ID` so rent lands on the client-money account). The assert command fails GA if secrets are identical. Production also requires live-mode secrets: `sk_live_` for both secret keys, and `whsec_` webhook secrets from the live endpoints. Staging may keep `sk_test_` keys, including one shared test pair.
 
 ### Webhook events to enable
 

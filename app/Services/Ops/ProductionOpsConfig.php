@@ -37,6 +37,11 @@ class ProductionOpsConfig
             $problems[] = 'APP_URL must use https:// in production.';
         }
 
+        $mailer = strtolower((string) config('mail.default'));
+        if (in_array($mailer, ['', 'log', 'array'], true)) {
+            $problems[] = "MAIL_MAILER={$mailer} will not deliver mail in {$env}; use smtp, ses, postmark, or mailgun.";
+        }
+
         return $problems;
     }
 
@@ -57,6 +62,8 @@ class ProductionOpsConfig
             'notifications:retry',
             'events:send-reminders',
             'sale-invoices:apply-penalties',
+            'rent:reconcile-checkouts',
+            'contractors:sweep',
         ];
     }
 }

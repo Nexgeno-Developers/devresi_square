@@ -35,6 +35,10 @@ return [
         ],
     ],
 
+    'calendly' => [
+        'url' => env('CALENDLY_URL'),
+    ],
+
     'stripe' => [
         // Operating / business Stripe account — subscriptions and platform fees.
         'key' => env('STRIPE_KEY', env('STRIPE_PUBLISHABLE_TEST')),

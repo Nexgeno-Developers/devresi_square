@@ -165,6 +165,10 @@ class PortalAccessController
             ]);
         }
 
+        \Illuminate\Support\Facades\DB::table(config('auth.passwords.users.table', 'password_reset_tokens'))
+            ->where('email', $user->email)
+            ->delete();
+
         $mail = app(TenantInviteMailer::class)->send($user, $property, true);
 
         if ($mail['sent']) {
@@ -188,9 +192,13 @@ class PortalAccessController
 
         abort_unless((int) $user->id !== (int) $actor->id, 403, 'You cannot revoke your own access.');
 
-        $portalAccessService->revokePortalAccess($account, $user);
+        $mailed = $portalAccessService->revokePortalAccess($account, $user);
 
-        flash('Portal access has been revoked.')->success();
+        if ($mailed) {
+            flash('Portal access has been revoked.')->success();
+        } else {
+            flash('Portal access has been revoked, but the email could not be sent.')->warning();
+        }
 
         return redirect()->route('admin.portal-access.index');
     }

@@ -22,7 +22,7 @@ class SaasBillingAndLimitsHttpTest extends TestCase
 {
     use DatabaseTransactions;
 
-    public function test_landlord_owner_can_open_billing_and_staff_or_admin_cannot(): void
+    public function test_landlord_owner_and_staff_can_open_billing_and_admin_cannot(): void
     {
         [$owner, $accountId] = $this->createLandlord('owner');
         [$staff] = $this->createMembershipOnAccount($accountId, 'Staff', 'staff');
@@ -36,7 +36,7 @@ class SaasBillingAndLimitsHttpTest extends TestCase
         $this->actingAs($staff)
             ->withSession(['current_account_id' => $accountId])
             ->get(route('backend.billing.index'))
-            ->assertForbidden();
+            ->assertOk();
 
         $this->actingAs($admin)
             ->withSession(['current_account_id' => $accountId])

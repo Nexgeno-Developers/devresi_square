@@ -28,6 +28,22 @@ final class WorkspaceAccess
             return true;
         }
 
+        $account = function_exists('current_account') ? current_account() : null;
+
+        if (
+            $account
+            && $membership
+            && AccountType::isLandlord($account->account_type)
+            && in_array($membership->member_type, [
+                AccountMembership::PROPERTY_MANAGER,
+                AccountMembership::LANDLORD_CONTACT,
+                AccountMembership::CONTACT,
+                AccountMembership::OWNER_CONTACT,
+            ], true)
+        ) {
+            return true;
+        }
+
         return $user->hasAnyRole(['Property Manager', 'Estate Agent', 'Owner', 'Staff']);
     }
 

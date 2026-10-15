@@ -8,7 +8,6 @@ use App\Models\RepairJobOffer;
 use App\Models\RepairJobOfferEvent;
 use App\Models\User;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 class ContractorDirectory
@@ -112,14 +111,19 @@ class ContractorDirectory
                     if (! $profile->legacy_contractor || $profile->claim_invited_at || $profile->terms_accepted_at) {
                         continue;
                     }
-                    $profile->forceFill(['claim_invited_at' => now()])->save();
+                    $plain = Str::random(48);
+                    $profile->forceFill([
+                        'claim_invited_at' => now(),
+                        'claim_token_hash' => hash('sha256', $plain),
+                        'claim_expires_at' => now()->addHours(72),
+                    ])->save();
                     $profile->log('claim_invited', $admin);
-                    $link = URL::temporarySignedRoute('contractor.claim', now()->addDays(30), ['user' => $user->id]);
+                    $link = route('contractor.claim', ['user' => $user->id, 'token' => $plain]);
                     $this->mail->toUser(
                         $user,
                         'Claim your new '.config('app.name').' contractor account',
                         '<p>Hi '.e($user->first_name ?: $user->name ?: 'there').',</p><p>Landlords now send repairs through our new contractor marketplace. It is free. Claim your account, add your insurance and registrations, and once approved you can quote for jobs in your area.</p>'
-                            .'<p><a href="'.e($link).'">Claim my account</a></p><p>This link works once and expires in 30 days.</p>'
+                            .'<p><a href="'.e($link).'">Claim my account</a></p><p>This link works once and expires in 72 hours.</p>'
                     );
                     $sent++;
                 }

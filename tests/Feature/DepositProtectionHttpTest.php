@@ -55,14 +55,14 @@ class DepositProtectionHttpTest extends TestCase
         $this->actingAs($landlord)->withSession($session)
             ->get(route('backend.dashboard'))
             ->assertOk()
-            ->assertSee('deposit needs you', false);
+            ->assertSee('deposit needs your attention', false);
 
         $show = $this->actingAs($landlord)->withSession($session)
             ->get(route('admin.tenancies.show', $tenancy->id));
         $show->assertOk();
         $show->assertSee('data-deposit-protection="1"', false);
         $show->assertSee('Prescribed information document attached', false);
-        $show->assertSee('Needs you', false);
+        $show->assertSee('Needs your attention', false);
 
         $prescribedType = DocumentType::query()->firstOrCreate(
             ['name' => 'Prescribed Information'],

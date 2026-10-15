@@ -1,6 +1,7 @@
 <?php
 // app/helpers.php
 use Carbon\Carbon;
+use App\Models\AccountUser;
 use App\Models\User;
 use App\Models\Upload;
 use App\Models\Property;
@@ -661,9 +662,51 @@ if (!function_exists('getFormattedRepairNavigation')) {
     }
 }
 
+if (! function_exists('property_lookup_on_current_account')) {
+    function property_lookup_on_current_account($propertyId): bool
+    {
+        $accountId = (int) current_account_id();
+        $property = Property::query()->find($propertyId);
+
+        return $accountId > 0
+            && $property
+            && (int) $property->account_id === $accountId;
+    }
+}
+
+if (! function_exists('forget_property_lookup_cache')) {
+    function forget_property_lookup_cache(?int $accountId, ?int $propertyId): void
+    {
+        if (! $accountId || ! $propertyId) {
+            return;
+        }
+
+        $key = "lookup_ver_{$accountId}_{$propertyId}";
+        Cache::put($key, ((int) Cache::get($key, 1)) + 1, 86400);
+    }
+}
+
+if (! function_exists('forget_user_address_cache')) {
+    function forget_user_address_cache(?int $accountId, ?int $userId): void
+    {
+        if (! $accountId || ! $userId) {
+            return;
+        }
+
+        Cache::forget("useraddr_{$accountId}_{$userId}");
+    }
+}
+
+if (! function_exists('property_lookup_version')) {
+    function property_lookup_version(int $accountId, int $propertyId): int
+    {
+        return (int) Cache::get("lookup_ver_{$accountId}_{$propertyId}", 1);
+    }
+}
+
 if (!function_exists('get_users_by_property_and_role')) {
     /**
-     * Fetch users by property ID and role ID.
+     * Users of a role on a property that belongs to the current account.
      *
      * @param int $propertyId
      * @param int $roleId
@@ -671,12 +714,24 @@ if (!function_exists('get_users_by_property_and_role')) {
      */
     function get_users_by_property_and_role($propertyId, $roleId)
     {
-        // Get the role name from its ID using Spatie Role model
-        $role = Role::findById($roleId);
+        $accountId = (int) current_account_id();
+        $property = Property::query()->find($propertyId);
 
-        return Cache::rememberForever("users_{$propertyId}_role_{$roleId}", function () use ($propertyId, $role) {
+        if (! $accountId || ! $property || (int) $property->account_id !== $accountId) {
+            return collect();
+        }
+
+        $role = Role::findById($roleId);
+        $memberIds = AccountUser::query()
+            ->where('account_id', $accountId)
+            ->where('status', 'active')
+            ->pluck('user_id');
+        $version = property_lookup_version($accountId, (int) $propertyId);
+
+        return Cache::remember("users_{$accountId}_{$propertyId}_{$roleId}_{$version}", 60, function () use ($propertyId, $role, $memberIds) {
             return User::role($role->name)
-                ->whereRaw('JSON_CONTAINS(selected_properties, ?)', [json_encode($propertyId)])
+                ->whereIn('id', $memberIds)
+                ->whereRaw('JSON_CONTAINS(selected_properties, ?)', [json_encode((int) $propertyId)])
                 ->get(['id', 'name', 'address_line_1', 'address_line_2', 'postcode', 'city', 'country', 'email', 'phone'])
                 ->map(function ($user) {
                     return array_merge($user->toArray(), [
@@ -702,7 +757,18 @@ if (!function_exists('get_user_address_name_by_id')) {
      */
     function get_user_address_name_by_id($userId)
     {
-        return Cache::rememberForever("users_{$userId}", function () use ($userId) {
+        $accountId = (int) current_account_id();
+        $belongs = $accountId && AccountUser::query()
+            ->where('account_id', $accountId)
+            ->where('user_id', $userId)
+            ->where('status', 'active')
+            ->exists();
+
+        if (! $belongs) {
+            return 'N/A';
+        }
+
+        return Cache::remember("useraddr_{$accountId}_{$userId}", 60, function () use ($userId) {
             $user = User::find($userId, [
                 'name', 'address_line_1', 'address_line_2', 'postcode', 'city', 'country', 'email', 'phone'
             ]);
@@ -750,8 +816,20 @@ if (!function_exists('get_tenants_by_property')) {
      */
     function get_tenants_by_property($propertyId)
     {
-        return Cache::rememberForever("tenants_{$propertyId}", function () use ($propertyId) {
-            $property = Property::where('id', $propertyId)->first(['line_1', 'line_2', 'postcode', 'city', 'country']);
+        $accountId = (int) current_account_id();
+        $property = Property::query()->find($propertyId);
+
+        if (! $accountId || ! $property || (int) $property->account_id !== $accountId) {
+            return collect();
+        }
+
+        $memberIds = AccountUser::query()
+            ->where('account_id', $accountId)
+            ->where('status', 'active')
+            ->pluck('user_id');
+        $version = property_lookup_version($accountId, (int) $propertyId);
+
+        return Cache::remember("tenants_{$accountId}_{$propertyId}_{$version}", 60, function () use ($propertyId, $property, $memberIds) {
 
             // Define a default message if address is missing
             $defaultAddress = 'No address available';
@@ -773,9 +851,11 @@ if (!function_exists('get_tenants_by_property')) {
                 $propertyAddress = $defaultAddress;  // If no property is found
             }
 
-            return User::whereHas('tenantMembers.tenancy', function ($query) use ($propertyId) {
-                $query->where('property_id', $propertyId);
-            })->get(['id', 'name', 'email', 'phone'])->map(function ($tenant) use ($propertyAddress) {
+            return User::query()
+                ->whereIn('id', $memberIds)
+                ->whereHas('tenantMembers.tenancy', function ($query) use ($propertyId) {
+                    $query->where('property_id', $propertyId);
+                })->get(['id', 'name', 'email', 'phone'])->map(function ($tenant) use ($propertyAddress) {
                 return array_merge($tenant->toArray(), [
                     'full_address' => $propertyAddress
                 ]);
@@ -1149,6 +1229,30 @@ if (! function_exists('is_landlord_plan_user')) {
     }
 }
 
+if (! function_exists('sees_landlord_portfolio')) {
+    /**
+     * Landlord-account member who works the portfolio. Tenants and contractors stay on their own lists.
+     */
+    function sees_landlord_portfolio(?\App\Models\User $user = null): bool
+    {
+        $user = $user ?? auth()->user();
+
+        if (! $user || $user->isSuperAdmin()) {
+            return false;
+        }
+
+        $account = current_account();
+        $membership = current_account_membership($user);
+
+        if (! $account || ! $membership || ! AccountType::isLandlord($account->account_type)) {
+            return false;
+        }
+
+        return ! AccountMembership::isTenant($membership->member_type)
+            && $membership->member_type !== AccountMembership::CONTRACTOR;
+    }
+}
+
 if (! function_exists('is_tenant_portal_user')) {
     function is_tenant_portal_user(?\App\Models\User $user = null): bool
     {
@@ -1158,10 +1262,19 @@ if (! function_exists('is_tenant_portal_user')) {
             return false;
         }
 
-        $membership = current_account_membership($user);
+        $accountId = current_account_id();
 
-        return ($membership && AccountMembership::isTenant($membership->member_type))
-            || $user->hasRole('Tenant');
+        if (! $accountId) {
+            return false;
+        }
+
+        return AccountUser::query()
+            ->where('account_id', $accountId)
+            ->where('user_id', $user->id)
+            ->where('member_type', AccountMembership::TENANT)
+            ->where('status', 'active')
+            ->where('can_login', true)
+            ->exists();
     }
 }
 

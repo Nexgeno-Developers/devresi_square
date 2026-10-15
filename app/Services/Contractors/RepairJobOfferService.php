@@ -76,16 +76,23 @@ class RepairJobOfferService
         if ($respondBy->isPast()) {
             throw new ContractorMarketplaceException('The respond-by time must be in the future.');
         }
-        $trade = ContractorCompliance::requiredTrade($repair);
+        $trade = $options['trade'] ?? (ContractorCompliance::requiredTrade($repair) ?: ContractorCompliance::suggestedTrade($repair));
 
         $request = RepairContractorRequest::query()->firstOrNew(['repair_issue_id' => $repair->id]);
         $openIds = $request->exists
             ? $request->offers()->whereIn('status', RepairJobOffer::OPEN_STATUSES)->pluck('contractor_user_id')->all()
             : [];
         $ids = array_values(array_diff(array_unique(array_map('intval', $contractorIds)), $openIds));
-        $cap = ContractorSettings::maxPerSend();
-        if ($urgency !== 'emergency' && count($ids) + count($openIds) > $cap) {
-            throw new ContractorMarketplaceException('Send to '.$cap.' contractors at most. Fewer contractors means more of them reply.');
+        if ($urgency === 'emergency') {
+            $emergencyCap = ContractorSettings::maxPerEmergencySend();
+            if (count($ids) > $emergencyCap) {
+                throw new ContractorMarketplaceException('An emergency can go to '.$emergencyCap.' contractors at most.');
+            }
+        } else {
+            $cap = ContractorSettings::maxPerSend();
+            if (count($ids) + count($openIds) > $cap) {
+                throw new ContractorMarketplaceException('Send to '.$cap.' contractors at most. Fewer contractors means more of them reply.');
+            }
         }
 
         $request->fill([
@@ -114,8 +121,9 @@ class RepairJobOfferService
                 $skipped[] = 'Contractor #'.$contractorId.' is not on the approved list.';
                 continue;
             }
-            if ($reason = ContractorCompliance::blockReason($profile, $trade)) {
-                $skipped[] = $profile->displayName().': '.$reason;
+            $decision = app(ContractorEligibility::class)->assess($profile, $repair, $trade);
+            if (! $decision['ok']) {
+                $skipped[] = $profile->displayName().': '.$decision['reason'];
                 continue;
             }
             $offer = RepairJobOffer::query()->firstOrNew(['repair_issue_id' => $repair->id, 'contractor_user_id' => $user->id]);
@@ -439,7 +447,7 @@ class RepairJobOfferService
                 default => throw new ContractorMarketplaceException('This offer is no longer available to accept.'),
             };
             if ($expectedRevision !== null && (int) $locked->revision !== $expectedRevision) {
-                throw new ContractorMarketplaceException('This offer was just updated. Check the new price, then accept.');
+                throw new ContractorMarketplaceException('This offer was just updated to '.$this->priceSummary($locked).'. Check the new price, then accept.');
             }
             $profile = $locked->contractor?->contractorProfile;
             $reason = $profile ? ContractorCompliance::blockReason($profile, ContractorCompliance::requiredTrade($repair)) : 'Contractor profile is missing.';
@@ -451,6 +459,7 @@ class RepairJobOfferService
                 $inspection = true;
                 $locked->inspection_accepted_at = now();
                 $this->transition($locked, RepairJobOffer::INSPECTION_ACCEPTED, $landlord, 'Landlord accepted the inspection visit.');
+                $losers = $this->closeOtherOffers($repair, $locked, $landlord);
                 $winner = $locked->fresh(['contractor.contractorProfile', 'repairIssue.property', 'repairIssue.tenant', 'request']);
 
                 return;
@@ -472,20 +481,7 @@ class RepairJobOfferService
                 'awarded_at' => now(),
             ]);
 
-            $others = RepairJobOffer::query()
-                ->where('repair_issue_id', $repair->id)
-                ->where('id', '!=', $locked->id)
-                ->whereIn('status', RepairJobOffer::OPEN_STATUSES)
-                ->lockForUpdate()
-                ->get();
-            foreach ($others as $other) {
-                $other->loadMissing('contractor');
-                $next = $other->isAwaitingResponse() ? RepairJobOffer::WITHDRAWN : RepairJobOffer::NOT_SELECTED;
-                $this->transition($other, $next, $landlord, 'Another offer was accepted.');
-                if ($other->contractor) {
-                    $losers[] = $other->contractor;
-                }
-            }
+            $losers = $this->closeOtherOffers($repair, $locked, $landlord);
 
             $winner = $locked->fresh(['contractor.contractorProfile', 'repairIssue.property', 'repairIssue.tenant', 'request']);
         });
@@ -493,16 +489,53 @@ class RepairJobOfferService
         if (! $winner) {
             return;
         }
-        $inspection ? $this->announceInspection($winner) : $this->announceAward($winner, $losers);
+        if ($inspection) {
+            $this->announceInspection($winner);
+            $this->notify(CrmNotificationEvent::RepairJobNotSelected, $winner, $losers, 'Offer not selected', 'The landlord chose another contractor for the inspection. Your price was not shared with anyone else.', 'inspection-others-'.$winner->id);
+        } else {
+            $this->announceAward($winner, $losers);
+        }
+    }
+
+    /**
+     * @return array<int, User>
+     */
+    private function closeOtherOffers(RepairIssue $repair, RepairJobOffer $winner, User $landlord): array
+    {
+        $losers = [];
+        $others = RepairJobOffer::query()
+            ->where('repair_issue_id', $repair->id)
+            ->where('id', '!=', $winner->id)
+            ->whereIn('status', RepairJobOffer::OPEN_STATUSES)
+            ->lockForUpdate()
+            ->get();
+        foreach ($others as $other) {
+            $other->loadMissing('contractor');
+            $next = $other->isAwaitingResponse() ? RepairJobOffer::WITHDRAWN : RepairJobOffer::NOT_SELECTED;
+            $this->transition($other, $next, $landlord, 'Another offer was accepted.');
+            if ($other->contractor) {
+                $losers[] = $other->contractor;
+            }
+        }
+
+        return $losers;
     }
 
     public function declineOffer(RepairJobOffer $offer, User $landlord): void
     {
         $this->assertLandlord($offer, $landlord);
-        if (! in_array($offer->status, [RepairJobOffer::OFFER_SENT, RepairJobOffer::OFFER_EXPIRED, RepairJobOffer::INSPECTION_ACCEPTED], true)) {
-            throw new ContractorMarketplaceException('Only an open offer can be declined.');
-        }
-        $this->transition($offer, RepairJobOffer::NOT_SELECTED, $landlord, 'Landlord declined this offer.');
+        DB::transaction(function () use ($offer, $landlord) {
+            $repair = RepairIssue::query()->whereKey($offer->repair_issue_id)->lockForUpdate()->firstOrFail();
+            $locked = RepairJobOffer::query()->whereKey($offer->id)->lockForUpdate()->firstOrFail();
+            if (! in_array($locked->status, [RepairJobOffer::OFFER_SENT, RepairJobOffer::OFFER_EXPIRED], true)) {
+                throw new ContractorMarketplaceException('This offer can no longer be declined.');
+            }
+            $this->transition($locked, RepairJobOffer::NOT_SELECTED, $landlord, 'Landlord declined this offer.');
+            if ((int) $repair->awarded_offer_id === (int) $locked->id) {
+                RepairIssue::withoutEvents(fn () => $repair->forceFill(['awarded_offer_id' => null])->save());
+            }
+            $offer->setRawAttributes($locked->getAttributes(), true);
+        });
         $this->notify(
             CrmNotificationEvent::RepairJobNotSelected,
             $offer,
@@ -516,15 +549,15 @@ class RepairJobOfferService
     public function cancel(RepairJobOffer $offer, User $actor, string $side, ?string $reason = null): void
     {
         $side === 'contractor' ? $this->assertContractor($offer, $actor) : $this->assertLandlord($offer, $actor);
-        if (! in_array($offer->status, [RepairJobOffer::JOB_ACCEPTED, RepairJobOffer::INSPECTION_ACCEPTED], true)) {
-            throw new ContractorMarketplaceException('Only an accepted job can be cancelled.');
-        }
-        if ($offer->isFinished()) {
-            throw new ContractorMarketplaceException('This job is already complete. Report a problem instead.');
-        }
         DB::transaction(function () use ($offer, $actor, $side, $reason) {
             $repair = RepairIssue::query()->whereKey($offer->repair_issue_id)->lockForUpdate()->firstOrFail();
             $locked = RepairJobOffer::query()->whereKey($offer->id)->lockForUpdate()->firstOrFail();
+            if (! in_array($locked->status, [RepairJobOffer::JOB_ACCEPTED, RepairJobOffer::INSPECTION_ACCEPTED], true)) {
+                throw new ContractorMarketplaceException('Only an accepted job can be cancelled.');
+            }
+            if ($locked->isFinished()) {
+                throw new ContractorMarketplaceException('This job is already complete. Report a problem instead.');
+            }
             $locked->cancel_reason = $reason;
             $this->transition($locked, RepairJobOffer::CANCELLED, $actor, ($side === 'contractor' ? 'Contractor cancelled after award.' : 'Landlord cancelled after award.').($reason ? ' '.$reason : ''));
             if ((int) $repair->awarded_offer_id === (int) $locked->id) {
@@ -594,7 +627,16 @@ class RepairJobOfferService
                 ])->save();
                 RepairContractorRequest::query()->where('repair_issue_id', $offer->repair_issue_id)->update(['completed_at' => now()]);
                 $this->log($offer, $offer->status, $offer->status, $contractor, 'Marked complete.'.(! empty($data['completion_note']) ? ' '.$data['completion_note'] : ''));
-                $this->notifyLandlord($offer, CrmNotificationEvent::RepairJobCompleted, 'Repair marked complete', $this->name($offer).' marked the repair complete. Please confirm it is done.', 'completed-'.$offer->id);
+                $repair = $offer->repairIssue;
+                $address = $repair?->property?->full_address ?: ($repair ? $this->area($repair) : 'the property');
+                $issue = trim((string) ($repair?->description ?: $repair?->reference_number ?: 'the repair'));
+                $this->notifyLandlord(
+                    $offer,
+                    CrmNotificationEvent::RepairJobCompleted,
+                    'Repair completed',
+                    'The repair ticket for '.$issue.' at '.$address.' has been marked as Completed by '.$this->name($offer).'. The job outcome, visit history, and contractor invoice have been attached directly to the property record.',
+                    'completed-'.$offer->id
+                );
                 $this->notify(CrmNotificationEvent::RepairJobCompleted, $offer, [$offer->repairIssue?->tenant], 'Repair completed', 'The contractor has marked your repair complete. Tell your landlord if anything is not fixed.', 'completed-tenant-'.$offer->id);
                 break;
             default:
@@ -934,10 +976,12 @@ class RepairJobOfferService
             : 'A contractor has been booked and will be in touch to arrange a time.';
         $tenantOffered = $offer->repairIssue->tenant_availability;
         $needsConfirm = $when && ! $offer->tenant_confirmed_at && (! $tenantOffered || ! $tenantOffered->equalTo($when));
+        $confirmUrl = null;
         if ($needsConfirm) {
-            $notice .= ' Please confirm this time works: '.URL::temporarySignedRoute('repair_visit.confirm', now()->addDays(7), ['offer' => $offer->id]);
+            $confirmUrl = URL::temporarySignedRoute('repair_visit.confirm', now()->addDays(7), ['offer' => $offer->id]);
+            $notice .= ' Please confirm this time works: '.$confirmUrl;
         }
-        $this->notify(CrmNotificationEvent::RepairJobAccepted, $offer, [$tenant], $subject, $notice, 'visit-tenant-'.$offer->id.'-'.($when?->timestamp ?? 0));
+        $this->notify(CrmNotificationEvent::RepairJobAccepted, $offer, [$tenant], $subject, $notice, 'visit-tenant-'.$offer->id.'-'.($when?->timestamp ?? 0), $confirmUrl ?: route('tenant.maintenance'));
     }
 
     /**
@@ -1025,6 +1069,16 @@ class RepairJobOfferService
     private function hours($value): string
     {
         return rtrim(rtrim(number_format((float) $value, 2), '0'), '.');
+    }
+
+    public function place(RepairIssue $repair, bool $full): string
+    {
+        if (! $full) {
+            return $this->area($repair);
+        }
+        $property = $repair->property;
+
+        return trim(collect([$property?->line_1, $property?->line_2, $property?->city, $property?->postcode])->filter()->implode(', '));
     }
 
     private function area(RepairIssue $repair): string

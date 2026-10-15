@@ -179,7 +179,7 @@ class NoticesHandoffHttpTest extends TestCase
             ->assertOk()
             ->assertSee('data-pending-corrections="1"', false)
             ->assertSee('data-deposit-protection="1"', false)
-            ->assertSee('Needs you', false);
+            ->assertSee('Needs your attention', false);
 
         $this->actingAs($landlord)->withSession($session)
             ->get(route('admin.finance.index', ['status' => 'overdue']))
@@ -208,6 +208,7 @@ class NoticesHandoffHttpTest extends TestCase
                 'issued_date' => now()->toDateString(),
                 'expiry_date' => now()->addYear()->toDateString(),
                 'status' => 'valid',
+                'photos' => 'certificate-on-file',
             ]);
         }
 

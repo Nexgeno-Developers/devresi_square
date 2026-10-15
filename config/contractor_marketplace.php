@@ -18,6 +18,7 @@ return [
         'public_liability_minimum' => 1000000,
         'employers_liability_minimum' => 5000000,
         'max_contractors_per_send' => 5,
+        'max_contractors_per_emergency_send' => 15,
         'review_sla_working_days' => 2,
         'document_retention_days' => 365,
         'invite_hours' => ['emergency' => 2, 'urgent' => 24, 'routine' => 72],

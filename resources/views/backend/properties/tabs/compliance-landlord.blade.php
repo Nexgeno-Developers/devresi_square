@@ -28,6 +28,14 @@
 
         return 'ok';
     };
+    $pillFor = function ($record) use ($toneFor) {
+        if ($record && ! $record->hasFile()) {
+            return ['missing', 'Not provided yet'];
+        }
+        $tone = $toneFor($record);
+
+        return [$tone, $tone === 'ok' ? 'On file' : ($tone === 'due' ? 'Due soon' : 'Expired')];
+    };
     $epcRating = strtoupper(trim((string) ($property->epc_rating ?? '')));
     $epcFromRegister = $epcRating !== '';
     $sources = strtolower((string) ($property->useful_information ?? ''));
@@ -59,13 +67,15 @@
                 <h3>EPC</h3>
                 @if($epcFromRegister)
                     <span class="pcc-cert-pill is-ok">On the register</span>
+                @elseif($epcRecord && ! $epcRecord->hasFile())
+                    <span class="pcc-cert-pill is-missing">Not provided yet</span>
                 @elseif($epcRecord)
                     <span class="pcc-cert-pill is-{{ $toneFor($epcRecord) }}">On file</span>
                 @else
                     <span class="pcc-cert-pill is-missing">Not found</span>
                 @endif
             </div>
-            <p class="pcc-cert-value">{{ $epcFromRegister ? 'Rating '.$epcRating : ($epcRecord ? 'Certificate uploaded' : 'No rating on file') }}</p>
+            <p class="pcc-cert-value">{{ $epcFromRegister ? 'Rating '.$epcRating : ($epcRecord && $epcRecord->hasFile() ? 'Certificate uploaded' : ($epcRecord ? 'Not provided yet' : 'No rating on file')) }}</p>
             <p class="pcc-cert-meta">
                 @if($epcFromRegister)
                     Pulled from the {{ $epcSourceLabel }}. Store a PDF in Documents if you need to share it with the tenant.
@@ -88,7 +98,8 @@
                 @if($noGas)
                     <span class="pcc-cert-pill is-ok">Not required</span>
                 @elseif($gasRecord)
-                    <span class="pcc-cert-pill is-{{ $toneFor($gasRecord) }}">{{ $toneFor($gasRecord) === 'ok' ? 'On file' : ($toneFor($gasRecord) === 'due' ? 'Due soon' : 'Expired') }}</span>
+                    @php [$gasTone, $gasLabel] = $pillFor($gasRecord); @endphp
+                    <span class="pcc-cert-pill is-{{ $gasTone }}">{{ $gasLabel }}</span>
                 @else
                     <span class="pcc-cert-pill is-missing">Upload needed</span>
                 @endif
@@ -124,7 +135,8 @@
             <div class="pcc-cert-card-head">
                 <h3>EICR</h3>
                 @if($eicrRecord)
-                    <span class="pcc-cert-pill is-{{ $toneFor($eicrRecord) }}">{{ $toneFor($eicrRecord) === 'ok' ? 'On file' : ($toneFor($eicrRecord) === 'due' ? 'Due soon' : 'Expired') }}</span>
+                    @php [$eicrTone, $eicrLabel] = $pillFor($eicrRecord); @endphp
+                    <span class="pcc-cert-pill is-{{ $eicrTone }}">{{ $eicrLabel }}</span>
                 @else
                     <span class="pcc-cert-pill is-missing">Upload needed</span>
                 @endif
@@ -150,7 +162,7 @@
             <h3>Landlord registration</h3>
             @foreach($regRecords as $record)
                 <p class="pcc-cert-meta mb-2">
-                    {{ $record->expiry_date ? 'Expires '.$record->expiry_date->format('d M Y') : 'On file' }}
+                    {{ ! $record->hasFile() ? 'Not provided yet' : ($record->expiry_date ? 'Expires '.$record->expiry_date->format('d M Y') : 'On file') }}
                     <button type="button" class="pcc-btn-ghost ms-2" onclick="openComplianceModal({{ $regType->id }}, {{ $record->id }})">Update</button>
                 </p>
             @endforeach

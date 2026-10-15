@@ -6,6 +6,7 @@ use App\Mail\MailManager;
 use App\Models\EmailTemplate;
 use App\Models\Property;
 use App\Models\User;
+use App\Services\Notifications\SecurityNotice;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -68,6 +69,15 @@ class TenantInviteMailer
                 'content' => $renderedHtml,
                 'attachments' => [],
             ]));
+
+            app(SecurityNotice::class)->inApp(
+                (int) $property->account_id,
+                $user,
+                'tenant.portal_invite',
+                'Portal invite',
+                'You have been invited to the tenant portal for '.($address !== '' ? $address : 'your home').'.',
+                $property
+            );
 
             return ['sent' => true, 'error' => null];
         } catch (\Throwable $exception) {

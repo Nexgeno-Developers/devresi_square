@@ -4,7 +4,6 @@ namespace App\Services\Contractors;
 
 use App\Models\ContractorCoverageGap;
 use App\Models\ContractorProfile;
-use App\Models\PostcodeLocation;
 use App\Models\RepairIssue;
 use App\Models\RepairJobOffer;
 use App\Support\ContractorCompliance;
@@ -18,6 +17,7 @@ class RepairMarketplacePanel
         private readonly RepairJobOfferService $offers,
         private readonly ContractorDirectory $directory,
         private readonly ContractorMail $mail,
+        private readonly ContractorEligibility $eligibility,
     ) {
     }
 
@@ -83,40 +83,32 @@ class RepairMarketplacePanel
             ->with(['user', 'documents', 'tradeApprovals'])
             ->where('approval_status', ContractorProfile::APPROVED)
             ->whereNull('removed_at')
-            ->get()
-            ->filter(fn (ContractorProfile $profile) => ContractorCompliance::canReceiveWork($profile, $trade));
-        $lookup = $profiles
-            ->filter(fn (ContractorProfile $profile) => $profile->latitude === null && filled($profile->postcode))
-            ->map(fn (ContractorProfile $profile) => PostcodeGeo::normalise($profile->postcode))
-            ->unique()
-            ->values();
-        $known = $lookup->isEmpty()
-            ? collect()
-            : PostcodeLocation::query()->whereIn('postcode', $lookup)->get()->keyBy('postcode');
+            ->get();
+        $omitted = [];
 
         $candidates = $profiles
-            ->map(function (ContractorProfile $profile) use ($origin, $area, $relations, $known) {
-                $point = ($profile->latitude !== null && $profile->longitude !== null)
-                    ? [(float) $profile->latitude, (float) $profile->longitude]
-                    : (($row = $known->get(PostcodeGeo::normalise($profile->postcode))) ? [(float) $row->latitude, (float) $row->longitude] : null);
-                $miles = ($origin && $point) ? PostcodeGeo::miles($origin, $point) : null;
-                $radius = (int) ($profile->coverage_radius_miles ?: 15);
-                $inArea = $miles !== null ? $miles <= $radius : ($area !== '' && PostcodeGeo::area($profile->postcode) === $area);
+            ->map(function (ContractorProfile $profile) use ($repair, $trade, $relations, &$omitted) {
+                $decision = $this->eligibility->assess($profile, $repair, $trade);
                 $id = (int) $profile->user_id;
+                if (! $decision['ok']) {
+                    $omitted[] = $profile->displayName().': '.$decision['reason'];
+
+                    return null;
+                }
 
                 return (object) [
                     'profile' => $profile,
                     'user_id' => $id,
                     'name' => $profile->displayName(),
-                    'miles' => $miles,
-                    'in_area' => $inArea,
+                    'miles' => $decision['miles'],
+                    'in_area' => true,
                     'badges' => ContractorCompliance::badges($profile),
                     'mine' => isset($relations['mine'][$id]),
                     'favourite' => isset($relations['favourite'][$id]),
                     'worked' => isset($relations['worked'][$id]),
                 ];
             })
-            ->filter(fn ($row) => $row->in_area || $row->mine)
+            ->filter()
             ->filter(fn ($row) => $maxMiles === null || ($row->miles !== null && $row->miles <= $maxMiles))
             ->filter(fn ($row) => collect($badges)->every(fn ($badge) => ContractorCompliance::hasBadge($row->profile, $badge)))
             ->filter(fn ($row) => $only === null || $row->{$only})
@@ -139,8 +131,10 @@ class RepairMarketplacePanel
             $label = strtolower(ContractorCompliance::trades()[$trade] ?? 'this trade');
             if ($filtered) {
                 $emptyReason = 'No contractors match these filters. Try clearing them.';
-            } elseif ($alreadyInvited) {
+            } elseif ($alreadyInvited && $omitted === []) {
                 $emptyReason = 'Everyone who covers this repair has already been invited.';
+            } elseif ($omitted !== []) {
+                $emptyReason = implode(' ', $omitted);
             } else {
                 $emptyReason = 'No approved '.$label.' contractors cover '.($area ?: 'this area').' yet.';
                 $gap = true;
@@ -153,6 +147,7 @@ class RepairMarketplacePanel
             'required' => $required,
             'origin' => $origin,
             'emptyReason' => $emptyReason,
+            'omitted' => $candidates->isEmpty() ? [] : $omitted,
             'gap' => $gap,
             'cap' => ContractorSettings::maxPerSend(),
             'emergency' => ContractorCompliance::looksLikeEmergency($repair),

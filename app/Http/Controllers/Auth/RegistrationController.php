@@ -591,9 +591,19 @@ class RegistrationController extends Controller
 
         $name = $registration->first_name;
         $appName = config('app.name');
+        $placeholders = [
+            'first_name' => (string) $name,
+            'app_name' => (string) $appName,
+            'otp' => $otp,
+        ];
+        $template = \App\Models\EmailTemplate::getByIdentifier('signup_otp');
 
-        $subject = "Your {$appName} verification code: {$otp}";
-        $content = "
+        if ($template) {
+            $subject = render_template($template->subject, $placeholders);
+            $content = $template->replace($placeholders, ['otp']);
+        } else {
+            $subject = "Your {$appName} verification code: {$otp}";
+            $content = "
                 <p>Hi {$name},</p>
                 <p>Your verification code for <strong>{$appName}</strong> is:</p>
                 <p style='text-align:center; margin:24px 0;'>
@@ -608,6 +618,7 @@ class RegistrationController extends Controller
                     If you did not request this, please ignore this email.
                 </p>
             ";
+        }
 
         Mail::mailer($mailer)
             ->to($registration->email)

@@ -6,14 +6,6 @@
         <dl class="lw-repair-dl">
             <dt>Address</dt>
             <dd>{{ rs_property_title($repairIssue->property) }}</dd>
-            @if(filled($repairIssue->property->specific_property_type))
-                <dt>Type</dt>
-                <dd>{{ ucfirst($repairIssue->property->specific_property_type) }}</dd>
-            @endif
-            @if(filled($repairIssue->property->availability) && $repairIssue->property->availability !== 'N/A')
-                <dt>Availability</dt>
-                <dd>{{ $repairIssue->property->availability }}</dd>
-            @endif
         </dl>
     @else
         <p>No property selected.</p>

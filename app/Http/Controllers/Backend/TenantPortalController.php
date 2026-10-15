@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\RentInvoice;
+use App\Services\Auth\EmailChangeService;
 use App\Services\Finance\RentStripeCheckoutService;
+use App\Services\Notifications\SecurityNotice;
 use App\Services\Portal\TenancyDetailsConfirmationService;
 use App\Services\Portal\TenantPortalService;
 use App\Services\Repairs\RepairComplaintClassifier;
@@ -152,6 +154,8 @@ class TenantPortalController extends Controller
         $user = $request->user();
         $accountId = current_account_id();
         $this->assertTenantInvoice($portal, $user, $accountId, $rentInvoice);
+        abort_unless((int) $rentInvoice->tenant_user_id === (int) $user->id, 403);
+        abort_unless($rentInvoice->isOpen(), 403);
 
         try {
             $url = $rentCheckout->createCheckoutUrl($user, $rentInvoice);
@@ -356,25 +360,47 @@ class TenantPortalController extends Controller
         ]));
     }
 
-    public function updateProfile(Request $request): RedirectResponse
+    public function updateProfile(Request $request, EmailChangeService $emailChanges): RedirectResponse
     {
         $user = $request->user();
         $validated = $request->validate([
             'first_name' => 'required|string|max:55',
             'last_name' => 'nullable|string|max:55',
-            'email' => 'required|email|max:255|unique:users,email,'.$user->id,
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($user->id),
+                Rule::unique('users', 'pending_email')->ignore($user->id),
+            ],
             'phone' => 'nullable|string|max:20',
         ]);
 
         $user->forceFill([
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'] ?? '',
-            'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
             'name' => trim($validated['first_name'].' '.($validated['last_name'] ?? '')),
         ])->save();
 
-        flash('Your contact details were saved.')->success();
+        $accountId = (int) current_account_id();
+        forget_user_address_cache($accountId, (int) $user->id);
+        $propertyIds = \App\Models\Tenancy::query()
+            ->where('account_id', $accountId)
+            ->whereHas('tenantMembers', fn ($query) => $query->where('user_id', $user->id))
+            ->pluck('property_id');
+        foreach ($propertyIds as $propertyId) {
+            forget_property_lookup_cache($accountId, (int) $propertyId);
+        }
+
+        $emailResult = $emailChanges->request($user->fresh(), $validated['email']);
+        if ($emailResult === 'sent') {
+            flash('We sent a confirmation link to '.$user->fresh()->pending_email.'. You still sign in with '.$user->email.' until you open it.')->success();
+        } elseif ($emailResult === 'failed') {
+            flash('We saved '.$user->fresh()->pending_email.' as a pending email, but the confirmation could not be sent.')->warning();
+        } else {
+            flash('Your contact details were saved.')->success();
+        }
 
         return redirect()->route('tenant.profile');
     }
@@ -403,7 +429,18 @@ class TenantPortalController extends Controller
             'password' => \Illuminate\Support\Facades\Hash::make($validated['new_password']),
         ])->save();
 
-        flash('Password updated.')->success();
+        $notices = app(SecurityNotice::class);
+        $notices->endOtherSessions($user);
+        $sent = $notices->emailTo(
+            (string) $user->email,
+            'Your password was changed',
+            '<p>Your Resisquare password was just changed. If this was not you, reset it and tell your landlord.</p>'
+        );
+        if ($sent) {
+            flash('Password updated.')->success();
+        } else {
+            flash('Password updated, but we could not email you about the change.')->warning();
+        }
 
         return redirect()->route('tenant.profile');
     }

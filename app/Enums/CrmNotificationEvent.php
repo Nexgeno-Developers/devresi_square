@@ -65,6 +65,7 @@ enum CrmNotificationEvent: string
     case FinanceInvoiceDue = 'finance.invoice_due';
     case FinanceInvoiceOverdue = 'finance.invoice_overdue';
     case FinancePaymentReceived = 'finance.payment_received';
+    case FinancePaymentFailed = 'finance.payment_failed';
     case FinanceInvoiceVoided = 'finance.invoice_voided';
     case FinanceStatementReady = 'finance.statement_ready';
 

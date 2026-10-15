@@ -53,6 +53,7 @@
                             default => 'is-unpaid',
                         };
                         $payTotal = (float) ($fee['total'] ?? $invoice->balance);
+                        $namedPayer = (int) $invoice->tenant_user_id === (int) auth()->id();
                     @endphp
                     <article class="tp-pay-card{{ $invoice->isOverdue() ? ' is-overdue' : '' }}" data-rent-home="{{ $invoice->property?->line_1 }}" data-invoice-id="{{ $invoice->id }}">
                         <div class="tp-pay-card__top">
@@ -63,7 +64,7 @@
                             <span class="tp-pill {{ $statusClass }}">{{ $invoice->statusLabel() }}</span>
                         </div>
                         <p class="tp-pay-card__amount">£{{ number_format((float) ($invoice->balance_amount ?? $invoice->total_amount ?? 0), 2) }}</p>
-                        @if($open && $cardReady)
+                        @if($open && $cardReady && $namedPayer)
                             <form action="{{ route('tenant.rent.pay', $invoice) }}" method="POST">
                                 @csrf
                                 <button type="submit" class="tp-btn">Pay £{{ number_format($payTotal, 2) }}</button>
@@ -71,6 +72,8 @@
                             @if($fee && $fee['fee'] >= 0.01)
                                 <p class="tp-muted mt-2 mb-0">£{{ number_format($fee['rent'], 2) }} rent + £{{ number_format($fee['fee'], 2) }} {{ $fee['fee_label'] }}</p>
                             @endif
+                        @elseif($open && ! $namedPayer)
+                            <p class="tp-muted mb-0">Billed to {{ $invoice->tenant?->name ?: 'the named payer' }}</p>
                         @elseif($open && ! $cardReady)
                             <a href="{{ route('tenant.rent.show', $invoice) }}" class="tp-btn">Bank details</a>
                         @else
@@ -108,9 +111,10 @@
                                 $invoice->status === \App\Models\RentInvoice::STATUS_PAID => 'is-paid',
                                 $invoice->status === \App\Models\RentInvoice::STATUS_PARTIAL => 'is-partial',
                                 $invoice->status === \App\Models\RentInvoice::STATUS_VOID => 'is-void',
-                                default => 'is-unpaid',
-                            };
-                        @endphp
+                            default => 'is-unpaid',
+                        };
+                        $namedPayer = (int) $invoice->tenant_user_id === (int) auth()->id();
+                    @endphp
                         <tr class="{{ $invoice->isOverdue() ? 'tp-row-overdue' : '' }}" data-rent-home="{{ $invoice->property?->line_1 }}" data-invoice-id="{{ $invoice->id }}">
                             <td>
                                 <a href="{{ route('tenant.rent.show', $invoice) }}" class="tp-link">
@@ -128,7 +132,7 @@
                             <td><span class="tp-pill {{ $statusClass }}">{{ $invoice->statusLabel() }}</span></td>
                             <td class="tp-table-action">
                                 <a href="{{ route('tenant.rent.show', $invoice) }}" class="tp-btn tp-btn-ghost">View</a>
-                                @if($open && $cardReady)
+                                @if($open && $cardReady && $namedPayer)
                                     <form action="{{ route('tenant.rent.pay', $invoice) }}" method="POST" class="d-inline">
                                         @csrf
                                         <button type="submit" class="tp-btn">Pay £{{ number_format((float) ($fee['total'] ?? $invoice->balance), 2) }}</button>

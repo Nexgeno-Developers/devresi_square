@@ -408,6 +408,10 @@ class StripeWebhookService
 
     private function sendSubscriptionActivationEmail(AccountSubscription $subscription): void
     {
+        if ($subscription->status !== 'active') {
+            return;
+        }
+
         $subscription->loadMissing(['account.owner', 'plan']);
         $account = $subscription->account;
 
@@ -427,42 +431,35 @@ class StripeWebhookService
 
         $ownerName = trim((string) ($account->owner?->first_name ?: $account->owner?->name));
         $greetingName = e($ownerName ?: 'there');
-        $appName = e((string) config('app.name'));
-        $planName = e((string) ($subscription->plan?->name ?: $subscription->plan_name_at_signup ?: 'subscription'));
-        $billingCycle = e(ucfirst((string) $subscription->billing_cycle));
-        $billingUrl = e(url('/admin/billing'));
-        $statusMessage = $subscription->status === 'trialing'
-            ? 'Your trial is now active.'
-            : 'Your subscription is now active.';
-        $trialMessage = $subscription->status === 'trialing' && $subscription->trial_ends_at
-            ? '<p>Your trial is scheduled to end on <strong>'.e($subscription->trial_ends_at->format('j F Y')).'</strong>.</p>'
-            : '';
+        $workspace = e($account->account_name ?: 'your workspace');
+        $planName = e((string) ($subscription->plan?->name ?: $subscription->plan_name_at_signup ?: 'your plan'));
+        $billingCycle = e(ucfirst((string) ($subscription->billing_cycle ?: 'monthly')));
+        $renewal = $subscription->current_period_end
+            ? e($subscription->current_period_end->format('j F Y'))
+            : 'See billing';
+        $minor = $subscription->billing_cycle === 'annual'
+            ? (int) ($subscription->plan?->annual_price_minor ?? $subscription->price_at_signup_minor ?? 0)
+            : (int) ($subscription->plan?->monthly_price_minor ?? $subscription->price_at_signup_minor ?? 0);
+        $amount = '£'.number_format($minor / 100, 2);
+        $billingUrl = e(route('backend.billing.index'));
 
         $content = "
             <p>Hi {$greetingName},</p>
-            <p>{$statusMessage} You can now use your {$appName} account.</p>
-            <table style='border-collapse:collapse; margin:16px 0;'>
-                <tr>
-                    <td style='padding:6px 12px; font-weight:bold; background:#f8f9fa; border:1px solid #dee2e6;'>Plan</td>
-                    <td style='padding:6px 12px; border:1px solid #dee2e6;'>{$planName}</td>
-                </tr>
-                <tr>
-                    <td style='padding:6px 12px; font-weight:bold; background:#f8f9fa; border:1px solid #dee2e6;'>Billing cycle</td>
-                    <td style='padding:6px 12px; border:1px solid #dee2e6;'>{$billingCycle}</td>
-                </tr>
-            </table>
-            {$trialMessage}
-            <p style='text-align:center; margin:24px 0;'>
-                <a href='{$billingUrl}' style='background:#0b60bd; color:#fff; padding:12px 28px; border-radius:4px; text-decoration:none; font-size:15px;'>
-                    Open Billing &amp; Plan
-                </a>
-            </p>
-            <p>&mdash; The {$appName} Team</p>
+            <p>Thank you for subscribing to ResiSquare. Your workspace account for <strong>{$workspace}</strong> is now active on the <strong>{$planName} Plan</strong>.</p>
+            <h3>Subscription Details:</h3>
+            <ul>
+                <li><strong>Plan:</strong> {$planName}</li>
+                <li><strong>Billing Cycle:</strong> {$billingCycle}</li>
+                <li><strong>Next Renewal Date:</strong> {$renewal}</li>
+                <li><strong>Invoice Amount:</strong> {$amount}</li>
+            </ul>
+            <p><a href=\"{$billingUrl}\">View Subscription &amp; Invoices</a></p>
+            <p>Best regards,<br>The ResiSquare Team</p>
         ";
 
         try {
             Mail::to($recipient)->send(new MailManager([
-                'subject' => 'Your '.config('app.name').' subscription is ready',
+                'subject' => 'Your ResiSquare subscription is active',
                 'content' => $content,
                 'attachments' => [],
             ]));

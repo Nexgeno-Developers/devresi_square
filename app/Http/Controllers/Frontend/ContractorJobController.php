@@ -199,9 +199,11 @@ class ContractorJobController extends Controller
             'step' => ['required', Rule::in(['schedule', 'start', 'complete'])],
             'scheduled_for' => ['required_if:step,schedule', 'nullable', 'date'],
             'completion_note' => ['nullable', 'string', 'max:2000'],
-            'photos' => ['nullable', 'array', 'max:'.RepairJobAftercareService::MAX_PHOTOS],
+            'photos' => ['required_if:step,complete', 'array', 'min:1', 'max:'.RepairJobAftercareService::MAX_PHOTOS],
             'photos.*' => ['image', 'max:8192'],
         ], [
+            'photos.required_if' => 'Add a photo of the finished work before marking the job complete.',
+            'photos.min' => 'Add a photo of the finished work before marking the job complete.',
             'photos.max' => 'Add up to '.RepairJobAftercareService::MAX_PHOTOS.' photos.',
             'photos.*.image' => 'Photos must be images.',
             'photos.*.max' => 'Each photo must be under 8 MB.',

@@ -16,6 +16,9 @@ class OwnerGroupUser extends Model
     protected $fillable = [
         'owner_group_id',
         'user_id',
+        'contact_name',
+        'contact_email',
+        'contact_phone',
         'is_main',
         'added_by', // Add added_by field to fillable
         'updated_by', // Add updated_by field to fillable

@@ -8,7 +8,9 @@ use App\Models\Tenancy;
 use App\Models\TenantMember;
 use App\Models\Upload;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -33,6 +35,31 @@ class TenantPortalHttpTest extends TestCase
             ->assertSee('>Repairs</span>', false)
             ->assertSee('>Docs</span>', false)
             ->assertSee('>Me</span>', false);
+
+        $noticeId = (string) Str::uuid();
+        DB::table('notifications')->insert([
+            'id' => $noticeId,
+            'account_id' => $accountId,
+            'type' => 'crm_event',
+            'notifiable_type' => $user->getMorphClass(),
+            'notifiable_id' => $user->id,
+            'data' => json_encode([
+                'title' => 'Visit booked',
+                'message' => 'A contractor is coming.',
+                'url' => url('/admin/events/calendar'),
+            ]),
+            'read_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('backend.home'))
+            ->assertOk()
+            ->assertSee('Visit booked', false)
+            ->assertSee(route('tenant.calendar'), false)
+            ->assertDontSee('/admin/events/calendar', false);
 
         $this->actingAs($user)
             ->withSession(['current_account_id' => $accountId])
@@ -222,7 +249,7 @@ class TenantPortalHttpTest extends TestCase
             ->assertDontSee('99 Secret Tenant B Lane', false);
     }
 
-    public function test_tenant_repair_request_requires_photo_and_saves(): void
+    public function test_tenant_repair_request_saves_with_or_without_a_photo(): void
     {
         \Illuminate\Support\Facades\Storage::fake('public');
 
@@ -270,7 +297,15 @@ class TenantPortalHttpTest extends TestCase
                 'description' => 'Kitchen tap is dripping',
                 'priority' => 'medium',
             ])
-            ->assertSessionHasErrors('photo');
+            ->assertRedirect(route('tenant.maintenance'));
+
+        $this->assertDatabaseHas('repair_issues', [
+            'account_id' => $accountId,
+            'property_id' => $property->id,
+            'tenant_id' => $tenant->id,
+            'description' => 'Kitchen tap is dripping',
+            'priority' => 'medium',
+        ]);
 
         $this->actingAs($tenant)
             ->withSession(['current_account_id' => $accountId])

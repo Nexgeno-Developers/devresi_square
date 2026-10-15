@@ -182,6 +182,26 @@ class RentStripeCheckoutService
         return $this->fulfillSession($session);
     }
 
+    public function noteFailed(mixed $session): void
+    {
+        if (! $session) {
+            return;
+        }
+
+        $metadata = $this->metadataArray($session->metadata ?? []);
+        if (($metadata['type'] ?? '') !== 'rent_payment') {
+            return;
+        }
+
+        $invoiceId = (int) ($metadata['rent_invoice_id'] ?? 0);
+        $invoice = $invoiceId > 0 ? RentInvoice::query()->find($invoiceId) : null;
+        if (! $invoice || ! $invoice->isOpen()) {
+            return;
+        }
+
+        app(RentInvoiceNotifier::class)->paymentFailed($invoice);
+    }
+
     public function fulfillSession(mixed $session): ?RentPayment
     {
         if (! $session) {
@@ -224,6 +244,10 @@ class RentStripeCheckoutService
                 'rent_invoice_id' => $invoiceId,
             ]);
 
+            return null;
+        }
+
+        if (! $invoice->isOpen()) {
             return null;
         }
 

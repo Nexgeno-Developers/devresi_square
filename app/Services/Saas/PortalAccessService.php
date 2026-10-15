@@ -9,8 +9,10 @@ use App\Models\PropertyParticipant;
 use App\Models\Tenancy;
 use App\Models\TenantMember;
 use App\Models\User;
+use App\Services\Notifications\SecurityNotice;
 use App\Support\AccountMembership;
 use App\Support\AccountType;
+use App\Support\AuditTrail;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
@@ -222,6 +224,11 @@ class PortalAccessService
         ?Tenancy $tenancy = null,
         ?User $createdBy = null
     ): void {
+        $beforeLogin = (bool) AccountUser::query()
+            ->where('account_id', $account->id)
+            ->where('user_id', $user->id)
+            ->value('can_login');
+
         DB::transaction(function () use ($account, $property, $user, $tenancy, $createdBy) {
             $this->grantPropertyAccess(
                 $account,
@@ -235,6 +242,8 @@ class PortalAccessService
                 $createdBy
             );
 
+            forget_property_lookup_cache((int) $account->id, (int) $property->id);
+
             if ($tenancy) {
                 if ((int) $tenancy->account_id !== (int) $account->id
                     || (int) $tenancy->property_id !== (int) $property->id
@@ -242,24 +251,45 @@ class PortalAccessService
                     throw new InvalidArgumentException('Tenancy does not belong to this property.');
                 }
 
-                TenantMember::updateOrCreate(
-                    [
+                $member = TenantMember::query()
+                    ->where('account_id', $account->id)
+                    ->where('tenancy_id', $tenancy->id)
+                    ->where('user_id', $user->id)
+                    ->first();
+
+                if ($member) {
+                    $member->update(['can_login' => true]);
+                } else {
+                    TenantMember::create([
                         'account_id' => $account->id,
                         'tenancy_id' => $tenancy->id,
                         'user_id' => $user->id,
-                    ],
-                    [
                         'is_main_person' => false,
                         'can_login' => true,
-                    ]
-                );
+                    ]);
+                }
             }
         });
+
+        $afterLogin = (bool) AccountUser::query()
+            ->where('account_id', $account->id)
+            ->where('user_id', $user->id)
+            ->value('can_login');
+        AuditTrail::record((int) $account->id, $createdBy?->id, 'portal_invite', $user, [
+            'can_login' => $beforeLogin,
+        ], [
+            'can_login' => $afterLogin,
+        ]);
     }
 
-    public function revokePortalAccess(Account $account, User $user): void
+    public function revokePortalAccess(Account $account, User $user): bool
     {
-        DB::transaction(function () use ($account, $user) {
+        $membershipBefore = AccountUser::query()
+            ->where('account_id', $account->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        DB::transaction(function () use ($account, $user, $membershipBefore) {
             $membership = AccountUser::query()
                 ->where('account_id', $account->id)
                 ->where('user_id', $user->id)
@@ -268,6 +298,17 @@ class PortalAccessService
             if (! $membership || ! AccountMembership::isPortalType($membership->member_type)) {
                 throw new InvalidArgumentException('That person is not a portal user on this account.');
             }
+
+            $propertyIds = Tenancy::query()
+                ->where('account_id', $account->id)
+                ->whereHas('tenantMembers', fn ($query) => $query->where('user_id', $user->id))
+                ->pluck('property_id');
+
+            foreach ($propertyIds as $propertyId) {
+                forget_property_lookup_cache((int) $account->id, (int) $propertyId);
+            }
+
+            forget_user_address_cache((int) $account->id, (int) $user->id);
 
             $membership->forceFill([
                 'status' => 'disabled',
@@ -283,7 +324,37 @@ class PortalAccessService
                 ->where('account_id', $account->id)
                 ->where('user_id', $user->id)
                 ->update(['can_login' => false]);
+
+            if (\Illuminate\Support\Facades\Schema::hasTable(config('session.table', 'sessions'))) {
+                DB::table(config('session.table', 'sessions'))
+                    ->where('user_id', $user->id)
+                    ->delete();
+            }
+
+            AuditTrail::record((int) $account->id, auth()->id(), 'portal_revoke', $user, [
+                'status' => $membershipBefore?->status,
+                'can_login' => (bool) ($membershipBefore?->can_login),
+            ], [
+                'status' => 'disabled',
+                'can_login' => false,
+            ]);
         });
+
+        $notices = app(SecurityNotice::class);
+        $notices->inApp(
+            (int) $account->id,
+            $user,
+            'tenant.portal_revoke',
+            'Portal access ended',
+            'Your landlord has turned off portal access for this account.',
+            $account
+        );
+
+        return $notices->emailTo(
+            (string) $user->email,
+            'Portal access ended',
+            '<p>Your landlord has turned off your Resisquare portal access. You will not be able to sign in to that account.</p>'
+        );
     }
 
     /**

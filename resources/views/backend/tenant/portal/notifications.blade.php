@@ -20,9 +20,7 @@
                     <p class="mb-0">{{ $notice->subject }}</p>
                     <div class="tp-muted mb-0">{!! safe_html($notice->message) !!}</div>
                 </div>
-                @if(! empty($notice->payload['action_url']))
-                    <a class="tp-btn tp-btn-ghost" href="{{ $notice->payload['action_url'] }}">Open</a>
-                @endif
+                <a class="tp-btn tp-btn-ghost" href="{{ \App\Support\PortalNoticeLink::forTenant($notice->payload['action_url'] ?? null) }}">Open</a>
             </div>
         @empty
             <p class="tp-empty mb-0">No notices yet.</p>

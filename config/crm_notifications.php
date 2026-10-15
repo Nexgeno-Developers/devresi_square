@@ -92,13 +92,13 @@ $events = [
         ],
         CrmNotificationEvent::ComplianceExpiring->value => [
             'category' => 'compliance', 'priority' => 'high', 'channels' => $both,
-            'subject' => '[[compliance_type]] expires soon',
-            'message' => '[[compliance_type]] for [[property_address]] expires on [[due_date]].',
+            'subject' => '[[compliance_type]] due for renewal',
+            'message' => 'The compliance record for [[compliance_type]] at [[property_address]] is due for renewal on [[due_date]]. Keep the portfolio compliant by scheduling an inspection or uploading an updated certificate.',
         ],
         CrmNotificationEvent::ComplianceExpired->value => [
             'category' => 'compliance', 'priority' => 'critical', 'channels' => $both,
-            'subject' => 'Expired: [[compliance_type]]',
-            'message' => '[[compliance_type]] for [[property_address]] expired on [[due_date]].',
+            'subject' => '[[compliance_type]] has expired',
+            'message' => 'The compliance record for [[compliance_type]] at [[property_address]] has expired. It was due on [[due_date]]. Upload an updated certificate to keep the portfolio compliant.',
         ],
         CrmNotificationEvent::ComplianceRemediationDue->value => [
             'category' => 'compliance', 'priority' => 'critical', 'channels' => $both,
@@ -117,8 +117,8 @@ $events = [
         ],
         CrmNotificationEvent::RepairReported->value => [
             'category' => 'repairs', 'priority' => 'high', 'channels' => $both,
-            'subject' => 'Repair reported: [[repair_reference]]',
-            'message' => 'A [[repair_priority]] priority repair has been reported at [[property_address]].',
+            'subject' => 'New repair reported',
+            'message' => 'A new maintenance issue has been reported for [[property_address]]. Priority: [[repair_priority]]. Reference: [[repair_reference]].',
         ],
         CrmNotificationEvent::RepairEscalated->value => [
             'category' => 'repairs', 'priority' => 'critical', 'channels' => $both,
@@ -137,8 +137,8 @@ $events = [
         ],
         CrmNotificationEvent::RepairQuoteSubmitted->value => [
             'category' => 'repairs', 'priority' => 'high', 'channels' => $both,
-            'subject' => 'Quote received: [[repair_reference]]',
-            'message' => 'A contractor quote has been submitted for repair [[repair_reference]].',
+            'subject' => 'Contractor approval required: [[repair_reference]]',
+            'message' => 'A contractor has submitted a cost estimate for the repair at [[property_address]]. Open the repair to approve or decline the quote.',
         ],
         CrmNotificationEvent::RepairContractorAssigned->value => [
             'category' => 'repairs', 'priority' => 'high', 'channels' => $both,
@@ -300,13 +300,18 @@ $events = [
         ],
         CrmNotificationEvent::FinanceInvoiceOverdue->value => [
             'category' => 'finance', 'priority' => 'critical', 'channels' => $both,
-            'subject' => 'Invoice [[invoice_number]] is overdue',
-            'message' => 'Invoice [[invoice_number]] is overdue with [[invoice_amount]] outstanding.',
+            'subject' => 'Rent overdue: [[invoice_number]]',
+            'message' => '[[invoice_number]] is now overdue. Amount due: [[invoice_amount]]. Due date: [[due_date]].',
         ],
         CrmNotificationEvent::FinancePaymentReceived->value => [
             'category' => 'finance', 'priority' => 'normal', 'channels' => $both, 'locked_channels' => ['email'],
-            'subject' => 'Payment received: [[payment_amount]]',
-            'message' => 'We received [[payment_amount]] for [[invoice_number]].',
+            'subject' => 'Rent received: [[payment_amount]]',
+            'message' => 'A payment of [[payment_amount]] has been received and recorded against [[invoice_number]].',
+        ],
+        CrmNotificationEvent::FinancePaymentFailed->value => [
+            'category' => 'finance', 'priority' => 'high', 'channels' => $both,
+            'subject' => 'Payment failed: [[invoice_number]]',
+            'message' => 'The card payment for [[invoice_number]] did not complete. The invoice is still open.',
         ],
         CrmNotificationEvent::FinanceInvoiceVoided->value => [
             'category' => 'finance', 'priority' => 'high', 'channels' => $both,

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\EmailChangeController;
 use App\Http\Controllers\CommandController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\RegistrationController;
@@ -91,6 +92,10 @@ Route::group(['middleware' => 'web'], function () {
     Route::post('/password/email', [PasswordResetController::class, 'sendResetLinkEmail'])->name('password.email');
     Route::get('/password/reset/form/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset.form');
     Route::post('/password/reset/', [PasswordResetController::class, 'reset'])->name('password.reset');
+    Route::get('/email/confirm/{token}', [EmailChangeController::class, 'confirm'])
+        ->middleware('throttle:20,1')
+        ->where('token', '[A-Za-z0-9]+')
+        ->name('email.confirm');
 
     // Customer self-serve statement
     Route::middleware(['auth', 'current.account', 'account.status', 'landlord.restricted'])->group(function () {
@@ -142,10 +147,10 @@ Route::group(['middleware' => 'web'], function () {
 
     Route::view('/contractor-terms', 'frontend.contractor.terms')->name('contractor.terms');
     Route::get('/contractor/claim/{user}', [ContractorClaimController::class, 'show'])
-        ->middleware(['signed', 'throttle:20,1'])
+        ->middleware('throttle:20,1')
         ->name('contractor.claim');
     Route::post('/contractor/claim/{user}', [ContractorClaimController::class, 'store'])
-        ->middleware(['signed', 'throttle:20,1'])
+        ->middleware('throttle:20,1')
         ->name('contractor.claim.store');
 
     Route::get('/repair-visits/{offer}/confirm', [RepairVisitController::class, 'show'])

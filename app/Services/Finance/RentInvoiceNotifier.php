@@ -39,6 +39,17 @@ class RentInvoiceNotifier
         );
     }
 
+    public function paymentFailed(RentInvoice $invoice): void
+    {
+        $this->send(
+            CrmNotificationEvent::FinancePaymentFailed,
+            $invoice,
+            $this->household($invoice),
+            'payment-failed',
+            [],
+        );
+    }
+
     public function voided(RentInvoice $invoice): void
     {
         $this->send(

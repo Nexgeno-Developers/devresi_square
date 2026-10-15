@@ -288,8 +288,8 @@
                             <form method="POST" action="{{ route('contractor.jobs.progress', $offer) }}" enctype="multipart/form-data" class="mt-2">@csrf
                                 <input type="hidden" name="step" value="complete">
                                 <textarea name="completion_note" rows="2" maxlength="2000" class="form-control form-control-sm mb-2" placeholder="What did you do? (optional)"></textarea>
-                                <label class="form-label small mb-1">Photos of the finished work (up to {{ \App\Services\Contractors\RepairJobAftercareService::MAX_PHOTOS }}, optional)</label>
-                                <input type="file" name="photos[]" accept="image/*" multiple class="form-control form-control-sm mb-2">
+                                <label class="form-label small mb-1">Photos of the finished work (at least one, up to {{ \App\Services\Contractors\RepairJobAftercareService::MAX_PHOTOS }})</label>
+                                <input type="file" name="photos[]" accept="image/*" multiple required class="form-control form-control-sm mb-2">
                                 <button class="btn btn-success btn-sm" type="submit">Confirm complete</button>
                             </form>
                         </details>

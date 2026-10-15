@@ -139,12 +139,6 @@ class LandlordOnboardingController extends Controller
     {
         [$account, $user] = $this->guard($request);
 
-        $inviteMeta = $request->validate([
-            'invited' => 'sometimes|boolean',
-            'sent' => 'sometimes|boolean',
-            'invite_error' => 'sometimes|nullable|string|max:500',
-        ]);
-
         $this->onboarding->complete($account, $user);
         $this->onboarding->dismissAddProperty();
         $account->refresh();
@@ -166,11 +160,7 @@ class LandlordOnboardingController extends Controller
                     ]))),
                 ] : null,
                 'tenancy' => $tenancy,
-                'invite' => [
-                    'invited' => (bool) ($inviteMeta['invited'] ?? false),
-                    'sent' => (bool) ($inviteMeta['sent'] ?? false),
-                    'error' => $inviteMeta['invite_error'] ?? null,
-                ],
+                'invite' => $this->onboarding->recordedInvite(),
                 'counts' => [
                     'properties' => Property::query()->where('account_id', $account->id)->count(),
                     'tenancies' => Tenancy::query()

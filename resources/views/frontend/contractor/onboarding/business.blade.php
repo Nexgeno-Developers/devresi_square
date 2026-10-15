@@ -54,6 +54,15 @@
         </div>
 
         <label class="auth-field">
+            <span>Phone</span>
+            <input name="phone" value="{{ old('phone', $profile->phone) }}" autocomplete="tel">
+        </label>
+        <label class="auth-check">
+            <input type="hidden" name="employs_staff" value="0">
+            <input type="checkbox" name="employs_staff" value="1" @checked(old('employs_staff', $profile->employs_staff))>
+            <span>Do you employ staff?</span>
+        </label>
+        <label class="auth-field">
             <span>Home postcode</span>
             <input name="postcode" value="{{ old('postcode', $profile->postcode) }}" autocomplete="postal-code" autocapitalize="characters" required>
         </label>

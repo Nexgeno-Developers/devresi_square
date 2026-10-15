@@ -12,11 +12,9 @@ use App\Models\TenancySubStatus;
 use App\Models\PropertyManagerTenancy;
 use App\Models\RentInvoice;
 use App\Models\EmailTemplate;
-use App\Mail\MailManager;
+use App\Services\Portal\TenantInviteMailer;
+use App\Services\Saas\PortalAccessService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Enums\CrmNotificationEvent;
@@ -173,18 +171,25 @@ class TenancyController
         $this->ensureRoleUsersAreAccessible($validated['property_manager'] ?? [], 'Property Manager', 'property_manager');
         $this->ensureOfferMatchesProperty($validated['offer_id'] ?? null, $property);
 
-        // If the new tenancy is Active, archive any current active tenancy for the same property.
+        // A new Active let replaces the previous one and closes that household's portal login.
         if ($validated['status'] === 'Active') {
-            Tenancy::where('property_id', $validated['property_id'])
+            $displaced = Tenancy::query()
+                ->where('property_id', $validated['property_id'])
                 ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
                 ->where('status', 'Active')
-                ->update(['status' => 'Archived']);
+                ->get();
+
+            foreach ($displaced as $previous) {
+                $previous->update(['status' => 'Archived']);
+                app(PortalAccessService::class)->closePortalForEndedTenancy($previous);
+            }
         }
         
         // Create a new tenancy
         $tenancy = Tenancy::create($validated);
 
         $this->syncPropertyLettingStatus((int) $validated['property_id']);
+        forget_property_lookup_cache((int) ($validated['account_id'] ?? $tenancy->account_id), (int) $validated['property_id']);
 
         // Attach property managers to the tenancy if provided
         if ($request->has('property_manager')) {
@@ -209,8 +214,8 @@ class TenancyController
                 'tenancy_id' => $tenancy->id,
                 'user_id' => $userId,
                 'is_main_person' => $isMainPerson,
-                // 'is_main_person' => false, // Default or based on logic, set is_main_person flag
-                'group_id' => $groupId, // Set group_id if necessary
+                'can_login' => false,
+                'group_id' => $groupId,
             ]);
         }
 
@@ -229,49 +234,13 @@ class TenancyController
             }
         }
 
-        // ── Feature 2: Send tenancy details email to each tenant ──
-        $template = EmailTemplate::getByIdentifier('tenant_welcome');
-        foreach ([] as $userId) {
-            $tenantUser = User::find($userId);
-            if (!$tenantUser) continue;
-
-            $placeholders = [
-                'tenant_name'      => $tenantUser->name ?? $tenantUser->email,
-                'tenant_email'     => $tenantUser->email,
-                'property_name'    => $property->prop_name ?? $property->line_1 ?? 'N/A',
-                'property_address' => trim(implode(', ', array_filter([
-                    $property->line_1, $property->line_2,
-                    $property->city, $property->postcode,
-                ]))),
-                'move_in_date'     => $validated['move_in'] ?? 'N/A',
-                'rent'             => '£' . number_format((float)($validated['rent'] ?? 0), 2),
-                'login_url'        => url('/admin/login'),
-                'crm_name'         => config('app.name'),
-                'admin_email'      => config('mail.from.address'),
-            ];
-
-            try {
-                if ($template) {
-                    $renderedHtml = $template->replace($placeholders, ['login_url']);
-                    $subject = render_template($template->subject, $placeholders);
-                } else {
-                    $subject = 'Your Tenancy at ' . $placeholders['property_name'];
-                    $renderedHtml = "<p>Hi {$placeholders['tenant_name']},</p>"
-                        . "<p>You have been added as a tenant for <strong>{$placeholders['property_name']}</strong>.</p>"
-                        . "<p>Move-in: {$placeholders['move_in_date']} | Rent: {$placeholders['rent']}</p>"
-                        . "<p><a href='{$placeholders['login_url']}'>Login here</a></p>";
-                }
-
-                Mail::to($tenantUser->email)->send(new MailManager([
-                    'subject'     => $subject,
-                    'content'     => $renderedHtml,
-                    'attachments' => [],
-                ]));
-
-                Log::info("Tenant tenancy email sent to {$tenantUser->email}");
-            } catch (\Exception $e) {
-                Log::error("Failed to send tenant tenancy email to {$tenantUser->email}: {$e->getMessage()}");
-            }
+        $inviteRequested = $request->boolean('invite');
+        $inviteSent = $inviteRequested && $this->inviteTenantsFromForm($tenancy, $property, $request->input('user_id', []));
+        $message = 'Tenancy Added successfully!';
+        if ($inviteRequested && ! $inviteSent) {
+            $message = 'Tenancy added, but the invite failed.';
+        } elseif ($inviteSent) {
+            $message = 'Tenancy added. The invite was sent.';
         }
 
         $tenancy->load('tenantMembers.user', 'propertyManagers', 'property');
@@ -291,10 +260,15 @@ class TenancyController
             auth()->user(),
         );
 
-        flash("Tenancy Added successfully!")->success();
-        
+        session()->flash('tenancy_notice', $message);
+        if ($inviteRequested && ! $inviteSent) {
+            flash($message)->error();
+        } else {
+            flash($message)->success();
+        }
+
         if (request()->ajax()) {
-            return response()->json(['success' => true, 'message' => 'Tenancy Added successfully!']);
+            return response()->json(['success' => true, 'message' => $message, 'invite_sent' => $inviteSent]);
         }
 
         return redirect()->route('admin.tenancies.all');
@@ -584,6 +558,10 @@ class TenancyController
         }
 
         $this->syncTenantMembers($tenancy, $validated['account_id'], $request->input('user_id', []), (int) $request->input('is_main_person'));
+        forget_property_lookup_cache((int) $validated['account_id'], (int) $validated['property_id']);
+        if ($previousPropertyId !== (int) $validated['property_id']) {
+            forget_property_lookup_cache((int) $validated['account_id'], $previousPropertyId);
+        }
 
         $tenancy->refresh()->load('tenantMembers.user', 'propertyManagers', 'property');
 
@@ -618,6 +596,8 @@ class TenancyController
         ensureModelBelongsToCurrentAccount($tenancy);
         Gate::authorize('delete', $tenancy);
         $propertyId = $tenancy->property_id;
+        app(PortalAccessService::class)->closePortalForEndedTenancy($tenancy);
+        forget_property_lookup_cache((int) $tenancy->account_id, (int) $propertyId);
         $tenancy->delete();
 
         $this->syncPropertyLettingStatus((int) $propertyId);
@@ -628,6 +608,54 @@ class TenancyController
 
         return redirect()->route('admin.properties.index', ['property_id' => $propertyId, 'tabname' => 'tenancy'])
             ->with('success', 'Tenancy deleted successfully!');
+    }
+
+    /**
+     * Turn login on only after tenant_welcome is accepted. A missing template or a mail failure leaves login off.
+     *
+     * @param  list<int|string>  $userIds
+     */
+    private function inviteTenantsFromForm(Tenancy $tenancy, Property $property, array $userIds): bool
+    {
+        $account = current_account();
+        if (! $account || ! EmailTemplate::getByIdentifier('tenant_welcome')) {
+            return false;
+        }
+
+        $portal = app(PortalAccessService::class);
+        $mailer = app(TenantInviteMailer::class);
+        $sentAny = false;
+        $failed = false;
+
+        foreach ($userIds as $userId) {
+            $tenantUser = User::query()->find($userId);
+            if (! $tenantUser) {
+                $failed = true;
+                continue;
+            }
+
+            try {
+                $tenantUser->createResetLink();
+                $mail = $mailer->send($tenantUser, $property, false);
+            } catch (\Throwable $exception) {
+                $failed = true;
+                continue;
+            }
+
+            if (! ($mail['sent'] ?? false)) {
+                $failed = true;
+                continue;
+            }
+
+            try {
+                $portal->inviteTenant($account, $property, $tenantUser, $tenancy, auth()->user());
+                $sentAny = true;
+            } catch (\Throwable $exception) {
+                $failed = true;
+            }
+        }
+
+        return $sentAny && ! $failed;
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Notes;
 use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes; // Import SoftDeletes
 use App\Traits\TracksUser;
@@ -123,6 +124,22 @@ class Property extends Model
 
             if (! $property->property_identity_hash || $property->isDirty($identityColumns)) {
                 $property->property_identity_hash = self::makeIdentityHash($property->getAttributes());
+            }
+
+            if (! $property->property_identity_hash) {
+                return;
+            }
+
+            $clash = static::query()
+                ->where('account_id', $property->account_id)
+                ->where('property_identity_hash', $property->property_identity_hash)
+                ->when($property->exists, fn ($query) => $query->whereKeyNot($property->getKey()))
+                ->exists();
+
+            if ($clash) {
+                throw ValidationException::withMessages([
+                    'line_1' => 'This property address already exists in your account.',
+                ]);
             }
         });
     }

@@ -5,7 +5,7 @@
     <div class="lw-hero d-flex justify-content-between align-items-start flex-wrap gap-3">
         <div>
             <h4>People</h4>
-            <p>Invite a tenant to the portal, then resend or revoke that login. Adding someone as a contact does not give them a portal login.</p>
+            <p>Invite a tenant to the portal, then resend or revoke that login. Adding a contact does not grant a login.</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
             @unless(is_landlord_plan_user())

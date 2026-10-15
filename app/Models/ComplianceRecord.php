@@ -48,13 +48,25 @@ class ComplianceRecord extends Model
         return $this->expiry_date->lte(now()->addDays($withinDays));
     }
 
+    public function hasFile(): bool
+    {
+        return filled(trim((string) $this->photos));
+    }
+
     public function needsAttention(int $withinDays = 60): bool
     {
+        if (! $this->hasFile()) {
+            return true;
+        }
+
         return $this->isExpired() || $this->isExpiringSoon($withinDays);
     }
 
     public function attentionLabel(): string
     {
+        if (! $this->hasFile()) {
+            return 'Not provided yet';
+        }
         if ($this->isExpired()) {
             return 'Expired';
         }
@@ -103,7 +115,11 @@ class ComplianceRecord extends Model
                     'property' => $property,
                     'type' => $type,
                     'record' => $latest,
-                    'state' => ! $latest ? 'Missing' : ($latest->expiry_date ? $latest->attentionLabel() : 'Missing expiry'),
+                    'state' => ! $latest
+                        ? 'Missing'
+                        : (! $latest->hasFile()
+                            ? 'Not provided yet'
+                            : ($latest->expiry_date ? $latest->attentionLabel() : 'Missing expiry')),
                 ];
             }
         }

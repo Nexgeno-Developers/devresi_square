@@ -6,7 +6,7 @@
 ## Launch-critical filter
 
 ```bash
-php artisan test --filter="InScopeIdorMatrixHttpTest|TenantPortalHttpTest|TenantRentPaymentHttpTest|LandlordFinanceHttpTest|SaasBillingAndLimitsHttpTest|LaunchKillSwitchesHttpTest|LaunchMoneyConfigHttpTest|LaunchOpsConfigHttpTest|WorkspaceIsolationHttpTest|StoredXssHttpTest|SecureUploadHttpTest|RoleRbacHttpTest|TenancyDetailsConfirmationHttpTest|SignupTrialFirstHomeHttpTest"
+php artisan test --filter="InScopeIdorMatrixHttpTest|TenantPortalHttpTest|TenantRentPaymentHttpTest|LandlordFinanceHttpTest|SaasBillingAndLimitsHttpTest|LaunchKillSwitchesHttpTest|LaunchMoneyConfigHttpTest|LaunchOpsConfigHttpTest|WorkspaceIsolationHttpTest|StoredXssHttpTest|SecureUploadHttpTest|RoleRbacHttpTest|TenancyDetailsConfirmationHttpTest|SignupTrialFirstHomeHttpTest|JourneyOnePortfolioHttpTest|JourneyTwoTenancyHttpTest|JourneyThreeRentHttpTest|JourneyFourMarketplaceHttpTest|JourneyFiveAccountHttpTest|JourneySixReleaseHttpTest"
 ```
 
 **Last run:** 75 passed (365 assertions), ~20s.
@@ -19,6 +19,12 @@ php artisan test --filter="InScopeIdorMatrixHttpTest|TenantPortalHttpTest|Tenant
 | B Tenant Happy Path | `TenantPortalHttpTest`, `TenancyDetailsConfirmationHttpTest` |
 | C Money Path | `LandlordFinanceHttpTest`, `TenantRentPaymentHttpTest`, `SaasBillingAndLimitsHttpTest`, `LaunchMoneyConfigHttpTest` |
 | D Failure / isolation | `InScopeIdorMatrixHttpTest`, `WorkspaceIsolationHttpTest`, `StoredXssHttpTest`, `SecureUploadHttpTest`, `RoleRbacHttpTest`, `LaunchKillSwitchesHttpTest` |
+| Journey 1 portfolio isolation | `JourneyOnePortfolioHttpTest` |
+| Journey 2 tenancy login | `JourneyTwoTenancyHttpTest` |
+| Journey 3 named rent payer | `JourneyThreeRentHttpTest` |
+| Journey 4 contractor marketplace | `JourneyFourMarketplaceHttpTest` |
+| Journey 5 documents, safety, and the tenant account | `JourneyFiveAccountHttpTest` |
+| Journey 6 release content, asserts, webhooks, and the error page | `JourneySixReleaseHttpTest` |
 | Ops readiness | `LaunchOpsConfigHttpTest` |
 
 ## CI

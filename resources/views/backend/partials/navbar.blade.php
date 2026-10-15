@@ -111,7 +111,7 @@
                         </div>
                         @forelse($appointmentNotifications as $notification)
                             <a class="dropdown-item py-2 border-bottom notification-item"
-                                href="{{ $notification->data['url'] ?? route('backend.events.calendar') }}"
+                                href="{{ \App\Support\PortalNoticeLink::open($notification->data['url'] ?? null) }}"
                                 data-notification-id="{{ $notification->id }}">
                                 <div class="fw-semibold">{{ $notification->data['title'] ?? 'Notification' }}</div>
                                 <div class="small text-muted">{{ $notification->data['message'] ?? '' }}</div>

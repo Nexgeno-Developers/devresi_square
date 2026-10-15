@@ -20,7 +20,7 @@
             @if($complete)
                 <span class="badge bg-success ms-1">Complete</span>
             @else
-                <span class="badge bg-warning text-dark ms-1">Needs you</span>
+                <span class="badge bg-warning text-dark ms-1">Needs your attention</span>
             @endif
             @if($deadline)
                 <div class="small text-muted mt-1">

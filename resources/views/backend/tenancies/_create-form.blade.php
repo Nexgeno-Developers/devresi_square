@@ -37,6 +37,11 @@
             @error('user_id')
                 <div class="text-danger small mt-1">{{ $message }}</div>
             @enderror
+            <div class="form-check mt-3">
+                <input type="checkbox" name="invite" value="1" id="invite_tenant" class="form-check-input" @checked(old('invite'))>
+                <label for="invite_tenant" class="form-check-label">Invite these tenants to the portal</label>
+                <div class="form-text">Leave this off to save the tenancy without a login.</div>
+            </div>
         </div>
 
         <div id="tenant-options" class="mt-3"></div>

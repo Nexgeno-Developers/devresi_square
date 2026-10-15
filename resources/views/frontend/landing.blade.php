@@ -1,4 +1,5 @@
 @php
+    $calendlyUrl = config('services.calendly.url');
     $navItems = ['Properties', 'Tenancies', 'Finance', 'Repairs', 'Documents', 'Calendar'];
     $chapters = [
         [
@@ -65,7 +66,11 @@
                 <a href="{{ route('login') }}">Login</a>
             </nav>
             <div class="nav-actions">
-                <button type="button" class="btn btn-ghost" data-demo-open>Book a demo</button>
+                @if($calendlyUrl)
+                    <a class="btn btn-ghost" href="{{ $calendlyUrl }}" target="_blank" rel="noopener">Book a demo</a>
+                @else
+                    <button type="button" class="btn btn-ghost" data-demo-open>Book a demo</button>
+                @endif
                 <a class="btn btn-solid" href="{{ route('register') }}">Start trial</a>
             </div>
         </div>
@@ -80,7 +85,11 @@
                     <p class="lede">Resisquare holds the portfolio, the tenancy, the rent, and the repair in one workspace. Built for landlords and agents who run homes as a business.</p>
                     <div class="hero-actions">
                         <a class="btn btn-solid" href="{{ route('register') }}">Start trial</a>
-                        <button type="button" class="btn btn-line" data-demo-open>Book a demo</button>
+                        @if($calendlyUrl)
+                            <a class="btn btn-line" href="{{ $calendlyUrl }}" target="_blank" rel="noopener">Book a demo</a>
+                        @else
+                            <button type="button" class="btn btn-line" data-demo-open>Book a demo</button>
+                        @endif
                     </div>
                     <p class="fine">A 7-day trial is available on eligible plans. <a href="{{ route('pricing') }}">View pricing</a></p>
                 </div>
@@ -286,7 +295,11 @@
                     <p class="lede">Start a trial on the published plans, or book a walkthrough of the workspace.</p>
                     <div class="hero-actions">
                         <a class="btn btn-solid" href="{{ route('register') }}">Start trial</a>
-                        <button type="button" class="btn btn-line" data-demo-open>Book a demo</button>
+                        @if($calendlyUrl)
+                            <a class="btn btn-line" href="{{ $calendlyUrl }}" target="_blank" rel="noopener">Book a demo</a>
+                        @else
+                            <button type="button" class="btn btn-line" data-demo-open>Book a demo</button>
+                        @endif
                     </div>
                 </div>
                 <div class="close-model" aria-hidden="true">

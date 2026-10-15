@@ -54,6 +54,8 @@ class ContractorProfile extends Model
         'draft_reminder_stage',
         'legacy_contractor',
         'claim_invited_at',
+        'claim_token_hash',
+        'claim_expires_at',
     ];
 
     protected $casts = [
@@ -75,6 +77,7 @@ class ContractorProfile extends Model
         'paused_at' => 'datetime',
         'removed_at' => 'datetime',
         'claim_invited_at' => 'datetime',
+        'claim_expires_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

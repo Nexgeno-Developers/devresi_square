@@ -102,7 +102,7 @@ class RentInvoice extends Model
             self::STATUS_PAID => 'Paid',
             self::STATUS_PARTIAL => 'Part paid',
             self::STATUS_VOID => 'Void',
-            default => 'Unpaid',
+            default => 'Due',
         };
     }
 

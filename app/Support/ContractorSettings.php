@@ -58,6 +58,11 @@ class ContractorSettings
         return max(1, (int) self::get('max_contractors_per_send'));
     }
 
+    public static function maxPerEmergencySend(): int
+    {
+        return max(1, (int) self::get('max_contractors_per_emergency_send'));
+    }
+
     public static function inviteHours(string $urgency): int
     {
         return max(1, (int) (self::get('invite_hours')[$urgency] ?? 72));

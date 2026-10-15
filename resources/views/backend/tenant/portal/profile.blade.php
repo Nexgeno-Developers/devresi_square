@@ -20,9 +20,7 @@
                     <p class="mb-0">{{ $notice->subject }}</p>
                     <p class="tp-muted mb-0">{{ \Illuminate\Support\Str::limit(plain_text($notice->message), 120) }}</p>
                 </div>
-                @if(! empty($notice->payload['action_url']))
-                    <a class="tp-btn tp-btn-ghost" href="{{ $notice->payload['action_url'] }}">Open</a>
-                @endif
+                <a class="tp-btn tp-btn-ghost" href="{{ \App\Support\PortalNoticeLink::forTenant($notice->payload['action_url'] ?? null) }}">Open</a>
             </div>
         @empty
             <p class="tp-empty mb-0">No notices yet. Rent, repairs, documents and visits will show here.</p>
@@ -49,6 +47,9 @@
             <label>
                 <span class="tp-metric-label">Email</span>
                 <input type="email" name="email" class="form-control" value="{{ old('email', $user->email) }}" required maxlength="255">
+                @if($user->pending_email)
+                    <span class="tp-muted">Waiting for confirmation at {{ $user->pending_email }}. You still sign in with {{ $user->email }}.</span>
+                @endif
             </label>
             <label>
                 <span class="tp-metric-label">Phone</span>

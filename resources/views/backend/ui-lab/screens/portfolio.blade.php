@@ -19,8 +19,8 @@
         <button type="button" class="lab-btn lab-btn-primary" data-lab-panel="add-home">Add a home</button>
     </header>
 
-    <section class="pf-needs" aria-label="Needs you">
-        <h2>Needs you</h2>
+    <section class="pf-needs" aria-label="Needs your attention">
+        <h2>Needs your attention</h2>
         <button type="button" class="pf-need" data-lab-home="wharf" data-lab-panel="pay">
             <span>September rent · Tina · Flat 108</span>
             <strong>£1,100.00 unpaid</strong>

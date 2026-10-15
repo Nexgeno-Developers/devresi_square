@@ -46,6 +46,8 @@ class LandlordOnboardingService
 
     public const DEFER_SESSION = 'landlord_onboarding_deferred';
 
+    public const INVITE_SESSION = 'landlord_onboarding_invite';
+
     public function __construct(
         private readonly ChimnieClient $chimnie,
         private readonly LandlordPropertyWizardService $wizard,
@@ -398,7 +400,7 @@ class LandlordOnboardingService
                 ->where('owner_group_id', $group->id)
                 ->with('user')
                 ->get()
-                ->map(fn (OwnerGroupUser $row) => strtolower((string) $row->user?->email))
+                ->map(fn (OwnerGroupUser $row) => strtolower((string) ($row->contact_email ?: $row->user?->email)))
                 ->filter()
                 ->all();
 
@@ -421,9 +423,15 @@ class LandlordOnboardingService
                     continue;
                 }
 
-                $user = $this->findOrCreateContact($landlord, $name, $email, $phone, 'Owner', 'owner_contact');
-                $this->attachOwner($group, $user, false);
-                $this->attachParticipant($account, $property, $user, 'owner', $landlord);
+                OwnerGroupUser::query()->create([
+                    'owner_group_id' => $group->id,
+                    'user_id' => null,
+                    'is_main' => false,
+                    'contact_name' => $name,
+                    'contact_email' => $email,
+                    'contact_phone' => $phone !== '' ? $phone : null,
+                    'added_by' => $landlord->id,
+                ]);
                 $existingEmails[] = $email;
             }
 
@@ -610,6 +618,8 @@ class LandlordOnboardingService
             }
         }
 
+        session([self::INVITE_SESSION => $invite]);
+
         $occupantPayload = collect($household)
             ->reject(fn (array $person) => $person['lead'] || ($person['email'] === '' && $person['name'] === ''))
             ->map(fn (array $person) => [
@@ -640,6 +650,26 @@ class LandlordOnboardingService
     /**
      * @return array{id: int, name: ?string, email: ?string, phone: ?string}|null
      */
+    /**
+     * Invite outcome recorded by the mailer. A later request cannot overwrite it.
+     *
+     * @return array{invited: bool, sent: bool, error: ?string}
+     */
+    public function recordedInvite(): array
+    {
+        $stored = session(self::INVITE_SESSION);
+
+        if (! is_array($stored)) {
+            return ['invited' => false, 'sent' => false, 'error' => null];
+        }
+
+        return [
+            'invited' => (bool) ($stored['invited'] ?? false),
+            'sent' => (bool) ($stored['sent'] ?? false),
+            'error' => isset($stored['error']) ? ($stored['error'] !== null ? (string) $stored['error'] : null) : null,
+        ];
+    }
+
     public function latestOnboardingTenancy(Account $account): ?array
     {
         $property = $this->onboardingProperty($account);
@@ -900,6 +930,10 @@ class LandlordOnboardingService
         string $roleName,
         string $memberType
     ): User {
+        if ($roleName === 'Owner' || $memberType === AccountMembership::OWNER_CONTACT) {
+            throw new \InvalidArgumentException('Co-owners are stored as contacts and are not created as users.');
+        }
+
         $existing = User::query()->where('email', $email)->first();
 
         if ($existing) {
@@ -1126,13 +1160,17 @@ class LandlordOnboardingService
         return $group->ownerGroupUsers()
             ->with('user')
             ->get()
-            ->filter(fn (OwnerGroupUser $row) => $row->user && ! $row->is_main)
-            ->map(fn (OwnerGroupUser $row) => [
-                'id' => $row->user->id,
-                'name' => $row->user->name,
-                'email' => $row->user->email,
-                'phone' => $row->user->phone,
-            ])
+            ->filter(fn (OwnerGroupUser $row) => ! $row->is_main && ($row->contact_email || $row->user))
+            ->map(function (OwnerGroupUser $row) {
+                $email = strtolower((string) ($row->contact_email ?: $row->user?->email));
+
+                return [
+                    'name' => $row->contact_name ?: $row->user?->name,
+                    'email' => $email,
+                    'phone' => $row->contact_phone ?: $row->user?->phone,
+                    'already_has_login' => $email !== '' && User::query()->where('email', $email)->exists(),
+                ];
+            })
             ->values()
             ->all();
     }

@@ -111,6 +111,12 @@ class Document extends Model
         $relative = $service->resolveRelativePath($name);
         $disk = $service->resolveDisk($name);
 
+        if ($service->isPrivatePath($name)) {
+            $path = Storage::disk($disk)->path($relative);
+
+            return is_file($path) ? $path : null;
+        }
+
         $candidates = [
             Storage::disk($disk)->path($relative),
             Storage::disk('public')->path(ltrim($name, '/')),

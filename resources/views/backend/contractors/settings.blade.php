@@ -43,6 +43,10 @@
                         <input type="number" name="max_contractors_per_send" class="form-control form-control-sm" value="{{ old('max_contractors_per_send', $values['max_contractors_per_send']) }}">
                     </div>
                     <div class="col-md-4">
+                        <label class="form-label small mb-1">Max contractors per emergency</label>
+                        <input type="number" name="max_contractors_per_emergency_send" class="form-control form-control-sm" value="{{ old('max_contractors_per_emergency_send', $values['max_contractors_per_emergency_send']) }}">
+                    </div>
+                    <div class="col-md-4">
                         <label class="form-label small mb-1">Offer digest every (hours)</label>
                         <input type="number" name="digest_hours" class="form-control form-control-sm" value="{{ old('digest_hours', $values['digest_hours']) }}">
                     </div>

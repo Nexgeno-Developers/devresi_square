@@ -6,9 +6,11 @@ use App\Models\RentInvoice;
 use App\Models\RentPayment;
 use App\Models\Tenancy;
 use App\Models\TenantMember;
+use App\Support\AuditTrail;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class RentFinanceService
@@ -102,6 +104,7 @@ class RentFinanceService
 
             $amount = $this->money($data['amount'] ?? 0);
             $balance = $this->money($locked->balance);
+            $before = ['status' => $locked->status, 'balance' => $balance];
 
             if ($amount < 0.01) {
                 throw ValidationException::withMessages([
@@ -145,6 +148,12 @@ class RentFinanceService
                 : RentInvoice::STATUS_PARTIAL;
             $locked->save();
 
+            AuditTrail::record((int) $locked->account_id, $recordedByUserId, 'rent_payment', $locked, $before, [
+                'status' => $locked->status,
+                'balance' => $this->money($locked->balance),
+                'amount' => $amount,
+            ]);
+
             return ['payment' => $payment, 'notify' => true, 'invoice' => $locked];
         });
 
@@ -169,9 +178,14 @@ class RentFinanceService
                 ]);
             }
 
+            $before = ['status' => $locked->status, 'balance' => $this->money($locked->balance)];
             $locked->status = RentInvoice::STATUS_VOID;
             $locked->balance = 0;
             $locked->save();
+            AuditTrail::record((int) $locked->account_id, auth()->id(), 'invoice_void', $locked, $before, [
+                'status' => $locked->status,
+                'balance' => 0,
+            ]);
 
             return $locked;
         });
@@ -325,6 +339,13 @@ class RentFinanceService
             $tenancy->forceFill([
                 'rent_next_period_start' => $cursor->toDateString(),
             ])->save();
+        }
+
+        if ($cursor->lte($asOf)) {
+            Log::warning('Rent recurring catch-up stopped before later periods were issued.', [
+                'tenancy_id' => $tenancy->id,
+                'rent_next_period_start' => $cursor->toDateString(),
+            ]);
         }
 
         return $created;

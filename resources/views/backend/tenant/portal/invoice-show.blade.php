@@ -16,7 +16,7 @@
         <div>
             <p class="tp-kicker">Rent invoice</p>
             <h1>{{ $invoice->invoice_no ?: 'Invoice #'.$invoice->id }}</h1>
-            <p>View only — ask your landlord if anything looks wrong.</p>
+            <p>Rent for this home. The balance is due by {{ rs_date($invoice->due_date) }}.</p>
         </div>
         <div class="d-flex flex-wrap gap-2">
             <a href="{{ route('tenant.rent') }}" class="tp-btn tp-btn-ghost">Back to rent</a>
@@ -39,31 +39,31 @@
                 <p class="mb-0">{{ $invoice->property?->full_address ?: ($invoice->property?->line_1 ?: '—') }}</p>
             </div>
             <div>
-                <p class="tp-muted mb-1">Billed to</p>
+                <p class="tp-muted mb-1">Tenant</p>
                 <p class="mb-0">{{ $invoice->tenant?->name ?: '—' }}</p>
             </div>
             <div>
                 <p class="tp-muted mb-1">Issued</p>
-                <p class="mb-0">{{ $invoice->issue_date?->format('d M Y') ?: '—' }}</p>
+                <p class="mb-0">{{ rs_date($invoice->issue_date) }}</p>
             </div>
             <div>
-                <p class="tp-muted mb-1">Due</p>
+                <p class="tp-muted mb-1">Due date</p>
                 <p class="mb-0">{{ rs_date($invoice->due_date) }}</p>
             </div>
             <div>
                 <p class="tp-muted mb-1">Period</p>
                 <p class="mb-0">
-                    {{ $invoice->period_start?->format('d M Y') ?: '—' }}
+                    {{ $invoice->period_start ? rs_date($invoice->period_start) : '—' }}
                     –
-                    {{ $invoice->period_end?->format('d M Y') ?: '—' }}
+                    {{ $invoice->period_end ? rs_date($invoice->period_end) : '—' }}
                 </p>
             </div>
             <div>
-                <p class="tp-muted mb-1">Total</p>
+                <p class="tp-muted mb-1">Amount due</p>
                 <p class="mb-0">£{{ number_format((float) $invoice->amount, 2) }}</p>
             </div>
             <div>
-                <p class="tp-muted mb-1">Balance</p>
+                <p class="tp-muted mb-1">Current balance</p>
                 <p class="mb-0">£{{ number_format((float) $invoice->balance, 2) }}</p>
             </div>
         </div>
@@ -75,7 +75,7 @@
             </div>
         @endif
 
-        @if($invoice->isOpen())
+        @if($invoice->isOpen() && (int) $invoice->tenant_user_id === (int) auth()->id())
             <div class="tp-no-print mt-4">
                 @if($cardReady)
                     <form action="{{ route('tenant.rent.pay', $invoice) }}" method="POST">
@@ -116,7 +116,7 @@
                 <tbody>
                     @foreach($invoice->payments as $payment)
                         <tr>
-                            <td>{{ $payment->paid_at?->format('d M Y') ?: '—' }}</td>
+                            <td>{{ rs_date($payment->paid_at) }}</td>
                             <td>£{{ number_format((float) $payment->amount, 2) }}</td>
                             <td>{{ ucfirst(str_replace('_', ' ', (string) $payment->method)) }}</td>
                             <td>{{ $payment->reference ?: '—' }}</td>

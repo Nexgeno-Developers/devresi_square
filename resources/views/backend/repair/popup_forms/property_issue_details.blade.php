@@ -22,21 +22,11 @@
         <dd>{{ $repairIssue->priority ? ucfirst($repairIssue->priority) : 'Medium' }}</dd>
         <dt>Status</dt>
         <dd>{{ rs_repair_status_label($repairIssue->status) }}</dd>
+        <dt>Tenant available</dt>
+        <dd>{{ $repairIssue->tenantAvailabilityLabel() ?: 'To be arranged' }}</dd>
         @if(filled($repairIssue->landlord_note))
             <dt>Note for the tenant</dt>
             <dd>{{ $repairIssue->landlord_note }}</dd>
-        @endif
-        @if(filled($repairIssue->estimated_price))
-            <dt>Estimated price</dt>
-            <dd>{{ rs_money($repairIssue->estimated_price) }}</dd>
-        @endif
-        @if ($repairIssue->vat_type == 'exclusive' && filled($repairIssue->vat_percentage))
-            <dt>VAT</dt>
-            <dd>{{ ucfirst($repairIssue->vat_percentage) }}</dd>
-        @endif
-        @if($repairIssue->tenantAvailabilityLabel())
-            <dt>When they are in</dt>
-            <dd>{{ $repairIssue->tenantAvailabilityLabel() }}</dd>
         @endif
         @if(filled($repairIssue->access_details))
             <dt>Access</dt>

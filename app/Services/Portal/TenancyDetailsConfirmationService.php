@@ -288,6 +288,7 @@ class TenancyDetailsConfirmationService
                     ->orWhere('details_status', self::STATUS_PENDING)
                     ->orWhere('details_status', self::STATUS_CORRECTION_REQUESTED);
             })
+            ->whereHas('tenancy', fn ($query) => $query->where('status', 'Active'))
             ->with([
                 'tenancy.property',
                 'tenancy.tenancyType',
@@ -309,7 +310,7 @@ class TenancyDetailsConfirmationService
             ])
             ->first();
 
-        if (! $member?->tenancy || ! $member->tenancy->property) {
+        if (! $member?->tenancy || ! $member->tenancy->property || $member->tenancy->status !== 'Active') {
             throw ValidationException::withMessages([
                 'tenancy_id' => 'That tenancy is not linked to your login.',
             ]);

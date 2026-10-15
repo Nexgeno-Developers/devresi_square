@@ -24,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('events:send-reminders')->everyMinute()->withoutOverlapping();
         $schedule->command('sale-invoices:apply-penalties')->dailyAt('00:10');
         $schedule->command('contractors:sweep')->hourly()->withoutOverlapping();
+        $schedule->command('accounts:trial-expiry-warning')->dailyAt('08:00');
+        $schedule->command('accounts:monthly-summary')->monthlyOn(1, '08:00');
     })
     ->withMiddleware(function (Middleware $middleware) {
         // Append global middleware

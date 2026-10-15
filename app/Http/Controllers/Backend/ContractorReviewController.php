@@ -15,6 +15,7 @@ use App\Services\Contractors\ContractorDocumentStore;
 use App\Services\Contractors\ContractorMail;
 use App\Services\Contractors\ContractorMarketplaceException;
 use App\Services\Contractors\RepairJobOfferService;
+use App\Support\AuditTrail;
 use App\Support\ContractorCompliance;
 use App\Support\ContractorSettings;
 use Illuminate\Http\Request;
@@ -340,6 +341,7 @@ class ContractorReviewController extends Controller
         if ($block = $this->approvalBlock($profile)) {
             return back()->with('error', 'Cannot approve yet. '.$block);
         }
+        $beforeStatus = $profile->approval_status;
         $profile->forceFill([
             'approval_status' => ContractorProfile::APPROVED,
             'cis_status' => $data['cis_status'] ?? $profile->cis_status,
@@ -350,6 +352,11 @@ class ContractorReviewController extends Controller
             'pause_reason' => null,
         ])->save();
         $profile->log('approved', $request->user(), null, $data['review_note'] ?? null, ['trades' => ContractorCompliance::approvedTrades($profile)]);
+        AuditTrail::record(null, $request->user()->id, 'contractor_approval', $profile, [
+            'approval_status' => $beforeStatus,
+        ], [
+            'approval_status' => $profile->approval_status,
+        ]);
         Registration::query()->where('user_id', $profile->user_id)->where('type', 'contractor')->update([
             'status' => 'approved',
             'approved_by' => $request->user()->id,
@@ -443,13 +450,16 @@ class ContractorReviewController extends Controller
     public function remove(Request $request, ContractorProfile $profile)
     {
         $data = $request->validate(['review_note' => ['required', 'string', 'max:2000']]);
-        $profile->forceFill([
-            'approval_status' => ContractorProfile::REMOVED,
-            'removed_at' => now(),
-            'review_note' => $data['review_note'],
-            'reviewed_by' => $request->user()->id,
-            'reviewed_at' => now(),
-        ])->save();
+        DB::transaction(function () use ($profile, $data, $request) {
+            $profile->forceFill([
+                'approval_status' => ContractorProfile::REMOVED,
+                'removed_at' => now(),
+                'company_number' => null,
+                'review_note' => $data['review_note'],
+                'reviewed_by' => $request->user()->id,
+                'reviewed_at' => now(),
+            ])->save();
+        });
         $profile->log('removed', $request->user(), null, $data['review_note']);
         $this->offers->withdrawOpenForSuspended($profile);
 
@@ -480,6 +490,7 @@ class ContractorReviewController extends Controller
             'public_liability_minimum' => ['required', 'integer', 'min:0'],
             'employers_liability_minimum' => ['required', 'integer', 'min:0'],
             'max_contractors_per_send' => ['required', 'integer', 'min:1', 'max:20'],
+            'max_contractors_per_emergency_send' => ['required', 'integer', 'min:1', 'max:30'],
             'review_sla_working_days' => ['required', 'integer', 'min:1', 'max:30'],
             'document_retention_days' => ['required', 'integer', 'min:30', 'max:3650'],
             'digest_hours' => ['required', 'integer', 'min:1', 'max:48'],
@@ -506,6 +517,7 @@ class ContractorReviewController extends Controller
             'public_liability_minimum' => $data['public_liability_minimum'],
             'employers_liability_minimum' => $data['employers_liability_minimum'],
             'max_contractors_per_send' => $data['max_contractors_per_send'],
+            'max_contractors_per_emergency_send' => $data['max_contractors_per_emergency_send'],
             'review_sla_working_days' => $data['review_sla_working_days'],
             'document_retention_days' => $data['document_retention_days'],
             'digest_hours' => $data['digest_hours'],

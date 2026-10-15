@@ -61,7 +61,9 @@ class PropertyController
         }
         $portalAccessService = app(PortalAccessService::class);
         $accountId = current_account_id();
-        $isPortalUser = $accountId && $portalAccessService->isPortalUser($user, $accountId);
+        $isPortalUser = $accountId
+            && $portalAccessService->isPortalUser($user, $accountId)
+            && ! sees_landlord_portfolio($user);
 
         // Build base query
         $propertiesQuery = Property::query();
@@ -89,7 +91,7 @@ class PropertyController
             $properties = $propertiesQuery->whereIn('id', $propertyIds)
                 ->orderBy('id', 'desc')
                 ->paginate(15);
-        } elseif (is_landlord_plan_user($user)) {
+        } elseif (is_landlord_plan_user($user) || sees_landlord_portfolio($user)) {
             $properties = $propertiesQuery->orderBy('id', 'desc')->paginate(15);
         } elseif ($user->hasRole('Staff') || $user->hasRole('Test')) {
             $properties = $propertiesQuery->where('created_by', $user->id)
@@ -122,7 +124,7 @@ class PropertyController
                 $this->applyListFilters($positionQuery, $request);
                 if ($isPortalUser) {
                     $positionQuery->whereIn('id', $portalAccessService->accessiblePropertyIds($user, $accountId));
-                } elseif (is_landlord_plan_user($user)) {
+                } elseif (is_landlord_plan_user($user) || sees_landlord_portfolio($user)) {
                     // Workspace-scoped via forAccount()
                 } elseif ($user->hasRole('Staff') || $user->hasRole('Test')) {
                     $positionQuery->where('created_by', $user->id);
@@ -262,7 +264,7 @@ class PropertyController
         $requestedTabIsAllowed = collect($tabs)->contains(
             fn (array $tab) => strtolower($tab['name']) === strtolower($tabName)
         );
-        if (! $requestedTabIsAllowed && is_landlord_plan_user($user) && $property) {
+        if (! $requestedTabIsAllowed && (is_landlord_plan_user($user) || sees_landlord_portfolio($user)) && $property) {
             return redirect()->route('admin.properties.index', [
                 'property_id' => $property->id,
                 'tabname' => 'Property',
@@ -336,7 +338,7 @@ class PropertyController
 
     private function tabsForUser($user, ?Property $property, bool $isPortalUser, PortalAccessService $portalAccessService): array
     {
-        if (is_landlord_plan_user($user)) {
+        if (is_landlord_plan_user($user) || sees_landlord_portfolio($user)) {
             return client_facing_property_tabs();
         }
 
@@ -430,6 +432,7 @@ class PropertyController
 
         $isAuthorized = $user->hasRole('Super Admin')
             || $user->hasRole('Property Manager')
+            || (sees_landlord_portfolio($user) && (int) $property->account_id === (int) current_account_id())
             || (is_landlord_plan_user($user) && (int) $property->account_id === (int) current_account_id())
             || ($user->hasRole('Landlord') && ! is_landlord_plan_user($user) && $property->created_by === $user->id)
             || ($user->hasRole('Estate Agent') && ($property->created_by === $user->id || $user->createdUsers()->pluck('id')->contains($property->created_by)))
@@ -464,7 +467,9 @@ class PropertyController
     {
         $user = auth()->user();
         $portalAccessService = app(PortalAccessService::class);
-        $isPortalUser = current_account_id() && $portalAccessService->isPortalUser($user, current_account_id());
+        $isPortalUser = current_account_id()
+            && $portalAccessService->isPortalUser($user, current_account_id())
+            && ! sees_landlord_portfolio($user);
 
         if ($isPortalUser) {
             abort_unless($portalAccessService->canAccessProperty($user, $property), 403, 'You do not have access to this property.');
@@ -2272,7 +2277,7 @@ class PropertyController
             return true;
         }
 
-        if (is_landlord_plan_user($user)) {
+        if (is_landlord_plan_user($user) || sees_landlord_portfolio($user)) {
             return true;
         }
 
@@ -2565,7 +2570,7 @@ class PropertyController
         if ($user && $accountId) {
             $portalAccessService = app(PortalAccessService::class);
 
-            if ($portalAccessService->isPortalUser($user, $accountId)) {
+            if ($portalAccessService->isPortalUser($user, $accountId) && ! sees_landlord_portfolio($user)) {
                 $query->whereIn('id', $portalAccessService->accessiblePropertyIds($user, $accountId));
             }
         }

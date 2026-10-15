@@ -16,6 +16,7 @@ use App\Services\Contractors\RepairJobOfferService;
 use App\Services\Contractors\RepairMarketplacePanel;
 use App\Support\ContractorCompliance;
 use App\Support\ContractorSettings;
+use App\Support\WorkspaceAccess;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
@@ -106,6 +107,8 @@ class RepairJobOfferController extends Controller
 
     public function favourite(Request $request, User $contractor)
     {
+        abort_if(is_tenant_portal_user(), 403);
+        abort_unless(WorkspaceAccess::canManageCurrentWorkspace($request->user()), 403);
         abort_unless($contractor->hasRole('Contractor'), 404);
         $on = $this->directory->toggleFavourite((int) current_account_id(), $contractor->id);
 
@@ -302,7 +305,8 @@ class RepairJobOfferController extends Controller
     private function authorizeRepair(?RepairIssue $repair): void
     {
         abort_unless($repair, 404);
+        abort_if(is_tenant_portal_user(), 403);
         ensureModelBelongsToCurrentAccount($repair);
-        Gate::authorize('view', $repair);
+        Gate::authorize('update', $repair);
     }
 }

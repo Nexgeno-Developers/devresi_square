@@ -31,8 +31,7 @@
         <div class="card-body">
             <div class="lw-section-title mt-0">Property</div>
             @if($property)
-                <p class="mb-1"><strong>{{ $address ?: ($property->prop_name ?? 'Property') }}</strong></p>
-                <p class="mb-0 text-muted small">{{ $property->specific_property_type ?? '—' }} · {{ $property->availability ?? '—' }}</p>
+                <p class="mb-0"><strong>{{ $address ?: ($property->prop_name ?? 'Property') }}</strong></p>
             @else
                 <p class="mb-0 text-muted">No property linked.</p>
             @endif
@@ -50,12 +49,7 @@
                 <x-lw.pill tone="idle">{{ ucfirst($repairIssue->priority) }}</x-lw.pill>
             </div>
             <p class="mb-1 small text-muted">{{ getFormattedRepairNavigation($repairIssue->repair_navigation) }}</p>
-            @if($repairIssue->estimated_price)
-                <p class="mb-0"><strong>Estimate:</strong> £{{ number_format((float) $repairIssue->estimated_price, 2) }}</p>
-            @endif
-            @if($repairIssue->tenantAvailabilityLabel())
-                <p class="mb-0 small">Tenant availability: {{ $repairIssue->tenantAvailabilityLabel() }}</p>
-            @endif
+            <p class="mb-0">Tenant available: {{ $repairIssue->tenantAvailabilityLabel() ?: 'To be arranged' }}</p>
             @if($repairIssue->access_details)
                 <p class="mb-0 small">Access: {{ $repairIssue->access_details }}</p>
             @endif

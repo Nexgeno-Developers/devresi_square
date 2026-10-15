@@ -207,6 +207,7 @@
             <input type="email" name="email" placeholder="Email" value="${person?.email || ''}">
             <input type="tel" name="phone" placeholder="Phone" value="${person?.phone || ''}">
             <button type="button" class="lob-owner-remove">Remove</button>
+            ${person?.already_has_login ? '<p class="lob-help">This person already has a Resisquare login and is stored as a contact.</p>' : ''}
         `;
         wrap.querySelector('.lob-owner-remove').addEventListener('click', () => wrap.remove());
         return wrap;
@@ -371,6 +372,12 @@
             });
             state.owner = payload.data.owner || owner;
             state.owners = payload.data.owners || owners;
+            const existingLogins = (state.owners || []).filter((person) => person.already_has_login);
+            if (existingLogins.length) {
+                showAlert(existingLogins.map((person) => (
+                    (person.name || person.email) + ' already has a Resisquare login. They are saved as a contact on this home.'
+                )).join(' '));
+            }
             goTo(3);
         } catch (error) {
             showAlert(error.message);

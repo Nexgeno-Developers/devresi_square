@@ -43,7 +43,7 @@ class LandlordFinanceHttpTest extends TestCase
             ->assertOk()
             ->assertSee('RENT-0001', false)
             ->assertSee('1,200.00', false)
-            ->assertSee('Unpaid', false);
+            ->assertSee('tp-pill is-unpaid">Due', false);
 
         $this->actingAs($tenant)->withSession($session)
             ->get(route('backend.home'))
@@ -402,7 +402,7 @@ class LandlordFinanceHttpTest extends TestCase
         $this->actingAs($housemate)->withSession($session)
             ->get(route('tenant.rent.show', $invoice))
             ->assertOk()
-            ->assertSee('Billed to', false)
+            ->assertSee('>Tenant</p>', false)
             ->assertSee('Ada Tenant', false)
             ->assertSee('800.00', false);
 
@@ -468,7 +468,7 @@ class LandlordFinanceHttpTest extends TestCase
             ->get(route('backend.home'))
             ->assertOk()
             ->assertSee('0.00', false)
-            ->assertSee('No rent invoices yet', false);
+            ->assertSee('Your landlord has not sent a rent invoice yet', false);
     }
 
     public function test_rent_due_and_overdue_reminders_use_rent_invoices(): void

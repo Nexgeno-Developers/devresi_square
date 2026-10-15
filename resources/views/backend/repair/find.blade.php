@@ -81,6 +81,10 @@
         </div>
     </div>
 
+    @if(!empty($omitted) && $candidates->isNotEmpty())
+        <div class="alert alert-warning">Not listed: {{ implode(' ', $omitted) }}</div>
+    @endif
+
     @if($candidates->isEmpty())
         <div class="card lw-card mb-3">
             <div class="card-body">

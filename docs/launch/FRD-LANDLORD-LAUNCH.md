@@ -12,7 +12,7 @@ This document defines the product that is ready to launch: the paying landlord w
 Related documents:
 
 - `docs/launch/SCOPE_CONTRACT.md` — pillars and change control. This FRD adds the contractor marketplace to that launch.
-- `docs/launch/ACCEPTANCE_SCRIPTS.md` — sign-off scripts. Section 14 below adds the marketplace script.
+- `docs/launch/ACCEPTANCE_SCRIPTS.md` — sign-off scripts A–E. Script E is the contractor marketplace.
 - `docs/resisquare-saas/02-resisquare-property-management-saas-prd.md` — wider platform PRD. Estate-agent workspaces, agency accounting, and branches stay outside this launch.
 
 ## 1. Decisions locked for launch
@@ -27,8 +27,8 @@ These choices are part of the requirements. They close the gaps found in the 14 
 | Portal entry | A tenant portal session requires an active tenant membership with login allowed on the current account. A role name on its own does not open the portal. |
 | Tenancy and login | Saving a tenancy does not create a login. Login is a separate invite, and the screen reports the mailer result. |
 | Ending a tenancy | Archiving and deleting a tenancy both close portal access for members who have no other active tenancy on the account. |
-| Co-owners | A co-owner added in onboarding is a contact. They do not receive the global Owner role, and they cannot log in until they accept an invite. |
-| Rent visibility | Adults on an active tenancy can see that tenancy’s invoices. Only the named payer can start a card payment. |
+| Co-owners | A co-owner added in onboarding is a contact on the owner group: name, email, and phone. This launch does not create a user, a role, a membership, or a login for them. |
+| Rent visibility | Every tenant member on an active tenancy can see that tenancy’s invoices. Only the named payer on the invoice can start a card payment. |
 | Login email | A new email becomes the login email after the new address confirms it. |
 | Contractor changes | After approval, changes to trades, postcode, radius, or company number return the profile to review before the contractor can be sent new jobs. |
 | Company number | One company number belongs to one active contractor profile. |
@@ -43,9 +43,9 @@ These choices are part of the requirements. They close the gaps found in the 14 
 | Landlord operator | Owner or admin membership on a landlord account | Run the workspace inside the allowlist: portfolio, tenancies, people, repairs, documents, compliance, finance, calendar, billing. |
 | Tenant | Active tenant membership with login allowed | Use the tenant portal for their active tenancies only. |
 | Contractor | Approved contractor profile, signed in on the contractor portal | See invited jobs, submit offers, do an awarded or inspection-accepted job, upload completion evidence. |
-| Co-owner contact | Named on a property, no portal invite yet | No login. Their name, email, and phone are visible to the landlord operator. |
-| Super Admin | Platform operator | Manage plans, accounts, and contractor approval. Super Admin is not a tenant and is not a landlord operator by role alone. |
-| Landlord contact, staff, property manager | Other memberships that can exist on the account | Same allowlist as the landlord operator, or no workspace access. They never receive a wider set of routes. |
+| Co-owner contact | Named on a property’s owner group | No login in this launch. Their name, email, and phone are visible to the landlord operator. |
+| Super Admin | Platform operator | Manage plans, accounts, and contractor approval on the platform admin screens. Super Admin is not a tenant and is not a landlord operator by role alone. |
+| Landlord contact, staff, property manager | Other memberships that can exist on the account | Same allowlist as the landlord operator. They never receive a wider set of routes. |
 
 Estate-agent workspaces, branch staff, and agency accounting users are outside this launch. They keep their existing product surface. This FRD does not redesign it.
 
@@ -85,13 +85,13 @@ These rules apply to every module.
 
 ### FR-X1 Workspace isolation
 
-Every property, tenancy, repair, invoice, document, offer, and person-link used by this launch belongs to one account. A user can read or change a record only when their current account owns it, or when a portal rule below explicitly shares that record with them.
+Every property, tenancy, repair, invoice, document, offer, and person-link used by this launch belongs to one account. A user can read or change a record only when their current account owns it, or when a portal rule below explicitly shares that record with them. Super Admin reads other accounts from the platform admin screens, not from `get_tenants_by_property` or `get_users_by_property_and_role`. An awarded or inspection-accepted contractor reads the address from that job, not from those helpers.
 
 **Acceptance:** Opening another account’s property, tenancy, invoice, repair, offer, or document by id returns 403 or 404. The response body contains no name, email, phone, or address from the other account.
 
 ### FR-X2 Property lookups
 
-`get_tenants_by_property` and `get_users_by_property_and_role` return rows only for a property on the current account. Cache keys include the account id. Changing a membership, name, email, or tenancy link forgets the affected keys before the next read.
+`get_tenants_by_property` and `get_users_by_property_and_role` return rows only for a property on the current account, and only for users with a membership on that account. `get_user_address_name_by_id` uses the same account scope. Cache keys include the account id and expire within 60 seconds. Changing a membership, name, email, or tenancy link forgets the affected keys before the next read. There is no `Cache::rememberForever` on these lookups.
 
 **Acceptance:** A landlord, tenant, contractor, and property manager each receive an empty result, or 403, for a property on another account. After a tenant is renamed, the next lookup returns the new name.
 
@@ -147,9 +147,9 @@ Address search is postcode-first. Manual entry is available. The review shows th
 
 Each extra owner is stored as a contact on the property’s owner group: name, email, phone. The lead owner is the logged-in landlord, and the lead email must match that login.
 
-If the email already belongs to a user, the system does not assign the Owner role, does not change their password, and does not attach them to this account as a manager. It stores the contact and tells the landlord that this person already has a Resisquare login and must be invited.
+If the email already belongs to a user, the system does not assign the Owner role, does not change their password, and does not attach them to this account. It stores the contact and tells the landlord that this person already has a Resisquare login.
 
-A brand-new co-owner email does not receive `can_login` until an invite is sent and accepted.
+A brand-new co-owner email is stored as contact fields only. This launch does not create a user row, an Owner role, a membership, or `can_login` for that email.
 
 **Acceptance:** Posting an existing email leaves that user without a new Owner role and without a new login on this account. The landlord sees them as a contact.
 
@@ -239,7 +239,7 @@ The tenancy can store scheme, reference, who holds the deposit, date received, d
 
 ### FR-T6 Household
 
-More than one tenant member can sit on one tenancy. The main person is the named rent payer for card payments. Other members are household viewers as defined in FR-R2.
+More than one tenant member can sit on one tenancy. When an invoice is issued, `tenant_user_id` defaults to the main person unless the landlord picks another member of that tenancy. That invoice keeps the payer it was issued with. Changing the main person later does not rewrite open invoices. Other members are household viewers as defined in FR-R2.
 
 ## 10. Tenant portal
 
@@ -277,7 +277,7 @@ The landlord can issue a rent invoice for an Active tenancy: invoice number, iss
 
 States: issued, partial, paid, void. Void blocks pay. An issued or partial invoice with balance above zero is payable.
 
-Recurring rent is created by the scheduler from the tenancy frequency and rent. A missed run is visible to the operator. It does not silently skip a period.
+Recurring rent is created by `rent-invoices:generate-recurring` from the tenancy frequency and rent. A missed day is caught up: each due period is issued, and the run stops after 24 periods for that tenancy. If periods remain, `rent_next_period_start` stays on the next unissued period, the command reports the cap, and the next run continues. A period is never dropped.
 
 ### FR-R2 Who can see and pay
 
@@ -307,7 +307,7 @@ A landlord or a tenant can raise a repair with category, description, priority, 
 
 ### FR-M2 Find
 
-Find-a-contractor lists approved contractors who cover the repair’s trade and whose coverage radius includes the property. Filters for trade, distance, Gas Safe, and DBS match the list the landlord can send to.
+Find-a-contractor lists approved contractors who cover the repair’s trade and whose coverage radius includes the property. The distance in miles must be known and must be within `coverage_radius_miles`. A favourite or previously used contractor is sorted higher and is not exempt from the radius. If the property or the contractor cannot be geocoded, that contractor is omitted and the landlord sees the reason. Filters for trade, distance, Gas Safe, and DBS narrow that list. The list on screen is the list send will accept.
 
 Gas boiler work and a smell-of-gas report require a Gas Safe registered contractor. Electrical work requires a registered electrical contractor. A contractor approved only for general or plumbing is excluded, with the reason visible to the landlord.
 
@@ -315,9 +315,9 @@ Gas boiler work and a smell-of-gas report require a Gas Safe registered contract
 
 Send accepts only contractor ids that FR-M2 would list for this repair at this moment. Distance, radius, trade, and compliance are checked again on the write. A contractor who fails is skipped with a reason, and no offer row is created for them. The landlord sees who was sent and who was skipped.
 
-An emergency send-all uses the same eligibility rules, then the emergency cap.
+An emergency send uses the same eligibility rules. Its count cap is `max_contractors_per_emergency_send`, default 15. The routine cap stays `max_contractors_per_send`, default 5.
 
-**Acceptance:** A contractor outside the radius is skipped. A plumber sent onto a gas repair is skipped with the Gas Safe reason. Neither gets an offer.
+**Acceptance:** A contractor outside the radius is skipped, including a favourite. A plumber sent onto a gas repair is skipped with the Gas Safe reason. Neither gets an offer. An emergency send of 16 contractors creates no offers. An emergency send of 6 eligible contractors does.
 
 ### FR-M4 What the contractor sees before acceptance
 
@@ -337,7 +337,7 @@ When the landlord accepts one inspection offer:
 - `awarded_offer_id` stays empty.
 - The repair is not described as a firm instruction.
 
-Cancelling that inspection removes the address from the contractor view and allows the landlord to accept a different contractor.
+Cancelling that inspection removes the address from the contractor view. The other offers stay closed. The landlord sends a new invite to choose another contractor. A closed offer cannot be accepted.
 
 When the landlord accepts one firm offer:
 
@@ -467,28 +467,22 @@ Launch follows `docs/launch/GA_GATE.md` and `docs/launch/OPS_RUNBOOK.md`: health
 
 ## 18. Launch acceptance
 
-Scripts A to D in `docs/launch/ACCEPTANCE_SCRIPTS.md` still apply. Add script E.
-
-### E. Contractor marketplace
-
-1. Approve a contractor whose radius covers the property and whose trade matches a non-gas repair.
-2. Landlord finds them and sends the job. The contractor sees town and outward postcode only.
-3. A second contractor outside the radius is skipped and has no offer.
-4. A plumbing-only contractor is skipped on a gas repair.
-5. Two inspection offers exist. Accepting one closes the other. Only the accepted contractor sees the street. `awarded_offer_id` is empty.
-6. Firm-accept one price. The award id matches that offer. The other offer is not open. Decline cannot clear the award while leaving the id in place.
-7. Tenant cannot open find-contractor or accept an offer.
-8. Claim link works once within 72 hours and fails on the second use.
-9. Approved contractor changes radius and can no longer be sent a new job until review.
-10. Two profiles cannot save the same company number.
-
-**Pass:** Steps 1–10 on the release candidate, with probe data removed afterwards.
+Scripts A to E in `docs/launch/ACCEPTANCE_SCRIPTS.md` are the only sign-off copy. Script E is the contractor marketplace, including the radius, the electrical gate, exclusive inspection, cancel-then-send-again, the claim token, and the emergency cap of 15.
 
 ### Stop-ship
 
-Launch waits if any requirement in sections 4, 9, 10, 11, or 12 fails, if one account can read another account’s tenant contact details, if two contractors can see the same full address before a single acceptance, or if a rent payment can mark an invoice paid without Stripe or a landlord manual entry.
+Launch waits if any of these fail:
+
+- One account can read another account’s name, email, phone, or address (FR-X1, FR-X2, FR-D2).
+- A role name alone opens the tenant portal, or a co-owner email receives the Owner role or a login (FR-X4, FR-O2).
+- Two contractors can see the same full address for one repair (FR-M6).
+- A tenant can accept, decline, or send an offer (FR-TN5).
+- A claim link can set a password more than once, or after 72 hours (FR-C5).
+- A rent balance is marked paid without a Stripe webhook or a landlord manual payment, or the same balance is settled twice (FR-R2, FR-R3, FR-NF2).
 
 ## 19. Trace from the 14 October 2026 audit
+
+The requirement column is the behavior to build. The finding column is only the symptom that prompted it. A finding such as “tenancy create did not open the portal” is satisfied by FR-T1: a save opens the portal only when the landlord asked for an invite and the mailer accepted it.
 
 | Audit finding | Requirement that replaces it |
 |---|---|

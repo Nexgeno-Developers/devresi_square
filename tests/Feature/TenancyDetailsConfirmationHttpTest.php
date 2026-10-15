@@ -230,7 +230,7 @@ class TenancyDetailsConfirmationHttpTest extends TestCase
             ->withSession(['current_account_id' => $accountId])
             ->get(route('backend.dashboard'))
             ->assertOk()
-            ->assertSee('tenancy correction request waiting', false)
+            ->assertSee('tenancy correction request needs your attention', false)
             ->assertSee(route('admin.tenancies.show', $tenancy->id), false);
     }
 

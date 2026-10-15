@@ -239,8 +239,9 @@ class RepairJobAftercareService
         $this->offers->log($offer, $offer->status, $offer->status, $contractor, 'Visit moved to '.$when->format('j M Y H:i').($offered ? ' (offered time).' : ' (new proposal).'));
 
         $offer->loadMissing('repairIssue.property');
-        $property = $offer->repairIssue?->property;
-        $address = trim(collect([$property?->line_1, $property?->line_2, $property?->city, $property?->postcode])->filter()->implode(', '));
+        $address = $offer->repairIssue
+            ? $this->offers->place($offer->repairIssue, $offer->unlocksAccess())
+            : '';
         $this->mail->toUser($contractor, 'Visit moved: '.($offer->repairIssue?->reference_number ?: 'repair'), '<p>The visit is now '.e($when->format('D j M Y, H:i')).'.</p>', [$this->offers->ics($offer, $when, $address)]);
         $this->offers->notifyLandlord($offer, CrmNotificationEvent::RepairJobRescheduled, 'Visit moved', $this->offers->name($offer).' moved the visit to '.$when->format('D j M, H:i').'. If the price changes, they will send an extra work request for you to approve.', 'rescheduled-'.$offer->id.'-'.$when->timestamp);
         $this->offers->notifyTenantVisit($offer, 'Your repair visit has moved');
@@ -255,6 +256,9 @@ class RepairJobAftercareService
     {
         $this->offers->assertContractor($offer, $contractor);
         $photos = array_slice(array_filter($photos), 0, self::MAX_PHOTOS);
+        if ($photos === []) {
+            throw new ContractorMarketplaceException('Add a photo of the finished work before marking the job complete.');
+        }
         $stored = [];
         foreach ($photos as $photo) {
             $stored[] = $photo->storeAs('repair-jobs/'.$offer->id, Str::uuid().'.'.($photo->guessExtension() ?: 'jpg'), self::PHOTO_DISK);

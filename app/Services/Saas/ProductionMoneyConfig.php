@@ -47,6 +47,27 @@ class ProductionMoneyConfig
             if ($env === 'production' && $opWebhook !== '' && $rentWebhook !== '' && hash_equals($opWebhook, $rentWebhook)) {
                 $problems[] = 'Production must use separate webhook secrets: STRIPE_RENT_WEBHOOK_SECRET must not equal STRIPE_WEBHOOK_SECRET.';
             }
+
+            if ($env === 'production' && $opSecret !== '' && ! str_starts_with($opSecret, 'sk_live_')) {
+                $problems[] = 'Production STRIPE_SECRET must be a live secret (sk_live_).';
+            }
+            if ($env === 'production' && $rentSecret !== '' && ! str_starts_with($rentSecret, 'sk_live_')) {
+                $problems[] = 'Production STRIPE_RENT_SECRET must be a live secret (sk_live_).';
+            }
+            if ($env === 'production' && $opWebhook !== '' && ! str_starts_with($opWebhook, 'whsec_')) {
+                $problems[] = 'Production STRIPE_WEBHOOK_SECRET must be a webhook secret (whsec_).';
+            }
+            if ($env === 'production' && $rentWebhook !== '' && ! str_starts_with($rentWebhook, 'whsec_')) {
+                $problems[] = 'Production STRIPE_RENT_WEBHOOK_SECRET must be a webhook secret (whsec_).';
+            }
+
+            $queue = strtolower((string) config('queue.default'));
+            if (in_array($queue, ['', 'sync', 'null'], true)) {
+                $problems[] = "QUEUE_CONNECTION={$queue} will not run background mail in {$env}; use database, redis, or sqs.";
+            }
+            if (config('app.debug') === true) {
+                $problems[] = 'APP_DEBUG must be false in '.$env.'.';
+            }
         }
 
         return $problems;

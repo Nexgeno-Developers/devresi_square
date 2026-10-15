@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Support\AccountMembership;
+use App\Support\AccountType;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -31,7 +32,7 @@ class RestrictTenancyManagement
             abort(403, 'You cannot manage tenancies.');
         }
 
-        if (is_landlord_plan_user($user)) {
+        if (is_landlord_plan_user($user) || $this->landlordWorkspaceMember($membership)) {
             return $next($request);
         }
 
@@ -49,5 +50,22 @@ class RestrictTenancyManagement
         }
 
         abort(403, 'You cannot manage tenancies.');
+    }
+
+    private function landlordWorkspaceMember($membership): bool
+    {
+        $account = function_exists('current_account') ? current_account() : null;
+
+        if (! $account || ! $membership || ! AccountType::isLandlord($account->account_type)) {
+            return false;
+        }
+
+        return in_array($membership->member_type, [
+            AccountMembership::STAFF,
+            AccountMembership::PROPERTY_MANAGER,
+            AccountMembership::LANDLORD_CONTACT,
+            AccountMembership::CONTACT,
+            AccountMembership::OWNER_CONTACT,
+        ], true);
     }
 }

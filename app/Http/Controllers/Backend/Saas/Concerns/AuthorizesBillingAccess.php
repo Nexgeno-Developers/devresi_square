@@ -6,6 +6,7 @@ use App\Models\Account;
 use App\Models\AccountUser;
 use App\Services\Saas\CurrentAccountService;
 use App\Support\AccountMembership;
+use App\Support\AccountType;
 use Illuminate\Http\Request;
 
 trait AuthorizesBillingAccess
@@ -37,6 +38,19 @@ trait AuthorizesBillingAccess
     {
         if (! $membership || ! $membership->can_login) {
             return false;
+        }
+
+        if (
+            AccountType::isLandlord($account->account_type)
+            && in_array($membership->member_type, [
+                AccountMembership::OWNER,
+                AccountMembership::ADMIN,
+                AccountMembership::STAFF,
+                AccountMembership::PROPERTY_MANAGER,
+                AccountMembership::LANDLORD_CONTACT,
+            ], true)
+        ) {
+            return true;
         }
 
         return (int) $account->owner_user_id === (int) $user->id

@@ -1429,9 +1429,15 @@ class UserController
     {
         try {
             $resetLink = $user->createResetLink();
-            $template = EmailTemplate::getByIdentifier('password_reset');
+            $template = EmailTemplate::getByIdentifier('team_invite');
 
+            $workspace = function_exists('current_account') ? current_account() : null;
             $placeholders = [
+                'first_name' => $user->first_name ?: ($user->name ?: 'there'),
+                'inviter_name' => auth()->user()?->name ?: 'A colleague',
+                'workspace_name' => $workspace?->account_name ?: 'a ResiSquare workspace',
+                'role_name' => $user->getRoleNames()->first() ?: 'team member',
+                'invitation_url' => $resetLink,
                 'user_name' => $user->name ?? $user->email,
                 'user_email' => $user->email,
                 'reset_link' => $resetLink,
@@ -1440,13 +1446,16 @@ class UserController
             ];
 
             if ($template) {
-                $renderedHtml = $template->replace($placeholders, ['reset_link']);
+                $renderedHtml = $template->replace($placeholders, ['invitation_url', 'reset_link']);
                 $subject = render_template($template->subject, $placeholders);
             } else {
-                $subject = 'Set your password for '.config('app.name');
-                $renderedHtml = "<p>Hi {$placeholders['user_name']},</p>"
-                    .'<p>Welcome to '.e(config('app.name')).'. Please set your password:</p>'
-                    ."<p><a href='{$resetLink}'>Set your password</a></p>";
+                $subject = 'You are invited to '.$placeholders['workspace_name'].' on ResiSquare';
+                $renderedHtml = '<p>Hi '.e($placeholders['first_name']).',</p>'
+                    .'<p><strong>'.e($placeholders['inviter_name']).'</strong> has invited you to join the <strong>'.e($placeholders['workspace_name']).'</strong> workspace on ResiSquare as a <strong>'.e($placeholders['role_name']).'</strong>.</p>'
+                    .'<p>Click the link below to accept your invitation and set up your password:</p>'
+                    .'<p><a href="'.e($resetLink).'">Accept Invitation</a></p>'
+                    .'<p>This invitation link will expire in 7 days.</p>'
+                    .'<p>Best regards,<br>The ResiSquare Team</p>';
             }
 
             Mail::to($user->email)->send(new MailManager([

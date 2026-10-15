@@ -1,4 +1,4 @@
-<p class="lab-note">Parked. Lets live on Home (Upcoming / Needs you) and on Properties via the Lets chip, which opens the tenancy tab.</p>
+<p class="lab-note">Parked. Lets live on Home (Upcoming / Needs your attention) and on Properties via the Lets chip, which opens the tenancy tab.</p>
 
 <x-ui-lab.shell active="Tenancies">
     <div class="lab-hero">
