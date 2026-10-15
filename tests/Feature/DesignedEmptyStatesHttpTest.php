@@ -15,32 +15,32 @@ class DesignedEmptyStatesHttpTest extends TestCase
             ->get(route('admin.finance.index'))
             ->assertOk()
             ->assertSee('lw-empty', false)
-            ->assertSee('Nothing to invoice yet', false);
+            ->assertSee('Rent Is Up to Date', false);
 
         $this->actingAs($user)->withSession($session)
             ->get(route('admin.tenancies.all'))
             ->assertOk()
             ->assertSee('lw-empty', false)
-            ->assertSee('No tenancies yet', false);
+            ->assertSee('No Tenancies Yet', false);
 
         $this->actingAs($user)->withSession($session)
             ->get(route('admin.documents.index'))
             ->assertOk()
             ->assertSee('lw-empty', false)
-            ->assertSee('No documents yet', false);
+            ->assertSee('No Documents Yet', false);
 
         $this->actingAs($user)->withSession($session)
             ->get(route('admin.property_repairs.index'))
             ->assertOk()
             ->assertSee('lw-empty', false)
-            ->assertSee('No repairs yet', false);
+            ->assertSee('No Open Repairs', false);
     }
 
     public function test_branded_error_pages_render(): void
     {
         $this->get('/this-route-definitely-does-not-exist-xyz')
             ->assertNotFound()
-            ->assertSee('Page not found', false)
+            ->assertSee('Record Not Found', false)
             ->assertSee('Resisquare', false);
     }
 

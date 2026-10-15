@@ -1,7 +1,7 @@
 <x-errors.shell
     code="500"
-    title="Something went wrong"
-    message="We hit an unexpected error. Try again in a moment. If it keeps happening, contact support."
+    title="Something Went Wrong"
+    message="We couldn't complete that action. Try again. If the problem continues, contact support."
 >
     @auth
         <a class="btn" href="{{ route('backend.dashboard') }}">Back to dashboard</a>

@@ -5,7 +5,8 @@
 <div class="aiz-titlebar mt-2 mb-3">
     <div class="row align-items-center">
         <div class="col-md-6">
-            <h1 class="h3">All roles</h1>
+            <h1 class="h3">Roles &amp; Permissions</h1>
+            <p class="text-muted mb-0">Control what each person can see and do.</p>
         </div>
         @can('add staff role')
         <div class="col-md-6 text-end">
@@ -22,6 +23,13 @@
         <h5 class="mb-0">Roles</h5>
     </div>
     <div class="card-body">
+        <ul class="text-muted small">
+            <li><strong>Owner / Landlord:</strong> Access to assigned properties, tenancies, rent, compliance and repairs.</li>
+            <li><strong>Tenant:</strong> Access limited to their own property, tenancy, payments, documents and reported issues.</li>
+            <li><strong>Contractor:</strong> Access limited to assigned jobs, visit details, updates and invoice uploads.</li>
+            <li><strong>Staff:</strong> Permissions configured by a workspace administrator.</li>
+        </ul>
+        <p class="small text-muted">Permission levels: View, Create, Edit, Approve, Delete.</p>
         <table class="table table-bordered table-striped align-middle">
             <thead class="table-light">
                 <tr>

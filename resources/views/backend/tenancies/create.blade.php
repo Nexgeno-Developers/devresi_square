@@ -8,7 +8,7 @@
 <div class="container-fluid pt-4 pb-5 lw-page">
     <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
         <div>
-            <h4>Add tenancy</h4>
+            <h4>Add Tenancy</h4>
             <p>Link a tenant to a property, then set rent and the deposit. You can invite them to the portal after saving.</p>
         </div>
         <a href="{{ route('admin.tenancies.all') }}" class="btn btn-light">Back</a>

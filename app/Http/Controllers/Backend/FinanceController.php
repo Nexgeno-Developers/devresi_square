@@ -31,8 +31,24 @@ class FinanceController extends Controller
                 ->get()
         );
 
+        $scoped = RentInvoice::query()->forAccount($accountId);
+        $summary = [
+            'due' => (float) (clone $scoped)->where('status', '!=', RentInvoice::STATUS_VOID)->sum('amount'),
+            'received' => (float) RentPayment::query()->forAccount($accountId)->sum('amount'),
+            'outstanding' => (float) (clone $scoped)
+                ->whereIn('status', [RentInvoice::STATUS_ISSUED, RentInvoice::STATUS_PARTIAL])
+                ->where('balance', '>', 0)
+                ->sum('balance'),
+            'unallocated' => 0,
+        ];
+        $openInvoice = (clone $scoped)
+            ->whereIn('status', [RentInvoice::STATUS_ISSUED, RentInvoice::STATUS_PARTIAL])
+            ->where('balance', '>', 0)
+            ->orderBy('due_date')
+            ->first();
+
         $query = RentInvoice::query()
-            ->with(['property', 'tenant', 'tenancy'])
+            ->with(['property', 'tenant', 'tenancy', 'payments'])
             ->forAccount($accountId);
 
         if ($filter === 'overdue') {
@@ -44,6 +60,8 @@ class FinanceController extends Controller
                 ->where('balance', '>', 0);
         } elseif ($filter === 'paid') {
             $query->where('status', RentInvoice::STATUS_PAID);
+        } elseif ($filter === 'part') {
+            $query->where('status', RentInvoice::STATUS_PARTIAL);
         }
 
         $invoices = $query
@@ -59,6 +77,8 @@ class FinanceController extends Controller
             'rentBank' => $finance->rentPayBankDetails($accountId),
             'cardRentReady' => app(RentStripeCheckoutService::class)->isConfigured(),
             'canCreate' => $finance->billableTenancies($accountId)->isNotEmpty(),
+            'summary' => $summary,
+            'openInvoice' => $openInvoice,
             'orphanTenancies' => Tenancy::query()
                 ->forAccount($accountId)
                 ->where(function ($query) {
@@ -200,7 +220,8 @@ class FinanceController extends Controller
 
         $finance->recordPayment($rentInvoice, $validated, (int) $request->user()->id);
 
-        flash('Payment recorded.')->success();
+        $period = $rentInvoice->issue_date?->format('F') ?: 'this period';
+        flash(rs_money($validated['amount']).' has been recorded against '.$period.' rent.')->success();
 
         return redirect()->route('admin.finance.show', $rentInvoice);
     }

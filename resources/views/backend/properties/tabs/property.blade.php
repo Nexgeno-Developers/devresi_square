@@ -394,7 +394,7 @@
             {{-- Compliance & Media Quick View --}}
             <div class="card h-100">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span class="card-title mb-0">{{ is_landlord_plan_user() ? 'Certificates' : 'Compliance' }}</span>
+                    <span class="card-title mb-0">Compliance</span>
                     @if(is_landlord_plan_user())
                         <a href="{{ route('admin.properties.index', ['property_id' => $property->id, 'tabname' => 'compliance']) }}" class="btn btn-sm btn-outline-primary">View</a>
                     @else

@@ -27,6 +27,7 @@ use App\Http\Controllers\Backend\PropertyController;
 use App\Http\Controllers\Backend\LandlordPropertyWizardController;
 use App\Http\Controllers\Backend\LandlordOnboardingController;
 use App\Http\Controllers\Backend\PropertyAddressLookupController;
+use App\Http\Controllers\Backend\CrmCommandSearchController;
 use App\Http\Controllers\Backend\DashboardController;
 use App\Http\Controllers\Backend\UiLabController;
 use App\Http\Controllers\Backend\DocumentsController;
@@ -165,6 +166,9 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'dashboard'])
         ->middleware(['current.account', 'account.status'])
         ->name('backend.dashboard');
+    Route::get('/command-search', CrmCommandSearchController::class)
+        ->middleware(['current.account', 'account.status'])
+        ->name('backend.command-search');
     Route::get('/ui-lab', [UiLabController::class, 'index'])
         ->middleware(['current.account', 'account.status'])
         ->name('backend.ui_lab');

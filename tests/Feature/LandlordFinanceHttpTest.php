@@ -86,7 +86,7 @@ class LandlordFinanceHttpTest extends TestCase
             ->get(route('tenant.rent'))
             ->assertOk()
             ->assertSee('600.00', false)
-            ->assertSee('Part paid', false);
+            ->assertSee('Part Paid', false);
 
         $this->actingAs($landlord)->withSession($session)
             ->get(route('admin.finance.show', $invoice))

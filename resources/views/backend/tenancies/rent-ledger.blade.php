@@ -15,7 +15,7 @@
 <div class="container-fluid pt-4 pb-5 lw-page">
     <div class="lw-hero d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
         <div>
-            <h4 class="mb-1">Rent ledger</h4>
+            <h4 class="mb-1">Rent</h4>
             <p class="mb-0">
                 {{ $property?->short_title ?? ($property?->line_1 ?? 'Property') }}
                 @if($property?->short_address)

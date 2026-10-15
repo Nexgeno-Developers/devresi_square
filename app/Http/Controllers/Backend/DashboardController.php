@@ -14,8 +14,12 @@ use App\Models\Staff;
 use App\Models\Tenancy;
 use App\Models\WorkOrder;
 use App\Models\RepairIssue;
+use App\Models\RentInvoice;
+use App\Models\RentPayment;
+use App\Models\ComplianceRecord;
 use App\Services\Saas\AccountLimitService;
 use App\Support\AccountMembership;
+use App\Support\CrmLanguage;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -125,7 +129,12 @@ class DashboardController extends Controller
             $depositAttentionTenancyId = $depositAttention->first()?->id;
         }
 
+        $crmDashboard = is_landlord_plan_user($user)
+            ? $this->landlordCrmDashboard($user, $accountId, $propertiesCount, $openRepairsCount, $complianceAttentionCount)
+            : null;
+
         return view('backend.dashboard', [
+            'crmDashboard' => $crmDashboard,
             'usersCount' => $usersCount,
             'propertiesCount' => $propertiesCount,
             'invoicesCount' => $invoicesCount,
@@ -149,6 +158,110 @@ class DashboardController extends Controller
             'depositAttentionCount' => $depositAttentionCount,
             'depositAttentionTenancyId' => $depositAttentionTenancyId,
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function landlordCrmDashboard($user, ?int $accountId, int $propertiesCount, int $openRepairsCount, int $complianceAttentionCount): array
+    {
+        $occupied = 0;
+        $notice = 0;
+        $received = 0.0;
+        $outstanding = 0.0;
+        $actions = [];
+
+        if ($accountId) {
+            $occupied = (int) Tenancy::forAccount($accountId)
+                ->where('status', 'Active')
+                ->whereNotNull('property_id')
+                ->where('property_id', '>', 0)
+                ->distinct()
+                ->count('property_id');
+            $notice = (int) Tenancy::forAccount($accountId)
+                ->where('status', 'Inactive')
+                ->whereNotNull('property_id')
+                ->distinct()
+                ->count('property_id');
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('rent_payments')) {
+                $received = (float) RentPayment::forAccount($accountId)
+                    ->whereBetween('paid_at', [now()->startOfMonth(), now()->endOfMonth()])
+                    ->sum('amount');
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('rent_invoices')) {
+                $outstanding = (float) RentInvoice::forAccount($accountId)
+                    ->whereIn('status', [RentInvoice::STATUS_ISSUED, RentInvoice::STATUS_PARTIAL])
+                    ->where('balance', '>', 0)
+                    ->sum('balance');
+
+                $overdue = RentInvoice::forAccount($accountId)
+                    ->with('property')
+                    ->whereIn('status', [RentInvoice::STATUS_ISSUED, RentInvoice::STATUS_PARTIAL])
+                    ->where('balance', '>', 0)
+                    ->whereDate('due_date', '<', now()->toDateString())
+                    ->orderBy('due_date')
+                    ->first();
+                if ($overdue) {
+                    $days = $overdue->due_date ? (int) $overdue->due_date->startOfDay()->diffInDays(now()->startOfDay()) : 0;
+                    $address = $overdue->property?->line_1 ?: 'A property';
+                    $actions[] = [
+                        'text' => $address.' — '.rs_money($overdue->balance).' outstanding · '.$days.' '.($days === 1 ? 'day' : 'days').' overdue',
+                        'url' => route('admin.finance.index', ['status' => 'overdue']),
+                        'cta' => 'View Rent',
+                    ];
+                }
+            }
+            if (\Illuminate\Support\Facades\Schema::hasTable('compliance_records')) {
+                $gap = ComplianceRecord::certificateGapsForAccount((int) $accountId)[0] ?? null;
+                if ($gap) {
+                    $address = $gap['property']->line_1 ?: 'A property';
+                    $name = $gap['type']->name ?: 'Compliance item';
+                    $expiry = $gap['record']?->expiry_date;
+                    if ($expiry && $expiry->isFuture()) {
+                        $days = (int) now()->startOfDay()->diffInDays($expiry->copy()->startOfDay());
+                        $text = $address.' — '.$name.' expires in '.$days.' '.($days === 1 ? 'day' : 'days').'.';
+                    } elseif ($expiry) {
+                        $text = $address.' — '.$name.' has expired.';
+                    } else {
+                        $text = $address.' — '.$name.' is missing.';
+                    }
+                    $actions[] = [
+                        'text' => $text,
+                        'url' => route('admin.compliance.index'),
+                        'cta' => 'Book Inspection',
+                    ];
+                }
+            }
+
+            $repair = RepairIssue::forAccount($accountId)->with('property')->open()->latest('id')->first();
+            if ($repair) {
+                $address = $repair->property?->line_1 ?: 'A property';
+                $title = \Illuminate\Support\Str::limit($repair->description ?: 'Repair', 80);
+                $actions[] = [
+                    'text' => $address.' — '.$title.' reported by tenant.',
+                    'url' => route('admin.property_repairs.show', $repair->id),
+                    'cta' => 'Assign Contractor',
+                ];
+            }
+        }
+
+        $vacant = max(0, $propertiesCount - $occupied);
+        $occupancy = $propertiesCount > 0 ? (int) round(($occupied / $propertiesCount) * 100) : 0;
+
+        return [
+            'greeting' => CrmLanguage::greeting($user->name),
+            'properties' => $propertiesCount,
+            'occupied' => $occupied,
+            'notice' => $notice,
+            'vacant' => $vacant,
+            'occupancy' => $occupancy,
+            'received' => $received,
+            'outstanding' => $outstanding,
+            'open_repairs' => $openRepairsCount,
+            'compliance_ok' => $complianceAttentionCount === 0,
+            'actions' => $actions,
+        ];
     }
 
     private function emptyPlanUsageSummary(): array

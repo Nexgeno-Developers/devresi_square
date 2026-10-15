@@ -100,7 +100,7 @@ class RentInvoice extends Model
 
         return match ($this->status) {
             self::STATUS_PAID => 'Paid',
-            self::STATUS_PARTIAL => 'Part paid',
+            self::STATUS_PARTIAL => 'Part Paid',
             self::STATUS_VOID => 'Void',
             default => 'Due',
         };

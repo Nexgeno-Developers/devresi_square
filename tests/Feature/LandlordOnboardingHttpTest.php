@@ -386,7 +386,7 @@ class LandlordOnboardingHttpTest extends TestCase
         $this->assertStringContainsString('On the register', $compliance);
         $this->assertStringContainsString('Rating '.$property->epc_rating, $compliance);
         $this->assertStringContainsString('Upload needed', $compliance);
-        $this->assertStringContainsString('Certificates tab', $documents);
+        $this->assertStringContainsString('Compliance tab', $documents);
         $this->assertStringNotContainsString('<h1>Documents</h1>', $documents);
     }
 
@@ -402,7 +402,7 @@ class LandlordOnboardingHttpTest extends TestCase
             ->get(route('admin.properties.index', ['property_id' => $property->id]));
         $page->assertOk();
         $page->assertSee('Overview', false);
-        $page->assertSee('Certificates', false);
+        $page->assertSee('Compliance', false);
         $page->assertDontSee('Occupancy', false);
         $page->assertDontSee('Operations', false);
 

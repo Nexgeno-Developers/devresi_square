@@ -5,9 +5,9 @@
         <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
             <div>
                 <h4>Repairs</h4>
-                <p>Issues reported across your properties.</p>
+                <p>Track every issue from report to completion.</p>
             </div>
-            <a href="{{ route('admin.property_repairs.create') }}" class="btn lw-btn-primary btn-sm">Raise repair</a>
+            <a href="{{ route('admin.property_repairs.create') }}" class="btn lw-btn-primary btn-sm">Add Repair</a>
         </div>
 
         @include('backend.repair.list.filter')

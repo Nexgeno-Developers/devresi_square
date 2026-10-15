@@ -29,8 +29,8 @@ class LandlordSidebarFlattenHttpTest extends TestCase
             ->get(route('admin.tenancies.all'))
             ->assertOk()
             ->assertSee('lw-chip-filters', false)
-            ->assertSee('Terminated', false)
-            ->assertSee('Add tenancy', false);
+            ->assertSee('Ended', false)
+            ->assertSee('Add Tenancy', false);
     }
 
     /**

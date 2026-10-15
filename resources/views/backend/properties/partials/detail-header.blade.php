@@ -20,7 +20,7 @@
             ->value('rent');
     }
     if (!empty($headerRent)) {
-        $priceLabel = '£' . number_format((float) $headerRent, 0) . '/mo';
+        $priceLabel = '£' . number_format((float) $headerRent, 0) . (is_landlord_plan_user() ? ' pcm' : '/mo');
     } elseif (!empty($property->price)) {
         $priceLabel = '£' . number_format((float) $property->price, 0);
     }
@@ -50,8 +50,8 @@
                 @if($property->sales_current_status && ! is_landlord_plan_user())
                     <span class="pcc-status">{{ $property->sales_current_status }}</span>
                 @endif
-                @if($property->letting_current_status)
-                    <span class="pcc-status" data-status="{{ strtolower($property->letting_current_status) }}">{{ $property->letting_current_status }}</span>
+                @if(is_landlord_plan_user() || $property->letting_current_status)
+                    <span class="pcc-status" data-status="{{ strtolower((string) $property->letting_current_status) }}">{{ is_landlord_plan_user() ? \App\Support\CrmLanguage::occupancy($property->letting_current_status) : $property->letting_current_status }}</span>
                 @endif
                 @if($priceLabel)
                     <span class="pcc-detail-price">{{ $priceLabel }}</span>

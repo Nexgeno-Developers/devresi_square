@@ -1405,13 +1405,13 @@ if (! function_exists('rs_page_title')) {
             'admin.tenancies.all' => 'Tenancies',
             'admin.tenancies.show' => 'Tenancy',
             'admin.tenancies.index' => 'Tenancies',
-            'admin.finance.index' => 'Finance',
-            'admin.finance.create' => 'New rent invoice',
-            'admin.finance.show' => 'Rent invoice',
+            'admin.finance.index' => 'Rent',
+            'admin.finance.create' => 'Create Charge',
+            'admin.finance.show' => 'Rent',
             'admin.people.index' => 'People',
             'backend.saas.accounts.index' => 'Accounts',
             'backend.saas.repair_desk.index' => 'Repair desk',
-            'admin.compliance.index' => 'Certificates',
+            'admin.compliance.index' => 'Compliance',
             'admin.documents.index' => 'Documents',
             'admin.property_repairs.index' => 'Repairs',
             'tenant.tenancy' => 'My tenancy',
@@ -1433,10 +1433,7 @@ if (! function_exists('rs_page_title')) {
 if (! function_exists('rs_repair_status_label')) {
     function rs_repair_status_label(?string $status): string
     {
-        return match ($status) {
-            'Under Process' => 'In progress',
-            default => (string) $status,
-        };
+        return \App\Support\CrmLanguage::repairStatus($status);
     }
 }
 

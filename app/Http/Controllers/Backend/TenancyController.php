@@ -63,7 +63,7 @@ class TenancyController
     {
         Gate::authorize('viewAny', Tenancy::class);
 
-        $query = Tenancy::with(['property', 'tenantMembers.user', 'tenancySubStatus', 'correctionRequests' => fn ($query) => $query->pending()])
+        $query = Tenancy::with(['property', 'tenantMembers.user', 'tenancyType', 'tenancySubStatus', 'correctionRequests' => fn ($query) => $query->pending()])
             ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->orderByDesc('id');
 
@@ -236,7 +236,8 @@ class TenancyController
 
         $inviteRequested = $request->boolean('invite');
         $inviteSent = $inviteRequested && $this->inviteTenantsFromForm($tenancy, $property, $request->input('user_id', []));
-        $message = 'Tenancy Added successfully!';
+        $address = $property?->line_1 ?: ($property?->full_address ?: 'the property');
+        $message = 'The tenancy has been added to '.$address.'.';
         if ($inviteRequested && ! $inviteSent) {
             $message = 'Tenancy added, but the invite failed.';
         } elseif ($inviteSent) {

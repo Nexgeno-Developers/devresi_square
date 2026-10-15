@@ -11,11 +11,17 @@
     }
     $statusLabel = rs_repair_status_label($repair->status);
     $pill = match ($statusLabel) {
-        'In progress' => 'lw-pill-warn',
-        'Work Completed', 'Closed' => 'lw-pill-ok',
+        'In Progress', 'Reviewing', 'Awaiting Parts', 'Awaiting Approval' => 'lw-pill-warn',
+        'Completed', 'Closed' => 'lw-pill-ok',
         default => 'lw-pill-idle',
     };
-    $priority = $repair->priority ? ucfirst($repair->priority) : 'Medium';
+    $priority = match (strtolower((string) $repair->priority)) {
+        'urgent' => 'Urgent',
+        'high' => 'High',
+        'low' => 'Low',
+        'normal', 'medium' => 'Normal',
+        default => $repair->priority ? ucfirst((string) $repair->priority) : 'Normal',
+    };
 @endphp
 
 <article

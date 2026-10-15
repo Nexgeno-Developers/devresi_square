@@ -160,7 +160,7 @@ class TenantPortalController extends Controller
         try {
             $url = $rentCheckout->createCheckoutUrl($user, $rentInvoice);
         } catch (ValidationException $exception) {
-            flash(collect($exception->errors())->flatten()->first() ?: 'Unable to start card payment.')->error();
+            flash(collect($exception->errors())->flatten()->first() ?: 'Payment Not Completed. The payment could not be completed. Check the payment details and try again.')->error();
 
             return redirect()->route('tenant.rent');
         } catch (RuntimeException $exception) {

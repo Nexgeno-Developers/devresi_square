@@ -123,7 +123,8 @@ class LandlordPropertyWizardController
         if ($step === 3) {
             $this->wizardService->updateStep($property, [], 3);
 
-            flash('Your property has been added successfully.')->success();
+            $added = $property->line_1 ?: 'The property';
+            flash($added.' has been added to your portfolio.')->success();
 
             return redirect()->route('admin.properties.index', [
                 'property_id' => $property->id,

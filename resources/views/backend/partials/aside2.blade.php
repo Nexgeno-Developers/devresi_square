@@ -39,7 +39,7 @@
 
     <ul class="nav flex-column mb-auto pt-2">
         @unless(is_tenant_portal_user() || auth()->user()->hasRole('Contractor'))
-         <li class="nav-item">
+         <li class="nav-item" data-crm="dashboard">
             <a class="nav-link {{ request()->routeIs('backend.dashboard') ? ' active' : '' }}"
                 href="{{ route('backend.dashboard') }}" >
                 <span class="icon_wrapper"><i class="bi bi-grid"></i>Dashboard</span>
@@ -96,7 +96,7 @@
         @unless(is_tenant_portal_user() || auth()->user()->hasRole('Contractor'))
         @if(auth()->user()->can('view calendar') || is_landlord_plan_user())
         {{-- Calendar --}}
-         <li class="nav-item">
+         <li class="nav-item" data-crm="calendar">
             <a class=" nav-link {{ request()->routeIs('backend.events.calendar') ? ' active' : ''  }}"
                 href="{{ route('backend.events.calendar') }}">
                 <span class="icon_wrapper"><i class="fa-solid fa-calendar-check"></i>Calendar</span>
@@ -109,7 +109,7 @@
         @canany(['view properties', 'edit properties', 'create properties'])
         {{-- Properties --}}
         @if(is_landlord_plan_user())
-         <li class="nav-item">
+         <li class="nav-item" data-crm="properties">
             <a class="nav-link {{ request()->routeIs('admin.properties.*') ? ' active' : '' }}"
                 href="{{ route('admin.properties.index') }}">
                 <span class="icon_wrapper"><i class="fa-solid fa-building"></i>Properties</span>
@@ -155,7 +155,7 @@
         @if((auth()->user()->can('manage tenancies') || is_landlord_plan_user()) && ! is_tenant_portal_user() && ! auth()->user()->hasRole('Contractor'))
         {{-- Tenancies --}}
         @if(is_landlord_plan_user())
-         <li class="nav-item">
+         <li class="nav-item" data-crm="tenancies">
             <a class="nav-link {{ request()->routeIs('admin.tenancies.*') ? ' active' : '' }}"
                 href="{{ route('admin.tenancies.all') }}">
                 <span class="icon_wrapper"><i class="fa-solid fa-home"></i>Tenancies</span>
@@ -206,10 +206,10 @@
         @endif
 
         @if(is_landlord_plan_user())
-         <li class="nav-item">
+         <li class="nav-item" data-crm="rent">
             <a class="nav-link {{ request()->routeIs('admin.finance.*') ? ' active' : '' }}"
                 href="{{ route('admin.finance.index') }}">
-                <span class="icon_wrapper"><i class="fa-solid fa-file-invoice-dollar"></i>Finance</span>
+                <span class="icon_wrapper"><i class="fa-solid fa-file-invoice-dollar"></i>Rent</span>
             </a>
         </li>
         @endif
@@ -362,13 +362,13 @@
         @unless(is_tenant_portal_user())
         @if(auth()->user()->canAny(['view property repair', 'edit property repair', 'create property repair']) || is_landlord_plan_user())
         @if(is_landlord_plan_user())
-         <li class="nav-item">
+         <li class="nav-item" data-crm="repairs">
             <a class="nav-link {{ request()->routeIs('admin.property_repairs.*') ? ' active' : '' }}"
                 href="{{ route('admin.property_repairs.index') }}">
                 <span class="icon_wrapper"><i class="bi bi-tools"></i>Repairs</span>
             </a>
         </li>
-         <li class="nav-item">
+         <li class="nav-item" data-crm="people">
             <a class="nav-link {{ request()->routeIs('admin.people.*') || request()->routeIs('admin.portal-access.*') || request()->routeIs('admin.users.*') || request()->routeIs('admin.owner-groups.*') ? ' active' : '' }}"
                 href="{{ route('admin.people.index') }}">
                 <span class="icon_wrapper"><i class="fa-solid fa-people-group"></i>People</span>
@@ -496,15 +496,15 @@
         @endcan
 
         @if(is_landlord_plan_user())
-         <li class="nav-item">
+         <li class="nav-item" data-crm="compliance">
             <a href="{{ route('admin.compliance.index') }}" class="nav-link {{ request()->routeIs('admin.compliance.index') ? ' active' : '' }}">
-                <span class="icon_wrapper"><i class="fa-solid fa-certificate"></i>Certificates</span>
+                <span class="icon_wrapper"><i class="fa-solid fa-certificate"></i>Compliance</span>
             </a>
          </li>
         @endif
 
         @if(is_landlord_plan_user() || auth()->user()->can('Manage Document Types'))
-         <li class="nav-item">
+         <li class="nav-item" data-crm="documents">
             <a href="{{ route('admin.documents.index') }}" class="nav-link {{ request()->routeIs('admin.documents.*') ? ' active' : '' }}">
                 <span class="icon_wrapper"><i class="fa-solid fa-file-alt"></i>Documents</span>
             </a>
@@ -512,7 +512,7 @@
         @endif
 
         @if($canViewBilling && is_landlord_plan_user())
-         <li class="nav-item">
+         <li class="nav-item" data-crm="settings">
             <a class="nav-link {{ request()->routeIs('backend.billing.*') ? ' active' : '' }}"
                 href="{{ route('backend.billing.index') }}">
                 <span class="icon_wrapper"><i class="fa-solid fa-gear"></i>Settings</span>

@@ -3,8 +3,13 @@
 @section('content')
 <div class="container-fluid lw-page">
     <div class="lw-hero">
-        <h4>Documents</h4>
-        <p>Files stored on this account. Add them from a property, then share with the tenant from here.</p>
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+                <h4>Documents</h4>
+                <p>Property and tenancy documents, organised in one place.</p>
+            </div>
+            <a href="{{ route('admin.properties.index') }}" class="btn lw-btn-primary btn-sm">Upload Document</a>
+        </div>
     </div>
 
     <div class="card lw-card">
@@ -54,9 +59,9 @@
                             <td colspan="6">
                                 <div class="lw-empty">
                                     <div class="lw-empty-icon"><i class="bi bi-folder2-open"></i></div>
-                                    <div class="lw-empty-title">No documents yet</div>
-                                    <p class="mb-3">Open a property and use Add document, then share it with the tenant here.</p>
-                                    <a href="{{ route('admin.properties.index') }}" class="btn lw-btn-primary">Open properties</a>
+                                    <div class="lw-empty-title">No Documents Yet</div>
+                                    <p class="mb-3">Upload a document and connect it to the relevant property, tenancy or record.</p>
+                                    <a href="{{ route('admin.properties.index') }}" class="btn lw-btn-primary">Upload Document</a>
                                 </div>
                             </td>
                         </tr>

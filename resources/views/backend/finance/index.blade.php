@@ -1,17 +1,33 @@
 @extends('backend.layout.app')
 
-@section('title', 'Finance · Resisquare')
+@section('title', 'Rent · Resisquare')
 
 @section('content')
 <div class="container-fluid lw-page">
     <div class="lw-hero d-flex align-items-center justify-content-between gap-3 flex-wrap">
         <div>
-            <h4>Finance</h4>
-            <p>Rent invoices for this account. Tenants see these on their Rent page.</p>
+            <h4>Rent</h4>
+            <p>Track rent due, received and outstanding across your portfolio.</p>
         </div>
-        @if($canCreate)
-            <a href="{{ route('admin.finance.create') }}" class="btn lw-btn-secondary">New invoice</a>
-        @endif
+        <div class="d-flex gap-2 flex-wrap">
+            @if(! empty($openInvoice))
+                <a href="{{ route('admin.finance.show', $openInvoice) }}" class="btn lw-btn-secondary">Record Payment</a>
+            @endif
+            @if($canCreate)
+                <a href="{{ route('admin.finance.create') }}" class="btn lw-btn-primary">Create Charge</a>
+            @endif
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        @foreach(['due' => 'Due', 'received' => 'Received', 'outstanding' => 'Outstanding', 'unallocated' => 'Unallocated'] as $key => $label)
+            <div class="col-6 col-lg-3">
+                <div class="card lw-card h-100"><div class="card-body">
+                    <div class="text-muted small">{{ $label }}</div>
+                    <div class="fw-semibold">{{ rs_money($summary[$key] ?? 0) }}</div>
+                </div></div>
+            </div>
+        @endforeach
     </div>
 
     @if(($overdueCount ?? 0) > 0)
@@ -57,7 +73,8 @@
         @php
             $filters = [
                 'all' => 'All',
-                'open' => 'Open',
+                'open' => 'Due',
+                'part' => 'Part Paid',
                 'overdue' => 'Overdue',
                 'paid' => 'Paid',
             ];
@@ -73,13 +90,13 @@
             <table class="table lw-table align-middle">
                 <thead>
                     <tr>
-                        <th>Invoice</th>
-                        <th>Tenant</th>
                         <th>Property</th>
-                        <th>Issued</th>
+                        <th>Tenant</th>
+                        <th>Period</th>
                         <th>Due</th>
-                        <th>Amount</th>
+                        <th>Received</th>
                         <th>Balance</th>
+                        <th>Payment Method</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -90,36 +107,36 @@
                             $badge = match ($label) {
                                 'Overdue' => 'danger',
                                 'Paid' => 'success',
-                                'Part paid' => 'warning',
+                                'Part Paid' => 'warning',
                                 'Void' => 'secondary',
                                 default => 'primary',
                             };
+                            $received = max(0, (float) $invoice->amount - (float) $invoice->balance);
+                            $method = optional($invoice->payments->sortByDesc('id')->first())->method;
+                            $methodLabel = \App\Models\RentPayment::METHODS[$method] ?? '—';
                         @endphp
                         <tr>
                             <td>
-                                <a href="{{ route('admin.finance.show', $invoice) }}">{{ rs_rent_title($invoice) }}</a>
-                                <div class="small text-muted">{{ $invoice->invoice_no }}</div>
+                                <a href="{{ route('admin.finance.show', $invoice) }}">{{ $invoice->property?->line_1 ?: ($invoice->property?->full_address ?: 'Property') }}</a>
                             </td>
                             <td>{{ rs_person($invoice->tenant) }}</td>
-                            <td>{{ $invoice->property?->full_address ?: ($invoice->property?->line_1 ?: 'Property #'.$invoice->property_id) }}</td>
-                            <td>{{ $invoice->issue_date?->format('d M Y') ?: '—' }}</td>
-                            <td>{{ $invoice->due_date?->format('d M Y') ?: '—' }}</td>
-                            <td>£{{ number_format((float) $invoice->amount, 2) }}</td>
-                            <td>£{{ number_format((float) $invoice->balance, 2) }}</td>
-                            <td><span class="badge bg-{{ $badge }}">{{ $label }}</td></td>
+                            <td>{{ $invoice->issue_date?->format('F Y') ?: '—' }}</td>
+                            <td>{{ rs_money($invoice->amount) }}</td>
+                            <td>{{ rs_money($received) }}</td>
+                            <td>{{ rs_money($invoice->balance) }}</td>
+                            <td>{{ $methodLabel }}</td>
+                            <td><span class="badge bg-{{ $badge }}">{{ $label }}</span></td>
                         </tr>
                     @empty
                         <tr>
                             <td colspan="8">
                                 <div class="lw-empty">
+                                    <div class="lw-empty-title">Rent Is Up to Date</div>
+                                    <p class="mb-3">There are no overdue rent balances across your portfolio.</p>
                                     @if($canCreate)
-                                        <div class="lw-empty-title">No rent invoices yet</div>
-                                        <p class="mb-3">Issue one for a tenancy that has a property and a tenant.</p>
-                                        <a href="{{ route('admin.finance.create') }}" class="btn lw-btn-primary" data-next-action="new-invoice">New invoice</a>
+                                        <a href="{{ route('admin.finance.create') }}" class="btn lw-btn-primary" data-next-action="new-invoice">Create Charge</a>
                                     @else
-                                        <div class="lw-empty-title">Nothing to invoice yet</div>
-                                        <p class="mb-3">Add a tenancy on a property, then you can issue rent here.</p>
-                                        <a href="{{ route('admin.tenancies.create') }}" class="btn lw-btn-primary" data-next-action="add-tenancy">Add tenancy</a>
+                                        <a href="{{ route('admin.tenancies.create') }}" class="btn lw-btn-primary" data-next-action="add-tenancy">Add Tenancy</a>
                                     @endif
                                 </div>
                             </td>

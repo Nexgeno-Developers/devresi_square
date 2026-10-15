@@ -12,7 +12,7 @@
         <input type="text" name="search" class="form-control" placeholder="Search address" value="{{ request('search') }}">
         <button class="btn lw-btn-primary" type="submit">Search</button>
         @if(request('search') || request('status'))
-            <a href="{{ route('admin.property_repairs.index') }}" class="btn lw-btn-ghost">Clear</a>
+            <a href="{{ route('admin.property_repairs.index') }}" class="btn lw-btn-ghost">Clear Filters</a>
         @endif
     </form>
 </div>

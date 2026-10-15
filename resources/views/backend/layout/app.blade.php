@@ -146,6 +146,12 @@
         $(document).ready(function() {
             // Check if there are validation errors
             @if ($errors->any())
+                AIZ.plugins.notify('danger', 'Check the Details. Some information is missing or needs correcting.', {
+                    "closeButton": true,
+                    "progressBar": true,
+                    "positionClass": "toast-top-right",
+                    "timeOut": 7000
+                });
                 @foreach ($errors->all() as $error)
                     AIZ.plugins.notify('danger', @json($error), {
                         "closeButton": true,

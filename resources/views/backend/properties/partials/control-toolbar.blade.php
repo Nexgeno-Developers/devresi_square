@@ -5,7 +5,7 @@
     <div class="pcc-toolbar-brand">
         <span class="pcc-toolbar-title">Properties</span>
         @if(is_landlord_plan_user())
-            <span class="pcc-toolbar-kicker">Your portfolio</span>
+            <span class="pcc-toolbar-kicker">Your complete portfolio in one place.</span>
         @endif
     </div>
     <label class="pcc-toolbar-search">

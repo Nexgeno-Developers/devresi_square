@@ -93,12 +93,12 @@ class LandlordMvpRouteRestrictionTest extends TestCase
         $this->actingAs($user)->withSession($session)
             ->get(route('admin.finance.index'))
             ->assertOk()
-            ->assertSee('Finance', false);
+            ->assertSee('Rent', false);
 
         $this->actingAs($user)->withSession($session)
             ->get(route('admin.tenancies.create'))
             ->assertOk()
-            ->assertSee('Add tenancy', false)
+            ->assertSee('Add Tenancy', false)
             ->assertDontSee('Search menu', false)
             ->assertSee('asset/js/select2.min.js', false)
             ->assertSee('Quick add tenant', false)
@@ -107,7 +107,7 @@ class LandlordMvpRouteRestrictionTest extends TestCase
         $this->actingAs($user)->withSession($session)
             ->get(route('backend.events.calendar'))
             ->assertOk()
-            ->assertSee('Add event', false);
+            ->assertSee('Add Event', false);
 
         $this->actingAs($user)->withSession($session)
             ->get(route('admin.property_repairs.create'))
@@ -131,12 +131,12 @@ class LandlordMvpRouteRestrictionTest extends TestCase
         $this->actingAs($user)->withSession($session)
             ->get(route('admin.compliance.index'))
             ->assertOk()
-            ->assertSee('Certificates', false);
+            ->assertSee('Compliance', false);
 
         $this->actingAs($user)->withSession($session)
             ->get(route('backend.dashboard'))
             ->assertOk()
-            ->assertSee('Certificates', false);
+            ->assertSee('Compliance', false);
     }
 
     public function test_landlord_dashboard_hides_agency_chrome(): void
@@ -152,7 +152,7 @@ class LandlordMvpRouteRestrictionTest extends TestCase
             ->assertSee('Documents', false)
             ->assertSee('Repairs', false)
             ->assertSee('People', false)
-            ->assertSee('Finance', false)
+            ->assertSee('Rent', false)
             ->assertSee('Settings', false)
             ->assertDontSee('Search menu', false)
             ->assertDontSee('View Active Tenancies', false)

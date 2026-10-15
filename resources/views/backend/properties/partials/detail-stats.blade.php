@@ -49,7 +49,7 @@
         $daysListed = max(0, (int) $property->created_at->copy()->startOfDay()->diffInDays(now()->startOfDay()));
     }
     $isLandlord = is_landlord_plan_user();
-    $complianceLabel = 'Certificates';
+    $complianceLabel = 'Compliance';
 @endphp
 <div class="pcc-stats-bar" id="pccDetailStats">
     <a href="{{ route('admin.tenancies.index', ['propertyId'=>$property->id]) }}" class="pcc-stat-pill">

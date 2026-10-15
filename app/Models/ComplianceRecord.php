@@ -65,16 +65,16 @@ class ComplianceRecord extends Model
     public function attentionLabel(): string
     {
         if (! $this->hasFile()) {
-            return 'Not provided yet';
+            return 'Missing';
         }
         if ($this->isExpired()) {
             return 'Expired';
         }
         if ($this->isExpiringSoon()) {
-            return 'Due soon';
+            return 'Due Soon';
         }
 
-        return 'On file';
+        return 'Current';
     }
 
     /**
@@ -115,11 +115,9 @@ class ComplianceRecord extends Model
                     'property' => $property,
                     'type' => $type,
                     'record' => $latest,
-                    'state' => ! $latest
+                    'state' => ! $latest || ! $latest->hasFile() || ! $latest->expiry_date
                         ? 'Missing'
-                        : (! $latest->hasFile()
-                            ? 'Not provided yet'
-                            : ($latest->expiry_date ? $latest->attentionLabel() : 'Missing expiry')),
+                        : $latest->attentionLabel(),
                 ];
             }
         }

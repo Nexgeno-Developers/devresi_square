@@ -6,9 +6,9 @@
         <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
             <div>
                 <h4>Calendar</h4>
-                <p>Click a day to add an appointment. Events on a let home also show in the tenant portal.</p>
+                <p>Visits, inspections, viewings and appointments across your portfolio.</p>
             </div>
-            <button type="button" class="btn lw-btn-secondary" onclick="window.openLandlordCalendarEvent && window.openLandlordCalendarEvent()">Add event</button>
+            <button type="button" class="btn lw-btn-secondary" onclick="window.openLandlordCalendarEvent && window.openLandlordCalendarEvent()">Add Event</button>
         </div>
     @endif
     <div class="row h-100">

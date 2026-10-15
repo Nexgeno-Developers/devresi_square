@@ -1,6 +1,6 @@
 @php
     $calendlyUrl = config('services.calendly.url');
-    $navItems = ['Properties', 'Tenancies', 'Finance', 'Repairs', 'Documents', 'Calendar'];
+    $navItems = ['Properties', 'Tenancies', 'Rent', 'Repairs', 'Documents', 'Calendar'];
     $chapters = [
         [
             'id' => 'portfolio',
@@ -20,7 +20,7 @@
             'id' => 'rent',
             'index' => '03',
             'title' => 'Rent',
-            'active' => 'Finance',
+            'active' => 'Rent',
             'body' => 'Invoices and payments live on the tenancy. The platform is a flat fee, not a share of the rent.',
         ],
         [
@@ -28,7 +28,7 @@
             'index' => '04',
             'title' => 'Repairs',
             'active' => 'Repairs',
-            'body' => 'A tenant raises an issue. You appoint a contractor, confirm the visit, and close the invoice in the same record.',
+            'body' => 'A tenant raises an issue. You appoint a contractor, confirm the visit, then track the work and close the repair from the same property record.',
         ],
         [
             'id' => 'access',
@@ -44,8 +44,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resisquare — property operations</title>
-    <meta name="description" content="Resisquare helps landlords manage homes, rent, and repairs in one workspace.">
+    <title>ResiSquare — property operations</title>
+    <meta name="description" content="Manage your properties, tenancies, rent and repairs from one clean dashboard. Built for landlords and independent agents.">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -58,7 +58,7 @@
     <header class="nav">
         <div class="wrap nav-inner">
             <a class="brand" href="{{ route('home') }}">
-                <img src="{{ site_header_logo_url() }}" alt="Resisquare">
+                <img src="{{ site_header_logo_url() }}" alt="ResiSquare">
             </a>
             <nav class="nav-links" aria-label="Primary">
                 <a href="#product">Product</a>
@@ -81,8 +81,8 @@
             <div class="wrap hero-grid">
                 <div class="hero-copy">
                     <p class="eyebrow">Property operations</p>
-                    <h1 id="hero-title">The operating system for rented homes.</h1>
-                    <p class="lede">Resisquare holds the portfolio, the tenancy, the rent, and the repair in one workspace. Built for landlords and agents who run homes as a business.</p>
+                    <h1 id="hero-title">One Workspace for Your Entire Portfolio.</h1>
+                    <p class="lede">Manage your properties, tenancies, rent and repairs from one clean dashboard. Built for landlords and independent agents who run property as a business.</p>
                     <div class="hero-actions">
                         <a class="btn btn-solid" href="{{ route('register') }}">Start trial</a>
                         @if($calendlyUrl)
@@ -91,18 +91,37 @@
                             <button type="button" class="btn btn-line" data-demo-open>Book a demo</button>
                         @endif
                     </div>
-                    <p class="fine">A 7-day trial is available on eligible plans. <a href="{{ route('pricing') }}">View pricing</a></p>
+                    <p class="fine">Try ResiSquare free for 7 days. <a href="{{ route('pricing') }}">View pricing</a></p>
                 </div>
                 <div class="hero-stage">
-                    <canvas id="massing" aria-hidden="true"></canvas>
-                    <div class="massing-fallback" hidden>
-                        <div class="elevation" aria-hidden="true">
-                            @for ($i = 0; $i < 15; $i++)
-                                <span class="pane {{ $i === 7 ? 'is-lit' : '' }}"></span>
-                            @endfor
+                    <div class="hero-app">
+                        <div class="window-bar">
+                            <span>ResiSquare</span>
+                            <span>Portfolio</span>
+                        </div>
+                        <div class="app">
+                            <aside class="side" aria-hidden="true">
+                                <p class="side-label">Portfolio</p>
+                                @foreach ($navItems as $item)
+                                    <span class="{{ $item === 'Properties' ? 'is-active' : '' }}">{{ $item }}</span>
+                                @endforeach
+                            </aside>
+                            <div class="app-main">
+                                <div class="sheet-head">
+                                    <h3>Properties</h3>
+                                    <span>24 active</span>
+                                </div>
+                                <div class="table" role="presentation">
+                                    <div class="tr th"><span>Property</span><span>City</span><span>Status</span><span>Rent</span></div>
+                                    <div class="tr"><span>14 Elm Row</span><span>Manchester</span><span class="chip">Occupied</span><span>£1,250</span></div>
+                                    <div class="tr"><span>8 Chapel Street</span><span>Leeds</span><span class="chip chip-alert">Notice</span><span>£980</span></div>
+                                    <div class="tr"><span>22 Quay House</span><span>Bristol</span><span class="chip chip-quiet">Vacant</span><span>—</span></div>
+                                    <div class="tr"><span>Unit 4, Harbour Court</span><span>Liverpool</span><span class="chip">Occupied</span><span>£1,450</span></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <p class="visually-hidden">Architectural massing model of a residential block, with one occupied unit lit.</p>
+                    <p class="visually-hidden">ResiSquare portfolio, showing occupied and vacant homes with rent in one workspace.</p>
                 </div>
             </div>
         </section>
@@ -123,7 +142,7 @@
             <div class="wrap">
                 <header class="section-head">
                     <p class="eyebrow">The operating cost</p>
-                    <h2 id="cost-title">A split portfolio is expensive to run.</h2>
+                    <h2 id="cost-title">Too Many Systems Cost You Time and Margin</h2>
                 </header>
                 <ol class="cost-list">
                     <li>
@@ -134,7 +153,7 @@
                     <li>
                         <span>02</span>
                         <h3>Margin</h3>
-                        <p>Tools that take a percentage of rent scale against you. Resisquare is a platform fee, not a cut of income.</p>
+                        <p>Tools that take a percentage of rent scale against you. ResiSquare is a platform fee, not a cut of income.</p>
                     </li>
                     <li>
                         <span>03</span>
@@ -149,7 +168,7 @@
             <div class="wrap stage">
                 <div class="stage-copy">
                     <p class="eyebrow">The workspace</p>
-                    <h2 id="product-title" class="visually-hidden">Resisquare workspace</h2>
+                    <h2 id="product-title" class="visually-hidden">ResiSquare workspace</h2>
                     <div class="rail" aria-hidden="true"><span class="rail-fill"></span></div>
                     <div class="steps">
                         @foreach ($chapters as $chapter)
@@ -165,7 +184,7 @@
                 <div class="stage-visual">
                     <div class="window">
                         <div class="window-bar">
-                            <span>Resisquare</span>
+                            <span>ResiSquare</span>
                             <span class="window-meta">Workspace</span>
                         </div>
                         <div class="stage-screens">
@@ -201,14 +220,14 @@
                                                     <h3>14 Elm Row</h3>
                                                     <span class="chip">Active</span>
                                                 </div>
-                                                <p class="sheet-sub">Assured shorthold tenancy</p>
+                                                <p class="sheet-sub">Residential tenancy</p>
                                                 <dl class="facts">
                                                     <div><dt>Tenant</dt><dd>A. Rahman</dd></div>
                                                     <div><dt>Start</dt><dd>1 Sep 2024</dd></div>
-                                                    <div><dt>Term</dt><dd>12 months</dd></div>
-                                                    <div><dt>Renewal</dt><dd>1 Sep 2026</dd></div>
-                                                    <div><dt>Rent</dt><dd>£1,250 pcm</dd></div>
-                                                    <div><dt>Deposit</dt><dd>Held, registered</dd></div>
+                                                    <div><dt>Status</dt><dd>Current</dd></div>
+                                                    <div><dt>Rent</dt><dd>£1,250 monthly</dd></div>
+                                                    <div><dt>Deposit</dt><dd>Held</dd></div>
+                                                    <div><dt>Record</dt><dd>On this property</dd></div>
                                                 </dl>
                                             @elseif ($chapter['id'] === 'rent')
                                                 <div class="sheet-head">
@@ -233,7 +252,7 @@
                                                     <li><span>9 Oct</span><strong>Raised</strong><em>Tenant report logged on the property.</em></li>
                                                     <li><span>9 Oct</span><strong>Assigned</strong><em>Northline Heating, approved contractor.</em></li>
                                                     <li><span>16 Oct</span><strong>Visit</strong><em>Thursday, 09:30. Confirmed.</em></li>
-                                                    <li><span>—</span><strong>Invoice</strong><em>Opens when the job is complete.</em></li>
+                                                    <li><span>—</span><strong>Close</strong><em>Work is marked complete on the property record.</em></li>
                                                 </ol>
                                             @else
                                                 <div class="sheet-head">
@@ -262,7 +281,7 @@
             <div class="wrap">
                 <header class="section-head">
                     <p class="eyebrow">A working day</p>
-                    <h2 id="day-title">The register closes the same day it opens.</h2>
+                    <h2 id="day-title">Your portfolio updates as the day happens.</h2>
                 </header>
                 <div class="day-track">
                 <span class="day-progress" aria-hidden="true"></span>
@@ -291,7 +310,7 @@
             <div class="wrap close-grid">
                 <div>
                     <p class="eyebrow">Begin</p>
-                    <h2 id="close-title">Run the portfolio from one system.</h2>
+                    <h2 id="close-title">Bring Your Entire Portfolio Together</h2>
                     <p class="lede">Start a trial on the published plans, or book a walkthrough of the workspace.</p>
                     <div class="hero-actions">
                         <a class="btn btn-solid" href="{{ route('register') }}">Start trial</a>
@@ -315,7 +334,7 @@
 
     <footer class="foot">
         <div class="wrap foot-inner">
-            <p>&copy; {{ date('Y') }} Resisquare</p>
+            <p>&copy; {{ date('Y') }} ResiSquare</p>
             <nav aria-label="Footer">
                 <a href="{{ route('pricing') }}">Pricing</a>
                 <a href="{{ route('login') }}">Login</a>
@@ -357,7 +376,6 @@
         </form>
     </dialog>
 
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/ScrollTrigger.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/lenis@1.1.20/dist/lenis.min.js" defer></script>

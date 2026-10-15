@@ -64,7 +64,7 @@
             ['id' => 'property', 'label' => 'Overview', 'tabs' => ['property']],
             ['id' => 'tenancy', 'label' => 'Tenancy', 'tabs' => ['tenancy']],
             ['id' => 'owners', 'label' => 'Owners', 'tabs' => ['owners']],
-            ['id' => 'compliance', 'label' => 'Certificates', 'tabs' => ['compliance']],
+            ['id' => 'compliance', 'label' => 'Compliance', 'tabs' => ['compliance']],
             ['id' => 'documents', 'label' => 'Documents', 'tabs' => ['documents']],
         ] : [
             ['id' => 'overview', 'label' => 'Overview', 'tabs' => ['property', 'notes', 'media', 'apd', 'appointments', 'teams', 'responsibility']],

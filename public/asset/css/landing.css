@@ -187,30 +187,36 @@ h2 {
 
 .hero-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.95fr);
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
     gap: 32px;
     align-items: center;
     min-height: calc(100vh - var(--nav) - 108px);
 }
 
+.hero-grid > * { min-width: 0; }
+
 .hero-stage {
     position: relative;
-    min-height: 560px;
+    min-height: 0;
 }
 
-.hero-stage canvas,
-.massing-fallback {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
+.hero-app {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
 }
 
-.hero-stage canvas { display: block; pointer-events: none; }
+.hero-app .app {
+    min-height: 0;
+    grid-template-columns: 156px minmax(0, 1fr);
+}
 
-.massing-fallback {
-    display: grid;
-    place-items: center;
+.hero-app .app-main { min-width: 0; }
+
+.hero-app .tr {
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.85fr) auto minmax(64px, 0.6fr);
 }
 
 .spec {
@@ -681,7 +687,7 @@ h2 {
         min-height: 0;
     }
 
-    .app { height: 100%; min-height: 0; }
+    .product-stage .app { height: 100%; min-height: 0; }
 
     .steps .step + .step,
     .stage-screens .screen + .screen { opacity: 0; }
@@ -689,6 +695,13 @@ h2 {
     .step, .screen {
         position: absolute;
         inset: 0;
+    }
+}
+
+@media (max-width: 1099px) {
+    .hero-grid {
+        grid-template-columns: 1fr;
+        min-height: 0;
     }
 }
 
@@ -701,7 +714,18 @@ h2 {
 
     .hero-grid { min-height: 0; }
 
-    .hero-stage { min-height: 340px; }
+    .hero-stage { min-height: 0; }
+
+    .hero-app .app {
+        min-height: 0;
+        grid-template-columns: 1fr;
+    }
+
+    .hero-app .tr { grid-template-columns: minmax(0, 1.5fr) auto minmax(68px, 0.6fr); }
+
+    .hero-app .tr span:nth-child(2) { display: none; }
+
+    .hero-app .tr span { min-width: 0; }
 
     h1 { max-width: 14ch; }
 

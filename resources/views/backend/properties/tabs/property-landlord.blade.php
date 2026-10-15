@@ -158,7 +158,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span class="card-title mb-0">Location &amp; EPC</span>
                         @if($epcRating)
-                            <a href="{{ route('admin.properties.index', ['property_id' => $property->id, 'tabname' => 'compliance']) }}" class="btn btn-sm btn-outline-primary">Certificates</a>
+                            <a href="{{ route('admin.properties.index', ['property_id' => $property->id, 'tabname' => 'compliance']) }}" class="btn btn-sm btn-outline-primary">Compliance</a>
                         @endif
                     </div>
                     <div class="card-body">

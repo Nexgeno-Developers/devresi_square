@@ -32,7 +32,7 @@ class JourneyTwoTenancyHttpTest extends TestCase
         $this->actingAs($landlord)->withSession(['current_account_id' => $accountId])
             ->post(route('admin.tenancies.store'), $this->tenancyPayload($property, $tenant))
             ->assertRedirect(route('admin.tenancies.all'))
-            ->assertSessionHas('tenancy_notice', 'Tenancy Added successfully!');
+            ->assertSessionHas('tenancy_notice', 'The tenancy has been added to '.$property->line_1.'.');
 
         $member = TenantMember::query()->where('user_id', $tenant->id)->first();
         $this->assertNotNull($member);

@@ -1,5 +1,5 @@
 @if(is_landlord_plan_user())
-    <p class="pcc-cert-lead">Tenancy agreements, inventories and files you share with the tenant. Energy and safety certificates are on the Certificates tab.</p>
+    <p class="pcc-cert-lead">Tenancy agreements, inventories and files you share with the tenant. Energy and safety certificates are on the Compliance tab.</p>
 @else
     <h1>Documents</h1>
 @endif

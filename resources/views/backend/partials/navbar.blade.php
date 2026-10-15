@@ -63,7 +63,7 @@
                                         if ($memberType === \App\Support\AccountMembership::TENANT) {
                                             $accountLabel = trim((string) preg_replace('/\s+Landlord Account$/', '', $accountLabel));
                                             $accountLabel = ($accountLabel !== '' ? $accountLabel : 'Home').' · your home';
-                                        } elseif (in_array($memberType, \App\Support\AccountMembership::WORKSPACE_ADMIN_TYPES, true)) {
+                                        } elseif (! is_landlord_plan_user() && in_array($memberType, \App\Support\AccountMembership::WORKSPACE_ADMIN_TYPES, true)) {
                                             $accountLabel .= ' · your workspace';
                                         }
                                     @endphp
@@ -73,6 +73,15 @@
                                 @endforeach
                             </select>
                         </form>
+                    @elseif(is_landlord_plan_user() && $currentAccount)
+                        <div class="dropdown">
+                            <button class="rs-workspace-chip" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                {{ $currentAccount->account_name ?: 'Account' }} <span aria-hidden="true">▾</span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><span class="dropdown-item active">{{ $currentAccount->account_name ?: 'Account' }}</span></li>
+                            </ul>
+                        </div>
                     @endif
                 @endif
             @endauth
@@ -80,6 +89,20 @@
 
         <div class="rs-topbar-right">
             @auth
+                @if(is_landlord_plan_user())
+                    <div class="dropdown">
+                        <button class="btn btn-sm lw-btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">+ Add New</button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ property_create_url() }}">Property</a></li>
+                            <li><a class="dropdown-item" href="{{ route('admin.tenancies.create') }}">Tenancy</a></li>
+                            <li><a class="dropdown-item" href="{{ route('admin.property_repairs.create') }}">Repair</a></li>
+                            <li><a class="dropdown-item" href="{{ route('backend.events.calendar') }}">Event / Viewing</a></li>
+                            <li><a class="dropdown-item" href="{{ route('admin.people.index') }}">Contact</a></li>
+                            <li><a class="dropdown-item" href="{{ route('admin.documents.index') }}">Document</a></li>
+                        </ul>
+                    </div>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" id="crmCommandOpen" title="Search">Ctrl+K</button>
+                @endif
                 @php
                     $notificationViewer = auth()->user();
                     $notificationAccountId = current_account_id();
@@ -167,17 +190,22 @@
                                 <a class="dropdown-item" href="{{ route('contractor.profile.edit') }}">Compliance</a>
                             @elseif($navIsTenant)
                                 <a class="dropdown-item" href="{{ route('tenant.profile') }}">Profile</a>
+                            @elseif($navIsLandlord)
+                                <a class="dropdown-item" href="{{ route('admin.users.profile.show') }}">My Profile</a>
                             @else
                                 <a class="dropdown-item" href="{{ route('admin.users.profile.show') }}">Profile</a>
                             @endif
                         </li>
+                        @if($navIsLandlord)
+                        <li><a class="dropdown-item" href="{{ route('admin.people.index') }}">Team &amp; Permissions</a></li>
+                        <li><a class="dropdown-item" href="{{ route('backend.billing.index') }}">Plan &amp; Billing</a></li>
+                        <li><a class="dropdown-item" href="{{ route('backend.billing.index') }}">Workspace Settings</a></li>
+                        @else
                         @unless($navIsContractor)
                         <li>
                             <a class="dropdown-item" href="{{ $navIsTenant ? route('tenant.notifications') : route('backend.notifications.index') }}">Notifications</a>
                         </li>
                         @endunless
-                        @if($navIsLandlord)
-                        <li><a class="dropdown-item" href="{{ route('backend.billing.index') }}">Billing</a></li>
                         @endif
                         @unless($navIsTenant || $navIsContractor || $navIsLandlord)
                         <li><a class="dropdown-item" href="{{ route('customer.statements') }}">My Statement</a></li>
@@ -186,7 +214,7 @@
                         <li>
                             <form action="{{ route('logout') }}" method="POST" class="m-0">
                                 @csrf
-                                <button type="submit" class="dropdown-item text-danger">Log out</button>
+                                <button type="submit" class="dropdown-item text-danger">{{ is_landlord_plan_user() ? 'Log Out' : 'Log out' }}</button>
                             </form>
                         </li>
                     </ul>
@@ -197,6 +225,29 @@
             @endauth
         </div>
     </div>
+    @auth
+        @if(is_landlord_plan_user())
+            @php
+                $trialAccount = current_account();
+                $trialEnds = $trialAccount?->trial_ends_at;
+                $trialLive = $trialAccount && $trialAccount->status === 'trialing' && $trialEnds && $trialEnds->isFuture();
+                $trialFinal = $trialLive && $trialEnds->lte(now()->addHours(48));
+                $trialDays = $trialLive ? max(1, (int) now()->diffInDays($trialEnds)) : 0;
+            @endphp
+            @if($trialLive)
+                <div class="crm-trial-banner">
+                    @if($trialFinal)
+                        <span>Trial Ending Soon — Choose a plan to keep your current features.</span>
+                        <a href="{{ route('backend.billing.index') }}">Choose Plan</a>
+                    @else
+                        <span>Pro Trial — {{ $trialDays }} {{ \Illuminate\Support\Str::plural('day', $trialDays) }} remaining</span>
+                        <a href="{{ route('backend.billing.index') }}">Upgrade</a>
+                    @endif
+                </div>
+            @endif
+            @include('backend.partials.crm-command')
+        @endif
+    @endauth
 </nav>
 
 @auth

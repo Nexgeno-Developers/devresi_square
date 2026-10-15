@@ -10,11 +10,11 @@
 @endphp
 <x-errors.shell
     code="404"
-    title="Page not found"
-    message="That link does not exist, or the page was moved."
+    title="Record Not Found"
+    message="We couldn't find that record. It may have been moved, archived or removed."
 >
     @auth
-        <a class="btn" href="{{ $home }}">Back</a>
+        <a class="btn" href="{{ $home }}">Back to Dashboard</a>
     @else
         <a class="btn" href="{{ route('login') }}">Login</a>
     @endauth

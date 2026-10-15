@@ -5,7 +5,7 @@
     <div class="lw-hero d-flex justify-content-between align-items-start flex-wrap gap-3">
         <div>
             <h4>People</h4>
-            <p>Invite a tenant to the portal, then resend or revoke that login. Adding a contact does not grant a login.</p>
+            <p>Everyone connected to your portfolio.</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
             @unless(is_landlord_plan_user())
@@ -15,6 +15,39 @@
         </div>
     </div>
 
+    @php $peopleTab = request('tab', 'tenants'); @endphp
+    <div class="lw-chip-filters" role="navigation" aria-label="People">
+        <a href="{{ route('admin.people.index', ['tab' => 'owners']) }}" class="{{ $peopleTab === 'owners' ? 'is-active' : '' }}">Owners / Landlords</a>
+        <a href="{{ route('admin.people.index', ['tab' => 'tenants']) }}" class="{{ $peopleTab === 'tenants' ? 'is-active' : '' }}">Tenants</a>
+        <a href="{{ route('admin.people.index', ['tab' => 'contractors']) }}" class="{{ $peopleTab === 'contractors' ? 'is-active' : '' }}">Contractors</a>
+        <a href="{{ route('admin.people.index', ['tab' => 'team']) }}" class="{{ $peopleTab === 'team' ? 'is-active' : '' }}">Team</a>
+    </div>
+    <form method="GET" action="{{ route('admin.people.index') }}" class="mb-3">
+        <input type="hidden" name="tab" value="{{ $peopleTab }}">
+        <input type="search" name="q" class="form-control" placeholder="Search by name, company, email or property..." value="{{ request('q') }}">
+    </form>
+
+    @if($peopleTab !== 'tenants')
+        <div class="card lw-card">
+            <div class="card-body">
+                <x-lw.empty title="No Results Found">
+                    @if($peopleTab === 'owners')
+                        Owners and landlords are listed on each property.
+                        <x-slot:actions>
+                            <a href="{{ route('admin.properties.index') }}" class="btn lw-btn-primary">Properties</a>
+                        </x-slot:actions>
+                    @elseif($peopleTab === 'contractors')
+                        Contractors appear here when they are connected to a repair.
+                    @else
+                        Team access is managed by a workspace administrator.
+                        <x-slot:actions>
+                            <a href="{{ route('backend.billing.index') }}" class="btn lw-btn-primary">Workspace Settings</a>
+                        </x-slot:actions>
+                    @endif
+                </x-lw.empty>
+            </div>
+        </div>
+    @else
     <div class="card lw-card mb-3">
         <div class="card-body">
             <h5 class="mb-3">Invite a tenant</h5>
@@ -147,5 +180,6 @@
             {{ $portalUsers->links() }}
         </div>
     </div>
+    @endif
 </div>
 @endsection

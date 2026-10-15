@@ -65,6 +65,9 @@
     .account-dashboard .usage-bar { height:7px; }
 </style>
 
+@if(is_landlord_plan_user() && ! empty($crmDashboard))
+    @include('backend.dashboard.landlord-crm')
+@else
 <div class="container-fluid py-4 account-dashboard lw-page">
     <div class="lw-hero mb-4" @unless(is_landlord_plan_user()) style="background:{{ $roleUi['gradient'] }}; color:#fff;" @endunless>
         <div class="row align-items-center g-4">
@@ -220,3 +223,4 @@
         </div>
     </div>
 </div>
+@endif

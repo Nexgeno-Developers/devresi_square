@@ -29,8 +29,15 @@ class PortalAccessController
         $portalAccessService = app(PortalAccessService::class);
         $this->ensureCanManagePortal($user, $account, $portalAccessService);
 
+        $search = trim((string) $request->query('q', ''));
         $portalUsers = AccountUser::query()
             ->with('user')
+            ->when($search !== '', function ($query) use ($search) {
+                $like = '%'.addcslashes($search, '%_\\').'%';
+                $query->whereHas('user', function ($user) use ($like) {
+                    $user->where('name', 'like', $like)->orWhere('email', 'like', $like);
+                });
+            })
             ->addSelect([
                 'assigned_properties_count' => PropertyParticipant::query()
                     ->selectRaw('COUNT(DISTINCT property_id)')
@@ -41,7 +48,8 @@ class PortalAccessController
             ->where('account_id', $account->id)
             ->where('member_type', AccountMembership::TENANT)
             ->orderByDesc('id')
-            ->paginate(25);
+            ->paginate(25)
+            ->withQueryString();
 
         $tenancies = Tenancy::query()
             ->with('property')

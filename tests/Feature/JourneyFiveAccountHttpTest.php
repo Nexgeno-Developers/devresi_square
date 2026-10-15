@@ -191,13 +191,13 @@ class JourneyFiveAccountHttpTest extends TestCase
         $row = collect(ComplianceRecord::certificateGapsForAccount($accountId))
             ->first(fn (array $gap) => (int) $gap['property']->id === (int) $property->id && $gap['type']->alias === 'gas');
         $this->assertNotNull($row);
-        $this->assertSame('Not provided yet', $row['state']);
-        $this->assertNotSame('On file', $row['record']->attentionLabel());
+        $this->assertSame('Missing', $row['state']);
+        $this->assertSame('Missing', $row['record']->attentionLabel());
 
         $this->actingAs($landlord)->withSession(['current_account_id' => $accountId])
             ->get(route('admin.compliance.index'))
             ->assertOk()
-            ->assertSee('Not provided yet', false);
+            ->assertSee('Missing', false);
     }
 
     public function test_a_contractor_visit_hides_the_street_until_inspection_is_accepted(): void

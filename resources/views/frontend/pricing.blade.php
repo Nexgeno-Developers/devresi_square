@@ -1,10 +1,15 @@
 @extends('frontend.layout.home')
 
+@section('title', 'ResiSquare Pricing — Simple Pricing for Your Entire Portfolio')
+@section('meta_description', 'ResiSquare charges for the software — never a percentage of your rent. Choose the plan that fits your portfolio today and upgrade as you grow.')
+
 @section('content')
     <section class="pricing_section pricing_page_section">
         <div class="container pricing_container">
             <div class="pricing_intro">
-                <h2>Resisquare pricing plan</h2>
+                <p class="pricing_kicker">Transparent SaaS Pricing</p>
+                <h2>Simple Pricing That Grows With Your Portfolio</h2>
+                <p class="pricing_lead">ResiSquare charges for the software — never a percentage of your rent. Choose the plan that fits your portfolio today and upgrade as you grow.</p>
             </div>
 
             @if(session('error'))
@@ -14,7 +19,7 @@
             <div class="pricing_toggle_wrapper">
                 <div class="btn-group billing-toggle" role="group" aria-label="Billing cycle">
                     <button type="button" class="btn btn-outline-primary active" data-billing-option="monthly">Monthly</button>
-                    <button type="button" class="btn btn-outline-primary" data-billing-option="annual">Annual</button>
+                    <button type="button" class="btn btn-outline-primary" data-billing-option="annual">Annual <span class="pricing_save">Save 2 Months</span></button>
                 </div>
             </div>
         </div>

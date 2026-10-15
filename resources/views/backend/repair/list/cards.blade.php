@@ -10,10 +10,10 @@
             {{ $repairIssues->appends(request()->query())->links() }}
         </div>
     @else
-        <x-lw.empty title="No repairs yet">
-            When something needs fixing, raise it here or wait for a tenant report.
+        <x-lw.empty title="No Open Repairs">
+            Everything is currently resolved. New issues will appear here when they are reported.
             <x-slot:actions>
-                <a href="{{ route('admin.property_repairs.create') }}" class="btn lw-btn-primary" data-next-action="raise-repair">Raise repair</a>
+                <a href="{{ route('admin.property_repairs.create') }}" class="btn lw-btn-primary" data-next-action="raise-repair">Add Repair</a>
             </x-slot:actions>
         </x-lw.empty>
     @endif

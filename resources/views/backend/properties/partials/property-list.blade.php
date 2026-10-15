@@ -35,7 +35,9 @@
 
             $salesStatus = $listProperty['sales_current_status'] ?? '';
             $lettingStatus = $listProperty['letting_current_status'] ?? '';
-            $displayStatus = $salesStatus ?: $lettingStatus;
+            $displayStatus = is_landlord_plan_user()
+                ? \App\Support\CrmLanguage::occupancy($lettingStatus)
+                : ($salesStatus ?: $lettingStatus);
 
             $photoIds = array_values(array_filter(array_map('trim', explode(',', (string) ($listProperty['photos'] ?? '')))));
             $thumbUrl = $photoIds ? uploaded_asset($photoIds[0]) : '';
@@ -53,7 +55,7 @@
 
             $priceLabel = '';
             if (!empty($listProperty['letting_price'])) {
-                $priceLabel = '£' . number_format((float) $listProperty['letting_price'], 0) . '/mo';
+                $priceLabel = '£' . number_format((float) $listProperty['letting_price'], 0) . (is_landlord_plan_user() ? ' pcm' : '/mo');
             } elseif (!empty($listProperty['price'])) {
                 $priceLabel = '£' . number_format((float) $listProperty['price'], 0);
             }
@@ -99,16 +101,16 @@
     @endforeach
 @elseif(request()->hasAny(['search', 'property_type', 'status', 'compliance_expiring', 'has_open_repairs']))
     <div class="pcc-empty-list">
-        <h5>No properties found</h5>
-        <p>Try adjusting your search or filters.</p>
-        <a href="{{ route('admin.properties.index') }}" class="pcc-btn-ghost">Clear filters</a>
+        <h5>No Results Found</h5>
+        <p>Try a different search or clear your filters.</p>
+        <a href="{{ route('admin.properties.index') }}" class="pcc-btn-ghost">Clear Filters</a>
     </div>
 @else
     <div class="pcc-empty-list">
-        <h5>No properties yet</h5>
-        <p>Get started by adding your first property.</p>
+        <h5>Add Your First Property</h5>
+        <p>Build your portfolio by adding a property or importing multiple properties at once.</p>
         @if(is_landlord_plan_user() || auth()->user()?->can('create properties'))
-            <a href="{{ property_create_url() }}" class="pcc-btn-ink" data-next-action="add-property">Add property</a>
+            <a href="{{ property_create_url() }}" class="pcc-btn-ink" data-next-action="add-property">Add Property</a>
         @endif
     </div>
 @endif
