@@ -263,8 +263,7 @@ class RepairJobOfferService
             CrmNotificationEvent::RepairJobInviteDeclined,
             'A contractor declined',
             $this->name($offer).' declined.'.($offer->decline_reason ? ' Reason: '.$offer->decline_reason.'.' : ''),
-            'declined-'.$offer->id.'-'.$offer->updated_at?->timestamp,
-            channels: ['system']
+            'declined-'.$offer->id.'-'.$offer->updated_at?->timestamp
         );
     }
 
@@ -335,20 +334,15 @@ class RepairJobOfferService
         $this->log($offer, $from, RepairJobOffer::OFFER_SENT, $contractor, $wasSent ? 'Offer updated (version '.$offer->revision.').' : ($from === RepairJobOffer::INSPECTION_ACCEPTED ? 'Firm quote after inspection.' : 'Offer sent.'), $priced);
 
         $request = $offer->request;
-        $immediate = ! $request || $request->isEmergency() || ! $request->first_offer_notified_at || $from === RepairJobOffer::INSPECTION_ACCEPTED;
         $request?->forceFill(['first_offer_at' => $request->first_offer_at ?: now()])->save();
         $subject = $wasSent ? 'An offer was updated' : ($from === RepairJobOffer::INSPECTION_ACCEPTED ? 'Firm quote after inspection' : 'You have an offer');
         $notice = $this->name($offer).($wasSent ? ' updated their offer: ' : ' sent an offer: ').$this->priceSummary($offer).'.';
-        if ($immediate) {
-            if ($request?->isEmergency() && ! $request->first_offer_notified_at) {
-                $this->sms->send($offer->invitedBy, 'Emergency repair: '.$this->name($offer).' offered '.$this->priceSummary($offer).'. Accept: '.route('admin.property_repairs.show', $offer->repair_issue_id));
-            }
-            $request?->forceFill(['first_offer_notified_at' => $request->first_offer_notified_at ?: now()])->save();
-            $offer->forceFill(['digested_at' => now()])->save();
-            $this->notifyLandlord($offer, CrmNotificationEvent::RepairJobOfferSent, $subject, $notice, 'offer-'.$offer->id.'-rev-'.$offer->revision.'-'.$offer->updated_at->timestamp);
-        } else {
-            $this->notifyLandlord($offer, CrmNotificationEvent::RepairJobOfferSent, $subject, $notice, 'offer-inapp-'.$offer->id.'-rev-'.$offer->revision.'-'.$offer->updated_at->timestamp, channels: ['system']);
+        if ($request?->isEmergency() && ! $request->first_offer_notified_at) {
+            $this->sms->send($offer->invitedBy, 'Emergency repair: '.$this->name($offer).' offered '.$this->priceSummary($offer).'. Accept: '.route('admin.property_repairs.show', $offer->repair_issue_id));
         }
+        $request?->forceFill(['first_offer_notified_at' => $request->first_offer_notified_at ?: now()])->save();
+        $offer->forceFill(['digested_at' => now()])->save();
+        $this->notifyLandlord($offer, CrmNotificationEvent::RepairJobOfferSent, $subject, $notice, 'offer-'.$offer->id.'-rev-'.$offer->revision.'-'.$offer->updated_at->timestamp);
     }
 
     public function withdrawOffer(RepairJobOffer $offer, User $contractor, ?string $reason): void
@@ -618,6 +612,8 @@ class RepairJobOfferService
             case 'start':
                 $offer->forceFill(['job_status' => RepairJobOffer::JOB_IN_PROGRESS, 'started_at' => now()])->save();
                 $this->log($offer, $offer->status, $offer->status, $contractor, 'Work started.');
+                $this->notifyLandlord($offer, CrmNotificationEvent::RepairJobProgress, 'Work started', $this->name($offer).' has started the repair.', 'started-'.$offer->id);
+                $this->notify(CrmNotificationEvent::RepairJobProgress, $offer, [$offer->repairIssue?->tenant], 'Work has started on your repair', 'The contractor has started the repair.', 'started-tenant-'.$offer->id);
                 break;
             case 'complete':
                 $offer->forceFill([
@@ -825,8 +821,7 @@ class RepairJobOfferService
             CrmNotificationEvent::RepairJobOfferReminder,
             'Offer waiting for you',
             $this->name($offer).'’s offer has been waiting 24 hours. It expires '.optional($offer->offer_expires_at)->format('D j M, H:i').'.',
-            'reminder-'.$offer->id.'-rev-'.$offer->revision,
-            channels: ['system']
+            'reminder-'.$offer->id.'-rev-'.$offer->revision
         );
     }
 

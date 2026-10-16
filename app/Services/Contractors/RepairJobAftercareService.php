@@ -165,6 +165,13 @@ class RepairJobAftercareService
         }
         $variation->forceFill(['status' => RepairJobVariation::WITHDRAWN, 'decided_at' => now()])->save();
         $this->offers->log($variation->offer, $variation->offer->status, $variation->offer->status, $contractor, 'Withdrew the extra work request.');
+        $this->offers->notifyLandlord(
+            $variation->offer,
+            CrmNotificationEvent::RepairJobVariation,
+            'Extra work request withdrawn',
+            $this->offers->name($variation->offer).' withdrew the extra work request.',
+            'variation-withdrawn-'.$variation->id
+        );
     }
 
     // ── Reschedule ──────────────────────────────────────────────────────────
@@ -290,7 +297,7 @@ class RepairJobAftercareService
         }
         $offer->forceFill(['rating' => $stars, 'rating_comment' => $comment ? Str::limit(trim($comment), 990) : null, 'rated_at' => now()])->save();
         $this->offers->log($offer, $offer->status, $offer->status, $landlord, 'Rated '.$stars.'/5.');
-        $this->offers->notify(CrmNotificationEvent::RepairJobRated, $offer, [$offer->contractor], 'You were rated '.$stars.' out of 5', $comment ? '“'.Str::limit($comment, 160).'”' : 'The landlord rated your work.', 'rated-'.$offer->id, route('contractor.jobs.show', $offer), ['system']);
+        $this->offers->notify(CrmNotificationEvent::RepairJobRated, $offer, [$offer->contractor], 'You were rated '.$stars.' out of 5', $comment ? '“'.Str::limit($comment, 160).'”' : 'The landlord rated your work.', 'rated-'.$offer->id, route('contractor.jobs.show', $offer));
     }
 
     // ── Invoice ─────────────────────────────────────────────────────────────

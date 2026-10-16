@@ -338,10 +338,16 @@ $permittedPlaceholders = [
     'recipient_name', 'recipient_email', 'brand_name', 'currency',
 ];
 
-foreach ($events as &$definition) {
+foreach ($events as $key => &$definition) {
     $definition['placeholders'] ??= $permittedPlaceholders;
     $definition['recipient_resolver'] ??= 'subject';
     $definition['deep_link'] ??= 'context.action_url';
+    if (str_starts_with($key, 'repair.') && $key !== CrmNotificationEvent::RepairJobAccepted->value) {
+        $definition['locked_channels'] = array_values(array_unique(array_merge(
+            $definition['locked_channels'] ?? [],
+            ['email', 'system']
+        )));
+    }
 }
 unset($definition);
 

@@ -38,14 +38,15 @@ class SendNotificationJob implements ShouldQueue
 
     /**
      * Send one channel without letting a failure cancel the other channels.
-     * The sync driver runs the job inline, so an SMTP error used to abort the
-     * in-app notification that was still waiting in the same loop.
+     * In-app notices go out in the request. Email goes out as soon as the
+     * response finishes, so a slow or failed mailbox does not drop the bell
+     * notice. Queue::fake still records the job for tests.
      */
     public static function deliver(NotificationLog $log): void
     {
         try {
             $queued = app()->bound('queue') && app('queue') instanceof QueueFake;
-            if ($queued || config('queue.default') !== 'sync') {
+            if ($queued) {
                 self::dispatch($log)->afterCommit();
                 return;
             }

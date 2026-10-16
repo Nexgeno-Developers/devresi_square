@@ -761,6 +761,39 @@ class ContractorMarketplaceTest extends TestCase
         $this->get($link)->assertNotFound();
     }
 
+    public function test_landlord_invite_emails_unknown_contractor_a_signup_link(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        $this->landlord($landlord, $accountId);
+
+        $result = app(ContractorDirectory::class)->invite($accountId, 'new.contractor@resisquare.test', 'Ada Plumber', $landlord);
+
+        $this->assertSame('success', $result['status']);
+        Mail::assertSent(MailManager::class, function (MailManager $mail) {
+            return $mail->hasTo('new.contractor@resisquare.test')
+                && str_contains((string) $mail->array['content'], '/register/contractor?invite=')
+                && str_contains((string) $mail->array['subject'], 'invited you to join');
+        });
+    }
+
+    public function test_landlord_invite_emails_existing_contractor_and_notifies_in_app(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        $contractor = $this->contractorUser('listed');
+        $this->landlord($landlord, $accountId);
+
+        $result = app(ContractorDirectory::class)->invite($accountId, $contractor->email, $contractor->name, $landlord);
+
+        $this->assertSame('success', $result['status']);
+        Mail::assertSent(MailManager::class, fn (MailManager $mail) => $mail->hasTo($contractor->email)
+            && str_contains((string) $mail->array['content'], '/login'));
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_id' => $contractor->id,
+            'event_key' => 'contractor.invited',
+            'account_id' => $accountId,
+        ]);
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     /**

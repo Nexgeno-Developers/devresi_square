@@ -78,51 +78,19 @@
 
     <main id="content">
         <section class="hero" aria-labelledby="hero-title">
-            <div class="wrap hero-grid">
-                <div class="hero-copy">
-                    <p class="eyebrow">Property operations</p>
-                    <h1 id="hero-title">One Workspace for Your Entire Portfolio.</h1>
-                    <p class="lede">Manage your properties, tenancies, rent and repairs from one clean dashboard. Built for landlords and independent agents who run property as a business.</p>
-                    <div class="hero-actions">
-                        <a class="btn btn-solid" href="{{ route('register') }}">Start trial</a>
-                        @if($calendlyUrl)
-                            <a class="btn btn-line" href="{{ $calendlyUrl }}" target="_blank" rel="noopener">Book a demo</a>
-                        @else
-                            <button type="button" class="btn btn-line" data-demo-open>Book a demo</button>
-                        @endif
-                    </div>
-                    <p class="fine">Try ResiSquare free for 7 days. <a href="{{ route('pricing') }}">View pricing</a></p>
+            <div class="wrap hero-copy">
+                <p class="eyebrow">Property operations</p>
+                <h1 id="hero-title">One Workspace for Your Entire Portfolio.</h1>
+                <p class="lede">Manage your properties, tenancies, rent and repairs from one clean dashboard. Built for landlords and independent agents who run property as a business.</p>
+                <div class="hero-actions">
+                    <a class="btn btn-solid" href="{{ route('register') }}">Start trial</a>
+                    @if($calendlyUrl)
+                        <a class="btn btn-line" href="{{ $calendlyUrl }}" target="_blank" rel="noopener">Book a demo</a>
+                    @else
+                        <button type="button" class="btn btn-line" data-demo-open>Book a demo</button>
+                    @endif
                 </div>
-                <div class="hero-stage">
-                    <div class="hero-app">
-                        <div class="window-bar">
-                            <span>ResiSquare</span>
-                            <span>Portfolio</span>
-                        </div>
-                        <div class="app">
-                            <aside class="side" aria-hidden="true">
-                                <p class="side-label">Portfolio</p>
-                                @foreach ($navItems as $item)
-                                    <span class="{{ $item === 'Properties' ? 'is-active' : '' }}">{{ $item }}</span>
-                                @endforeach
-                            </aside>
-                            <div class="app-main">
-                                <div class="sheet-head">
-                                    <h3>Properties</h3>
-                                    <span>24 active</span>
-                                </div>
-                                <div class="table" role="presentation">
-                                    <div class="tr th"><span>Property</span><span>City</span><span>Status</span><span>Rent</span></div>
-                                    <div class="tr"><span>14 Elm Row</span><span>Manchester</span><span class="chip">Occupied</span><span>£1,250</span></div>
-                                    <div class="tr"><span>8 Chapel Street</span><span>Leeds</span><span class="chip chip-alert">Notice</span><span>£980</span></div>
-                                    <div class="tr"><span>22 Quay House</span><span>Bristol</span><span class="chip chip-quiet">Vacant</span><span>—</span></div>
-                                    <div class="tr"><span>Unit 4, Harbour Court</span><span>Liverpool</span><span class="chip">Occupied</span><span>£1,450</span></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="visually-hidden">ResiSquare portfolio, showing occupied and vacant homes with rent in one workspace.</p>
-                </div>
+                <p class="fine">Try ResiSquare free for 7 days. <a href="{{ route('pricing') }}">View pricing</a></p>
             </div>
         </section>
 

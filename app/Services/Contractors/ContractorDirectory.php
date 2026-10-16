@@ -7,6 +7,7 @@ use App\Models\ContractorProfile;
 use App\Models\RepairJobOffer;
 use App\Models\RepairJobOfferEvent;
 use App\Models\User;
+use App\Services\Portal\ContractorInviteMailer;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -57,13 +58,12 @@ class ContractorDirectory
             $link = AccountContractor::query()->firstOrNew(['account_id' => $accountId, 'contractor_user_id' => $existing->id]);
             $link->fill(['invited' => true, 'invited_by' => $landlord->id, 'invited_at' => $link->invited_at ?: now(), 'claimed_at' => $link->claimed_at ?: now(), 'email' => $email]);
             $link->save();
-            $this->mail->toUser(
-                $existing,
-                'A landlord added you as their contractor',
-                '<p>'.e($landlord->name ?: 'A landlord').' added you to their contractor list. Their jobs will appear in your dashboard once you are approved for the trade.</p>'
-            );
+            $mail = app(ContractorInviteMailer::class)->sendExisting($existing, $landlord, $accountId);
+            if (! $mail['sent']) {
+                return ['status' => 'warning', 'message' => 'They are tagged as your contractor, but the email could not be sent.'];
+            }
 
-            return ['status' => 'success', 'message' => 'Added. They are tagged as your contractor.'];
+            return ['status' => 'success', 'message' => 'Added. We emailed them to sign in.'];
         }
 
         $link = AccountContractor::query()->firstOrNew(['account_id' => $accountId, 'email' => $email, 'contractor_user_id' => null]);
@@ -75,14 +75,12 @@ class ContractorDirectory
             'token' => $link->token ?: Str::random(48),
         ])->save();
 
-        $this->mail->toEmail(
-            $email,
-            ($landlord->name ?: 'A landlord').' invited you to receive repair jobs',
-            '<p>Hi '.e($name ?: 'there').',</p><p>'.e($landlord->name ?: 'A landlord').' uses '.e(config('app.name')).' to send repairs and would like to send them to you. Sign up free, add your documents, and once approved you will be tagged as their contractor.</p>'
-                .'<p><a href="'.e(route('register.contractor', ['invite' => $link->token])).'">Sign up as a contractor</a></p>'
-        );
+        $mail = app(ContractorInviteMailer::class)->sendSignup($email, $name, $landlord, $link);
+        if (! $mail['sent']) {
+            return ['status' => 'warning', 'message' => 'Invitation saved for '.$email.', but the signup email could not be sent.'];
+        }
 
-        return ['status' => 'success', 'message' => 'Invitation sent to '.$email.'. They go through the same checks as every contractor.'];
+        return ['status' => 'success', 'message' => 'Invitation sent to '.$email.'. We emailed them a link to sign up.'];
     }
 
     /**
