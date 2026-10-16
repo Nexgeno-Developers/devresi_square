@@ -121,6 +121,7 @@ h2 {
     letter-spacing: -0.01em;
     cursor: pointer;
     background: transparent;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .btn-solid {
@@ -128,7 +129,7 @@ h2 {
     color: var(--ink-soft);
 }
 
-.btn-solid:hover { background: var(--orange-deep); }
+.btn-solid:hover { background: var(--orange-deep); transform: translateY(-1px); }
 
 .btn-line, .btn-ghost {
     border-color: var(--ink);
@@ -137,6 +138,7 @@ h2 {
 }
 
 .btn-line:hover, .btn-ghost:hover {
+    transform: translateY(-1px);
     background: var(--ink);
     color: #fff;
 }
@@ -151,6 +153,12 @@ h2 {
     background: rgba(255, 255, 255, 0.92);
     border-bottom: 1px solid var(--line);
     backdrop-filter: blur(14px);
+    transition: box-shadow 0.35s ease, background-color 0.35s ease;
+}
+
+.nav.is-scrolled {
+    background: rgba(255, 255, 255, 0.97);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
 }
 
 .nav-inner, .foot-inner {
@@ -177,6 +185,8 @@ h2 {
     text-decoration: none;
     font-size: 14px;
     font-weight: 500;
+    transition: color 0.2s ease;
+}
 }
 
 .nav-links a:hover, .foot-inner a:hover { color: var(--orange-deep); }
@@ -314,6 +324,7 @@ h2 {
     border-radius: 14px;
     box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
     overflow: hidden;
+    will-change: transform;
 }
 
 .window-bar {
@@ -579,9 +590,34 @@ h2 {
     border: 1px solid var(--line);
     border-radius: 14px;
     box-shadow: 0 24px 80px rgba(15, 23, 42, 0.16);
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+    transition: opacity 0.28s ease, transform 0.28s ease, overlay 0.28s allow-discrete, display 0.28s allow-discrete;
 }
 
-.demo::backdrop { background: rgba(15, 23, 42, 0.46); }
+.demo[open] {
+    opacity: 1;
+    transform: none;
+}
+
+@starting-style {
+    .demo[open] {
+        opacity: 0;
+        transform: translateY(14px) scale(0.98);
+    }
+}
+
+.demo::backdrop {
+    background: rgba(15, 23, 42, 0.46);
+    opacity: 0;
+    transition: opacity 0.28s ease, overlay 0.28s allow-discrete, display 0.28s allow-discrete;
+}
+
+.demo[open]::backdrop { opacity: 1; }
+
+@starting-style {
+    .demo[open]::backdrop { opacity: 0; }
+}
 
 .demo-form { padding: 28px; }
 
@@ -737,4 +773,10 @@ h2 {
 
 @media (prefers-reduced-motion: reduce) {
     .rail-fill, .day-progress { transform: none; }
+
+    .btn, .nav, .nav-links a, .foot-inner a, .demo, .demo::backdrop {
+        transition: none;
+    }
+
+    .btn-solid:hover, .btn-line:hover, .btn-ghost:hover { transform: none; }
 }
