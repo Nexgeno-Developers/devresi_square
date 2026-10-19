@@ -11,45 +11,31 @@ class TenantEmailTemplatesSeeder extends Seeder
     {
         // ── Template 1: Sent when tenant user is created via Contacts ──
         $accountBody = '
-<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px;color:#333;">
-
-    <h2 style="color:#dc3545;">Welcome to [[crm_name]]!</h2>
-
-    <p>Dear <strong>[[tenant_name]]</strong>,</p>
-
-    <p>Your tenant account has been created on <strong>[[crm_name]]</strong>. Here are your login credentials:</p>
-
-    <table style="width:100%;border-collapse:collapse;margin:16px 0;">
-        <tr>
-            <td style="padding:8px;border:1px solid #ddd;background:#f9f9f9;font-weight:bold;width:40%;">Login Email</td>
-            <td style="padding:8px;border:1px solid #ddd;">[[tenant_email]]</td>
-        </tr>
-        <tr>
-            <td style="padding:8px;border:1px solid #ddd;background:#f9f9f9;font-weight:bold;">Password</td>
-            <td style="padding:8px;border:1px solid #ddd;font-family:monospace;font-size:16px;letter-spacing:2px;"><strong>[[tenant_password]]</strong></td>
-        </tr>
-    </table>
-
-    <p style="margin:24px 0;">
-        <a href="[[login_url]]" style="background:#dc3545;color:#fff;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;font-weight:bold;">Login to Your Account</a>
-    </p>
-
-    <p style="margin:16px 0;">
-        <a href="[[reset_link]]" style="background:#6c757d;color:#fff;padding:10px 20px;text-decoration:none;border-radius:4px;display:inline-block;">Need to Change Your Password?</a>
-    </p>
-
-    <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
-    <p style="color:#666;font-size:13px;">If you have any questions, contact us at <a href="mailto:[[admin_email]]">[[admin_email]]</a>.</p>
-    <p style="color:#666;font-size:13px;">Best regards,<br><strong>[[crm_name]] Team</strong></p>
-
-</div>';
+<p>Hi [[tenant_name]],</p>
+<p>You\'ve been invited to ResiSquare by your landlord for:</p>
+<p><strong>[[property_address]]</strong></p>
+<p>Your tenant account gives you one place to access the information and services connected to your home.</p>
+<p>You can use ResiSquare to:</p>
+<ul>
+    <li>View your tenancy details</li>
+    <li>See rent and payment information</li>
+    <li>Access documents</li>
+    <li>Report repairs</li>
+    <li>Track updates linked to your property</li>
+</ul>
+<p>To activate your account, create your password below.</p>
+<p><a href="[[reset_link]]"><strong>Set Your Password</strong></a></p>
+<p>This invitation was sent to <strong>[[tenant_email]]</strong>.</p>
+<p>If you were not expecting this invitation, you can safely ignore this email.</p>
+<p>The ResiSquare Team</p>
+<p><strong>One Workspace for Your Entire Portfolio</strong></p>';
 
         EmailTemplate::updateOrCreate(
             ['identifier' => 'tenant_account_created'],
             [
                 'receiver'     => 'tenant',
-                'email_type'   => 'Tenant Account Created',
-                'subject'      => 'Welcome to [[crm_name]] — Your Account Has Been Created',
+                'email_type'   => 'Tenant invitation',
+                'subject'      => "You've been invited to ResiSquare",
                 'default_text' => trim($accountBody),
                 'status'       => 1,
             ]

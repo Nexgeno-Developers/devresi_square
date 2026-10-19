@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResiSquare — FT-001 UAT click-through</title>
+<style>
+  :root {
+    --ink: #1c2430;
+    --muted: #5c6778;
+    --line: #d8dee8;
+    --bg: #f4f6f9;
+    --card: #fff;
+    --header: #152033;
+    --pass: #1f7a45;
+    --fail: #b42318;
+    --crit: #7a1212;
+    --high: #c2410c;
+    --med: #b45309;
+    --low: #3b5b8a;
+    --blocked: #c2410c;
+    --nt: #5c6778;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 "Segoe UI", Calibri, sans-serif; color: var(--ink); background: var(--bg); }
+  header.top { background: var(--header); color: #fff; padding: 28px 32px 22px; }
+  header.top h1 { margin: 0 0 6px; font-size: 28px; font-weight: 650; }
+  header.top p { margin: 0; color: #c5d0e0; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px 48px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; letter-spacing: .02em; }
+  .badge.nt, .badge.blocked { background: #eceff3; color: var(--nt); }
+  .badge.pass, .badge.fixed { background: #e5f6ec; color: var(--pass); }
+  .badge.fail, .badge.open, .badge.critical { background: #fde8e6; color: var(--fail); }
+  .badge.high { background: #ffedd5; color: var(--high); }
+  .badge.medium { background: #fef3c7; color: var(--med); }
+  .badge.low { background: #e8eef8; color: var(--low); }
+  .status-pill { display: inline-block; margin-top: 12px; background: #7a1212; color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: 650; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 18px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card strong { display: block; font-size: 22px; }
+  .card span { color: var(--muted); font-size: 13px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px 8px; margin: 16px 0; }
+  h2 { margin: 0 0 8px; font-size: 20px; }
+  h3 { margin: 18px 0 8px; font-size: 16px; }
+  p, li { color: var(--ink); }
+  .note { color: var(--muted); font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 13.5px; }
+  th, td { border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; padding: 8px 8px; }
+  th { background: #eef2f7; font-weight: 650; }
+  tr:nth-child(even) td { background: #fafbfd; }
+  code, .path { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+  .score { font-size: 40px; font-weight: 700; margin: 0; color: var(--fail); }
+  footer { color: var(--muted); font-size: 13px; padding: 8px 4px 24px; }
+  @media print {
+    body { background: #fff; }
+    header.top { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    section { break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+  @media (max-width: 720px) {
+    header.top, .wrap { padding-left: 12px; padding-right: 12px; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>ResiSquare FT-001 UAT</h1>
+  <p>Homepage loads, and primary calls to action should reach register and pricing</p>
+  <div class="status-pill">Needs Fixes and Retesting</div>
+</header>
+<div class="wrap">
+
+<section id="project">
+  <h2>1. Project Information</h2>
+  <table>
+    <tr><th>Field</th><th>Value</th></tr>
+    <tr><td>Project</td><td>ResiSquare (devresi_square) — Laravel property SaaS</td></tr>
+    <tr><td>Testing date</td><td>19 October 2026, 15:03 IST</td></tr>
+    <tr><td>Environment</td><td>Live site <span class="path">https://laravel.resisquare.co.uk</span>, clicked through in Chromium. Code paths checked in this workspace after the clicks.</td></tr>
+    <tr><td>Scope</td><td>FT-001 only. Public homepage load, then each primary call to action for register and pricing.</td></tr>
+    <tr><td>Source case</td><td><span class="path">software-testing-report-2026-10-19-1439.html</span> — FT-001 was Not Tested in that inventory.</td></tr>
+    <tr><td>Browser</td><td>Cursor embedded Chromium, desktop viewport about 960×685. No other browser was used.</td></tr>
+  </table>
+</section>
+
+<section id="summary">
+  <h2>2. Testing Summary</h2>
+  <div class="cards">
+    <div class="card"><strong>1</strong><span>Functional case executed</span></div>
+    <div class="card"><strong>0</strong><span>Passed</span></div>
+    <div class="card"><strong>1</strong><span>Failed</span></div>
+    <div class="card"><strong>0%</strong><span>Score of tested weighted category</span></div>
+  </div>
+  <table>
+    <tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr>
+    <tr><td>Functional Testing</td><td>1</td><td>0</td><td>1</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Security Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>UI/UX Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Performance Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>SEO Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Content Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Compatibility Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>API Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Database Testing</td><td>0</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Production / Deployment Testing</td><td>2</td><td>2</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+  </table>
+  <p class="note">Blocked and Not Tested rows are excluded from the score. Deployment is recorded because the live HTTPS responses were observed. It is outside the default weighted categories, so it does not raise the overall score.</p>
+</section>
+
+<section id="functional">
+  <h2>3. Functional Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr>
+      <td>FT-001</td>
+      <td>Public</td>
+      <td>Homepage loads and primary calls to action reach register and pricing.</td>
+      <td><span class="badge fail">Fail</span></td>
+      <td><span class="badge medium">Medium</span></td>
+      <td><span class="path">RegistrationController.php</span> → <span class="path">showForm()</span> → Bare <span class="path">/register</span> redirects to pricing before the form is shown. Point homepage Start trial and Register links at a plan URL, or show the registration form for those links. <span class="path">pricing.blade.php</span> → flash block and the bottom trial link → Render <span class="path">session('info')</span>, and give “Start 7-Day Free Trial” a <span class="path">plan_id</span> the same way the plan card does.</td>
+    </tr>
+  </table>
+  <h3>What was clicked</h3>
+  <table>
+    <tr><th>Control</th><th>Where</th><th>Link target</th><th>Landed on</th><th>Result</th></tr>
+    <tr><td>Homepage</td><td><span class="path">/</span></td><td>—</td><td>HTTP 200. Title “ResiSquare — property operations”. H1 “One Workspace for Your Entire Portfolio.”</td><td><span class="badge pass">Pass</span></td></tr>
+    <tr><td>Pricing</td><td>Header</td><td><span class="path">/pricing</span></td><td><span class="path">/pricing</span>, title “ResiSquare Pricing — Simple Pricing for Your Entire Portfolio”</td><td><span class="badge pass">Pass</span></td></tr>
+    <tr><td>View pricing</td><td>Hero</td><td><span class="path">/pricing</span></td><td><span class="path">/pricing</span></td><td><span class="badge pass">Pass</span></td></tr>
+    <tr><td>Pricing</td><td>Footer</td><td><span class="path">/pricing</span></td><td><span class="path">/pricing</span></td><td><span class="badge pass">Pass</span></td></tr>
+    <tr><td>Start trial</td><td>Header, hero, and closing section</td><td><span class="path">/register</span></td><td>HTTP 302 to <span class="path">/pricing</span>. Create Account form not shown. No “Choose a plan” message.</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Register</td><td>Homepage footer</td><td><span class="path">/register</span></td><td>HTTP 302 to <span class="path">/pricing</span>. Create Account form not shown.</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Start Free Trial</td><td>Pricing, Landlord Basic card</td><td><span class="path">/register?plan_id=1&amp;billing_cycle=monthly&amp;account_type=landlord</span></td><td>Create Account form. Selected plan Landlord Basic, monthly, £29.00/month, 7-day trial.</td><td><span class="badge pass">Pass</span></td></tr>
+    <tr><td>Start 7-Day Free Trial</td><td>Pricing, lower call to action</td><td><span class="path">/register</span></td><td>Navigation redirect count 1, final URL still <span class="path">/pricing</span>. Create Account form not shown.</td><td><span class="badge fail">Fail</span></td></tr>
+  </table>
+  <p class="note">The case fails because the register calls to action never leave the user on the registration form. Pricing calls to action do reach pricing. The plan card is the only clicked control that opened Create Account.</p>
+</section>
+
+<section id="bugs">
+  <h2>4. Bug / Issue Report</h2>
+  <table>
+    <tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr>
+    <tr>
+      <td>BUG-001</td>
+      <td>Public</td>
+      <td>Confirmed issue. Homepage Start trial (header, hero, closing section) and footer Register target <span class="path">/register</span>. That URL returns 302 to <span class="path">/pricing</span>. The Create Account form does not open, and the page does not show “Choose a plan to create your account.” The same loop happens from the pricing page “Start 7-Day Free Trial” link and would happen from the pricing header Register link, which uses the same URL. Choosing Landlord Basic “Start Free Trial” does open the form.</td>
+      <td><span class="badge high">High</span></td>
+      <td><span class="badge open">Open</span></td>
+      <td><span class="path">app/Http/Controllers/Auth/RegistrationController.php</span> → <span class="path">showForm()</span> → When <span class="path">plan_id</span> is missing, redirect to pricing with an info flash instead of showing the form. <span class="path">resources/views/frontend/pricing.blade.php</span> → the alert block only prints <span class="path">session('error')</span>, so the info flash is dropped. Print <span class="path">session('info')</span>. <span class="path">resources/views/frontend/landing.blade.php</span> → header, hero, and close “Start trial”, plus footer Register, all use <span class="path">route('register')</span> with no plan. <span class="path">resources/views/frontend/pricing.blade.php</span> → “Start 7-Day Free Trial” uses the same bare register URL. <span class="path">resources/views/components/frontend/header.blade.php</span> → Register link is the same bare URL on the pricing header. Give those links a selected plan, or keep the redirect and show the choose-a-plan message.</td>
+    </tr>
+  </table>
+</section>
+
+<section id="security">
+  <h2>5. Security Testing</h2>
+  <p>Not Tested. This run did not include security checks.</p>
+</section>
+
+<section id="ui">
+  <h2>6. UI/UX Testing</h2>
+  <p>Not Tested. Layout, responsive behavior, and visual consistency were not scored. The click-through only confirmed that the named controls could be activated.</p>
+</section>
+
+<section id="performance">
+  <h2>7. Performance Testing</h2>
+  <p>Not Tested. Measurement unavailable in the current environment. No load times were recorded.</p>
+</section>
+
+<section id="seo">
+  <h2>8. SEO Testing</h2>
+  <p>Not Tested. Page titles were visible during the click-through and were not scored as an SEO pass.</p>
+</section>
+
+<section id="content">
+  <h2>9. Content Testing</h2>
+  <p>Not Tested.</p>
+</section>
+
+<section id="compat">
+  <h2>10. Browser &amp; Device Testing</h2>
+  <table>
+    <tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>Chrome Desktop</td><td><span class="badge nt">Not Tested</span></td><td>FT-001 was clicked in the Cursor Chromium window only. That is not a Chrome compatibility pass.</td></tr>
+    <tr><td>Firefox Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Edge Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Safari</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Android Mobile</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>iPhone</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Tablet</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="api">
+  <h2>11. API Testing</h2>
+  <p>Not Tested.</p>
+</section>
+
+<section id="database">
+  <h2>12. Database Testing</h2>
+  <p>Not Tested. No records were created.</p>
+</section>
+
+<section id="deploy">
+  <h2>13. Production / Deployment Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>DP-001</td><td>Public homepage responds</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>DP-002</td><td>HTTPS on the public host</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+  </table>
+  <p class="note">Login, email, payments, cron, queues, storage, debug mode, and backups were not checked.</p>
+</section>
+
+<section id="score">
+  <h2>14. Overall Score</h2>
+  <p class="score">0%</p>
+  <p>Functional score = 0 passed / 1 applicable test = 0%. Security, UI/UX, performance, SEO, compatibility, and content were not executed, so they are excluded rather than scored at 100%. Deployment passed two checks and is outside the default weight table, so it is not folded into this percentage. With only Functional in the weighted set, its 30% weight is the whole score: 0%.</p>
+  <table>
+    <tr><th>Score</th><th>Rating</th><th>Recommendation</th></tr>
+    <tr><td>0%</td><td>Critical</td><td>Not ready to treat FT-001 as accepted. This percentage is the FT-001 run, not a full-product audit.</td></tr>
+  </table>
+</section>
+
+<section id="final">
+  <h2>15. Final Status</h2>
+  <h3>Final Status</h3>
+  <p>Needs Fixes and Retesting</p>
+  <h3>Recommendation</h3>
+  <p>The homepage loads, and Pricing, View pricing, and the footer Pricing link all open the pricing page. Start trial and Register do not open the registration form. They are sent to pricing with no explanation. The working path is the plan card: Landlord Basic “Start Free Trial” opens Create Account for plan 1, monthly, landlord.</p>
+  <p>Fix the bare <span class="path">/register</span> redirect and the links that use it, then retest FT-001. One High issue is open. No Critical issue was recorded, because registration still opens after a plan is chosen. The rest of the role inventory was not part of this run, so this result is not a production sign-off.</p>
+</section>
+
+<section id="limits">
+  <h2>16. Testing Limitations</h2>
+  <ul>
+    <li>Only FT-001 was executed. Tenant, landlord, contractor, and Super Admin cases in the 19 October inventory were not run.</li>
+    <li>No account was created. The Create Account form was opened and not submitted.</li>
+    <li>One Chromium desktop viewport was used. Firefox, Edge, Safari, and phone layouts were not tested.</li>
+    <li>Performance numbers were not measured.</li>
+    <li>The pricing header Register link was not clicked separately. It points at the same <span class="path">/register</span> URL that already returned 302.</li>
+  </ul>
+</section>
+
+<footer>Report generated 19 October 2026, 15:03 IST. Evidence is from the live click-through on laravel.resisquare.co.uk and the files named above.</footer>
+</div>
+</body>
+</html>

@@ -1482,7 +1482,14 @@ class UserController
 
             $template = \App\Models\EmailTemplate::getByIdentifier('tenant_account_created');
 
+            $firstName = trim((string) ($user->first_name ?: ''));
+            if ($firstName === '') {
+                $firstName = trim(strtok((string) ($user->name ?: 'there'), ' ')) ?: 'there';
+            }
+
             $placeholders = [
+                'first_name'       => $firstName,
+                'email_address'    => $user->email,
                 'tenant_name'      => $user->name ?? $user->email,
                 'tenant_email'     => $user->email,
                 'tenant_password'  => $plainPassword,

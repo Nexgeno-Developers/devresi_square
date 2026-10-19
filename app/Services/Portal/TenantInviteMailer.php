@@ -26,7 +26,14 @@ class TenantInviteMailer
             $resetLink = $wasNew ? $user->createResetLink() : '';
             $loginUrl = url('/login');
 
+            $firstName = trim((string) ($user->first_name ?: ''));
+            if ($firstName === '') {
+                $firstName = trim(strtok((string) ($user->name ?: 'there'), ' ')) ?: 'there';
+            }
+
             $placeholders = [
+                'first_name' => $firstName,
+                'email_address' => $user->email,
                 'tenant_name' => $user->name ?? $user->email,
                 'tenant_email' => $user->email,
                 'tenant_password' => 'Set via the link below',
@@ -42,11 +49,19 @@ class TenantInviteMailer
 
             if ($wasNew) {
                 $template = EmailTemplate::getByIdentifier('tenant_account_created');
-                $subject = 'Welcome to '.config('app.name').' — set your password';
-                $fallback = '<p>Hi '.e($placeholders['tenant_name']).',</p>'
-                    .'<p>Your landlord has invited you to the tenant portal for '.e($placeholders['property_address']).'.</p>'
-                    .'<p>Email: '.e($placeholders['tenant_email']).'</p>'
-                    .'<p><a href="'.e($resetLink).'">Set your password</a> to access your account.</p>';
+                $subject = "You've been invited to ResiSquare";
+                $fallback = '<p>Hi '.e($firstName).',</p>'
+                    .'<p>You\'ve been invited to ResiSquare by your landlord for:</p>'
+                    .'<p><strong>'.e($placeholders['property_address']).'</strong></p>'
+                    .'<p>Your tenant account gives you one place to access the information and services connected to your home.</p>'
+                    .'<p>You can use ResiSquare to:</p>'
+                    .'<ul><li>View your tenancy details</li><li>See rent and payment information</li><li>Access documents</li><li>Report repairs</li><li>Track updates linked to your property</li></ul>'
+                    .'<p>To activate your account, create your password below.</p>'
+                    .'<p><a href="'.e($resetLink).'"><strong>Set Your Password</strong></a></p>'
+                    .'<p>This invitation was sent to <strong>'.e($user->email).'</strong>.</p>'
+                    .'<p>If you were not expecting this invitation, you can safely ignore this email.</p>'
+                    .'<p>The ResiSquare Team</p>'
+                    .'<p><strong>One Workspace for Your Entire Portfolio</strong></p>';
                 $rawKeys = ['reset_link', 'login_url'];
             } else {
                 $template = EmailTemplate::getByIdentifier('tenant_welcome');

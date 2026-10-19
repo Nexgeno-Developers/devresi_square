@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResiSquare UAT Report — 16 Oct 2026</title>
+<style>
+  :root { --ink:#1c2430; --muted:#5c6b7a; --line:#d8e0e8; --bg:#f4f7fa; --card:#fff; --pass:#157347; --fail:#b42318; --crit:#7a1212; --high:#c2410c; --med:#b45309; --low:#1d4ed8; --blocked:#c2410c; --nt:#64748b; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 "Segoe UI", system-ui, sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:#0f2744; color:#fff; padding:28px 32px 22px; }
+  header h1 { margin:0 0 6px; font-size:28px; }
+  header p { margin:0; color:#c5d4e4; }
+  .wrap { max-width:1180px; margin:0 auto; padding:24px 20px 48px; }
+  .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-weight:700; font-size:13px; }
+  .badge.bad { background:#7a1212; color:#fff; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin:18px 0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .card b { display:block; font-size:26px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px 18px 8px; margin:16px 0; }
+  h2 { margin:0 0 12px; font-size:20px; }
+  h3 { margin:16px 0 8px; font-size:16px; }
+  table { width:100%; border-collapse:collapse; margin:0 0 16px; font-size:13.5px; }
+  th, td { border-bottom:1px solid var(--line); text-align:left; vertical-align:top; padding:8px 7px; }
+  th { background:#eef3f8; }
+  tr:nth-child(even) td { background:#fafcfe; }
+  .rec { font-family:Consolas, ui-monospace, monospace; font-size:12px; }
+  .pass { color:var(--pass); font-weight:700; }
+  .fail { color:var(--fail); font-weight:700; }
+  .blocked { color:var(--blocked); font-weight:700; }
+  .nt { color:var(--nt); font-weight:700; }
+  .sev-critical { color:var(--crit); font-weight:700; }
+  .sev-high { color:var(--high); font-weight:700; }
+  .sev-medium { color:var(--med); font-weight:700; }
+  .sev-low { color:var(--low); font-weight:700; }
+  .note { color:var(--muted); }
+  footer { color:var(--muted); font-size:12px; margin-top:12px; }
+  @media print { body { background:#fff; } header { -webkit-print-color-adjust:exact; print-color-adjust:exact; } section { break-inside:avoid; } }
+  @media (max-width:700px) { table { display:block; overflow-x:auto; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>ResiSquare software testing report</h1>
+  <p>Project: ResiSquare · Environment: https://laravel.resisquare.co.uk · Date: 16 October 2026 · Browser: Cursor in-app Chromium</p>
+  <p style="margin-top:10px"><span class="badge bad">Needs Fixes and Retesting</span> &nbsp; Overall score <strong>71%</strong> · Poor</p>
+</header>
+<div class="wrap">
+
+<section>
+  <h2>1. Project information</h2>
+  <table>
+    <tr><th>Item</th><th>Value</th></tr>
+    <tr><td>Application</td><td>ResiSquare (Laravel). Public pricing, landlord signup, Stripe test checkout, tenant portal.</td></tr>
+    <tr><td>URL</td><td>https://laravel.resisquare.co.uk</td></tr>
+    <tr><td>Codebase</td><td>Local repository inspected for mail, registration, portal, and password-reset behaviour.</td></tr>
+    <tr><td>Accounts created</td><td>Landlord rsq-uat-ll-71hyqnz8@maxxspace.com (Landlord Basic, trialing). Tenant rsq-uat-tn-4fl8qnpo@maxxspace.com on 1 The Mall, London, SW1A 1AA. Passwords are not recorded in this report.</td></tr>
+    <tr><td>Stripe</td><td>Checkout session was test mode (cs_test_). Card 4242 was accepted. Currency switched to GBP.</td></tr>
+    <tr><td>Roles in scope</td><td>Landlord and tenant exercised live. Super Admin interior and contractor signup were blocked.</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>2. Testing summary</h2>
+  <div class="cards">
+    <div class="card"><span class="note">Overall</span><b>71%</b>Poor</div>
+    <div class="card"><span class="note">Passed</span><b>31</b>applicable checks</div>
+    <div class="card"><span class="note">Failed</span><b>15</b>applicable checks</div>
+    <div class="card"><span class="note">Critical</span><b>1</b>mail authentication</div>
+  </div>
+  <table>
+    <thead><tr><th>Testing type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Functional Testing</td><td>20</td><td>11</td><td>3</td><td>6 Blocked or Not Tested excluded from the score</td></tr>
+      <tr><td>Security Testing</td><td>8</td><td>6</td><td>2</td><td>Needs fix</td></tr>
+      <tr><td>UI/UX Testing</td><td>7</td><td>5</td><td>2</td><td>Needs fix</td></tr>
+      <tr><td>Performance Testing</td><td>2</td><td>1</td><td>1</td><td>Limited measurement</td></tr>
+      <tr><td>SEO Testing</td><td>6</td><td>5</td><td>1</td><td>Minor gap</td></tr>
+      <tr><td>Content Testing</td><td>8</td><td>2</td><td>6</td><td>Needs fix</td></tr>
+      <tr><td>Compatibility Testing</td><td>7</td><td>1</td><td>0</td><td>6 Not Tested excluded</td></tr>
+      <tr><td>API Testing</td><td>3</td><td>2</td><td>0</td><td>1 Not Tested. Not in the weighted score</td></tr>
+      <tr><td>Database Testing</td><td>4</td><td>1</td><td>0</td><td>3 Not Tested. Not in the weighted score</td></tr>
+      <tr><td>Production / Deployment</td><td>6</td><td>2</td><td>2</td><td>2 Not Tested. Not in the weighted score</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Weighted score uses Functional 30, Security 20, UI/UX 15, Performance 15, SEO 10, Compatibility 5, Content 5. Blocked and Not Tested rows are excluded from each category percentage.</p>
+</section>
+
+<section>
+  <h2>3. Functional testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Module</th><th>Test case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>FT-001</td><td>Pricing</td><td>Pricing page shows Landlord Basic at £29.00 / month with a 7-day trial</td><td class="pass">Pass</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>FT-002</td><td>Registration</td><td>Landlord signup sends a 6-digit email OTP and the code arrives</td><td class="pass">Pass</td><td>Critical</td><td class="rec">-</td></tr>
+      <tr><td>FT-003</td><td>Registration</td><td>Valid OTP opens Stripe Checkout in test mode</td><td class="pass">Pass</td><td>Critical</td><td class="rec">-</td></tr>
+      <tr><td>FT-004</td><td>Subscription</td><td>Test card starts a trial. Billing shows Trialing, £29.00, 5 property slots, trial ends 23 Oct 2026</td><td class="pass">Pass</td><td>Critical</td><td class="rec">-</td></tr>
+      <tr><td>FT-005</td><td>Property</td><td>Postcode SW1A 1AA lookup saves 1 The Mall and the landlord as owner</td><td class="pass">Pass</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>FT-006</td><td>Tenant invite</td><td>Invite email arrives and the password link lets the tenant sign in</td><td class="pass">Pass</td><td>Critical</td><td class="rec">-</td></tr>
+      <tr><td>FT-007</td><td>Tenant portal</td><td>Portal shows £1,250 monthly rent, £1,250 deposit, 12-month term, move-in 1 Nov 2026</td><td class="pass">Pass</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>FT-008</td><td>Tenant portal</td><td>Tenant confirms tenancy details and lands on My Tenancy</td><td class="pass">Pass</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>FT-009</td><td>Authorization</td><td>Tenant opening /admin/properties is returned to the tenant home</td><td class="pass">Pass</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>FT-010</td><td>Authorization</td><td>Landlord opening /admin/saas/accounts and /admin/smtp-settings receives 403</td><td class="pass">Pass</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>FT-011</td><td>Rent</td><td>Tenant rent page shows £0.00 and states no invoice has been sent</td><td class="pass">Pass</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>FT-012</td><td>Maintenance</td><td>Tenant submits a contained-leak repair and sees it under Open</td><td class="fail">Fail</td><td>High</td><td class="rec">TenantPortalController.php → storeRepair() and resources/views/backend/tenant/portal/maintenance.blade.php → POST returned a redirect, then the Open list stayed empty and no success message was shown. Surface the validation error or the created repair.</td></tr>
+      <tr><td>FT-013</td><td>Notifications</td><td>Landlord is told when the tenant confirms tenancy details</td><td class="fail">Fail</td><td>High</td><td class="rec">TenancyDetailsConfirmationService.php → confirm() → save details_status only. Dispatch the existing tenancy confirmation notice and email. Landlord inbox stayed at the OTP and welcome messages.</td></tr>
+      <tr><td>FT-014</td><td>Rent payment</td><td>Issue a rent invoice and pay it with a Stripe test card</td><td class="nt">Not Tested</td><td>Critical</td><td class="rec">-</td></tr>
+      <tr><td>FT-015</td><td>Contractor</td><td>Create a contractor account and complete profile, quotes, and job mail</td><td class="blocked">Blocked</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>FT-016</td><td>Super Admin</td><td>Plans, accounts, subscriptions, and SMTP screens</td><td class="blocked">Blocked</td><td>Critical</td><td class="rec">-</td></tr>
+      <tr><td>FT-017</td><td>Auth</td><td>Invalid login and logout</td><td class="nt">Not Tested</td><td>Medium</td><td class="rec">-</td></tr>
+      <tr><td>FT-018</td><td>Landlord CRM</td><td>Calendar, compliance, documents, people, and repairs desk after onboarding</td><td class="nt">Not Tested</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>FT-019</td><td>Notifications</td><td>Remaining CRM events (appointments, compliance, finance overdue, repair marketplace)</td><td class="nt">Not Tested</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>FT-020</td><td>Session</td><td>First tenancy-confirm submit after a second tab changed the session</td><td class="fail">Fail</td><td>Medium</td><td class="rec">Observed HTTP 419 “Session expired”, then the tenant was sent to login. Retry on a fresh login passed. Keep the user on the form with a clear retry when the CSRF token is stale.</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Functional score is 11 passed out of 14 applicable tests (FT-001 to FT-013 and FT-020). Six rows are Blocked or Not Tested and are excluded.</p>
+</section>
+
+<section>
+  <h2>4. Bug / issue report</h2>
+  <table>
+    <thead><tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>BUG-001</td><td>Mail</td><td>Live mail is sent From sabir.nexgeno@gmail.com (display name Resisquare). Message-IDs are @gmail.com. The invite was received with SPF false and DKIM false. resisquare.co.uk has no _dmarc record. SPF is v=spf1 a mx include:websitewelcome.com ~all, which does not authorize Gmail.</td><td class="sev-critical">Critical</td><td>Open</td><td class="rec">config/mail.php from address and the SMTP settings screen. Send from a mailbox on a domain you control, with SPF, DKIM, and DMARC aligned. docs/launch/PRODUCTION_MAIL_AND_STRIPE.md.</td></tr>
+      <tr><td>BUG-002</td><td>Mail</td><td>Mail to rairaihan@outlook.co.uk bounced “address not found”. outlook.co.uk is not Microsoft Outlook. Its MX is uk.mx1.mailanyone.net (banner host in41e.electric.net, 192.162.219.49). The domain A record is 138.68.129.119. Microsoft consumer mail is outlook.com. The app accepts the address because email:rfc,dns only checks that MX records exist.</td><td class="sev-high">High</td><td>Open</td><td class="rec">Stop sending to rairaihan@outlook.co.uk. If the person uses Microsoft, the mailbox must be on outlook.com (or a domain Microsoft hosts). RegistrationController.php validation cannot detect a missing mailbox; correct the stored recipient.</td></tr>
+      <tr><td>BUG-003</td><td>Maintenance</td><td>A contained-leak repair submit redirected and left Open repairs at zero, with no success or error text.</td><td class="sev-high">High</td><td>Open</td><td class="rec">TenantPortalController.php → storeRepair() → show the flash or the validation error on maintenance.blade.php. Confirm repairsFor() includes the new row.</td></tr>
+      <tr><td>BUG-004</td><td>Notifications</td><td>Confirming tenancy details does not email or bell-notify the landlord. Tenant bell read “No unread notifications.”</td><td class="sev-high">High</td><td>Open</td><td class="rec">TenancyDetailsConfirmationService.php → confirm() → dispatch a landlord notification after details_status is saved.</td></tr>
+      <tr><td>BUG-005</td><td>Billing copy</td><td>Pricing says no card is required and the plan covers up to 5 properties. Checkout requires a card, first showed INR ₹3,818.19 with a 4% conversion fee, then GBP £29. Stripe described “Staging landlord plan with one property”. Welcome email says “7-day Pro trial”. Checkout said “6 days free”; billing later said trial ends 23 Oct 2026 and the header said “Pro Trial — 6 days remaining”.</td><td class="sev-high">High</td><td>Open</td><td class="rec">Align the plan record, Stripe product description, welcome template, and resources/views/frontend/pricing.blade.php. Lock checkout currency to GBP.</td></tr>
+      <tr><td>BUG-006</td><td>Password reset</td><td>Reset lookup loads every password_reset_tokens row and hash-checks each token.</td><td class="sev-high">High</td><td>Open</td><td class="rec">PasswordResetController.php → showResetForm() and reset() → look up by email, then Hash::check that one token.</td></tr>
+      <tr><td>BUG-007</td><td>Session</td><td>Tenancy confirm returned 419 Session expired and the tenant had to sign in again. A second attempt succeeded.</td><td class="sev-medium">Medium</td><td>Open</td><td class="rec">Show the confirm form again after a stale CSRF token instead of dropping the user at login.</td></tr>
+      <tr><td>BUG-008</td><td>Address lookup</td><td>Result card says “Filled from test · postcodes.io · findthatpostcode”. SW1A 1AA also offered Buckingham Palace as a house with 240 beds and 78 baths.</td><td class="sev-medium">Medium</td><td>Open</td><td class="rec">Property address lookup on the onboarding wizard. Do not label live results as test data, and reject implausible bedroom counts.</td></tr>
+      <tr><td>BUG-009</td><td>Email template</td><td>Invite HTML points the logo at /asset/img/placeholder.jpg.</td><td class="sev-low">Low</td><td>Open</td><td class="rec">emails/index or the template header → use the real logo asset.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>5. Security testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Security check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>SEC-001</td><td>HTTPS and HSTS (max-age=31536000; includeSubDomains)</td><td class="pass">Pass</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>SEC-002</td><td>X-Content-Type-Options nosniff, X-Frame-Options SAMEORIGIN, Referrer-Policy strict-origin-when-cross-origin</td><td class="pass">Pass</td><td>Medium</td><td class="rec">-</td></tr>
+      <tr><td>SEC-003</td><td>Session cookie Secure, HttpOnly, SameSite=Lax</td><td class="pass">Pass</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>SEC-004</td><td>CSRF token present on registration, login, and portal forms</td><td class="pass">Pass</td><td>High</td><td class="rec">-</td></tr>
+      <tr><td>SEC-005</td><td>Landlord blocked from Super Admin account list and SMTP settings</td><td class="pass">Pass</td><td>Critical</td><td class="rec">-</td></tr>
+      <tr><td>SEC-006</td><td>Tenant blocked from the landlord property index</td><td class="pass">Pass</td><td>Critical</td><td class="rec">-</td></tr>
+      <tr><td>SEC-007</td><td>Password reset scans the full token table</td><td class="fail">Fail</td><td class="sev-high">High</td><td class="rec">PasswordResetController.php → showResetForm() and reset() → query the row for that email only.</td></tr>
+      <tr><td>SEC-008</td><td>Content-Security-Policy response header</td><td class="fail">Fail</td><td class="sev-medium">Medium</td><td class="rec">app/Http/Middleware/SecurityHeaders.php → add a Content-Security-Policy suitable for the Blade pages and Stripe.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>6. UI/UX testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>UX-001</td><td>Pricing</td><td>Plan card, monthly/annual toggle, and navigation are readable</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>UX-002</td><td>Signup</td><td>OTP step, countdown, and plan summary are clear</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>UX-003</td><td>Onboarding</td><td>Property, owner, and tenant steps complete without a dead end</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>UX-004</td><td>Tenant portal</td><td>Home, tenancy, rent, and maintenance empty states are understandable</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>UX-005</td><td>Errors</td><td>403 and 419 pages explain what happened</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>UX-006</td><td>Checkout</td><td>A UK GBP subscription first offered INR with a conversion fee</td><td class="fail">Fail</td><td class="rec">Stripe Checkout currency. Present GBP only for this plan.</td></tr>
+      <tr><td>UX-007</td><td>403 copy</td><td>Role denial says “not available on the landlord plan”</td><td class="fail">Fail</td><td class="rec">Role middleware message. Say the page is limited to another role.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>7. Performance testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>PF-001</td><td>Pages</td><td>Pricing, signup, billing, and portal pages became usable in the browser</td><td class="pass">Pass</td><td>Medium</td><td class="rec">-</td></tr>
+      <tr><td>PF-002</td><td>Password reset</td><td>Token check loads every reset row</td><td class="fail">Fail</td><td>High</td><td class="rec">PasswordResetController.php → showResetForm() and reset() → stop calling DB::table('password_reset_tokens')->get().</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Not Tested - Measurement unavailable for exact response times, query counts, and asset weight.</p>
+</section>
+
+<section>
+  <h2>8. SEO testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>SEO check</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>SEO-001</td><td>Homepage title “ResiSquare — property operations”</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>SEO-002</td><td>Homepage meta description present</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>SEO-003</td><td>Pricing heading hierarchy</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>SEO-004</td><td>robots.txt allows / and disallows /admin, /contractor, /_debug</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>SEO-005</td><td>sitemap.xml lists home, pricing, login, register</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>SEO-006</td><td>Open Graph tags on the homepage</td><td class="fail">Fail</td><td class="rec">Homepage head. Add og:title, og:description, and og:url.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>9. Content testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Content check</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>CN-001</td><td>Billing page price £29 matches the pricing card</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>CN-002</td><td>Rent and repair empty states are accurate</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>CN-003</td><td>“No card details required to start” while Checkout collects a card</td><td class="fail">Fail</td><td class="rec">resources/views/frontend/pricing.blade.php FAQ and trial note. Say a card is saved and charged when the trial ends.</td></tr>
+      <tr><td>CN-004</td><td>Welcome email calls the plan a 7-day Pro trial</td><td class="fail">Fail</td><td class="rec">Account welcome template. Use Landlord Basic.</td></tr>
+      <tr><td>CN-005</td><td>Stripe product text says a staging plan with one property</td><td class="fail">Fail</td><td class="rec">Stripe product name/description for plan id 1. Match the 5-property Landlord Basic limit shown in billing usage.</td></tr>
+      <tr><td>CN-006</td><td>Trial length shown as 7 days, 6 days free, and 6 days remaining on the same day</td><td class="fail">Fail</td><td class="rec">Trial copy in pricing, Stripe trial_period, and the “Pro Trial” header badge.</td></tr>
+      <tr><td>CN-007</td><td>Email logo URL is placeholder.jpg</td><td class="fail">Fail</td><td class="rec">Email layout image. Point it at the brand logo.</td></tr>
+      <tr><td>CN-008</td><td>Address results marked “Filled from test” and include a 240-bed palace</td><td class="fail">Fail</td><td class="rec">Onboarding address provider. Remove the test label and filter bad occupancy figures.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>10. Browser and device testing</h2>
+  <table>
+    <thead><tr><th>Browser / device</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>Chrome desktop (Cursor browser)</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>Firefox desktop</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+      <tr><td>Edge desktop</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+      <tr><td>Safari</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+      <tr><td>Android mobile</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+      <tr><td>iPhone</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+      <tr><td>Tablet</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>11. API testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>API / feature</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>API-001</td><td>Stripe Checkout</td><td>Test session opened and a 4242 card returned the app to billing as Trialing</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>API-002</td><td>Address lookup</td><td>SW1A 1AA returned selectable addresses</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>API-003</td><td>Stripe rent webhook</td><td>Tenant card payment and ledger update</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>12. Database testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>DB-001</td><td>Landlord, subscription, property, and tenant rows are visible after create</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>DB-002</td><td>Direct foreign keys, duplicates, and soft deletes</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+      <tr><td>DB-003</td><td>Notification log rows for the confirm and repair actions</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+      <tr><td>DB-004</td><td>Migration consistency on the server database</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>13. Production / deployment testing</h2>
+  <table>
+    <thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+    <tbody>
+      <tr><td>DP-001</td><td>Site reachable over HTTPS</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>DP-002</td><td>Stripe keys on this host are test mode</td><td class="pass">Pass</td><td class="rec">-</td></tr>
+      <tr><td>DP-003</td><td>Mail From domain, SPF, DKIM, DMARC</td><td class="fail">Fail</td><td class="rec">See BUG-001. MAIL_FROM_ADDRESS is a personal Gmail mailbox.</td></tr>
+      <tr><td>DP-004</td><td>Recipient bounce for rairaihan@outlook.co.uk</td><td class="fail">Fail</td><td class="rec">See BUG-002. The mailbox does not exist on the domain that currently receives outlook.co.uk.</td></tr>
+      <tr><td>DP-005</td><td>Queue, cron, and failed-payment banner</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+      <tr><td>DP-006</td><td>Debug mode and /_debug/registration-otp on this host</td><td class="nt">Not Tested</td><td class="rec">-</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <h2>14. Overall score</h2>
+  <table>
+    <thead><tr><th>Category</th><th>Weight</th><th>Applicable</th><th>Passed</th><th>Score</th></tr></thead>
+    <tbody>
+      <tr><td>Functional</td><td>30%</td><td>14</td><td>11</td><td>79%</td></tr>
+      <tr><td>Security</td><td>20%</td><td>8</td><td>6</td><td>75%</td></tr>
+      <tr><td>UI/UX</td><td>15%</td><td>7</td><td>5</td><td>71%</td></tr>
+      <tr><td>Performance</td><td>15%</td><td>2</td><td>1</td><td>50%</td></tr>
+      <tr><td>SEO</td><td>10%</td><td>6</td><td>5</td><td>83%</td></tr>
+      <tr><td>Compatibility</td><td>5%</td><td>1</td><td>1</td><td>100%</td></tr>
+      <tr><td>Content</td><td>5%</td><td>8</td><td>2</td><td>25%</td></tr>
+      <tr><td>Overall</td><td>100%</td><td></td><td></td><td>71%</td></tr>
+    </tbody>
+  </table>
+  <p>71% maps to Poor. A critical mail-authentication defect remains, so the result is not production-ready.</p>
+</section>
+
+<section>
+  <h2>15. Final status</h2>
+  <h3>Final status</h3>
+  <p><strong>Needs Fixes and Retesting</strong></p>
+  <h3>Recommendation</h3>
+  <p>Landlord signup, OTP delivery, Stripe test checkout, billing trial state, property onboarding, tenant invite, and the tenant portal shell work on this host. Mail is the release blocker: messages leave through a personal Gmail address, SPF and DKIM fail, and there is no DMARC. The bounce for rairaihan@outlook.co.uk is a missing mailbox on a domain that is not Microsoft Outlook. Repair submit and tenancy-confirmation notices also need a retest. Super Admin screens, contractor signup, rent-invoice payment, and most CRM notification events were not executed.</p>
+  <p>Critical/High still open: BUG-001, BUG-002, BUG-003, BUG-004, BUG-005, BUG-006. Retest those before production. This host is already on Stripe test keys, which is appropriate for UAT and is not a live-money sign-off.</p>
+</section>
+
+<section>
+  <h2>16. Testing limitations</h2>
+  <ul>
+    <li>No Super Admin credentials were available. Interior admin, SMTP screen edits, and platform subscription tools were not opened.</li>
+    <li>Contractor signup was not completed. The temporary mailbox provider rejected the third account request.</li>
+    <li>A rent invoice was never issued, so tenant card payment, the rent webhook, and finance emails were not exercised.</li>
+    <li>About sixty CRM notification events exist in code. Only signup OTP, welcome, and tenant invite were observed in a mailbox.</li>
+    <li>The landlord browser session ended while the tenant invite was completed in a second tab, so later landlord screens were not re-walked.</li>
+    <li>No direct database or server log access. Repair failure is from the UI, not from a log line.</li>
+    <li>Only the Cursor Chromium browser on desktop was used. No mobile viewport pass.</li>
+    <li>Performance numbers were not measured.</li>
+    <li>SMTP dialogue with outlook.co.uk’s MX was slow and responses were delayed, so a clean 550 code was not captured. DNS and the 220 banner were captured.</li>
+  </ul>
+</section>
+
+<footer>Generated 16 October 2026. Evidence is from the live site and the local codebase. Secrets, session cookies, and passwords are omitted.</footer>
+</div>
+</body>
+</html>

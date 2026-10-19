@@ -20,6 +20,7 @@
                                 <div><strong>Included properties:</strong> {{ $selectedPlan->property_limit }}</div>
                                 <div><strong>Branches:</strong> {{ $selectedPlan->branch_limit }}</div>
                                 <div><strong>Staff:</strong> {{ $selectedPlan->staff_limit }}</div>
+                                <div class="mt-2"><a href="{{ route('pricing') }}">Choose a different plan</a></div>
                             </div>
                         @endif
 

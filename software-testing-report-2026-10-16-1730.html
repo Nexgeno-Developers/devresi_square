@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResiSquare UAT report — 16 Oct 2026</title>
+<style>
+  :root { --ink:#1c2430; --muted:#5c6b7a; --line:#d8e0e8; --bg:#f4f7fa; --card:#fff; --pass:#0f7a45; --fail:#b42318; --crit:#7a1212; --high:#c2410c; --med:#a16207; --low:#1d4e89; --block:#5c6b7a; --header:#142033; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 "Segoe UI", system-ui, sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:var(--header); color:#fff; padding:28px 32px 22px; }
+  header h1 { margin:0 0 6px; font-size:1.6rem; }
+  header p { margin:0; color:#c5d0dc; }
+  main { max-width:1180px; margin:0 auto; padding:24px 16px 48px; }
+  h2 { margin:32px 0 12px; font-size:1.25rem; }
+  h3 { margin:18px 0 8px; font-size:1.05rem; }
+  .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-weight:700; font-size:.85rem; }
+  .st-fail, .sev-critical { background:#fde8e6; color:var(--fail); }
+  .sev-critical { background:#7a1212; color:#fff; }
+  .st-pass { background:#e5f6ec; color:var(--pass); }
+  .st-blocked, .st-na { background:#e8edf2; color:var(--block); }
+  .sev-high { background:#ffedd5; color:var(--high); }
+  .sev-medium { background:#fef3c7; color:var(--med); }
+  .sev-low { background:#e8f1fb; color:var(--low); }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin:16px 0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .card b { display:block; font-size:1.4rem; }
+  .card span { color:var(--muted); font-size:.85rem; }
+  table { width:100%; border-collapse:collapse; background:#fff; margin:8px 0 16px; font-size:.92rem; }
+  th, td { border:1px solid var(--line); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:#eef3f8; }
+  tr:nth-child(even) td { background:#f8fafc; }
+  code { font-family:ui-monospace, Consolas, monospace; font-size:.86em; }
+  .note { background:#fff; border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
+  footer { color:var(--muted); font-size:.85rem; margin-top:28px; }
+  @media print { body { background:#fff; } header { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+  @media (max-width:700px) { header, main { padding-left:12px; padding-right:12px; } table { display:block; overflow-x:auto; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>ResiSquare live UAT</h1>
+  <p>https://laravel.resisquare.co.uk · 16 October 2026 · Stripe test mode · desktop Chromium</p>
+  <p style="margin-top:10px"><span class="badge sev-critical">Not Ready for Production</span> <span class="badge" style="background:#fff;color:#142033">68%</span></p>
+</header>
+<main>
+
+<section>
+<h2>1. Project Information</h2>
+<div class="note">
+  <p><b>Project:</b> ResiSquare (Laravel). <b>Environment:</b> live host laravel.resisquare.co.uk, Stripe Checkout in test mode. <b>Roles exercised:</b> new landlord, invited tenant, new contractor. <b>Super Admin:</b> one documented seeder login was rejected, so the Super Admin interior was not opened.</p>
+  <p><b>Accounts created for this run</b> (delete after review): rsq-uat-ll-71hyqnz8@maxxspace.com, rsq-uat-tn-4fl8qnpo@maxxspace.com, rsq-uat-co2@maxxspace.com. Property saved: 1 The Mall, London, SW1A 1AA. Rent invoice RENT-0001, £1,250, due 1 Nov 2026.</p>
+  <p>Passwords, one-time codes, session cookies, and checkout session identifiers are omitted from this report.</p>
+</div>
+</section>
+
+<section>
+<h2>2. Testing Summary</h2>
+<div class="cards">
+  <div class="card"><b>68%</b><span>Overall (performance excluded)</span></div>
+  <div class="card"><b>36</b><span>Passed checks</span></div>
+  <div class="card"><b>18</b><span>Failed checks</span></div>
+  <div class="card"><b>2</b><span>Critical defects</span></div>
+  <div class="card"><b>Critical</b><span>Quality rating</span></div>
+</div>
+<p>Landlord signup, the Stripe trial, a property, a tenant invite, and a contractor profile all completed. CRM notification rows for repairs and the rent invoice stay <b>Pending</b>, so those emails never arrived and the notification bell stays empty. A test-card rent payment was taken through Stripe Checkout, the success URL was rejected by the server, and the invoice is still open.</p>
+</section>
+
+<section>
+<h2>3. Functional Testing</h2>
+<p>Score 18 / 24 applicable = <b>75%</b>. Blocked and Not Tested rows are excluded.</p>
+<table>
+<thead><tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>FT-001</td><td>Pricing</td><td>Landlord Basic is listed at £29 per month with a trial call to action.</td><td><span class="badge st-pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+<tr><td>FT-002</td><td>Registration</td><td>Landlord signup sends a 6-digit email code and creates the account.</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>FT-003</td><td>Billing</td><td>Stripe test card starts a trial. Billing shows Trialing, card saved, Landlord Basic £29 monthly, trial 16–23 Oct 2026, properties 0/5.</td><td><span class="badge st-pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+<tr><td>FT-004</td><td>Properties</td><td>Postcode SW1A 1AA returns address matches. 1 The Mall was saved.</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>FT-005</td><td>Tenancies</td><td>Tenant invite email arrives. Tenant sets a password and reaches the portal. Rent £1,250 monthly, deposit £1,250, move-in 1 Nov 2026.</td><td><span class="badge st-pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+<tr><td>FT-006</td><td>Tenancies</td><td>Tenant confirms tenancy details. My Tenancy shows Confirmed on 16 Oct 2026.</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>FT-007</td><td>Authorization</td><td>Landlord receives 403 on SaaS accounts, SMTP, plans, subscriptions, repair desk, offers, branches, tenancy types, job types, and invoices.</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>FT-008</td><td>Auth</td><td>Wrong password shows “The provided credentials do not match our records.”</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>FT-009</td><td>Finance</td><td>Landlord issues RENT-0001 for £1,250, due 1 Nov 2026. Tenant rent page shows the same outstanding balance.</td><td><span class="badge st-pass">Pass</span></td><td>Critical</td><td>-</td></tr>
+<tr><td>FT-010</td><td>Contractors</td><td>Contractor signup sends a code. Business step (sole trader, plumbing, SW1A 1AA, 10 miles) saves.</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>FT-011</td><td>Contractors</td><td>Welcome email arrives and links to the profile.</td><td><span class="badge st-pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+<tr><td>FT-012</td><td>Portal</td><td>Tenant home, calendar (move-in 1 Nov 2026 10:00), documents empty state, and profile load.</td><td><span class="badge st-pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+<tr><td>FT-013</td><td>People</td><td>Landlord People page loads with owners, tenants, contractors, and team.</td><td><span class="badge st-pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+<tr><td>FT-014</td><td>Notifications</td><td>Landlord notification preferences page loads. Statutory and issued-document emails are described as remaining enabled.</td><td><span class="badge st-pass">Pass</span></td><td>Low</td><td>-</td></tr>
+<tr><td>FT-015</td><td>Auth</td><td>Logout returns to the sign-in page for landlord, tenant, and contractor sessions.</td><td><span class="badge st-pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+<tr><td>FT-016</td><td>Repairs</td><td>Tenant reports are stored. Landlord repairs list shows “UAT sink leak” as Reviewing / Tenant reported.</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>FT-017</td><td>Calendar</td><td>Landlord calendar loads and offers Add Event. The tenancy already has a move-in visit visible to the tenant.</td><td><span class="badge st-pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+<tr><td>FT-018</td><td>Dashboard</td><td>Landlord dashboard loads and counts 1 property occupied.</td><td><span class="badge st-pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+<tr><td>FT-019</td><td>Notifications</td><td>finance.invoice_issued and repair.reported email and in-app rows stay Pending. Landlord and tenant inboxes received no invoice or repair mail.</td><td><span class="badge st-fail">Fail</span></td><td>Critical</td><td><code>app/Jobs/SendNotificationJob.php</code> and <code>app/Http/Controllers/Backend/NotificationController.php</code> retry only re-queues the row. Run a queue worker, or send these mails in the request the same way signup codes are sent. Confirm a row moves to Sent.</td></tr>
+<tr><td>FT-020</td><td>Notifications</td><td>The bell says “No unread notifications” while the tenant portal notices list shows the invoice and both repair messages.</td><td><span class="badge st-fail">Fail</span></td><td>High</td><td>The bell and <code>resources/views/backend/tenant/portal/notifications.blade.php</code> must read the same delivered records. Pending rows should not appear as notices in one place and as nothing in the other.</td></tr>
+<tr><td>FT-021</td><td>Repairs</td><td>Tenant maintenance says “No open repairs” and home says Open repairs 0, even though the issues exist on the landlord list.</td><td><span class="badge st-fail">Fail</span></td><td>High</td><td><code>app/Services/Portal/TenantPortalService.php</code> <code>repairsFor()</code> hides issues created before move-in. Move-in is 1 Nov 2026, so a report made on 16 Oct is invisible to the tenant. Show issues the tenant created.</td></tr>
+<tr><td>FT-022</td><td>Finance</td><td>Tenant pays RENT-0001 with the Stripe test card in GBP. Checkout shows Processing and redirects to the rent paid URL. That URL returns 406 Not Acceptable from ModSecurity. Reloading rent, which reconciles open checkouts, leaves the balance at £1,250.</td><td><span class="badge st-fail">Fail</span></td><td>Critical</td><td><code>app/Services/Finance/RentStripeCheckoutService.php</code> success URL is <code>/admin/portal/rent/paid?session_id=…</code>. Allow that query on the host. <code>TenantPortalController::paid</code> and <code>reconcileOpenCheckouts()</code> must record the payment when Stripe has collected it.</td></tr>
+<tr><td>FT-023</td><td>Repairs</td><td>On repair 14, Add Contractor and Update with only the new UAT contractor selected does not persist an assignment and writes no new delivery log.</td><td><span class="badge st-fail">Fail</span></td><td>High</td><td><code>routes/backend.php</code> repair update for <code>/admin/property-repairs/repair-update/{id}</code>. An empty assignment row also displays the first directory contractor because no option is selected. Persist the chosen contractor or show a validation error.</td></tr>
+<tr><td>FT-024</td><td>Tenancies</td><td>Confirming tenancy details does not create a notification.</td><td><span class="badge st-fail">Fail</span></td><td>Medium</td><td><code>app/Services/Portal/TenancyDetailsConfirmationService.php</code> <code>confirm()</code> only sets details status and the confirmed time. Dispatch a notice if confirmation is meant to alert the landlord.</td></tr>
+<tr><td>FT-025</td><td>Super Admin</td><td>Interior of plans, accounts, SMTP, and contractor review.</td><td><span class="badge st-blocked">Blocked</span></td><td>Critical</td><td>One seeder login was rejected. No further passwords were tried.</td></tr>
+<tr><td>FT-026</td><td>Contractors</td><td>Jobs list, quotes, visits, invoices, and marketplace events.</td><td><span class="badge st-blocked">Blocked</span></td><td>High</td><td><code>app/Http/Controllers/Frontend/ContractorJobController.php</code> sends an unapproved profile back to documents. Photo ID and insurance could not be attached in this browser, and approval is a Super Admin action.</td></tr>
+<tr><td>FT-027</td><td>Documents</td><td>Upload and share a file so document.shared fires.</td><td><span class="badge st-blocked">Blocked</span></td><td>Medium</td><td>File attachment was not available in the browser session. Tenant documents correctly shows that nothing has been shared.</td></tr>
+<tr><td>FT-028</td><td>Compliance</td><td>Upload a certificate and fire compliance.renewed.</td><td><span class="badge st-blocked">Blocked</span></td><td>Medium</td><td>Same file-attachment limit. The property still shows EICR and EPC missing.</td></tr>
+<tr><td>FT-029</td><td>Scheduled events</td><td>Reminders and due/overdue events that only the scheduler sends.</td><td><span class="badge st-na">Not Tested</span></td><td>Medium</td><td>Not run from the browser, and production artisan was not used. See the event table.</td></tr>
+</tbody>
+</table>
+
+<h3>Notification and email events</h3>
+<p>This table is the event coverage. It is evidence for the functional rows above and is not scored a second time. Direct signup mail is separate from the CRM queue.</p>
+<table>
+<thead><tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>EV-001</td><td>Auth</td><td>Landlord and contractor verification codes</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>EV-002</td><td>Auth</td><td>Landlord welcome and contractor welcome</td><td><span class="badge st-pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+<tr><td>EV-003</td><td>Tenancy</td><td>tenant.portal_invite email</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>EV-004</td><td>Tenancy</td><td>tenant.portal_invite in-app</td><td><span class="badge st-fail">Fail</span></td><td>High</td><td>Delivery log status stayed Pending except the invite email, which is Sent. Same queue fix as FT-019.</td></tr>
+<tr><td>EV-005</td><td>Repairs</td><td>repair.reported email and in-app for landlord and tenant</td><td><span class="badge st-fail">Fail</span></td><td>Critical</td><td>Rows exist and stay Pending. Inboxes have no repair mail.</td></tr>
+<tr><td>EV-006</td><td>Finance</td><td>finance.invoice_issued email and in-app</td><td><span class="badge st-fail">Fail</span></td><td>Critical</td><td>Rows exist at 16 Oct 2026 12:19 and stay Pending. Tenant inbox still has only the invite.</td></tr>
+<tr><td>EV-007</td><td>Finance</td><td>finance.payment_received and finance.payment_failed</td><td><span class="badge st-blocked">Blocked</span></td><td>Critical</td><td>Blocked by FT-022. The ledger never recorded a payment, so these events had nothing to send.</td></tr>
+<tr><td>EV-008</td><td>Tenancy</td><td>Details confirmed</td><td><span class="badge st-fail">Fail</span></td><td>Medium</td><td>No event is dispatched. See FT-024.</td></tr>
+<tr><td>EV-009</td><td>Repairs</td><td>repair.job_invited and the rest of the job marketplace events</td><td><span class="badge st-blocked">Blocked</span></td><td>High</td><td>Contractor is not approved, and the repair assignment did not save. See FT-023 and FT-026.</td></tr>
+<tr><td>EV-010</td><td>Calendar</td><td>appointment.invited, reminder, rescheduled, cancelled</td><td><span class="badge st-na">Not Tested</span></td><td>Medium</td><td>Calendar loads. A new appointment was not submitted in this run.</td></tr>
+<tr><td>EV-011</td><td>Offers</td><td>offer.submitted, accepted, rejected, withdrawn</td><td><span class="badge st-blocked">Blocked</span></td><td>Medium</td><td>Landlord is 403 on /admin/offers. That module is outside the landlord plan.</td></tr>
+<tr><td>EV-012</td><td>Documents</td><td>document.shared</td><td><span class="badge st-blocked">Blocked</span></td><td>Medium</td><td>No file could be attached.</td></tr>
+<tr><td>EV-013</td><td>Compliance</td><td>compliance.expiring, expired, remediation_due, renewed</td><td><span class="badge st-na">Not Tested</span></td><td>Medium</td><td>Expiring, expired, and remediation are scheduler events. Renewed needs an upload.</td></tr>
+<tr><td>EV-014</td><td>Finance</td><td>finance.invoice_due, overdue, voided, statement_ready</td><td><span class="badge st-na">Not Tested</span></td><td>Medium</td><td>Due and overdue are scheduler events. The invoice was not voided, so those events were not forced.</td></tr>
+<tr><td>EV-015</td><td>Tenancy</td><td>tenancy.move_in_due, deposit_due, right_to_rent_due, notice_served, activated, updated, correction requested/approved/rejected</td><td><span class="badge st-na">Not Tested</span></td><td>Medium</td><td>Move-in, deposit, and right-to-rent are scheduler events. Correction and notice were not submitted.</td></tr>
+<tr><td>EV-016</td><td>System</td><td>system.delivery_failed</td><td><span class="badge st-na">Not Tested</span></td><td>Low</td><td>Pending rows have an empty error column. They have not been marked failed.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>4. Bug / Issue Report</h2>
+<table>
+<thead><tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>BUG-001</td><td>Notifications</td><td>CRM deliveries for repair.reported and finance.invoice_issued remain Pending. Emails do not arrive. The bell stays empty.</td><td><span class="badge sev-critical">Critical</span></td><td>Open</td><td>Process <code>app/Jobs/SendNotificationJob.php</code>. Signup mail uses <code>Mail</code> directly and does arrive, which isolates the fault to the queued CRM path.</td></tr>
+<tr><td>BUG-002</td><td>Rent payments</td><td>Stripe Checkout completes and redirects to the paid URL. ModSecurity returns 406. The invoice stays Due for £1,250 after the rent page reconciles open checkouts.</td><td><span class="badge sev-critical">Critical</span></td><td>Open</td><td><code>app/Http/Controllers/Backend/TenantPortalController.php</code> <code>paid()</code> never runs. Allow the success query string and make <code>RentStripeCheckoutService::reconcileOpenCheckouts()</code> record a paid session.</td></tr>
+<tr><td>BUG-003</td><td>Tenant repairs</td><td>Issues created before move-in are hidden from the tenant who reported them.</td><td><span class="badge sev-high">High</span></td><td>Open</td><td><code>app/Services/Portal/TenantPortalService.php</code> <code>repairsFor()</code>.</td></tr>
+<tr><td>BUG-004</td><td>Notifications</td><td>Portal notices show invoice and repair messages. The header bell says there are none.</td><td><span class="badge sev-high">High</span></td><td>Open</td><td>Use one delivery status for both surfaces.</td></tr>
+<tr><td>BUG-005</td><td>Authorization</td><td>A tenant session can open /admin/compliance and /admin/property-repairs/issue-list, including Edit links for their property.</td><td><span class="badge sev-high">High</span></td><td>Open</td><td>POST was not attempted. Restrict these routes the same way /admin/finance and /admin/documents already return 403. Tenant dashboard and properties URLs do redirect to the portal home.</td></tr>
+<tr><td>BUG-006</td><td>Mail</td><td>Live mail is From a personal Gmail address. Invite checks showed SPF and DKIM failing. There is no DMARC record on resisquare.co.uk. Registration only checks that the domain has MX records.</td><td><span class="badge sev-high">High</span></td><td>Open</td><td><code>app/Mail/MailManager.php</code> and <code>config/mail.php</code>. Send from a domain mailbox with aligned SPF, DKIM, and DMARC. See <code>docs/launch/PRODUCTION_MAIL_AND_STRIPE.md</code>.</td></tr>
+<tr><td>BUG-007</td><td>Password reset</td><td>Reset looks up a token by loading every password-reset row and checking the hash. Reset does not log the user out.</td><td><span class="badge sev-high">High</span></td><td>Open</td><td><code>app/Http/Controllers/Auth/PasswordResetController.php</code>. Store a lookup key and find that row. Log out other sessions when the password changes.</td></tr>
+<tr><td>BUG-008</td><td>Billing copy</td><td>Welcome mail says a 7-day Pro trial. Checkout product text says 6 days free on a staging landlord plan. The header says “Pro Trial — 6 days remaining” while billing is Landlord Basic.</td><td><span class="badge sev-medium">Medium</span></td><td>Open</td><td>Use the plan and trial length from the subscription that was just created.</td></tr>
+<tr><td>BUG-009</td><td>Checkout</td><td>A GBP £1,250 rent invoice first offers an INR total with a 4% conversion fee. Paying in GBP works after choosing United Kingdom.</td><td><span class="badge sev-medium">Medium</span></td><td>Open</td><td><code>RentStripeCheckoutService</code> session currency should stay GBP for a GBP invoice so the payer is not shown a converted total first.</td></tr>
+<tr><td>BUG-010</td><td>Repairs</td><td>Saving an added contractor on the repair editor does not keep the selection.</td><td><span class="badge sev-medium">Medium</span></td><td>Open</td><td>Repair update action. Show an error if the assignment is rejected.</td></tr>
+<tr><td>BUG-011</td><td>Email layout</td><td>Invite and contractor welcome use /asset/img/placeholder.jpg as the logo.</td><td><span class="badge sev-low">Low</span></td><td>Open</td><td>Point the mail layout at the real logo asset.</td></tr>
+<tr><td>BUG-012</td><td>Security headers</td><td>Login responses include HSTS, nosniff, X-Frame-Options SAMEORIGIN, and a strict referrer policy. No Content-Security-Policy was present.</td><td><span class="badge sev-medium">Medium</span></td><td>Open</td><td>Add a Content-Security-Policy that still allows Stripe Checkout.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>5. Security Testing</h2>
+<p>Score 5 / 9 applicable = <b>56%</b>.</p>
+<table>
+<thead><tr><th>ID</th><th>Security Check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>SEC-001</td><td>Failed login uses a generic message</td><td><span class="badge st-pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+<tr><td>SEC-002</td><td>Session cookie is Secure, HttpOnly, SameSite=Lax</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>SEC-003</td><td>HSTS, nosniff, frame denial, referrer policy on /login</td><td><span class="badge st-pass">Pass</span></td><td>Medium</td><td>-</td></tr>
+<tr><td>SEC-004</td><td>Landlord cannot open Super Admin SaaS routes</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>SEC-005</td><td>Tenant opening landlord dashboard or properties is sent to the portal home. Finance, people, documents, calendar, offers, billing, and delivery log return 403.</td><td><span class="badge st-pass">Pass</span></td><td>High</td><td>-</td></tr>
+<tr><td>SEC-006</td><td>Content-Security-Policy</td><td><span class="badge st-fail">Fail</span></td><td>Medium</td><td>BUG-012</td></tr>
+<tr><td>SEC-007</td><td>Tenant can open compliance and the repair management list</td><td><span class="badge st-fail">Fail</span></td><td>High</td><td>BUG-005</td></tr>
+<tr><td>SEC-008</td><td>Password reset scans every stored token</td><td><span class="badge st-fail">Fail</span></td><td>High</td><td>BUG-007. Confirmed in code. A live reset of another account was not performed.</td></tr>
+<tr><td>SEC-009</td><td>Signup accepts any address whose domain has MX. It does not check that the mailbox exists.</td><td><span class="badge st-fail">Fail</span></td><td>Medium</td><td><code>app/Http/Controllers/Auth/RegistrationController.php</code> rule <code>email:rfc,dns</code>. This is why rairaihan@outlook.co.uk was accepted and then bounced.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>6. UI/UX Testing</h2>
+<p>Score 5 / 8 applicable = <b>63%</b>.</p>
+<table>
+<thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>UI-001</td><td>Auth</td><td>Sign-in, landlord signup, and contractor signup are labelled and can be completed.</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>UI-002</td><td>Portal</td><td>Tenant navigation reaches tenancy, rent, calendar, maintenance, documents, and profile.</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>UI-003</td><td>Contractor</td><td>Profile wizard shows step 2 of 3 and step 3 of 3, and “Save and finish later” confirms the save.</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>UI-004</td><td>Rent</td><td>Outstanding £1,250 matches the invoice on the landlord finance screen and the tenant rent screen.</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>UI-005</td><td>Repairs</td><td>Landlord repairs list shows the reported issue, priority, and status.</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>UI-006</td><td>Notifications</td><td>Bell and portal notices disagree.</td><td><span class="badge st-fail">Fail</span></td><td>BUG-004</td></tr>
+<tr><td>UI-007</td><td>Billing</td><td>Header says Pro Trial while the plan in billing is Landlord Basic.</td><td><span class="badge st-fail">Fail</span></td><td>BUG-008</td></tr>
+<tr><td>UI-008</td><td>Checkout</td><td>GBP rent is first presented as an INR amount with a conversion fee.</td><td><span class="badge st-fail">Fail</span></td><td>BUG-009</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>7. Performance Testing</h2>
+<p><span class="badge st-na">Not Tested</span>. Pages and Stripe Checkout responded during the session. No timings, load, or server metrics were collected, so this category is excluded from the score.</p>
+<table>
+<thead><tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>PERF-001</td><td>Response time</td><td>Measured page timings</td><td><span class="badge st-na">Not Tested</span></td><td>Low</td><td>-</td></tr>
+<tr><td>PERF-002</td><td>Password reset</td><td>Behaviour under a large token table</td><td><span class="badge st-na">Not Tested</span></td><td>Medium</td><td>The code path in BUG-007 will get slower as the table grows. It was not timed.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>8. SEO Testing</h2>
+<p>Score 5 / 6 applicable = <b>83%</b>. Public pages only.</p>
+<table>
+<thead><tr><th>ID</th><th>SEO Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>SEO-001</td><td>Homepage title “ResiSquare — property operations”</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>SEO-002</td><td>Meta description present</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>SEO-003</td><td>Visible heading on the homepage</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>SEO-004</td><td>robots.txt disallows /admin, /contractor, and uploader paths</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>SEO-005</td><td>Sitemap lists home, pricing, login, and register</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>SEO-006</td><td>Open Graph tags</td><td><span class="badge st-fail">Fail</span></td><td>Add og:title, og:description, and og:image on the public homepage.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>9. Content Testing</h2>
+<p>Score 2 / 6 applicable = <b>33%</b>.</p>
+<table>
+<thead><tr><th>ID</th><th>Content Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>CT-001</td><td>Rent amount £1,250 is the same on the invoice, tenant home, and tenant rent page</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>CT-002</td><td>Property address 1 The Mall, SW1A 1AA is the same on tenancy, calendar, and repairs</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>CT-003</td><td>Welcome mail says 7-day Pro. Billing is Landlord Basic. Header says Pro Trial with 6 days left.</td><td><span class="badge st-fail">Fail</span></td><td>BUG-008</td></tr>
+<tr><td>CT-004</td><td>Pricing says no card is required. Checkout collects a card for the trial.</td><td><span class="badge st-fail">Fail</span></td><td><code>resources/views/frontend/pricing.blade.php</code> should match the Stripe trial, which stores a card.</td></tr>
+<tr><td>CT-005</td><td>Checkout copy says 6 days free. Marketing copy says 7 days.</td><td><span class="badge st-fail">Fail</span></td><td>BUG-008</td></tr>
+<tr><td>CT-006</td><td>Transactional mail uses a placeholder image as the logo</td><td><span class="badge st-fail">Fail</span></td><td>BUG-011</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>10. Browser &amp; Device Testing</h2>
+<p>Score 1 / 1 applicable = <b>100%</b> for desktop Chromium only. Mobile is excluded.</p>
+<table>
+<thead><tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>Desktop Chromium (in-app browser)</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>Mobile viewport and Safari</td><td><span class="badge st-na">Not Tested</span></td><td>-</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>11. API Testing</h2>
+<table>
+<thead><tr><th>ID</th><th>API / Feature</th><th>Test</th><th>Status</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>API-001</td><td>Stripe Checkout</td><td>Landlord trial session and tenant rent session both open in test mode</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>API-002</td><td>Stripe rent webhook / return</td><td>Paid return is blocked and the invoice stays open</td><td><span class="badge st-fail">Fail</span></td><td>BUG-002. Webhook delivery itself was not visible from the browser.</td></tr>
+<tr><td>API-003</td><td>Postcode lookup</td><td>SW1A 1AA returns selectable addresses</td><td><span class="badge st-pass">Pass</span></td><td>-</td></tr>
+<tr><td>API-004</td><td>Public JSON API</td><td>No separate product API was called</td><td><span class="badge st-na">Not Tested</span></td><td>-</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>12. Database Testing</h2>
+<p><span class="badge st-na">Not Tested</span> by direct SQL. Delivery status, invoice balance, and tenancy confirmation were read through the application. The delivery log is the evidence for BUG-001.</p>
+<table>
+<thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>DB-001</td><td>Direct schema or row checks</td><td><span class="badge st-na">Not Tested</span></td><td>-</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>13. Production / Deployment Testing</h2>
+<table>
+<thead><tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>DEP-001</td><td>Mail From address is a personal Gmail mailbox. SPF and DKIM failed on the invite. No DMARC on resisquare.co.uk.</td><td><span class="badge st-fail">Fail</span></td><td>BUG-006. <code>docs/launch/PRODUCTION_MAIL_AND_STRIPE.md</code></td></tr>
+<tr><td>DEP-002</td><td>CRM notification queue is not draining. Rows stay Pending.</td><td><span class="badge st-fail">Fail</span></td><td>BUG-001</td></tr>
+<tr><td>DEP-003</td><td>ModSecurity rejects the rent success URL.</td><td><span class="badge st-fail">Fail</span></td><td>BUG-002</td></tr>
+<tr><td>DEP-004</td><td>Stripe is in test mode (checkout sessions use the test prefix).</td><td><span class="badge st-fail">Fail</span></td><td>Expected on this host. Do not treat these charges as live money. Switch keys only through the launch document when this host is meant to take real payments.</td></tr>
+<tr><td>DEP-005</td><td>outlook.co.uk is not Microsoft 365. MX is mailanyone / electric.net. A mailbox that does not exist bounces after the app has already accepted the address.</td><td><span class="badge st-fail">Fail</span></td><td>BUG-006 and SEC-009. Stop sending to rairaihan@outlook.co.uk. Use a mailbox that exists. Use outlook.com only when Microsoft hosts that address.</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>14. Overall Score</h2>
+<table>
+<thead><tr><th>Category</th><th>Weight</th><th>Result</th><th>Score</th></tr></thead>
+<tbody>
+<tr><td>Functional</td><td>30%</td><td>18 / 24</td><td>75%</td></tr>
+<tr><td>Security</td><td>20%</td><td>5 / 9</td><td>56%</td></tr>
+<tr><td>UI/UX</td><td>15%</td><td>5 / 8</td><td>63%</td></tr>
+<tr><td>Performance</td><td>15%</td><td>Excluded</td><td>—</td></tr>
+<tr><td>SEO</td><td>10%</td><td>5 / 6</td><td>83%</td></tr>
+<tr><td>Compatibility</td><td>5%</td><td>1 / 1 desktop</td><td>100%</td></tr>
+<tr><td>Content</td><td>5%</td><td>2 / 6</td><td>33%</td></tr>
+</tbody>
+</table>
+<p>Performance is excluded. The other weights sum to 85 and are renormalised. Weighted result: <b>68%</b>. Rating: <b>Critical</b>.</p>
+<table>
+<thead><tr><th>Score</th><th>Rating</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td>68%</td><td>Critical</td><td>Not ready for production</td></tr>
+</tbody>
+</table>
+</section>
+
+<section>
+<h2>15. Final Status</h2>
+<p><b>Not Ready for Production</b></p>
+<h3>Recommendation</h3>
+<p>Signup, the trial subscription, property setup, the tenant invite, and contractor profile creation work. Two business-critical defects remain: CRM mail and in-app delivery never leave Pending, and a completed test-card rent payment does not update the invoice. High issues also remain for tenant repair visibility, the split notification UI, tenant access to management screens, outbound mail authentication, and password-reset lookup. Retest those after the queue, the rent return URL, and the repair filter are fixed. Production deployment is not recommended while BUG-001 and BUG-002 are open. The two critical issues override the percentage.</p>
+</section>
+
+<section>
+<h2>16. Testing Limitations</h2>
+<ul>
+<li>Super Admin could not be opened. One seeder login failed. Contractor document review and job-marketplace events need that role.</li>
+<li>Photo and PDF uploads could not be attached, so insurance, photo ID, shared documents, and compliance certificates were not submitted.</li>
+<li>Scheduler events were not forced. Production artisan commands were not run.</li>
+<li>A second card payment was not attempted after the first return URL failed, so the invoice was not paid twice.</li>
+<li>Failed-card, bank record-payment, void, appointment create, and tenancy correction were not submitted.</li>
+<li>No mobile or Safari pass. No performance timings. No direct database access.</li>
+<li>Webhook logs were not visible. The rent result is what the tenant screen showed after Checkout.</li>
+<li>Other contractors already on the host were not invited. The assignment save was tried only with the UAT contractor and did not persist.</li>
+</ul>
+</section>
+
+<footer>Generated 16 October 2026. Live UAT of laravel.resisquare.co.uk. No passwords, codes, or session identifiers are included.</footer>
+</main>
+</body>
+</html>

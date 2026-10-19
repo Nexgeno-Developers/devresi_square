@@ -15,6 +15,9 @@
             @if(session('error'))
                 <div class="alert alert-danger text-center">{{ session('error') }}</div>
             @endif
+            @if(session('info'))
+                <div class="alert alert-info text-center">{{ session('info') }}</div>
+            @endif
 
             <div class="pricing_toggle_wrapper">
                 <div class="btn-group billing-toggle" role="group" aria-label="Billing cycle">
@@ -253,7 +256,10 @@
                 <h2>Ready to Bring Your Portfolio Together?</h2>
                 <p class="pricing_lead">Manage your properties, tenancies, rent, repairs, compliance and documents from one connected workspace.</p>
                 <div class="pricing_cta">
-                    <a class="btn btn_secondary" href="{{ route('register') }}">Start {{ $trialDays ?? ($plans->max('trial_days') ?: 14) }}-Day Free Trial</a>
+                    @php $entryPlan = $plans->first(); @endphp
+                    @if($entryPlan)
+                        <a class="btn btn_secondary" href="{{ route('register', ['plan_id' => $entryPlan->id, 'billing_cycle' => 'monthly', 'account_type' => $entryPlan->target_account_type]) }}">Start {{ $trialDays ?? ($entryPlan->trial_days ?: 14) }}-Day Free Trial</a>
+                    @endif
                     <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bookDemoModal">Book a Demo</button>
                 </div>
             </div>

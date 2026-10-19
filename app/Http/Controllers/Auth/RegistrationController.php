@@ -40,6 +40,16 @@ class RegistrationController extends Controller
         'landlord' => 'landlord',
     ];
 
+    private function entryLandlordPlan(): ?Plan
+    {
+        return Plan::query()
+            ->where('is_active', 1)
+            ->where('target_account_type', 'landlord')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->first();
+    }
+
     // ─── Step 1: Show registration form ──────────────────────────────────────
     public function showForm(Request $request)
     {
@@ -49,12 +59,18 @@ class RegistrationController extends Controller
         $suggestedRegistrationType = null;
 
         if (! $request->filled('plan_id')) {
-            return redirect()
-                ->route('pricing')
-                ->with('info', 'Choose a plan to create your account.');
-        }
+            $selectedPlan = $this->entryLandlordPlan();
 
-        if ($request->filled('plan_id')) {
+            if (! $selectedPlan) {
+                return redirect()
+                    ->route('pricing')
+                    ->with('error', 'No plan is available to start a trial.');
+            }
+
+            $selectedBillingCycle = 'monthly';
+            $selectedAccountType = 'landlord';
+            $suggestedRegistrationType = 'landlord';
+        } else {
             $selectedPlan = Plan::query()
                 ->where('is_active', 1)
                 ->find($request->plan_id);
