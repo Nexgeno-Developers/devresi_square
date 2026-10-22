@@ -179,7 +179,16 @@ class TenantPortalController extends Controller
 
     public function paid(Request $request, RentStripeCheckoutService $rentCheckout): RedirectResponse
     {
-        $sessionId = (string) $request->query('session_id', '');
+        $invoiceId = (int) $request->query('invoice', 0);
+        $invoice = RentInvoice::query()
+            ->where('tenant_user_id', $request->user()->id)
+            ->when($invoiceId > 0, fn ($query) => $query->whereKey($invoiceId))
+            ->whereNotNull('stripe_checkout_session_id')
+            ->where('stripe_checkout_session_id', '!=', '')
+            ->orderByDesc('id')
+            ->first();
+
+        $sessionId = (string) ($invoice->stripe_checkout_session_id ?? '');
         if ($sessionId === '' || ! str_starts_with($sessionId, 'cs_')) {
             flash('We could not confirm that payment. If you were charged, it will show on this page shortly.')->error();
 

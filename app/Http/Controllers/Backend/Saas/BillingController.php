@@ -77,7 +77,10 @@ class BillingController extends Controller
         StripeCheckoutService $checkout,
         StripeWebhookService $webhooks
     ): void {
-        $checkoutRef = (string) $request->query('checkout_ref', '');
+        $checkoutRef = (string) $request->session()->get('billing_checkout_session_id', '');
+        if (! str_starts_with($checkoutRef, 'cs_')) {
+            $checkoutRef = (string) $request->query('checkout_ref', '');
+        }
         if (! str_starts_with($checkoutRef, 'cs_')) {
             return;
         }
@@ -105,6 +108,7 @@ class BillingController extends Controller
         }
 
         $webhooks->handleCheckoutSessionCompleted($session);
+        $request->session()->forget('billing_checkout_session_id');
     }
 
     private function checkoutSessionMatchesAccount(object $session, Account $account): bool

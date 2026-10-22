@@ -120,6 +120,53 @@ class SaasBillingAndLimitsHttpTest extends TestCase
         $this->assertSame('sub_test_return', \DB::table('account_subscriptions')->where('id', $subscriptionId)->value('stripe_subscription_id'));
     }
 
+    public function test_checkout_return_without_a_query_string_uses_the_stored_session(): void
+    {
+        Mail::fake();
+        [$user, $accountId] = $this->createLandlord('owner');
+        \DB::table('accounts')->where('id', $accountId)->update(['status' => 'suspended']);
+        $subscriptionId = \DB::table('account_subscriptions')->where('account_id', $accountId)->value('id');
+
+        $this->mock(StripeCheckoutService::class, function ($mock) use ($accountId, $subscriptionId) {
+            $mock->shouldReceive('retrieveCheckoutSession')
+                ->once()
+                ->with('cs_test_plain')
+                ->andReturn(StripeCheckoutSession::constructFrom([
+                    'id' => 'cs_test_plain',
+                    'object' => 'checkout.session',
+                    'status' => 'complete',
+                    'mode' => 'subscription',
+                    'client_reference_id' => (string) $accountId,
+                    'metadata' => [
+                        'type' => 'plan_subscription',
+                        'account_id' => (string) $accountId,
+                        'account_subscription_id' => (string) $subscriptionId,
+                    ],
+                    'subscription' => [
+                        'id' => 'sub_test_plain',
+                        'object' => 'subscription',
+                        'status' => 'trialing',
+                        'cancel_at_period_end' => false,
+                        'metadata' => [
+                            'account_id' => (string) $accountId,
+                            'account_subscription_id' => (string) $subscriptionId,
+                        ],
+                        'items' => ['object' => 'list', 'data' => []],
+                    ],
+                ]));
+        });
+
+        $this->actingAs($user)
+            ->withSession([
+                'current_account_id' => $accountId,
+                'billing_checkout_session_id' => 'cs_test_plain',
+            ])
+            ->get(route('backend.billing.success'))
+            ->assertRedirect(route('backend.billing.index'));
+
+        $this->assertSame('trialing', \DB::table('accounts')->where('id', $accountId)->value('status'));
+    }
+
     public function test_checkout_return_ignores_another_accounts_session(): void
     {
         [$user, $accountId] = $this->createLandlord('owner');

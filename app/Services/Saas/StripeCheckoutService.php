@@ -42,9 +42,9 @@ class StripeCheckoutService
             'mode' => 'subscription',
             'customer' => $this->ensureStripeCustomer($account),
             'line_items' => [$this->planLineItem($subscription)],
-            // Subscription activation is webhook-driven. Keeping the return URL
-            // query-free also avoids false positives from hosting WAF rules.
-            'success_url' => url('/admin/billing/success').'?checkout_ref={CHECKOUT_SESSION_ID}',
+            // The session id stays on the server. A cs_test_… query trips ModSecurity
+            // on the way back from Checkout and the browser never reaches this app.
+            'success_url' => url('/admin/billing/success'),
             'cancel_url' => url('/admin/billing/cancel'),
             'client_reference_id' => (string) $account->id,
             'metadata' => $metadata,
@@ -71,6 +71,8 @@ class StripeCheckoutService
         if (! $session->url) {
             throw new RuntimeException('Stripe did not return a checkout URL.');
         }
+
+        session(['billing_checkout_session_id' => (string) $session->id]);
 
         return (string) $session->url;
     }
@@ -111,9 +113,7 @@ class StripeCheckoutService
                     'quantity' => $quantity,
                 ],
             ],
-            // Subscription activation is webhook-driven. Keeping the return URL
-            // query-free also avoids false positives from hosting WAF rules.
-            'success_url' => url('/admin/billing/success').'?checkout_ref={CHECKOUT_SESSION_ID}',
+            'success_url' => url('/admin/billing/success'),
             'cancel_url' => url('/admin/billing/cancel'),
             'client_reference_id' => (string) $account->id,
             'metadata' => $metadata,
@@ -125,6 +125,8 @@ class StripeCheckoutService
         if (! $session->url) {
             throw new RuntimeException('Stripe did not return a checkout URL.');
         }
+
+        session(['billing_checkout_session_id' => (string) $session->id]);
 
         return (string) $session->url;
     }

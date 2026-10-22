@@ -118,7 +118,7 @@ class RentStripeCheckoutService
             'mode' => 'payment',
             'customer_email' => $tenant->email,
             'line_items' => $lineItems,
-            'success_url' => route('tenant.rent.paid').'?session_id={CHECKOUT_SESSION_ID}',
+            'success_url' => route('tenant.rent.paid', ['invoice' => $invoice->id]),
             'cancel_url' => route('tenant.rent', ['checkout' => 'cancelled']),
             'client_reference_id' => 'rent_invoice_'.$invoice->id,
             'metadata' => $metadata,

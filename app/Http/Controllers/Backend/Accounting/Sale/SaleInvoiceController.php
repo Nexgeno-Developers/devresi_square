@@ -921,10 +921,7 @@ class SaleInvoiceController extends BaseCrudController
     private function createStripeCheckoutUrl(string $secret, SysSaleInvoice $invoice, string $currency, string $publishable, float $amount): string
     {
         $amountCents = (int) round(max(0.5, $amount) * 100); // Stripe requires >= 50 cents equivalent
-        $successUrl = URL::signedRoute('backend.accounting.sale.invoices.paid', [
-            'invoice' => $invoice->id,
-            'amount' => $amount,
-        ]);
+        $successUrl = route($this->routeName.'.paid', ['invoice' => $invoice->id]);
 
         $data = [
             'mode' => 'payment',
@@ -954,12 +951,42 @@ class SaleInvoiceController extends BaseCrudController
         curl_close($ch);
 
         $json = json_decode($response, true);
-        if ($status >= 400 || empty($json['url'])) {
+        if ($status >= 400 || empty($json['url']) || empty($json['id'])) {
             $message = $json['error']['message'] ?? 'Unknown error';
             throw new \RuntimeException('Stripe responded with ' . $status . ': ' . $message);
         }
 
+        session([
+            'sale_checkout_invoice_id' => (int) $invoice->id,
+            'sale_checkout_session_id' => (string) $json['id'],
+            'sale_checkout_amount' => $amount,
+        ]);
+
         return $json['url'];
+    }
+
+    private function stripeCheckoutIsPaid(string $sessionId): bool
+    {
+        $secret = (string) (config('services.stripe.test_secret') ?: env('STRIPE_TEST_SECRET'));
+        if ($secret === '' || preg_match('/^cs_[A-Za-z0-9_]+$/', $sessionId) !== 1) {
+            return false;
+        }
+
+        $ch = curl_init('https://api.stripe.com/v1/checkout/sessions/'.$sessionId);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_USERPWD, $secret.':');
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        $response = curl_exec($ch);
+        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($response === false || $status >= 400) {
+            return false;
+        }
+
+        $json = json_decode($response, true);
+
+        return in_array($json['payment_status'] ?? '', ['paid', 'no_payment_required'], true);
     }
 
     /**
@@ -967,7 +994,12 @@ class SaleInvoiceController extends BaseCrudController
      */
     public function markPaid(Request $request, int $id)
     {
-        if (! $request->hasValidSignature()) {
+        $signed = $request->hasValidSignature();
+        $sessionInvoice = (int) $request->session()->get('sale_checkout_invoice_id', 0);
+        $sessionId = (string) $request->session()->get('sale_checkout_session_id', '');
+        $ownsCheckout = $sessionInvoice === $id && preg_match('/^cs_[A-Za-z0-9_]+$/', $sessionId) === 1;
+
+        if (! $signed && ! $ownsCheckout) {
             abort(403);
         }
 
@@ -975,7 +1007,25 @@ class SaleInvoiceController extends BaseCrudController
             ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->findOrFail($id);
 
-        $amount = (float) $request->query('amount', $invoice->balance_amount ?? 0);
+        if (! $signed) {
+            if (! $this->stripeCheckoutIsPaid($sessionId)) {
+                return redirect()->route($this->routeName.'.edit', $invoice->id)
+                    ->with('error', 'Stripe has not confirmed this payment yet.');
+            }
+
+            $amount = (float) $request->session()->get('sale_checkout_amount', 0);
+            $request->session()->forget([
+                'sale_checkout_invoice_id',
+                'sale_checkout_session_id',
+                'sale_checkout_amount',
+            ]);
+            if ($amount <= 0) {
+                $amount = (float) ($invoice->balance_amount ?? 0);
+            }
+        } else {
+            $amount = (float) $request->query('amount', $invoice->balance_amount ?? 0);
+        }
+
         $statusAfter = 'paid';
         $remaining = 0;
 
