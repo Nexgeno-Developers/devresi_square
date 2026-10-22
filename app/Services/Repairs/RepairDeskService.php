@@ -2,12 +2,17 @@
 
 namespace App\Services\Repairs;
 
+use App\Enums\CrmNotificationEvent;
+use App\Models\AccountUser;
 use App\Models\RepairContractorRequest;
 use App\Models\RepairDeskRequest;
 use App\Models\RepairIssue;
 use App\Models\RepairJobOffer;
 use App\Models\User;
 use App\Services\Contractors\ContractorMarketplaceException;
+use App\Services\Notifications\CrmNotificationService;
+use App\Support\AccountMembership;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class RepairDeskService
@@ -69,6 +74,34 @@ class RepairDeskService
         return $desk;
     }
 
+    /**
+     * @param  array{status: string, assigned_to: int|null, team_note: string|null}  $data
+     */
+    public function applyTeamUpdate(RepairDeskRequest $desk, array $data): RepairDeskRequest
+    {
+        $previous = (string) $desk->status;
+        $desk->fill([
+            'status' => $data['status'],
+            'assigned_to' => $data['assigned_to'] ?: null,
+            'team_note' => filled($data['team_note'] ?? null) ? trim((string) $data['team_note']) : $desk->team_note,
+        ])->save();
+
+        if ($previous === $desk->status) {
+            return $desk;
+        }
+
+        if ($desk->status === RepairDeskRequest::IN_PROGRESS) {
+            $this->moveRepair($desk, ['Pending', 'Reported'], 'Under Process');
+        }
+
+        if ($desk->status === RepairDeskRequest::COMPLETED) {
+            $this->moveRepair($desk, ['Pending', 'Reported', 'Under Process'], 'Work Completed');
+            $this->notifyCompleted($desk);
+        }
+
+        return $desk;
+    }
+
     public function assertMarketplaceAvailable(RepairIssue $repair): void
     {
         if ($this->openFor($repair)) {
@@ -87,5 +120,69 @@ class RepairDeskService
         }
 
         return $repair->jobOffers()->whereIn('status', RepairJobOffer::OPEN_STATUSES)->exists();
+    }
+
+    /**
+     * @param  array<int, string>  $from
+     */
+    private function moveRepair(RepairDeskRequest $desk, array $from, string $status): void
+    {
+        $repair = $desk->repairIssue;
+        if (! $repair || ! in_array((string) $repair->status, $from, true)) {
+            return;
+        }
+
+        $repair->forceFill([
+            'status' => $status,
+            'sub_status' => $status,
+        ])->save();
+    }
+
+    private function notifyCompleted(RepairDeskRequest $desk): void
+    {
+        $repair = $desk->repairIssue;
+        if (! $repair) {
+            return;
+        }
+
+        $repair->loadMissing('property');
+        $address = $repair->property?->full_address ?: ($repair->property?->line_1 ?: 'the property');
+        $reference = $repair->reference_number ?: ('#'.$repair->id);
+        $note = filled($desk->team_note) ? ' '.trim((string) $desk->team_note) : '';
+        $accountId = (int) $desk->account_id;
+
+        $ids = AccountUser::query()
+            ->where('account_id', $accountId)
+            ->where('status', 'active')
+            ->whereIn('member_type', AccountMembership::WORKSPACE_ADMIN_TYPES)
+            ->pluck('user_id');
+        $ids->push($desk->requested_by);
+        if ($repair->tenant_id) {
+            $ids->push($repair->tenant_id);
+        }
+
+        $recipients = User::query()->whereKey($ids->filter()->unique()->all())->get();
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        try {
+            app(CrmNotificationService::class)->dispatch(CrmNotificationEvent::RepairJobCompleted, $repair, [
+                'account_id' => $accountId,
+                'recipients' => $recipients,
+                'notice_subject' => 'Repair completed',
+                'notice' => 'The Resisquare team marked the repair at '.$address.' complete.'.$note,
+                'repair_reference' => $reference,
+                'milestone' => 'desk-completed-'.$desk->id,
+                'action_url' => route('admin.property_repairs.show', $repair),
+                'portal_action_url' => route('tenant.maintenance'),
+                'portal_action_tenants_only' => true,
+            ]);
+        } catch (\Throwable $exception) {
+            Log::error('Repair desk completion notice failed', [
+                'repair_desk_request_id' => $desk->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 }

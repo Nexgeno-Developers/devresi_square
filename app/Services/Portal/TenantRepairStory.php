@@ -131,6 +131,21 @@ class TenantRepairStory
             ];
         }
 
+        if (\Illuminate\Support\Facades\Schema::hasTable('repair_desk_requests')) {
+            $finished = \App\Models\RepairDeskRequest::query()
+                ->where('repair_issue_id', $repair->id)
+                ->where('status', \App\Models\RepairDeskRequest::COMPLETED)
+                ->get();
+            foreach ($finished as $desk) {
+                $note = trim((string) $desk->team_note);
+                $rows[] = [
+                    'at' => $desk->updated_at,
+                    'actor' => 'Resisquare',
+                    'text' => 'Marked this repair complete.'.($note !== '' ? ' '.$note : ''),
+                ];
+            }
+        }
+
         $offers = $repair->relationLoaded('jobOffers') ? $repair->jobOffers : collect();
         foreach ($offers as $offer) {
             $events = $offer->relationLoaded('events') ? $offer->events : $offer->events()->get();

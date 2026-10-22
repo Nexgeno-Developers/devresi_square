@@ -336,7 +336,7 @@ class RepairIssue extends Model
         $status = strtolower(trim((string) $this->status));
 
         return match (true) {
-            in_array($status, ['closed', 'invoice paid', 'completed', 'complete'], true) => 'Done',
+            in_array($status, ['closed', 'invoice paid', 'completed', 'complete', 'work completed'], true) => 'Done',
             in_array($status, ['cancelled', 'canceled'], true) => 'Cancelled',
             in_array($status, ['under process', 'in progress', 'assigned', 'quoted', 'scheduled'], true) => 'In progress',
             in_array($status, ['pending', 'open', 'new'], true) => 'Received',

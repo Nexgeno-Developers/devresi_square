@@ -182,6 +182,16 @@
             @php
                 $deskReady = \Illuminate\Support\Facades\Schema::hasTable('repair_desk_requests');
                 $desk = $deskReady ? app(\App\Services\Repairs\RepairDeskService::class)->openFor($repairIssue) : null;
+                $deskDone = null;
+                if ($deskReady && ! $desk) {
+                    $latestDesk = \App\Models\RepairDeskRequest::query()
+                        ->where('repair_issue_id', $repairIssue->id)
+                        ->latest('id')
+                        ->first();
+                    if ($latestDesk && $latestDesk->status === \App\Models\RepairDeskRequest::COMPLETED) {
+                        $deskDone = $latestDesk;
+                    }
+                }
                 $marketplaceOpen = $contractorRequest && $open;
             @endphp
             @if($desk)
@@ -197,6 +207,12 @@
                     </form>
                 @endif
             @else
+                @if($deskDone)
+                    <div class="alert alert-success small mb-2">
+                        The Resisquare team marked this repair complete.
+                        @if($deskDone->team_note)<div>{{ $deskDone->team_note }}</div>@endif
+                    </div>
+                @endif
                 <div class="d-flex flex-wrap gap-2 align-items-start">
                     <a class="btn btn-primary btn-sm" href="{{ route('admin.property_repairs.marketplace.find', $repairIssue) }}">
                         {{ $marketplaceOpen ? 'Add more contractors' : ($contractorRequest ? 'Send again' : 'Find a contractor') }}

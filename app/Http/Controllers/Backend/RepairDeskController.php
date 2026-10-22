@@ -77,11 +77,11 @@ class RepairDeskController extends Controller
             abort_unless($member && $role && $member->hasRole($role), 422, 'Assign a Super Admin team member.');
         }
 
-        $repairDeskRequest->fill([
+        $this->desk->applyTeamUpdate($repairDeskRequest, [
             'status' => $data['status'],
             'assigned_to' => $data['assigned_to'] ?: null,
-            'team_note' => filled($data['team_note'] ?? null) ? trim($data['team_note']) : $repairDeskRequest->team_note,
-        ])->save();
+            'team_note' => $data['team_note'] ?? null,
+        ]);
 
         return redirect()
             ->route('backend.saas.repair_desk.index')

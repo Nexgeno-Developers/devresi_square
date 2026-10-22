@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CrmNotificationEvent;
 use App\Models\ComplianceRecord;
+use App\Models\NotificationLog;
 use App\Models\Property;
 use App\Models\RepairCategory;
 use App\Models\RepairDeskRequest;
@@ -159,6 +161,44 @@ PHP);
             ->get(route('admin.property_repairs.marketplace.find', $repair))
             ->assertOk()
             ->assertSee('Find a contractor', false);
+    }
+
+    public function test_completing_a_resisquare_desk_request_updates_the_repair_and_notifies(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        $repair = $this->repair($landlord, $accountId);
+        $session = ['current_account_id' => $accountId];
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.property_repairs.desk.store', $repair), ['note' => 'Please send someone'])
+            ->assertRedirect();
+
+        $desk = RepairDeskRequest::query()->where('repair_issue_id', $repair->id)->firstOrFail();
+        $admin = $this->superAdmin();
+
+        $this->actingAs($admin)->post(route('backend.saas.repair_desk.update', $desk), [
+            'status' => RepairDeskRequest::COMPLETED,
+            'assigned_to' => $admin->id,
+            'team_note' => 'Boiler replaced',
+        ])->assertRedirect(route('backend.saas.repair_desk.index'));
+
+        $repair->refresh();
+        $this->assertSame('Work Completed', $repair->status);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->get(route('admin.property_repairs.show', $repair))
+            ->assertOk()
+            ->assertSee('The Resisquare team marked this repair complete.', false)
+            ->assertSee('Boiler replaced', false);
+
+        foreach ([$landlord->id, (int) $repair->tenant_id] as $userId) {
+            $this->assertTrue(NotificationLog::query()
+                ->where('identifier', CrmNotificationEvent::RepairJobCompleted->value)
+                ->where('subject_id', $repair->id)
+                ->where('notifiable_id', $userId)
+                ->where('channel', 'email')
+                ->exists(), 'Missing completion email for user '.$userId);
+        }
     }
 
     public function test_admin_logout_returns_the_branded_sign_in(): void
