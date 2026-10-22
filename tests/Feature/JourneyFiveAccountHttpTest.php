@@ -374,6 +374,11 @@ class JourneyFiveAccountHttpTest extends TestCase
             ])
             ->assertRedirect(route('tenant.profile'));
         Mail::assertSent(MailManager::class, fn (MailManager $mail) => ($mail->array['subject'] ?? '') === 'Your password was changed');
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_id' => $tenant->id,
+            'account_id' => $accountId,
+            'event_key' => 'security.password_changed',
+        ]);
         $this->assertDatabaseMissing('sessions', ['id' => $sessionId]);
 
         config(['crm_notifications.enabled' => true]);

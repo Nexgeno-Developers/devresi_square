@@ -44,8 +44,12 @@ class RepairJobOfferService
         $repair->jobOffers()->where('status', RepairJobOffer::OFFER_SENT)
             ->whereNotNull('offer_expires_at')
             ->where('offer_expires_at', '<', now())
+            ->with('contractor')
             ->get()
-            ->each(fn (RepairJobOffer $offer) => $this->transition($offer, RepairJobOffer::OFFER_EXPIRED, null, 'Offer validity ended.'));
+            ->each(function (RepairJobOffer $offer) {
+                $this->transition($offer, RepairJobOffer::OFFER_EXPIRED, null, 'Offer validity ended.');
+                $this->notifyOfferExpired($offer);
+            });
 
         if ($expired !== []) {
             $names = collect($expired)->map(fn (RepairJobOffer $offer) => $offer->contractor?->contractorProfile?->displayName() ?: 'A contractor')->implode(', ');
@@ -452,6 +456,10 @@ class RepairJobOfferService
             if ($locked->pricing_type === 'inspection') {
                 $inspection = true;
                 $locked->inspection_accepted_at = now();
+                $slot = $locked->earliestSlot();
+                if ($repair->tenantChoseAvailability() && $slot && $repair->coversVisit($slot)) {
+                    $locked->tenant_confirmed_at = now();
+                }
                 $this->transition($locked, RepairJobOffer::INSPECTION_ACCEPTED, $landlord, 'Landlord accepted the inspection visit.');
                 $losers = $this->closeOtherOffers($repair, $locked, $landlord);
                 $winner = $locked->fresh(['contractor.contractorProfile', 'repairIssue.property', 'repairIssue.tenant', 'request']);
@@ -462,6 +470,9 @@ class RepairJobOfferService
             $slot = $locked->earliestSlot();
             $locked->job_status = $slot ? RepairJobOffer::JOB_SCHEDULED : RepairJobOffer::JOB_ACCEPTED_STATE;
             $locked->scheduled_for = $slot;
+            if ($repair->tenantChoseAvailability() && $slot && $repair->coversVisit($slot)) {
+                $locked->tenant_confirmed_at = now();
+            }
             $this->transition($locked, RepairJobOffer::JOB_ACCEPTED, $landlord, 'Landlord accepted the offer.');
             $repair->awarded_offer_id = $locked->id;
             $repair->sub_status = 'Contractor accepted';
@@ -603,19 +614,33 @@ class RepairJobOfferService
                 if ($when->isPast()) {
                     throw new ContractorMarketplaceException('Pick a visit time in the future.');
                 }
-                $offer->forceFill(['job_status' => RepairJobOffer::JOB_SCHEDULED, 'scheduled_for' => $when])->save();
-                $this->log($offer, $offer->status, $offer->status, $contractor, 'Visit booked for '.$when->format('j M Y H:i').'.');
-                $notice = $this->name($offer).' booked the visit for '.$when->format('D j M, H:i').'.';
-                $this->notifyLandlord($offer, CrmNotificationEvent::RepairJobProgress, 'Visit booked', $notice, 'scheduled-'.$offer->id.'-'.$when->timestamp);
-                $this->notify(CrmNotificationEvent::RepairJobProgress, $offer, [$offer->repairIssue?->tenant], 'Repair visit booked', 'A contractor will visit on '.$when->format('D j M, H:i').'.', 'scheduled-tenant-'.$offer->id.'-'.$when->timestamp);
+                $matches = $offer->repairIssue && $offer->repairIssue->tenantChoseAvailability() && $offer->repairIssue->coversVisit($when);
+                $offer->forceFill([
+                    'job_status' => RepairJobOffer::JOB_SCHEDULED,
+                    'scheduled_for' => $when,
+                    'tenant_confirmed_at' => $matches ? ($offer->tenant_confirmed_at ?: now()) : null,
+                ])->save();
+                $this->log($offer, $offer->status, $offer->status, $contractor, $matches
+                    ? 'Visit booked for '.$when->format('j M Y H:i').', using the tenant’s time.'
+                    : 'Visit proposed for '.$when->format('j M Y H:i').'. Waiting for the tenant to confirm.');
+                $notice = $this->name($offer).($matches ? ' booked' : ' proposed').' the visit for '.$when->format('D j M, H:i').'.';
+                if (! $matches) {
+                    $notice .= ' The tenant needs to confirm it.';
+                }
+                $this->notifyLandlord($offer, CrmNotificationEvent::RepairJobProgress, $matches ? 'Visit booked' : 'Visit waiting on the tenant', $notice, 'scheduled-'.$offer->id.'-'.$when->timestamp);
+                $this->notifyTenantVisit($offer, $matches ? 'Repair visit booked' : 'Please confirm a repair visit');
                 break;
             case 'start':
+                $this->assertVisitSettled($offer);
                 $offer->forceFill(['job_status' => RepairJobOffer::JOB_IN_PROGRESS, 'started_at' => now()])->save();
                 $this->log($offer, $offer->status, $offer->status, $contractor, 'Work started.');
                 $this->notifyLandlord($offer, CrmNotificationEvent::RepairJobProgress, 'Work started', $this->name($offer).' has started the repair.', 'started-'.$offer->id);
                 $this->notify(CrmNotificationEvent::RepairJobProgress, $offer, [$offer->repairIssue?->tenant], 'Work has started on your repair', 'The contractor has started the repair.', 'started-tenant-'.$offer->id);
                 break;
             case 'complete':
+                if ($offer->job_status !== RepairJobOffer::JOB_IN_PROGRESS) {
+                    $this->assertVisitSettled($offer);
+                }
                 $offer->forceFill([
                     'job_status' => RepairJobOffer::JOB_COMPLETED,
                     'completed_at' => now(),
@@ -685,13 +710,22 @@ class RepairJobOfferService
     public function override(RepairJobOffer $offer, User $admin, string $action, string $note): void
     {
         abort_unless($admin->isSuperAdmin(), 403);
+        $offer->loadMissing('contractor', 'invitedBy');
         switch ($action) {
             case 'resolve_dispute':
+                $wasDisputed = (bool) $offer->disputed_at;
                 $offer->forceFill(['disputed_at' => null])->save();
                 $this->log($offer, $offer->status, $offer->status, $admin, 'Admin resolved dispute: '.$note);
+                if ($wasDisputed) {
+                    $this->tellBoth($offer, CrmNotificationEvent::RepairJobDisputed, 'Dispute resolved', 'An admin resolved the dispute: '.$note, 'dispute-resolved-'.$offer->id);
+                }
                 break;
             case 'close':
-                $this->transition($offer, in_array($offer->status, RepairJobOffer::OPEN_STATUSES, true) ? RepairJobOffer::CLOSED : $offer->status, $admin, 'Admin closed: '.$note);
+                $wasOpen = in_array($offer->status, RepairJobOffer::OPEN_STATUSES, true);
+                $this->transition($offer, $wasOpen ? RepairJobOffer::CLOSED : $offer->status, $admin, 'Admin closed: '.$note);
+                if ($wasOpen) {
+                    $this->tellBoth($offer, CrmNotificationEvent::RepairJobCancelled, 'Job closed', 'An admin closed this job: '.$note, 'admin-closed-'.$offer->id);
+                }
                 break;
             case 'cancel_award':
                 if ($offer->status === RepairJobOffer::JOB_ACCEPTED) {
@@ -700,11 +734,18 @@ class RepairJobOfferService
                         RepairIssue::withoutEvents(fn () => RepairIssue::query()->whereKey($offer->repair_issue_id)->where('awarded_offer_id', $offer->id)->update(['awarded_offer_id' => null]));
                         RepairContractorRequest::query()->where('repair_issue_id', $offer->repair_issue_id)->update(['status' => RepairContractorRequest::AWAITING]);
                     });
+                    $this->tellBoth($offer, CrmNotificationEvent::RepairJobCancelled, 'Award cancelled', 'An admin cancelled this job: '.$note, 'admin-cancel-award-'.$offer->id);
                 }
                 break;
             default:
                 throw new ContractorMarketplaceException('Unknown action.');
         }
+    }
+
+    private function tellBoth(RepairJobOffer $offer, CrmNotificationEvent $event, string $subject, string $notice, string $milestone): void
+    {
+        $this->notify($event, $offer, [$offer->contractor], $subject, $notice, $milestone.'-contractor', route('contractor.jobs.show', $offer));
+        $this->notifyLandlord($offer, $event, $subject, $notice, $milestone.'-landlord');
     }
 
     // ── Compliance side effects ─────────────────────────────────────────────
@@ -714,6 +755,7 @@ class RepairJobOfferService
         $offers = RepairJobOffer::query()
             ->where('repair_issue_id', $repair->id)
             ->whereIn('status', array_merge(RepairJobOffer::OPEN_STATUSES, [RepairJobOffer::JOB_ACCEPTED]))
+            ->with('contractor')
             ->get();
         foreach ($offers as $offer) {
             if ($offer->status === RepairJobOffer::JOB_ACCEPTED) {
@@ -721,9 +763,19 @@ class RepairJobOfferService
                     continue;
                 }
                 $this->transition($offer, RepairJobOffer::CANCELLED, null, 'Repair was closed.');
-                $this->notify(CrmNotificationEvent::RepairJobCancelled, $offer, [$offer->contractor], 'Job cancelled', 'This repair was closed, so the job is cancelled.', 'repair-closed-'.$offer->id);
+                $this->notify(CrmNotificationEvent::RepairJobCancelled, $offer, [$offer->contractor], 'Job cancelled', 'This repair was closed, so the job is cancelled.', 'repair-closed-'.$offer->id, route('contractor.jobs.show', $offer));
             } else {
+                $awaiting = $offer->isAwaitingResponse();
                 $this->transition($offer, RepairJobOffer::CLOSED, null, 'Repair was closed.');
+                $this->notify(
+                    CrmNotificationEvent::RepairJobCancelled,
+                    $offer,
+                    [$offer->contractor],
+                    $awaiting ? 'Repair invitation closed' : 'Repair request closed',
+                    'This repair was closed, so this '.($awaiting ? 'invitation' : 'offer').' is closed.',
+                    'repair-closed-open-'.$offer->id,
+                    route('contractor.jobs.show', $offer)
+                );
             }
         }
         RepairContractorRequest::query()->where('repair_issue_id', $repair->id)
@@ -759,12 +811,22 @@ class RepairJobOfferService
             $next = $offer->isAwaitingResponse() ? RepairJobOffer::WITHDRAWN : RepairJobOffer::OFFER_WITHDRAWN;
             $offer->withdraw_reason = $reason;
             $this->transition($offer, $next, null, 'Automatically withdrawn: '.$reason);
+            $what = $next === RepairJobOffer::WITHDRAWN ? 'invitation' : 'offer';
             $this->notifyLandlord(
                 $offer,
                 CrmNotificationEvent::RepairJobOfferWithdrawn,
                 'A contractor was withdrawn',
-                $profile->displayName().' can no longer take this job ('.$reason.'), so their '.($next === RepairJobOffer::WITHDRAWN ? 'invitation' : 'offer').' was withdrawn.',
+                $profile->displayName().' can no longer take this job ('.$reason.'), so their '.$what.' was withdrawn.',
                 'auto-withdrawn-'.$offer->id
+            );
+            $this->notify(
+                CrmNotificationEvent::RepairJobOfferWithdrawn,
+                $offer,
+                [$offer->contractor],
+                'This job was withdrawn',
+                'Your '.$what.' was withdrawn: '.$reason,
+                'auto-withdrawn-contractor-'.$offer->id,
+                route('contractor.jobs.show', $offer)
             );
         }
     }
@@ -919,6 +981,19 @@ class RepairJobOfferService
         ];
     }
 
+    private function assertVisitSettled(RepairJobOffer $offer): void
+    {
+        $offer->loadMissing('repairIssue');
+        if ($offer->visitIsSettled()) {
+            return;
+        }
+        if (! $offer->agreedVisitAt()) {
+            throw new ContractorMarketplaceException('Book a visit time first. The tenant needs to confirm it before you start.');
+        }
+
+        throw new ContractorMarketplaceException('The tenant needs to confirm this visit time before you start.');
+    }
+
     // ── Internals ───────────────────────────────────────────────────────────
 
     private function announceAward(RepairJobOffer $winner, array $losers): void
@@ -965,12 +1040,14 @@ class RepairJobOfferService
         if (! $tenant) {
             return;
         }
-        $when = $offer->scheduled_for ?: $offer->earliestSlot();
+        $offer->loadMissing('repairIssue');
+        $when = $offer->agreedVisitAt();
+        $needsConfirm = $when && ! $offer->visitIsSettled();
         $notice = $when
-            ? 'A contractor will visit on '.$when->format('D j M, H:i').'.'
+            ? ($needsConfirm
+                ? 'A contractor proposed '.$when->format('D j M, H:i').'. Please confirm this time works, or offer another.'
+                : 'A contractor will visit on '.$when->format('D j M, H:i').'.')
             : 'A contractor has been booked and will be in touch to arrange a time.';
-        $tenantOffered = $offer->repairIssue->tenant_availability;
-        $needsConfirm = $when && ! $offer->tenant_confirmed_at && (! $tenantOffered || ! $tenantOffered->equalTo($when));
         $confirmUrl = null;
         if ($needsConfirm) {
             $confirmUrl = URL::temporarySignedRoute('repair_visit.confirm', now()->addDays(7), ['offer' => $offer->id]);
@@ -1122,7 +1199,29 @@ class RepairJobOfferService
         }
         if ($offer->status === RepairJobOffer::OFFER_SENT && $offer->offer_expires_at?->isPast()) {
             $this->transition($offer, RepairJobOffer::OFFER_EXPIRED, null, 'Offer validity ended.');
+            $this->notifyOfferExpired($offer);
         }
+    }
+
+    private function notifyOfferExpired(RepairJobOffer $offer): void
+    {
+        $offer->loadMissing('contractor');
+        $this->notify(
+            CrmNotificationEvent::RepairJobOfferWithdrawn,
+            $offer,
+            [$offer->contractor],
+            'Your offer has expired',
+            'Your offer was not accepted before it expired. The landlord can ask you to reconfirm it.',
+            'offer-expired-contractor-'.$offer->id,
+            route('contractor.jobs.show', $offer)
+        );
+        $this->notifyLandlord(
+            $offer,
+            CrmNotificationEvent::RepairJobOfferWithdrawn,
+            'An offer expired',
+            $this->name($offer).'’s offer expired before you accepted it. You can ask them to reconfirm.',
+            'offer-expired-landlord-'.$offer->id
+        );
     }
 
     private function transition(RepairJobOffer $offer, string $to, ?User $actor, ?string $note, array $snapshot = []): void

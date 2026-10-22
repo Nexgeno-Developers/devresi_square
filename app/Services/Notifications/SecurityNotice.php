@@ -38,12 +38,13 @@ class SecurityNotice
         }
     }
 
-    public function inApp(?int $accountId, User $user, string $identifier, string $subject, string $message, ?Model $about = null): void
+    public function inApp(?int $accountId, User $user, string $identifier, string $subject, string $message, ?Model $about = null, ?string $url = null): void
     {
         if (! $accountId) {
             return;
         }
 
+        $uuid = (string) Str::uuid();
         NotificationLog::query()->create([
             'account_id' => $accountId,
             'identifier' => $identifier,
@@ -51,13 +52,37 @@ class SecurityNotice
             'notifiable_id' => $user->getKey(),
             'subject_type' => $about?->getMorphClass(),
             'subject_id' => $about?->getKey(),
-            'notification_uuid' => (string) Str::uuid(),
+            'notification_uuid' => $uuid,
             'idempotency_key' => hash('sha256', $identifier.'|'.$user->id.'|'.Str::uuid()),
             'channel' => 'system',
             'subject' => $subject,
             'message' => $message,
+            'payload' => ['action_url' => $url, 'category' => 'system', 'priority' => 'high'],
             'status' => 'sent',
             'sent_at' => now(),
+        ]);
+
+        DB::table('notifications')->insert([
+            'id' => $uuid,
+            'account_id' => $accountId,
+            'type' => 'crm_event',
+            'event_key' => $identifier,
+            'category' => 'system',
+            'priority' => 'high',
+            'action_url' => $url,
+            'notifiable_type' => $user->getMorphClass(),
+            'notifiable_id' => $user->getKey(),
+            'data' => json_encode([
+                'event_key' => $identifier,
+                'title' => $subject,
+                'message' => $message,
+                'url' => $url,
+                'category' => 'system',
+                'priority' => 'high',
+            ], JSON_THROW_ON_ERROR),
+            'read_at' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 

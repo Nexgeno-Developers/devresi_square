@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\CrmNotificationEvent;
 use App\Mail\MailManager;
 use App\Models\Account;
 use App\Models\ComplianceRecord;
@@ -10,6 +11,7 @@ use App\Models\RentInvoice;
 use App\Models\RentPayment;
 use App\Models\RepairIssue;
 use App\Models\Tenancy;
+use App\Services\Notifications\CrmNotificationService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -91,6 +93,7 @@ class SendMonthlyPortfolioSummary extends Command
                         'attachments' => [],
                     ]));
                     $sent++;
+                    $this->bell($account, $label);
                 } catch (\Throwable $exception) {
                     Cache::forget($key);
                     Log::error('Monthly portfolio summary failed', [
@@ -103,5 +106,29 @@ class SendMonthlyPortfolioSummary extends Command
         $this->info("Monthly summaries sent: {$sent}.");
 
         return self::SUCCESS;
+    }
+
+    private function bell(Account $account, string $label): void
+    {
+        if (! $account->owner) {
+            return;
+        }
+
+        try {
+            app(CrmNotificationService::class)->dispatch(CrmNotificationEvent::FinanceStatementReady, $account, [
+                'account_id' => $account->id,
+                'recipients' => [$account->owner],
+                'channels' => ['system'],
+                'milestone' => 'portfolio-'.$account->id.'-'.now()->subMonth()->format('Y-m'),
+                'property_address' => $account->account_name ?: 'your portfolio',
+                'action_url' => route('backend.dashboard'),
+                'notice_subject' => 'Monthly summary for '.$label,
+            ]);
+        } catch (\Throwable $exception) {
+            Log::error('Monthly portfolio summary bell failed', [
+                'account_id' => $account->id,
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 }

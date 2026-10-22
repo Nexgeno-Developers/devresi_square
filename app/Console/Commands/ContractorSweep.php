@@ -67,11 +67,14 @@ class ContractorSweep extends Command
                     return;
                 }
                 $doc->forceFill(['reminder_stage' => $stage])->save();
+                $title = $doc->label().' expires in '.$left.' '.str('day')->plural($left);
+                $plain = 'Your '.strtolower($doc->label()).' expires on '.$doc->expires_at->format('j F Y').'. Upload the renewal now so you are not paused. Jobs you already have are not affected.';
                 $this->mail->toUser(
                     $profile->user,
-                    $doc->label().' expires in '.$left.' '.str('day')->plural($left),
-                    '<p>Your '.e(strtolower($doc->label())).' expires on '.$doc->expires_at->format('j F Y').'. Upload the renewal now so you are not paused. Jobs you already have are not affected.</p><p><a href="'.e(route('contractor.profile.edit')).'">Upload renewal</a></p>'
+                    $title,
+                    '<p>'.e($plain).'</p><p><a href="'.e(route('contractor.profile.edit')).'">Upload renewal</a></p>'
                 );
+                $this->mail->bell($profile->user, $title, $plain, route('contractor.profile.edit'), null, 'contractor.document_expiring');
             });
     }
 
@@ -86,13 +89,15 @@ class ContractorSweep extends Command
                     if ($doc->status === ContractorDocument::APPROVED && $doc->isExpired() && ! $doc->expired_notified_at && ! str_ends_with($doc->type, ContractorDocumentStore::RENEWAL)) {
                         $doc->forceFill(['expired_notified_at' => now()])->save();
                         $profile->log('document_expired', null, $doc->type);
+                        $title = $doc->label().' has expired';
+                        $plain = 'Your '.strtolower($doc->label()).' expired on '.$doc->expires_at->format('j F Y').'. '
+                            .(in_array($doc->type, config('contractor_marketplace.base_documents'), true) ? 'You are paused until we approve the renewal.' : 'You cannot take jobs that need it until we approve the renewal.');
                         $this->mail->toUser(
                             $profile->user,
-                            $doc->label().' has expired',
-                            '<p>Your '.e(strtolower($doc->label())).' expired on '.$doc->expires_at->format('j F Y').'. '
-                                .(in_array($doc->type, config('contractor_marketplace.base_documents'), true) ? 'You are paused until we approve the renewal.' : 'You cannot take jobs that need it until we approve the renewal.')
-                                .'</p><p><a href="'.e(route('contractor.profile.edit')).'">Upload renewal</a></p>'
+                            $title,
+                            '<p>'.e($plain).'</p><p><a href="'.e(route('contractor.profile.edit')).'">Upload renewal</a></p>'
                         );
+                        $this->mail->bell($profile->user, $title, $plain, route('contractor.profile.edit'), null, 'contractor.document_expired');
                     }
                 }
 
@@ -103,6 +108,8 @@ class ContractorSweep extends Command
                 } elseif (! $block && $profile->paused_at) {
                     $profile->forceFill(['paused_at' => null, 'pause_reason' => null])->save();
                     $profile->log('unpaused', null, null, 'Compliance back in date.');
+                    $this->mail->toUser($profile->user, 'You’re active again', '<p>Your documents are back in date. Landlords can send you jobs again.</p>');
+                    $this->mail->bell($profile->user, 'You’re active again', 'Your documents are back in date. Landlords can send you jobs again.', route('contractor.jobs.index'), null, 'contractor.profile_active');
                 }
                 $this->offers->withdrawBlocked($profile);
             });
@@ -160,11 +167,14 @@ class ContractorSweep extends Command
                 $stage = $profile->draft_reminder_stage ? 2 : 1;
                 $profile->forceFill(['draft_reminder_stage' => $stage])->save();
                 $gaps = ContractorCompliance::submissionGaps($profile);
+                $title = $stage === 1 ? 'Finish your contractor sign-up' : 'Still want repair jobs?';
+                $plain = 'You are '.(count($gaps) <= 2 ? 'nearly there' : 'part way through').'. '.(count($gaps) ? 'Still needed: '.implode(' ', array_slice($gaps, 0, 3)) : 'Just send it for review.');
                 $this->mail->toUser(
                     $profile->user,
-                    $stage === 1 ? 'Finish your contractor sign-up' : 'Still want repair jobs?',
-                    '<p>You are '.(count($gaps) <= 2 ? 'nearly there' : 'part way through').'. '.(count($gaps) ? 'Still needed: '.e(implode(' ', array_slice($gaps, 0, 3))) : 'Just send it for review.').'</p><p><a href="'.e(route('contractor.profile.edit')).'">Carry on</a></p>'
+                    $title,
+                    '<p>'.e($plain).'</p><p><a href="'.e(route('contractor.profile.edit')).'">Carry on</a></p>'
                 );
+                $this->mail->bell($profile->user, $title, $plain, route('contractor.profile.edit'), null, 'contractor.draft_reminder');
             });
     }
 

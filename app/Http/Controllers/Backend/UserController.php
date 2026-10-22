@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Models\UserCategory;
 use App\Services\Accounting\StatementService;
 use App\Services\Saas\AccountLimitService;
+use App\Services\Notifications\SecurityNotice;
 use App\Services\Saas\PortalAccessService;
 // use App\Http\Controllers\Backend\NotesController;
 use Carbon\Carbon;
@@ -1463,6 +1464,15 @@ class UserController
                 'content' => $renderedHtml,
             ]));
 
+            app(SecurityNotice::class)->inApp(
+                (int) (function_exists('current_account_id') ? current_account_id() : 0),
+                $user,
+                'team.invited',
+                $subject,
+                ($placeholders['inviter_name'] ?? 'A colleague').' invited you to '.($placeholders['workspace_name'] ?? 'a workspace').'.',
+                function_exists('current_account') ? current_account() : null
+            );
+
             Log::info("Password reset email sent to {$user->email}");
         } catch (\Exception $e) {
             Log::error("Failed to send password reset email: {$e->getMessage()}", [
@@ -1519,6 +1529,15 @@ class UserController
                 'content'     => $renderedHtml,
                 'attachments' => [],
             ]));
+
+            app(SecurityNotice::class)->inApp(
+                (int) (function_exists('current_account_id') ? current_account_id() : 0),
+                $user,
+                'tenant.portal_invite',
+                'Portal invite',
+                'Your tenant account is ready.',
+                function_exists('current_account') ? current_account() : null
+            );
 
             Log::info("Tenant welcome email sent to {$user->email}");
         } catch (\Exception $e) {

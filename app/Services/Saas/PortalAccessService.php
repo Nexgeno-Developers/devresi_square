@@ -407,6 +407,13 @@ class PortalAccessService
                 continue;
             }
 
+            $membership = AccountUser::query()
+                ->where('account_id', $accountId)
+                ->where('user_id', $userId)
+                ->where('member_type', AccountMembership::TENANT)
+                ->first();
+            $alreadyClosed = $membership && ! $membership->can_login && $membership->status === 'disabled';
+
             AccountUser::query()
                 ->where('account_id', $accountId)
                 ->where('user_id', $userId)
@@ -415,7 +422,35 @@ class PortalAccessService
                     'can_login' => false,
                     'status' => 'disabled',
                 ]);
+
+            if ($membership && ! $alreadyClosed) {
+                $this->tellPortalEnded((int) $userId, $accountId, $tenancy);
+            }
         }
+    }
+
+    private function tellPortalEnded(int $userId, int $accountId, Tenancy $tenancy): void
+    {
+        $user = User::query()->find($userId);
+        if (! $user) {
+            return;
+        }
+
+        $tenancy->loadMissing('property');
+        $address = trim(implode(', ', array_filter([
+            $tenancy->property?->line_1,
+            $tenancy->property?->postcode,
+        ])));
+        $plain = $address !== ''
+            ? 'Your tenancy at '.$address.' has ended, so portal access for this account is turned off.'
+            : 'Your tenancy has ended, so portal access for this account is turned off.';
+        $notices = app(SecurityNotice::class);
+        $notices->inApp($accountId, $user, 'tenant.portal_ended', 'Portal access ended', $plain, $tenancy);
+        $notices->emailTo(
+            (string) $user->email,
+            'Portal access ended',
+            '<p>'.e($plain).'</p>'
+        );
     }
 
     public function isAccountOwnerOrAdmin(User $user, int $accountId): bool

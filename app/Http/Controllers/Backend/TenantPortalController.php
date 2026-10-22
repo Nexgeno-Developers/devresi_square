@@ -5,7 +5,12 @@ namespace App\Http\Controllers\Backend;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\RentInvoice;
+use App\Models\RepairIssue;
+use App\Models\RepairJobOffer;
 use App\Services\Auth\EmailChangeService;
+use App\Services\Contractors\ContractorMarketplaceException;
+use App\Services\Contractors\RepairJobAftercareService;
+use App\Services\Contractors\RepairJobOfferService;
 use App\Services\Finance\RentStripeCheckoutService;
 use App\Services\Notifications\SecurityNotice;
 use App\Services\Portal\TenancyDetailsConfirmationService;
@@ -274,6 +279,53 @@ class TenantPortalController extends Controller
         return redirect()->route('tenant.maintenance');
     }
 
+    public function confirmVisit(
+        Request $request,
+        RepairIssue $repair,
+        TenantPortalService $portal,
+        RepairJobOfferService $offers,
+        RepairJobAftercareService $aftercare,
+    ): RedirectResponse {
+        $user = $request->user();
+        $accountId = current_account_id();
+        $visible = $portal->repairsFor($user, $accountId, $portal->tenanciesFor($user, $accountId))
+            ->contains(fn (RepairIssue $row) => (int) $row->id === (int) $repair->id);
+        abort_unless($visible, 404);
+
+        $offer = $repair->awardedOffer;
+        if (! $offer || ! in_array($offer->status, [RepairJobOffer::JOB_ACCEPTED, RepairJobOffer::INSPECTION_ACCEPTED], true)) {
+            $offer = $repair->jobOffers()
+                ->whereIn('status', [RepairJobOffer::JOB_ACCEPTED, RepairJobOffer::INSPECTION_ACCEPTED])
+                ->latest('id')
+                ->first();
+        }
+        abort_unless($offer, 404);
+
+        try {
+            if ($request->input('action') === 'reschedule') {
+                $data = $request->validate([
+                    'date' => ['required', 'date_format:Y-m-d'],
+                    'slot' => ['required', Rule::in(['09:00', '13:00', '17:00'])],
+                    'note' => ['nullable', 'string', 'max:500'],
+                ]);
+                $when = \Carbon\Carbon::createFromFormat('Y-m-d H:i', $data['date'].' '.$data['slot']);
+                $aftercare->requestReschedule($offer, $user, 'tenant', [$when->format('Y-m-d\TH:i')], $data['note'] ?? null);
+                flash('Thanks. The contractor will pick one of your times.')->success();
+
+                return redirect()->route('tenant.maintenance');
+            }
+            $offers->tenantConfirm($offer);
+        } catch (ContractorMarketplaceException $exception) {
+            flash($exception->getMessage())->warning();
+
+            return redirect()->route('tenant.maintenance');
+        }
+
+        flash('Thanks. The contractor knows that time works for you.')->success();
+
+        return redirect()->route('tenant.maintenance');
+    }
+
     public function documents(Request $request, TenantPortalService $portal): View
     {
         $user = $request->user();
@@ -431,6 +483,15 @@ class TenantPortalController extends Controller
 
         $notices = app(SecurityNotice::class);
         $notices->endOtherSessions($user);
+        $notices->inApp(
+            (int) (current_account_id() ?: $user->accountUsers()->where('status', 'active')->value('account_id')),
+            $user,
+            'security.password_changed',
+            'Your password was changed',
+            'Your password was just changed. If this was not you, reset it and tell your landlord.',
+            $user,
+            route('tenant.profile')
+        );
         $sent = $notices->emailTo(
             (string) $user->email,
             'Your password was changed',

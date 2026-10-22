@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Mail\MailManager;
 use App\Models\Account;
+use App\Services\Notifications\SecurityNotice;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -53,6 +54,23 @@ class SendTrialExpiryWarnings extends Command
                         'attachments' => [],
                     ]));
                     $sent++;
+                    if ($account->owner) {
+                        try {
+                            app(SecurityNotice::class)->inApp(
+                                (int) $account->id,
+                                $account->owner,
+                                'account.trial_ending',
+                                'Your trial ends on '.$account->trial_ends_at->format('j F Y'),
+                                'Choose a plan for '.($account->account_name ?: 'your workspace').' to keep access.',
+                                $account
+                            );
+                        } catch (\Throwable $exception) {
+                            Log::error('Trial expiry bell failed', [
+                                'account_id' => $account->id,
+                                'error' => $exception->getMessage(),
+                            ]);
+                        }
+                    }
                 } catch (\Throwable $exception) {
                     Cache::forget($key);
                     Log::error('Trial expiry warning failed', [

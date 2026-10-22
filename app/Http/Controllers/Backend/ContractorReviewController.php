@@ -10,6 +10,7 @@ use App\Models\ContractorTrade;
 use App\Models\RepairContractorRequest;
 use App\Models\RepairJobOffer;
 use App\Models\Registration;
+use App\Models\User;
 use App\Services\Contractors\ContractorDirectory;
 use App\Services\Contractors\ContractorDocumentStore;
 use App\Services\Contractors\ContractorMail;
@@ -161,7 +162,7 @@ class ContractorReviewController extends Controller
             ])->save();
             $profile->log('document_rejected', $request->user(), $document->type, $reason);
             if ($profile->approval_status === ContractorProfile::APPROVED) {
-                $this->mail->toUser($profile->user, $label.' needs another upload', '<p>We could not accept your '.e(strtolower($label)).': '.e($reason).'.</p><p><a href="'.e(route('contractor.profile.edit')).'">Upload it again</a>.</p>');
+                $this->tell($profile->user, $label.' needs another upload', '<p>We could not accept your '.e(strtolower($label)).': '.e($reason).'.</p><p><a href="'.e(route('contractor.profile.edit')).'">Upload it again</a>.</p>', 'We could not accept your '.strtolower($label).': '.$reason, route('contractor.profile.edit'));
             }
 
             return back()->with('success', $label.' rejected.');
@@ -231,10 +232,16 @@ class ContractorReviewController extends Controller
         ])->save();
         $profile->log('trade_'.$data['decision'], $request->user(), $trade, $data['reason'] ?? null);
         if ($profile->approval_status === ContractorProfile::APPROVED) {
-            $this->mail->toUser($profile->user, $label.': '.($data['decision'] === ContractorTrade::APPROVED ? 'approved' : 'not approved yet'),
-                $data['decision'] === ContractorTrade::APPROVED
+            $approved = $data['decision'] === ContractorTrade::APPROVED;
+            $this->tell(
+                $profile->user,
+                $label.': '.($approved ? 'approved' : 'not approved yet'),
+                $approved
                     ? '<p>You can now receive '.e(strtolower($label)).' jobs.</p>'
-                    : '<p>'.e($data['reason'] ?? '').'</p><p><a href="'.e(route('contractor.profile.edit')).'">Open your documents</a>.</p>');
+                    : '<p>'.e($data['reason'] ?? '').'</p><p><a href="'.e(route('contractor.profile.edit')).'">Open your documents</a>.</p>',
+                $approved ? 'You can now receive '.strtolower($label).' jobs.' : ($data['reason'] ?? 'This trade is not approved yet.'),
+                $approved ? route('contractor.jobs.index') : route('contractor.profile.edit')
+            );
             $this->offers->withdrawBlocked($profile->fresh(['documents', 'tradeApprovals']));
         }
 
@@ -363,7 +370,7 @@ class ContractorReviewController extends Controller
             'approved_at' => now(),
         ]);
         $trades = collect(ContractorCompliance::approvedTrades($profile))->map(fn ($t) => ContractorCompliance::trades()[$t] ?? $t)->implode(', ');
-        $this->mail->toUser($profile->user, 'You’re approved', '<p>You’re approved for: '.e($trades).'. Landlords in your area can now send you repairs.</p><p><a href="'.e(route('contractor.jobs.index')).'">Open your jobs</a></p>');
+        $this->tell($profile->user, 'You’re approved', '<p>You’re approved for: '.e($trades).'. Landlords in your area can now send you repairs.</p><p><a href="'.e(route('contractor.jobs.index')).'">Open your jobs</a></p>', 'You’re approved for: '.$trades.'. Landlords in your area can now send you repairs.', route('contractor.jobs.index'));
 
         return back()->with('success', 'Approved for '.$trades.'.');
     }
@@ -387,9 +394,12 @@ class ContractorReviewController extends Controller
         ])->save();
         $profile->log('more_info', $request->user(), null, $data['review_note'] ?? null, ['items' => $failed->all()]);
         $list = $failed->map(fn ($line) => '<li>'.e($line).'</li>')->implode('');
-        $this->mail->toUser($profile->user, 'A few things to fix',
+        $plain = 'We need a couple of things before we can approve you.'.($failed->isNotEmpty() ? ' '.$failed->implode(' ') : '').(filled($data['review_note'] ?? null) ? ' '.$data['review_note'] : '');
+        $this->tell($profile->user, 'A few things to fix',
             '<p>We need a couple of things before we can approve you.</p>'.($list ? '<ul>'.$list.'</ul>' : '').(filled($data['review_note'] ?? null) ? '<p>'.e($data['review_note']).'</p>' : '')
-            .'<p>You only need to re-upload these. <a href="'.e(route('contractor.profile.edit')).'">Fix now</a></p>');
+            .'<p>You only need to re-upload these. <a href="'.e(route('contractor.profile.edit')).'">Fix now</a></p>',
+            $plain,
+            route('contractor.profile.edit'));
 
         return back()->with('success', 'Sent back for more info.');
     }
@@ -407,7 +417,7 @@ class ContractorReviewController extends Controller
         Registration::query()->where('user_id', $profile->user_id)->where('type', 'contractor')->where('status', '!=', 'approved')
             ->update(['status' => 'rejected', 'rejected_at' => now()]);
         $this->offers->withdrawBlocked($profile, 'Contractor is no longer approved.');
-        $this->mail->toUser($profile->user, 'Your application was not approved', '<p>'.e($data['review_note']).'</p><p>You can update your details and apply again at any time.</p>');
+        $this->tell($profile->user, 'Your application was not approved', '<p>'.e($data['review_note']).'</p><p>You can update your details and apply again at any time.</p>', $data['review_note'].' You can update your details and apply again at any time.', route('contractor.profile.edit'));
 
         return back()->with('success', 'Rejected. They can re-apply; history is kept.');
     }
@@ -423,7 +433,7 @@ class ContractorReviewController extends Controller
         ])->save();
         $profile->log('suspended', $request->user(), null, $data['review_note']);
         $this->offers->withdrawOpenForSuspended($profile);
-        $this->mail->toUser($profile->user, 'Your contractor account is suspended', '<p>'.e($data['review_note']).'</p><p>You won’t get new jobs while suspended. Jobs already accepted stay in place.</p>');
+        $this->tell($profile->user, 'Your contractor account is suspended', '<p>'.e($data['review_note']).'</p><p>You won’t get new jobs while suspended. Jobs already accepted stay in place.</p>', $data['review_note'].' You won’t get new jobs while suspended. Jobs already accepted stay in place.', route('contractor.jobs.index'));
 
         return back()->with('success', 'Suspended and hidden from landlords. Open invitations were withdrawn.');
     }
@@ -442,7 +452,7 @@ class ContractorReviewController extends Controller
             'reviewed_at' => now(),
         ])->save();
         $profile->log('reinstated', $request->user());
-        $this->mail->toUser($profile->user, 'Your contractor account is active again', '<p>You can receive repair jobs again.</p>');
+        $this->tell($profile->user, 'Your contractor account is active again', '<p>You can receive repair jobs again.</p>', 'You can receive repair jobs again.', route('contractor.jobs.index'));
 
         return back()->with('success', 'Reinstated.');
     }
@@ -607,8 +617,14 @@ class ContractorReviewController extends Controller
         if ($profile->approval_status === ContractorProfile::APPROVED && $profile->paused_at && ! ContractorCompliance::profileBlock($profile)) {
             $profile->forceFill(['paused_at' => null, 'pause_reason' => null])->save();
             $profile->log('unpaused', null, null, 'Compliance back in date.');
-            $this->mail->toUser($profile->user, 'You’re active again', '<p>Your renewal was approved. Landlords can send you jobs again.</p>');
+            $this->tell($profile->user, 'You’re active again', '<p>Your renewal was approved. Landlords can send you jobs again.</p>', 'Your renewal was approved. Landlords can send you jobs again.', route('contractor.jobs.index'), 'contractor.profile_active');
         }
+    }
+
+    private function tell(?User $user, string $subject, string $html, string $plain, ?string $url = null, string $eventKey = 'contractor.review'): void
+    {
+        $this->mail->toUser($user, $subject, $html);
+        $this->mail->bell($user, $subject, $plain, $url, null, $eventKey);
     }
 
     private function workingDaysSince(?Carbon $since): int

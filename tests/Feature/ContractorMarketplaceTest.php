@@ -15,6 +15,7 @@ use App\Models\RepairJobInvoice;
 use App\Models\RepairJobMessage;
 use App\Models\RepairJobOffer;
 use App\Models\Registration;
+use App\Models\NotificationLog;
 use App\Models\RepairJobVariation;
 use App\Models\User;
 use App\Services\Contractors\ContractorDirectory;
@@ -148,10 +149,23 @@ class ContractorMarketplaceTest extends TestCase
         $this->assertSame(RepairContractorRequest::COMPLETED, $repair->fresh()->contractorRequest->status);
         $this->actingAs($contractor)->post(route('contractor.jobs.invoice.store', $offer))->assertSessionHas('error');
 
+        $this->assertSame('11-22-33', $invoice->payment['sort_code']);
+        $this->assertSame('12345678', $invoice->payment['account_number']);
+        $this->assertSame('Ada Plumbing', $invoice->payment['account_name']);
+        $this->assertSame('trialing', \DB::table('accounts')->where('id', $accountId)->value('status'));
+        $this->assertSame(1, (int) $contractor->fresh()->can_login);
         $this->actingAs($contractor)->get(route('contractor.jobs.invoice', $offer))
             ->assertOk()->assertSee($invoice->number, false)->assertSee('£150.00', false)->assertDontSee('Tidy and quick', false);
         $this->landlord($landlord, $accountId)->get(route('admin.property_repairs.job_offers.invoice', $offer))
-            ->assertOk()->assertSee('Mark as paid', false)->assertSee('Sort code 00-00-00', false);
+            ->assertOk()
+            ->assertSee('Mark as paid', false)
+            ->assertSee('Sort code 00-00-00', false)
+            ->assertSee('11-22-33', false)
+            ->assertSee('12345678', false)
+            ->assertSee('Ada Plumbing', false)
+            ->assertSee('How to pay', false)
+            ->assertDontSee('deductions may apply', false)
+            ->assertDontSee('Construction Industry', false);
         $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.invoice.paid', $offer))->assertSessionHas('success');
         $this->assertSame(RepairJobInvoice::PAID, $invoice->fresh()->status);
         $this->assertNotNull($invoice->fresh()->paid_at);
@@ -169,6 +183,92 @@ class ContractorMarketplaceTest extends TestCase
         $this->actingAs($contractor)->post(route('contractor.jobs.invoice.store', $offer), ['final_net' => 140])
             ->assertRedirect(route('contractor.jobs.invoice', $offer));
         $this->assertSame(140.0, (float) $offer->fresh()->invoice->gross_amount);
+    }
+
+    public function test_invoice_needs_saved_bank_details_and_old_bills_still_open(): void
+    {
+        [$landlord, $accountId, $repair, $contractor, $offer] = $this->awardedJob();
+        $profile = $contractor->contractorProfile;
+        $profile->forceFill([
+            'bank_account_name' => null,
+            'bank_sort_code' => null,
+            'bank_account_number' => null,
+        ])->save();
+        $offer->forceFill(['job_status' => RepairJobOffer::JOB_CONFIRMED, 'completed_at' => now()])->save();
+
+        $this->actingAs($contractor)->get(route('contractor.jobs.show', $offer))
+            ->assertOk()->assertSee('Add bank details', false);
+        $this->actingAs($contractor)->post(route('contractor.jobs.invoice.store', $offer))
+            ->assertSessionHas('error', 'Add your bank details before you send an invoice.');
+
+        $this->actingAs($contractor)->post(route('contractor.profile.bank.update'), [
+            'bank_account_name' => 'Ada Plumbing',
+            'bank_sort_code' => '11-22-33',
+            'bank_account_number' => '12345678',
+            'bank_name' => 'Test Bank',
+        ])->assertRedirect(route('contractor.profile.bank'));
+        $profile->refresh();
+        $this->assertSame(ContractorProfile::APPROVED, $profile->approval_status);
+        $this->assertSame('112233', $profile->bank_sort_code);
+        $this->assertSame(1, (int) $contractor->fresh()->status);
+        $this->assertSame(1, (int) $contractor->fresh()->can_login);
+        $this->assertSame('trialing', \DB::table('accounts')->where('id', $accountId)->value('status'));
+
+        $legacy = RepairJobInvoice::create([
+            'repair_job_offer_id' => $offer->id,
+            'account_id' => $accountId,
+            'contractor_user_id' => $contractor->id,
+            'number' => 'RJ-'.str_pad((string) $offer->id, 6, '0', STR_PAD_LEFT),
+            'issued_on' => today(),
+            'due_on' => today()->addDays(14),
+            'lines' => [['description' => 'Plumbing – Fixed price. Old leak', 'net' => 80, 'vat_rate' => 0, 'vat' => 0, 'gross' => 80]],
+            'net_amount' => 80,
+            'vat_amount' => 0,
+            'gross_amount' => 80,
+            'cis_status' => 'unverified',
+            'notes' => 'Paid last month',
+            'status' => RepairJobInvoice::ISSUED,
+        ]);
+        $this->landlord($landlord, $accountId)->get(route('admin.property_repairs.job_offers.invoice', $offer))
+            ->assertOk()
+            ->assertSee($legacy->number, false)
+            ->assertSee('Paid last month', false)
+            ->assertSee('Old leak', false)
+            ->assertDontSee('How to pay', false)
+            ->assertDontSee('deductions may apply', false)
+            ->assertDontSee('11-22-33', false);
+    }
+
+    public function test_a_different_visit_time_waits_for_the_tenant(): void
+    {
+        [$landlord, $accountId, $repair, $contractor, $offer] = $this->awardedJob();
+        $this->assertNotNull($offer->tenant_confirmed_at);
+        $this->assertTrue($offer->visitIsSettled());
+
+        $other = now()->addDays(4)->setTime(15, 30);
+        $this->actingAs($contractor)->post(route('contractor.jobs.progress', $offer), [
+            'step' => 'schedule',
+            'scheduled_for' => $other->format('Y-m-d\TH:i'),
+        ])->assertSessionHas('success');
+        $offer->refresh();
+        $this->assertNull($offer->tenant_confirmed_at);
+        $this->assertFalse($offer->visitIsSettled());
+        $this->actingAs($contractor)->post(route('contractor.jobs.progress', $offer), ['step' => 'start'])
+            ->assertSessionHas('error', 'The tenant needs to confirm this visit time before you start.');
+
+        app(\App\Services\Contractors\RepairJobOfferService::class)->tenantConfirm($offer->fresh());
+        $this->actingAs($contractor)->post(route('contractor.jobs.progress', $offer), ['step' => 'start'])
+            ->assertSessionHas('success');
+
+        $repair->forceFill(['tenant_availability' => null, 'created_by' => $landlord->id])->save();
+        $fresh = $this->awardedJob();
+        $landlordRaised = $fresh[2];
+        $landlordRaised->forceFill(['created_by' => $fresh[0]->id])->save();
+        $raisedOffer = $fresh[4]->fresh();
+        $raisedOffer->forceFill(['tenant_confirmed_at' => null])->save();
+        $this->assertFalse($raisedOffer->fresh()->visitIsSettled());
+        $this->actingAs($fresh[3])->post(route('contractor.jobs.progress', $raisedOffer), ['step' => 'start'])
+            ->assertSessionHas('error');
     }
 
     public function test_tenant_and_landlord_can_ask_to_move_the_visit_and_contractor_picks(): void
@@ -615,6 +715,72 @@ class ContractorMarketplaceTest extends TestCase
         $this->assertSame(RepairJobOffer::WITHDRAWN, $offer->fresh()->status);
         $this->assertSame(14, (int) $photo->fresh()->reminder_stage);
         $this->assertNotNull($profile->document('public_liability')->expired_notified_at);
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_id' => $contractor->id,
+            'event_key' => 'contractor.document_expiring',
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'notifiable_id' => $contractor->id,
+            'event_key' => 'contractor.document_expired',
+        ]);
+        $this->assertTrue(NotificationLog::query()
+            ->where('identifier', 'repair.job_offer_withdrawn')
+            ->where('notifiable_id', $contractor->id)
+            ->where('message', 'like', 'Your invitation was withdrawn%')
+            ->exists());
+    }
+
+    public function test_an_expired_offer_notifies_the_contractor_and_the_landlord(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        $repair = $this->repair($landlord, $accountId);
+        $contractor = $this->contractor('expiring-offer');
+        $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.store', $repair), [
+            'contractor_ids' => [$contractor->id],
+            'urgency' => 'routine',
+        ])->assertSessionHas('success');
+        $offer = RepairJobOffer::query()->where('repair_issue_id', $repair->id)->firstOrFail();
+        $this->actingAs($contractor)->post(route('contractor.jobs.quote', $offer), [
+            'pricing_type' => 'fixed',
+            'amount' => 80,
+            'materials' => 'included',
+            'visit_slots' => [$repair->fresh()->tenant_availability->toIso8601String()],
+        ])->assertSessionHas('success');
+        $offer->forceFill(['offer_expires_at' => now()->subMinute()])->save();
+
+        app(RepairJobOfferService::class)->expireStale($repair->fresh());
+
+        $this->assertSame(RepairJobOffer::OFFER_EXPIRED, $offer->fresh()->status);
+        $this->assertTrue(NotificationLog::query()
+            ->where('identifier', 'repair.job_offer_withdrawn')
+            ->where('notifiable_id', $contractor->id)
+            ->where('message', 'like', 'Your offer was not accepted before it expired%')
+            ->exists());
+        $this->assertTrue(NotificationLog::query()
+            ->where('identifier', 'repair.job_offer_withdrawn')
+            ->where('notifiable_id', $landlord->id)
+            ->where('message', 'like', '%expired before you accepted it%')
+            ->exists());
+    }
+
+    public function test_closing_a_repair_tells_contractors_still_on_an_open_invite(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        $repair = $this->repair($landlord, $accountId);
+        $contractor = $this->contractor('still-invited');
+        $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.store', $repair), [
+            'contractor_ids' => [$contractor->id],
+            'urgency' => 'routine',
+        ])->assertSessionHas('success');
+
+        $repair->fresh()->update(['status' => 'Closed']);
+
+        $this->assertSame(RepairJobOffer::CLOSED, RepairJobOffer::query()->where('repair_issue_id', $repair->id)->value('status'));
+        $this->assertTrue(NotificationLog::query()
+            ->where('identifier', 'repair.job_cancelled')
+            ->where('notifiable_id', $contractor->id)
+            ->where('message', 'like', 'This repair was closed%')
+            ->exists());
     }
 
     public function test_inspection_first_then_firm_price_reconfirm_and_cancel_after_award(): void
@@ -869,6 +1035,10 @@ class ContractorMarketplaceTest extends TestCase
             'coverage_radius_miles' => 15,
             'phone' => '07123456789',
             'trades' => $trades,
+            'bank_account_name' => 'Ada Plumbing',
+            'bank_sort_code' => '112233',
+            'bank_account_number' => '12345678',
+            'bank_name' => 'Test Bank',
             'approval_status' => ContractorProfile::APPROVED,
             'terms_accepted_at' => now(),
         ]);
