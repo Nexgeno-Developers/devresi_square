@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Traits\BelongsToSaasAccount;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RepairDeskRequest extends Model
 {
@@ -53,6 +54,11 @@ class RepairDeskRequest extends Model
     public function assignee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function events(): HasMany
+    {
+        return $this->hasMany(RepairDeskEvent::class)->orderBy('id');
     }
 
     public function isOpen(): bool

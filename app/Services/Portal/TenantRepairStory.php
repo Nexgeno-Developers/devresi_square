@@ -131,17 +131,30 @@ class TenantRepairStory
             ];
         }
 
-        if (\Illuminate\Support\Facades\Schema::hasTable('repair_desk_requests')) {
-            $finished = \App\Models\RepairDeskRequest::query()
+        if (\Illuminate\Support\Facades\Schema::hasTable('repair_desk_events')) {
+            $deskIds = \App\Models\RepairDeskRequest::query()
                 ->where('repair_issue_id', $repair->id)
-                ->where('status', \App\Models\RepairDeskRequest::COMPLETED)
+                ->pluck('id');
+            $deskEvents = \App\Models\RepairDeskEvent::query()
+                ->whereIn('repair_desk_request_id', $deskIds)
+                ->orderBy('id')
                 ->get();
-            foreach ($finished as $desk) {
-                $note = trim((string) $desk->team_note);
+            foreach ($deskEvents as $event) {
+                $text = match ($event->kind) {
+                    \App\Models\RepairDeskEvent::SENT => 'Your landlord asked Resisquare to handle this repair.'.(filled($event->body) && $event->body !== 'Sent to the Resisquare team.' ? ' '.$event->body : ''),
+                    \App\Models\RepairDeskEvent::TAKEN => 'Resisquare is handling this repair.'.(filled($event->body) && $event->body !== 'The Resisquare team is handling this repair.' ? ' '.$event->body : ''),
+                    \App\Models\RepairDeskEvent::UPDATE => (string) $event->body,
+                    \App\Models\RepairDeskEvent::COMPLETED => 'Marked this repair complete.'.(filled($event->body) ? ' '.$event->body : ''),
+                    \App\Models\RepairDeskEvent::RETURNED => (string) ($event->body ?: 'This repair is back with your landlord.'),
+                    default => (string) $event->body,
+                };
+                if (trim($text) === '') {
+                    continue;
+                }
                 $rows[] = [
-                    'at' => $desk->updated_at,
-                    'actor' => 'Resisquare',
-                    'text' => 'Marked this repair complete.'.($note !== '' ? ' '.$note : ''),
+                    'at' => $event->created_at,
+                    'actor' => $event->kind === \App\Models\RepairDeskEvent::SENT ? 'Landlord' : 'Resisquare',
+                    'text' => $text,
                 ];
             }
         }

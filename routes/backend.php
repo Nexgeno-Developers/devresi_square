@@ -202,6 +202,11 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         Route::resource('addons', \App\Http\Controllers\Backend\Saas\AddonController::class);
         Route::get('accounts', [\App\Http\Controllers\Backend\Saas\AccountController::class, 'index'])->name('accounts.index');
         Route::get('repair-desk', [\App\Http\Controllers\Backend\RepairDeskController::class, 'index'])->name('repair_desk.index');
+        Route::get('repair-desk/{repairDeskRequest}', [\App\Http\Controllers\Backend\RepairDeskController::class, 'show'])->name('repair_desk.show');
+        Route::post('repair-desk/{repairDeskRequest}/take', [\App\Http\Controllers\Backend\RepairDeskController::class, 'take'])->name('repair_desk.take');
+        Route::post('repair-desk/{repairDeskRequest}/progress', [\App\Http\Controllers\Backend\RepairDeskController::class, 'progress'])->name('repair_desk.progress');
+        Route::post('repair-desk/{repairDeskRequest}/complete', [\App\Http\Controllers\Backend\RepairDeskController::class, 'complete'])->name('repair_desk.complete');
+        Route::post('repair-desk/{repairDeskRequest}/return', [\App\Http\Controllers\Backend\RepairDeskController::class, 'giveBack'])->name('repair_desk.return');
         Route::post('repair-desk/{repairDeskRequest}', [\App\Http\Controllers\Backend\RepairDeskController::class, 'update'])->name('repair_desk.update');
         Route::get('accounts/{account}', [\App\Http\Controllers\Backend\Saas\AccountController::class, 'show'])->name('accounts.show');
         Route::post('accounts/{account}/login-as', [AccountSwitchController::class, 'loginAs'])->name('accounts.login-as');

@@ -141,7 +141,7 @@ PHP);
             'status' => RepairDeskRequest::IN_PROGRESS,
             'assigned_to' => $admin->id,
             'team_note' => 'Engineer booked',
-        ])->assertRedirect(route('backend.saas.repair_desk.index'));
+        ])->assertRedirect(route('backend.saas.repair_desk.show', $desk));
 
         $this->assertSame(RepairDeskRequest::IN_PROGRESS, $desk->fresh()->status);
         $this->assertSame($admin->id, (int) $desk->fresh()->assigned_to);
@@ -180,7 +180,7 @@ PHP);
             'status' => RepairDeskRequest::COMPLETED,
             'assigned_to' => $admin->id,
             'team_note' => 'Boiler replaced',
-        ])->assertRedirect(route('backend.saas.repair_desk.index'));
+        ])->assertRedirect(route('backend.saas.repair_desk.show', $desk));
 
         $repair->refresh();
         $this->assertSame('Work Completed', $repair->status);
@@ -198,6 +198,74 @@ PHP);
                 ->where('notifiable_id', $userId)
                 ->where('channel', 'email')
                 ->exists(), 'Missing completion email for user '.$userId);
+        }
+    }
+
+    public function test_resisquare_desk_job_runs_from_take_to_complete(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        $repair = $this->repair($landlord, $accountId);
+        $session = ['current_account_id' => $accountId];
+        $admin = $this->superAdmin();
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.property_repairs.desk.store', $repair), ['note' => 'No heating'])
+            ->assertRedirect();
+
+        $desk = RepairDeskRequest::query()->where('repair_issue_id', $repair->id)->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('backend.saas.repair_desk.show', $desk))
+            ->assertOk()
+            ->assertSee('Take this repair', false)
+            ->assertSee('No hot water', false)
+            ->assertSee('No heating', false);
+
+        $this->actingAs($admin)
+            ->post(route('backend.saas.repair_desk.take', $desk), ['note' => 'Engineer booked for Friday'])
+            ->assertRedirect(route('backend.saas.repair_desk.show', $desk));
+
+        $repair->refresh();
+        $this->assertSame('Under Process', $repair->status);
+        $this->assertSame(RepairDeskRequest::IN_PROGRESS, $desk->fresh()->status);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->get(route('admin.property_repairs.show', $repair))
+            ->assertOk()
+            ->assertSee('Engineer booked for Friday', false)
+            ->assertDontSee('Find a contractor', false);
+
+        $this->actingAs($admin)
+            ->post(route('backend.saas.repair_desk.progress', $desk), ['note' => 'Parts are on the way'])
+            ->assertRedirect(route('backend.saas.repair_desk.show', $desk));
+
+        $this->actingAs($admin)
+            ->post(route('backend.saas.repair_desk.complete', $desk), ['note' => 'Heating restored'])
+            ->assertRedirect(route('backend.saas.repair_desk.show', $desk));
+
+        $repair->refresh();
+        $this->assertSame('Work Completed', $repair->status);
+        $this->assertSame(RepairDeskRequest::COMPLETED, $desk->fresh()->status);
+
+        $story = app(\App\Services\Portal\TenantRepairStory::class)->for($repair);
+        $text = collect($story['activity'])->pluck('text')->implode(' ');
+        $this->assertStringContainsString('asked Resisquare', $text);
+        $this->assertStringContainsString('Parts are on the way', $text);
+        $this->assertStringContainsString('Heating restored', $text);
+
+        foreach ([CrmNotificationEvent::RepairJobProgress, CrmNotificationEvent::RepairJobCompleted] as $event) {
+            $this->assertTrue(NotificationLog::query()
+                ->where('identifier', $event->value)
+                ->where('subject_id', $repair->id)
+                ->where('notifiable_id', $repair->tenant_id)
+                ->where('channel', 'email')
+                ->exists());
+            $this->assertTrue(NotificationLog::query()
+                ->where('identifier', $event->value)
+                ->where('subject_id', $repair->id)
+                ->where('notifiable_id', $landlord->id)
+                ->where('channel', 'email')
+                ->exists());
         }
     }
 

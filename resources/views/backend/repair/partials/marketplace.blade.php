@@ -197,9 +197,9 @@
             @if($desk)
                 <div class="alert alert-info small mb-2">
                     With the Resisquare team · {{ $desk->statusLabel() }}
-                    @if($desk->landlord_note)<div>{{ $desk->landlord_note }}</div>@endif
-                    @if($desk->team_note)<div>Team: {{ $desk->team_note }}</div>@endif
+                    @if($desk->assignee)<div>With {{ $desk->assignee->name }}</div>@endif
                 </div>
+                @include('backend.repair.partials.desk-story', ['events' => \Illuminate\Support\Facades\Schema::hasTable('repair_desk_events') ? $desk->events()->with('actor')->get() : collect()])
                 @if($desk->status === \App\Models\RepairDeskRequest::REQUESTED)
                     <form method="POST" action="{{ route('admin.property_repairs.desk.withdraw', $repairIssue) }}">
                         @csrf
@@ -212,6 +212,7 @@
                         The Resisquare team marked this repair complete.
                         @if($deskDone->team_note)<div>{{ $deskDone->team_note }}</div>@endif
                     </div>
+                    @include('backend.repair.partials.desk-story', ['events' => \Illuminate\Support\Facades\Schema::hasTable('repair_desk_events') ? $deskDone->events()->with('actor')->get() : collect()])
                 @endif
                 <div class="d-flex flex-wrap gap-2 align-items-start">
                     <a class="btn btn-primary btn-sm" href="{{ route('admin.property_repairs.marketplace.find', $repairIssue) }}">
