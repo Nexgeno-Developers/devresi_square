@@ -407,13 +407,13 @@ h2 {
 
 .orbit-rent {
     top: 52px;
-    left: -196px;
+    left: -236px;
     border-top: 3px solid var(--orange);
     animation: drift-y 6.4s ease-in-out infinite;
 }
 
 .orbit-visit {
-    right: -196px;
+    right: -236px;
     bottom: 36px;
     animation: drift-y 7.2s ease-in-out infinite;
     animation-delay: -2.6s;
