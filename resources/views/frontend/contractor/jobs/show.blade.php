@@ -227,6 +227,10 @@
                     @else
                         <details class="border rounded p-2" open>
                             <summary class="fw-semibold small">Send your invoice</summary>
+                            @if(! $profile?->hasBankDetails())
+                                <p class="small mt-2 mb-2">Add the account the landlord should pay. It is printed on the invoice. ResiSquare does not take the payment.</p>
+                                <a class="btn btn-primary btn-sm" href="{{ route('contractor.profile.bank') }}">Add bank details</a>
+                            @else
                             <form method="POST" action="{{ route('contractor.jobs.invoice.store', $offer) }}" class="mt-2">
                                 @csrf
                                 @if($offer->price_is_estimate)
@@ -237,9 +241,10 @@
                                 @else
                                     <p class="small mb-2">Invoice total: <strong>£{{ number_format($offer->finalGross(), 2) }}</strong>@if($approvedVariations->isNotEmpty()) including agreed extras @endif.</p>
                                 @endif
-                                <textarea name="notes" rows="2" maxlength="2000" class="form-control form-control-sm mb-2" placeholder="Payment details or notes for the landlord (optional)">{{ old('notes') }}</textarea>
+                                <textarea name="notes" rows="2" maxlength="2000" class="form-control form-control-sm mb-2" placeholder="Message on the invoice (optional)">{{ old('notes') }}</textarea>
                                 <button class="btn btn-primary btn-sm" type="submit">Issue invoice</button>
                             </form>
+                            @endif
                         </details>
                     @endif
                     @break
@@ -278,10 +283,17 @@
                                 <input type="datetime-local" name="scheduled_for" required class="form-control form-control-sm" value="{{ old('scheduled_for', $offer->scheduled_for?->format('Y-m-d\TH:i')) }}">
                             </div>
                             <button class="btn btn-outline-primary btn-sm" type="submit">{{ $offer->scheduled_for ? 'Change visit' : 'Book visit' }}</button>
-                            @if($offer->tenant_confirmed_at)<span class="small text-success">Tenant confirmed</span>@endif
+                            @if($offer->visitIsSettled())
+                                <span class="small text-success">Time agreed with the tenant</span>
+                            @elseif($offer->agreedVisitAt())
+                                <span class="small text-warning">Waiting for the tenant to confirm {{ $offer->agreedVisitAt()->format('D j M, H:i') }}</span>
+                            @endif
                         </form>
                     @endif
                     <div class="d-flex flex-wrap gap-2">
+                        @if(! $offer->visitIsSettled() && $offer->job_status !== 'in_progress')
+                            <p class="small text-muted mb-0">You can start once the tenant confirms the visit time.</p>
+                        @else
                         @if($offer->job_status !== 'in_progress')
                             <form method="POST" action="{{ route('contractor.jobs.progress', $offer) }}">@csrf
                                 <input type="hidden" name="step" value="start">
@@ -298,6 +310,7 @@
                                 <button class="btn btn-success btn-sm" type="submit">Confirm complete</button>
                             </form>
                         </details>
+                        @endif
                     </div>
             @endswitch
 

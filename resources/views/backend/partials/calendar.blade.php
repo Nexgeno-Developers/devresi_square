@@ -117,48 +117,73 @@
         });
 
 
-        // Add a new reminder row:
+        function renumberReminders() {
+            $('#reminderList .reminder-row').each(function (i, el) {
+                $(el).find('input[type="number"]').attr('name', `reminders[${i}][minutes_before]`);
+                $(el).find('input[type="hidden"]').attr('name', `reminders[${i}][channel]`).val('email');
+            });
+        }
+
+        // Add a new reminder row. The hidden channel stays "email":
+        // that reminder is delivered by email and as an in-app notification.
         $('#addReminderBtn').on('click', function () {
-            // 1. clone template
             const tpl = document.getElementById('reminderTpl').content.cloneNode(true);
             const $row = $(tpl).find('.reminder-row');
-
-            // 2. compute next index from existing rows
-            const idx = $('#reminderList .reminder-row').length;
-
-            // 3. set correct name attributes
-            $row.find('input')
-                .attr('name', `reminders[${idx}][minutes_before]`)
-                .val('');         // clear any default
-            $row.find('select')
-                .attr('name', `reminders[${idx}][channel]`)
-                .val('email');    // or blank
-
-            // 4. append to the list
             $('#reminderList').append($row);
+            renumberReminders();
         });
 
-        // Remove a row:
         $('#reminderList').on('click', '.removeReminderBtn', function () {
             $(this).closest('.reminder-row').remove();
-            // **optional** re-number the remaining rows so indexes stay sequential:
-            $('#reminderList .reminder-row').each(function (i, el) {
-                $(el).find('input')
-                    .attr('name', `reminders[${i}][minutes_before]`);
-                $(el).find('select')
-                    .attr('name', `reminders[${i}][channel]`);
-            });
+            renumberReminders();
         });
 
-        // When editing an event, populate existing reminders:
         function loadExistingReminders(existingArray) {
             $('#reminderList').empty();
-            existingArray.forEach((r, idx) => {
-                $('#addReminderBtn').click();     // adds a new blank row
-                const $last = $('#reminderList .reminder-row').last();
-                $last.find('input').val(r.minutes_before);
-                $last.find('select').val(r.channel);
+            (existingArray || []).forEach((r) => {
+                $('#addReminderBtn').click();
+                $('#reminderList .reminder-row').last().find('input[type="number"]').val(r.minutes_before);
             });
+            renumberReminders();
+        }
+
+        function eventFormText(value) {
+            return String(value ?? '').replace(/[&<>"']/g, function (char) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char];
+            });
+        }
+
+        function showEventFormErrors($form, xhr) {
+            $form.find('[data-error-for]').empty();
+            $form.find('.js-field-error').remove();
+            $('#eventFormAlert').remove();
+
+            const errors = xhr.status === 422 ? (xhr.responseJSON?.errors || {}) : {};
+            const lines = [];
+            $.each(errors, function (key, msgs) {
+                lines.push(msgs[0]);
+                const parts = String(key).split('.');
+                let inputName = parts[0];
+                for (let i = 1; i < parts.length; i++) {
+                    inputName += '[' + parts[i] + ']';
+                }
+                const $input = $form.find('[name="' + inputName + '"]');
+                const $slot = $form.find('[data-error-for="' + parts[0] + '"]');
+                if ($slot.length) {
+                    $slot.text(msgs[0]);
+                } else if ($input.length) {
+                    $input.after('<div class="text-danger small js-field-error">' + eventFormText(msgs[0]) + '</div>');
+                }
+            });
+
+            const message = lines[0]
+                || xhr.responseJSON?.message
+                || 'Could not save this event.';
+            $form.find('.modal-body').prepend(
+                '<div id="eventFormAlert" class="alert alert-danger">' + eventFormText(message) + '</div>'
+            );
+            const body = $form.find('.modal-body').get(0);
+            if (body) body.scrollTop = 0;
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -564,11 +589,12 @@
 
             var calendarEl = document.getElementById('calendar');
             function openCreateEvent(startStr, endStr) {
+                    $('#eventForm')[0].reset();
                     $('input[name="instance_id"]').val('');
                     $('input[name="master_id"]').val('');
                     $('input[name="form_action"]').val('create');
-                    $('#eventForm')[0].reset();
-                    $('.text-danger').remove();
+                    $('#eventForm [data-error-for]').empty();
+                    $('#eventForm .js-field-error, #eventFormAlert').remove();
                     $('#eventModal .modal-footer .js-single-delete-btn').remove();
                     var start = startStr || '';
                     var end = endStr || start;
@@ -737,97 +763,42 @@
                 });
             });
 
-            // Handle form submission: could be “new master + instances” or “update instance + maybe update master”
             $('#eventForm').on('submit', function (e) {
                 e.preventDefault();
-                $('.text-danger').remove();
+                const form = this;
+                const $form = $(form);
+                if (!form.checkValidity()) {
+                    const invalid = form.querySelector(':invalid');
+                    if (invalid) {
+                        invalid.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                        invalid.reportValidity();
+                    }
+                    return;
+                }
+                const $save = $form.find('button[type="submit"]');
+                const masterId = $form.find('input[name="master_id"]').val();
+                const formActionMode = $form.find('input[name="form_action"]').val();
+                const updating = masterId && formActionMode === 'updateMaster';
 
-                // Read hidden IDs
-                var instanceId = $('input[name="instance_id"]').val();
-                var masterId = $('input[name="master_id"]').val();
-                var formActionMode = $('input[name="form_action"]').val();
-                var choiceMode = $('input[name="choice_action"]').val();
-                var originalStart = $('input[name="original_start"]').val();
-                var originalEnd = $('input[name="original_end"]').val();
-
-
-                console.log('✏️[formSubmit] form_action=', formActionMode,
-                    'instanceId=', instanceId,
-                    'masterId=', masterId,
-                    'original_start=', originalStart,
-                    'original_end=', originalEnd);
-
-                // Collect form data
-                var formData = $(this).serializeArray();
-                // var payload = {};
-                // formData.forEach(function (f) { payload[f.name] = f.value; });
-                var payload = {};
-                formData.forEach(function (f) {
-                    if (payload[f.name]) {
-                        // Already exists → convert to array if needed
-                        if (!Array.isArray(payload[f.name])) {
-                            payload[f.name] = [payload[f.name]];
-                        }
-                        payload[f.name].push(f.value);
-                    } else {
-                        payload[f.name] = f.value;
+                $save.prop('disabled', true);
+                $.ajax({
+                    url: updating
+                        ? '{{ route("backend.events.updateMaster", "") }}/' + masterId
+                        : '{{ route("backend.events.store") }}',
+                    method: updating ? 'PUT' : 'POST',
+                    data: $form.serialize(),
+                    success: function () {
+                        $form[0].reset();
+                        $eventModal.modal('hide');
+                        calendar.refetchEvents();
+                    },
+                    error: function (xhr) {
+                        showEventFormErrors($form, xhr);
+                    },
+                    complete: function () {
+                        $save.prop('disabled', false);
                     }
                 });
-
-                // Else if masterId is present → user clicked an existing instance but may have changed recurrence or master data
-                if (masterId && formActionMode === 'updateMaster') {
-                    $.ajax({
-                        url: '{{ route("backend.events.updateMaster", "") }}/' + masterId,
-                        method: 'PUT',
-                        data: payload,
-                        success: function () {
-                            // eventModal.hide();
-                            $('#eventForm')[0].reset();
-                            $eventModal.modal('hide');
-                            calendar.refetchEvents();
-                        },
-                        error: function (xhr) {
-                            if (xhr.status === 422) {
-                                let errs = xhr.responseJSON.errors;
-                                $.each(errs, function (key, msgs) {
-                                    var $input = $('[name="' + key + '"]');
-                                    if ($input.length) {
-                                        $input.after('<div class="text-danger">' + msgs[0] + '</div>');
-                                    }
-                                });
-                            } else {
-                                alert('Error updating series.');
-                            }
-                        }
-                    });
-                }
-                // Otherwise → new master + instances
-                else {
-                    $.ajax({
-                        url: '{{ route("backend.events.store") }}',
-                        method: 'POST',
-                        data: payload,
-                        success: function () {
-                            // eventModal.hide();
-                            $('#eventForm')[0].reset();
-                            $eventModal.modal('hide');
-                            calendar.refetchEvents();
-                        },
-                        error: function (xhr) {
-                            if (xhr.status === 422) {
-                                let errs = xhr.responseJSON.errors;
-                                $.each(errs, function (key, msgs) {
-                                    var $input = $('[name="' + key + '"]');
-                                    if ($input.length) {
-                                        $input.after('<div class="text-danger">' + msgs[0] + '</div>');
-                                    }
-                                });
-                            } else {
-                                alert('Error saving event.');
-                            }
-                        }
-                    });
-                }
             });
 
             function openEventModal(info, mode) {
@@ -842,7 +813,8 @@
                 // onsole.log(inst.status);
                 // clear + reset form
                 $('#eventForm')[0].reset();
-                $('.text-danger').remove();
+                $('#eventForm [data-error-for]').empty();
+                $('#eventForm .js-field-error, #eventFormAlert').remove();
 
                 // set hidden flags
                 $('input[name="instance_id"]').val(inst.event_id ?? '');

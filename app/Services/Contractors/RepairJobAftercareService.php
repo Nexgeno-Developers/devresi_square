@@ -3,6 +3,7 @@
 namespace App\Services\Contractors;
 
 use App\Enums\CrmNotificationEvent;
+use App\Models\Account;
 use App\Models\RepairContractorRequest;
 use App\Models\RepairJobInvoice;
 use App\Models\RepairJobMessage;
@@ -316,6 +317,11 @@ class RepairJobAftercareService
             throw new ContractorMarketplaceException('Wait for the landlord to answer your extra work request first.');
         }
 
+        $profile = $offer->contractor?->contractorProfile;
+        if (! $profile?->hasBankDetails()) {
+            throw new ContractorMarketplaceException('Add your bank details before you send an invoice.');
+        }
+
         $rate = (float) ($offer->vat_rate ?? 0);
         $net = (float) $offer->net_amount;
         if ($finalNet !== null && $offer->price_is_estimate) {
@@ -334,30 +340,57 @@ class RepairJobAftercareService
             'vat' => round($lineNet * $lineRate / 100, 2),
             'gross' => round($lineNet + $lineNet * $lineRate / 100, 2),
         ];
-        $lines = [$line(
-            trim(($offer->repairIssue?->repairCategory?->name ?: 'Repair').' – '.$offer->pricingLabel().'. '.Str::limit((string) $offer->repairIssue?->description, 120)),
-            $net,
-            $rate
-        )];
+        $work = trim((string) ($offer->completion_note ?: $offer->repairIssue?->description));
+        $trade = $offer->repairIssue?->repairCategory?->name ?: 'Repair';
+        $lines = [$line($trade.($work !== '' ? ' – '.Str::limit($work, 180) : ''), $net, $rate)];
         foreach ($offer->variations->where('status', RepairJobVariation::APPROVED) as $variation) {
-            $lines[] = $line('Approved extra work: '.Str::limit($variation->reason, 120), (float) $variation->net_amount, (float) $variation->vat_rate);
+            $lines[] = $line('Extra work: '.Str::limit($variation->reason, 160), (float) $variation->net_amount, (float) $variation->vat_rate);
         }
 
-        $profile = $offer->contractor?->contractorProfile;
-        $invoice = DB::transaction(function () use ($offer, $contractor, $lines, $profile, $notes) {
+        $number = 'RJ-'.str_pad((string) $offer->id, 6, '0', STR_PAD_LEFT);
+        $account = Account::query()->with('owner')->find($offer->account_id);
+        $owner = $account?->owner;
+        $property = $offer->repairIssue?->property;
+        $invoice = DB::transaction(function () use ($offer, $contractor, $lines, $profile, $notes, $number, $account, $owner, $property) {
             $invoice = RepairJobInvoice::create([
                 'repair_job_offer_id' => $offer->id,
                 'account_id' => $offer->account_id,
                 'contractor_user_id' => $contractor->id,
-                'number' => 'RJ-'.str_pad((string) $offer->id, 6, '0', STR_PAD_LEFT),
+                'number' => $number,
                 'issued_on' => today(),
                 'due_on' => today()->addDays(max(0, (int) ContractorSettings::get('invoice_due_days'))),
+                'supplied_on' => $offer->completed_at?->toDateString(),
                 'lines' => $lines,
                 'net_amount' => collect($lines)->sum('net'),
                 'vat_amount' => collect($lines)->sum('vat'),
                 'gross_amount' => collect($lines)->sum('gross'),
-                'vat_number' => $profile?->vat_registered ? $profile->vat_number : null,
-                'cis_status' => $profile?->cis_status,
+                'vat_number' => $profile->vat_registered ? $profile->vat_number : null,
+                'cis_status' => $profile->cis_status,
+                'supplier' => [
+                    'name' => $profile->displayName(),
+                    'legal_name' => $profile->legal_name,
+                    'address' => collect([$profile->address_line, $profile->city, $profile->postcode])->filter()->implode(', '),
+                    'phone' => $profile->phone,
+                    'email' => $contractor->email,
+                    'company_number' => $profile->company_number,
+                    'vat_number' => $profile->vat_registered ? $profile->vat_number : null,
+                ],
+                'bill_to' => [
+                    'name' => $account?->account_name ?: $owner?->name,
+                    'contact' => $owner?->name,
+                    'email' => $account?->billing_email ?: $owner?->email,
+                    'address' => collect([$owner?->address_line_1, $owner?->address_line_2, $owner?->city, $owner?->postcode])->filter()->implode(', '),
+                ],
+                'site' => [
+                    'address' => $property?->full_address ?: '',
+                ],
+                'payment' => [
+                    'account_name' => $profile->bank_account_name,
+                    'sort_code' => $profile->formattedSortCode(),
+                    'account_number' => $profile->bank_account_number,
+                    'bank_name' => $profile->bank_name,
+                    'reference' => $number,
+                ],
                 'notes' => $notes ? Str::limit(trim($notes), 2000) : null,
                 'status' => RepairJobInvoice::ISSUED,
             ]);

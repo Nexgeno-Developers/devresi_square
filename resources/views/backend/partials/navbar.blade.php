@@ -6,8 +6,9 @@
 }
 
 .notification-menu {
-    min-width: 360px;
-    max-width: min(360px, calc(100vw - 24px));
+    width: min(380px, calc(100vw - 32px));
+    min-width: 0;
+    max-width: min(380px, calc(100vw - 32px));
 }
 
 .notification-menu .dropdown-item {
@@ -118,13 +119,11 @@
                         aria-expanded="false" aria-label="Notifications">
                         <i class="bi bi-bell"></i>
                         @if($appointmentNotificationCount)
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                {{ $appointmentNotificationCount }}
-                            </span>
+                            <span class="rs-notify-count">{{ $appointmentNotificationCount > 99 ? '99+' : $appointmentNotificationCount }}</span>
                         @endif
                     </button>
                     <div class="dropdown-menu dropdown-menu-end notification-menu p-0">
-                        <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                        <div class="notification-head">
                             <strong>Notifications</strong>
                             @if($appointmentNotificationCount)
                                 <button type="button" class="btn btn-link btn-sm p-0" id="mark-all-notifications-read">
@@ -132,23 +131,25 @@
                                 </button>
                             @endif
                         </div>
+                        <div class="notification-list">
                         @forelse($appointmentNotifications as $notification)
-                            <a class="dropdown-item py-2 border-bottom notification-item"
+                            <a class="dropdown-item notification-item"
                                 href="{{ \App\Support\PortalNoticeLink::open($notification->data['url'] ?? null) }}"
                                 data-notification-id="{{ $notification->id }}">
-                                <div class="fw-semibold">{{ $notification->data['title'] ?? 'Notification' }}</div>
-                                <div class="small text-muted">{{ $notification->data['message'] ?? '' }}</div>
-                                <div class="small text-muted mt-1">{{ $notification->created_at?->diffForHumans() }}</div>
+                                <div class="notification-title">{{ $notification->data['title'] ?? 'Notification' }}</div>
+                                <div class="notification-body">{{ $notification->data['message'] ?? '' }}</div>
+                                <div class="notification-when">{{ $notification->created_at?->diffForHumans() }}</div>
                             </a>
                         @empty
                             <div class="px-3 py-3 text-muted small">No unread notifications.</div>
                         @endforelse
-                        <div class="px-3 py-2 border-top d-flex justify-content-between">
+                        </div>
+                        <div class="notification-foot">
                             @if(is_tenant_portal_user())
-                            <a href="{{ route('tenant.notifications') }}" class="small">Preferences</a>
+                            <a href="{{ route('tenant.notifications') }}">Preferences</a>
                             @elseif(! auth()->user()->hasRole('Contractor'))
-                            <a href="{{ route('backend.notifications.index') }}" class="small">View all</a>
-                            <a href="{{ route('backend.notifications.preferences') }}" class="small">Preferences</a>
+                            <a href="{{ route('backend.notifications.index') }}">View all</a>
+                            <a href="{{ route('backend.notifications.preferences') }}">Preferences</a>
                             @endif
                         </div>
                     </div>

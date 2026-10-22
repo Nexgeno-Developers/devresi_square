@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResiSquare — live click-through 19 Oct 2026</title>
+<style>
+  :root {
+    --ink: #1c2430; --muted: #5c6778; --line: #d8dee8; --bg: #f4f6f9; --card: #fff;
+    --header: #152033; --pass: #1f7a45; --fail: #b42318; --crit: #7a1212;
+    --high: #c2410c; --med: #b45309; --low: #3b5b8a; --blocked: #c2410c; --nt: #5c6778;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 "Segoe UI", Calibri, sans-serif; color: var(--ink); background: var(--bg); }
+  header.top { background: var(--header); color: #fff; padding: 28px 32px 22px; }
+  header.top h1 { margin: 0 0 6px; font-size: 28px; font-weight: 650; }
+  header.top p { margin: 0; color: #c5d0e0; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 48px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; letter-spacing: .02em; }
+  .badge.nt, .badge.blocked { background: #eceff3; color: var(--nt); }
+  .badge.pass, .badge.fixed { background: #e5f6ec; color: var(--pass); }
+  .badge.fail, .badge.open, .badge.critical { background: #fde8e6; color: var(--fail); }
+  .badge.high { background: #ffedd5; color: var(--high); }
+  .badge.medium { background: #fef3c7; color: var(--med); }
+  .badge.low { background: #e8eef8; color: var(--low); }
+  .status-pill { display: inline-block; margin-top: 12px; background: #7a1212; color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: 650; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 18px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card strong { display: block; font-size: 22px; }
+  .card span { color: var(--muted); font-size: 13px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px 8px; margin: 16px 0; }
+  h2 { margin: 0 0 8px; font-size: 20px; }
+  h3 { margin: 18px 0 8px; font-size: 16px; }
+  p, li { color: var(--ink); }
+  .note { color: var(--muted); font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 13.5px; }
+  th, td { border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; padding: 8px 8px; }
+  th { background: #eef2f7; font-weight: 650; }
+  tr:nth-child(even) td { background: #fafbfd; }
+  code, .path { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+  .score { font-size: 40px; font-weight: 700; margin: 0; }
+  footer { color: var(--muted); font-size: 13px; padding: 8px 4px 24px; }
+  @media print {
+    body { background: #fff; }
+    header.top { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    section { break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+  @media (max-width: 720px) {
+    header.top, .wrap { padding-left: 12px; padding-right: 12px; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>ResiSquare live click-through</h1>
+  <p>Inventory from 19 Oct 2026 14:39, executed on https://laravel.resisquare.co.uk</p>
+  <div class="status-pill">Needs Fixes and Retesting</div>
+</header>
+<div class="wrap">
+
+<section id="project">
+  <h2>1. Project Information</h2>
+  <table>
+    <tr><th>Field</th><th>Value</th></tr>
+    <tr><td>Project</td><td>ResiSquare (devresi_square) — Laravel property SaaS</td></tr>
+    <tr><td>Testing date</td><td>19 October 2026, about 15:27–15:40 IST</td></tr>
+    <tr><td>Environment</td><td>Live host <span class="path">https://laravel.resisquare.co.uk</span>, Chromium click-through. Temporary inboxes on mail.tm (<span class="path">maxxspace.com</span>). Stripe Checkout was Stripe’s sandbox (<span class="path">cs_test_…</span>) with the Visa demo card 4242. Code paths were checked in this workspace after the clicks.</td></tr>
+    <tr><td>Accounts created</td><td>One landlord (OTP, then Stripe trial) and one invited tenant. Names used: Qa Tester and Sam Tenant. Passwords and the reset token are not recorded here.</td></tr>
+    <tr><td>Source inventory</td><td><span class="path">software-testing-report-2026-10-19-1439.html</span> — 214 functional cases, all previously Not Tested.</td></tr>
+  </table>
+  <p class="note">This run executed the public site, landlord registration through Stripe, onboarding of one property and tenancy, tenant invite and login, and the access checks those two sessions could reach. It did not execute contractor approval, Super Admin, rent-invoice card pay, or the repair marketplace.</p>
+</section>
+
+<section id="summary">
+  <h2>2. Testing Summary</h2>
+  <div class="cards">
+    <div class="card"><strong>88%</strong><span>Score of executed checks</span></div>
+    <div class="card"><strong>26</strong><span>Functional cases run</span></div>
+    <div class="card"><strong>1</strong><span>Functional failures</span></div>
+    <div class="card"><strong>188</strong><span>Functional cases not run</span></div>
+    <div class="card"><strong>0</strong><span>Critical defects</span></div>
+    <div class="card"><strong>3</strong><span>High defects</span></div>
+  </div>
+  <table>
+    <tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr>
+    <tr><td>Functional Testing</td><td>214</td><td>25</td><td>1</td><td><span class="badge fail">188 not run</span></td></tr>
+    <tr><td>Security Testing</td><td>18</td><td>7</td><td>1</td><td><span class="badge nt">10 not run</span></td></tr>
+    <tr><td>UI/UX Testing</td><td>14</td><td>6</td><td>1</td><td><span class="badge nt">7 not run</span></td></tr>
+    <tr><td>Performance Testing</td><td>8</td><td>1</td><td>0</td><td><span class="badge nt">7 not run</span></td></tr>
+    <tr><td>SEO Testing</td><td>8</td><td>4</td><td>4</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Content Testing</td><td>6</td><td>4</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Compatibility Testing</td><td>7</td><td>2</td><td>0</td><td><span class="badge nt">5 not run</span></td></tr>
+    <tr><td>API Testing</td><td>8</td><td>1</td><td>0</td><td><span class="badge nt">7 not run</span></td></tr>
+    <tr><td>Database Testing</td><td>8</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Production / Deployment Testing</td><td>10</td><td>5</td><td>1</td><td><span class="badge nt">4 not run</span></td></tr>
+  </table>
+  <p class="note">Passed and failed are only rows that were executed. Not Tested rows are excluded from the score. The 88% is the weighted score of categories that had at least one executed check. It is not a score of the full 214-case inventory.</p>
+</section>
+
+<section id="functional">
+  <h2>3. Functional Testing</h2>
+  <p class="note">Rows below were clicked or requested against the live host. Every other inventory ID stays Not Tested.</p>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>FT-001</td><td>Public</td><td>Homepage loads. Header and footer links reach pricing, login, and register. Hero copy is in the DOM.</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-002</td><td>Public</td><td>Pricing shows Landlord Basic at £29.00 / month and, after Annual, £290.00 / year. Start Free Trial opens register with plan_id=1 and the selected billing cycle. Add-ons switch to annual figures (£50, £200, £100, £150).</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-003</td><td>Registration</td><td>A new mailbox, password of 14 characters, and matching confirmation created a registration and emailed a 6-digit OTP. The message arrived within a few seconds.</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-004</td><td>Registration</td><td>Empty required fields, an invalid email, a 5-character password, and a mismatched confirmation were rejected with field messages. A second submit of the same email returned “This email is already registered.”</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-005</td><td>Registration</td><td>OTP 000000 did not create the account. The valid code then opened Stripe Checkout. The wrong-code rejection is not shown to the user.</td><td><span class="badge fail">Fail</span></td><td><span class="badge critical">Critical</span></td><td><span class="path">resources/views/frontend/layout/app.blade.php</span> lines 38–46 comment out the session error list, so “Invalid OTP. Please try again.” is in the HTML source and not on screen. <span class="path">resources/views/frontend/register.blade.php</span> posts the OTP as a full form, and step 2 starts hidden, so a failed verify reloads on the details step. Keep the user on the OTP step and render the error there.</td></tr>
+    <tr><td>FT-006</td><td>Registration</td><td>Contractor registration is a separate form and does not create a landlord SaaS account.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-007</td><td>Auth</td><td>After Stripe, the landlord session opened Settings / billing for “Qa Tester Landlord Account”. The tenant, after setting a password from the invite, landed on <span class="path">/admin/home</span> as Sam Tenant.</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-008</td><td>Auth</td><td>Unknown email and a wrong password redirect back to login with “The provided credentials do not match our records.” The typed email is kept. A login POST without the CSRF token returns HTTP 419.</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-009</td><td>Auth</td><td>Logout from the landlord session returned to the sign-in page. Unauthenticated requests to <span class="path">/admin/dashboard</span> and <span class="path">/admin/billing</span> redirect to <span class="path">/login</span>.</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-010</td><td>Auth</td><td>The tenant invite link opened “Choose a new password” for that email. A 5-character password was rejected with “The password field must be at least 8 characters.” A longer password saved and returned to sign-in, and that password then logged the tenant in.</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-015</td><td>Tenant — Home</td><td>Tenant home shows only 1 The Mall, outstanding rent £0.00, and 0 open repairs.</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-018</td><td>Tenant — Tenancy</td><td>Tenancy page shows move-in 19 Oct 2026, rent £1,250.00 monthly, due day 19, deposit £1,250.00, and the household name.</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-019</td><td>Tenant — Tenancy</td><td>“Looks correct” recorded “Confirmed on 19 Oct 2026” on My Tenancy.</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-023</td><td>Tenant — Rent</td><td>With no invoice issued, home says “Your landlord has not sent a rent invoice yet” and outstanding rent is £0.00.</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-044</td><td>Tenant — Access</td><td>As the tenant, billing, accounting banks, SaaS plans, registrations, and contractor jobs returned 403. Dashboard and properties redirected to tenant home. Tenancies returned 403.</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-046</td><td>Tenant — Phone nav</td><td>At a 390px layout width the fixed bottom nav contains Home, Rent, Repairs, Docs, and Me.</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-047</td><td>Landlord — Dashboard</td><td>Dashboard greeting for Qa showed “1 Properties” and “1 occupied”.</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-048</td><td>Landlord — Onboarding</td><td>Postcode SW1A 1AA returned addresses. Choosing 1 The Mall saved the property, saved the prefilled owner, and invited the tenant. The done step said the invite was sent.</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-051</td><td>Landlord — Properties</td><td>The property list shows 1 The Mall, London, SW1A 1AA, Occupied, £1,250 pcm. Opening <span class="path">/admin/properties</span> lands on that property (<span class="path">property_id=8</span>).</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-057</td><td>Landlord — Tenancies</td><td>Tenancy list shows 1 The Mall, Sam Tenant, start 19 Oct 2026, rent £1,250.00, deposit £1,250.00, status Active.</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-069</td><td>Landlord — People</td><td>Invite mail arrived with the property address and a set-password link. The new user could sign in only to the tenant portal.</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-083</td><td>Landlord — Billing</td><td>Stripe sandbox checkout for Landlord Basic annual, card 4242, returned to <span class="path">/admin/billing</span>. The page shows Trialing, annual £290.00, trial 19 Oct 2026 to 26 Oct 2026, properties used 0 of 5, and “Your card is saved.”</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-087</td><td>Landlord — Allow-list</td><td>While the landlord was signed in, accounting banks, registrations, staff, and SaaS plans each returned the 403 page. Contractor jobs returned 403.</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-109</td><td>Contractor — Terms</td><td><span class="path">/contractor-terms</span> returns 200 with the heading “Contractor terms and privacy notice” and a link back to contractor sign-up. <span class="path">/contractor/terms</span> returns 404.</td><td><span class="badge pass">Pass</span></td><td><span class="badge low">Low</span></td><td>-</td></tr>
+    <tr><td>FT-138</td><td>Journey — Portfolio</td><td>The property and tenancy created by the landlord are the only home on the tenant portal.</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-152</td><td>Ids</td><td><span class="path">/admin/properties/not-a-number</span> and <span class="path">/admin/properties/99999999</span> return the styled 404 page, not a stack trace.</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-153</td><td>Debug</td><td><span class="path">/_debug/registration-otp</span> returns HTTP 404 on this host.</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+  </table>
+  <h3>Inventory IDs not executed</h3>
+  <p>FT-011 through FT-014, FT-016, FT-017, FT-020 through FT-022, FT-024 through FT-043, FT-045, FT-049 through FT-050, FT-052 through FT-056, FT-058 through FT-068, FT-070 through FT-082, FT-084 through FT-086, FT-088 through FT-108, FT-110 through FT-137, FT-139 through FT-151, and FT-154 through FT-214. No Stripe rent payment was possible because no rent invoice existed. No Super Admin or approved contractor session was available.</p>
+</section>
+
+<section id="bugs">
+  <h2>4. Bug / Issue Report</h2>
+  <table>
+    <tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>BUG-001</td><td>Registration</td><td>A wrong OTP is rejected by the server, then the browser reloads the details step. The message “Invalid OTP. Please try again.” is inside an HTML comment, so the user sees a blank form and no error.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td><span class="path">resources/views/frontend/layout/app.blade.php</span> → the <span class="path">$errors</span> block at lines 38–46 → remove the HTML comment so the list renders. <span class="path">resources/views/frontend/register.blade.php</span> → OTP form → return the user to step 2 with the error, instead of a full reload that hides step 2.</td></tr>
+    <tr><td>BUG-002</td><td>Pricing</td><td>The only purchasable plan is Landlord Basic, up to 5 properties, £29 / month. The comparison table still lists Starter, Growth, Pro, and Business with limits of 3, 10, 25, and 50 properties. The FAQ says Pro, Business, and Portfolio plans are built for agents. Extra Staff and Property Manager use the same description.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td><span class="path">resources/views/frontend/pricing.blade.php</span> → comparison table and FAQ → render rows from the plan records that the cards already use, or remove tiers that cannot be bought.</td></tr>
+    <tr><td>BUG-003</td><td>Onboarding</td><td>Postcode search for SW1A 1AA offered “Buckingham Palace” as a house with 240 beds, 78 baths, and EPC G, and “1 The Mall” as a 3-bed flat. The selected card is labelled “Filled from test · postcodes.io · findthatpostcode” while the step copy says the match is UK open data and EPC where available. The saved property kept the fixture beds, baths, and EPC.</td><td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td><td>On this host, serve address lines from the lookup provider and leave beds, baths, and EPC empty until a real certificate is stored. Do not present fixture property facts as open data.</td></tr>
+    <tr><td>BUG-004</td><td>Landlord nav</td><td>The account is Landlord Basic and the billing page says Trialing, but the header badge says “Pro Trial — 6 days remaining”.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td><span class="path">resources/views/backend/partials/navbar.blade.php</span> → the trial span → use the current plan name instead of the hardcoded “Pro Trial”.</td></tr>
+    <tr><td>BUG-005</td><td>Billing</td><td>Stripe Checkout described the price as “Staging landlord plan with one property and no branch or staff access.” The app limit after payment is 5 properties. Billing and the pricing card agree on 5. The Stripe product text does not.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td>Update the Stripe product description so it matches <span class="path">property_limit</span> 5 on Landlord Basic.</td></tr>
+    <tr><td>BUG-006</td><td>Email</td><td>The OTP subject line is “Your Resisquare verification code: 034130”, so the code is visible in an inbox list. The From address on that message was a personal Gmail account. The invite and welcome messages did arrive. The invite logo points at <span class="path">/asset/img/placeholder.jpg</span>.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td>Put the code only in the message body. Send from the product domain. Replace <span class="path">placeholder.jpg</span> in the mail layout and the favicon.</td></tr>
+    <tr><td>BUG-007</td><td>SEO</td><td>Home has a title, a meta description, and one real H1. Pricing’s only H1 is “Book a Demo” inside a closed modal (computed height 0). Neither page has a canonical link or Open Graph tags. Signed-in pages have no robots noindex meta. <span class="path">robots.txt</span> does disallow <span class="path">/admin</span>.</td><td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td><td>Give pricing a visible H1. Add canonical and Open Graph tags on the public layout. Add noindex on authenticated layouts even though robots.txt already blocks <span class="path">/admin</span>.</td></tr>
+    <tr><td>BUG-008</td><td>Login</td><td>A login email of <span class="path">' OR 1=1 --</span> did not authenticate and did not show a SQL error. The response was HTTP 406 from Mod_Security, with the heading “Not Acceptable!”.</td><td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td><td>Keep the WAF. Return the normal login validation page for a rejected username instead of the Mod_Security HTML.</td></tr>
+  </table>
+</section>
+
+<section id="security">
+  <h2>5. Security Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Security Check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr>
+    <tr><td>SEC-001</td><td>SQL injection on login</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-002</td><td>Stored and reflected XSS</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-003</td><td>CSRF on login POST</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-004</td><td>Authentication on admin routes</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-005</td><td>Landlord and tenant separation for the routes requested</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-006</td><td>Unknown and non-numeric property ids</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-007</td><td>Logout returns to sign-in</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-008</td><td>Password hashing and reset-token single use</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-009</td><td>Upload type and path checks</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-010</td><td>Stripe webhook signature</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-011</td><td>Security headers and HTTPS</td><td><span class="badge fail">Fail</span></td><td><span class="badge medium">Medium</span></td><td>HTTPS, HSTS, <span class="path">X-Content-Type-Options: nosniff</span>, <span class="path">X-Frame-Options: SAMEORIGIN</span>, and <span class="path">Referrer-Policy</span> are present. Add a Content-Security-Policy. Session cookie is Secure, HttpOnly, SameSite=Lax.</td></tr>
+    <tr><td>SEC-012</td><td>Rate limits</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>SEC-013</td><td>Debug OTP route</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-014</td><td>Secrets in pages</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-015</td><td>CORS</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>SEC-016</td><td>Signed email and claim links</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-017</td><td>Privilege escalation by posted role</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-018</td><td>Mass assignment of account_id</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="ui">
+  <h2>6. UI/UX Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>UX-001</td><td>Landlord sidebar</td><td>Dashboard, Calendar, Properties, Tenancies, Rent, Repairs, People, Compliance, Documents, Settings. Accounting and SaaS admin are not in the menu.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>UX-002</td><td>Tenant shell</td><td>Home, My Tenancy, Rent &amp; Payments, Calendar, Maintenance, Documents, Profile. Phone bar has the five destinations.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>UX-003</td><td>Contractor nav</td><td>No approved contractor session.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-004</td><td>Super Admin nav</td><td>No Super Admin session.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-005</td><td>Forms</td><td>Registration field errors sit on the field. Password reset shows the length error and keeps the email in the heading.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>UX-006</td><td>Empty states</td><td>Tenant with no invoice and no repairs sees those sentences, not an error page.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>UX-007</td><td>Flash messages</td><td>Wrong OTP does not show a visible error. See BUG-001.</td><td><span class="badge fail">Fail</span></td><td><span class="path">resources/views/frontend/layout/app.blade.php</span> → uncomment and show <span class="path">$errors</span>, and keep the OTP step mounted.</td></tr>
+    <tr><td>UX-008</td><td>Destructive actions</td><td>Delete was not clicked. A confirm-deletion dialog exists in the tenancy markup and was not opened.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-009</td><td>Loading</td><td>Postcode search showed “Looking up that postcode…” and disabled the field. Checkout showed “Processing”.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-010</td><td>Mobile</td><td>Bottom nav is fixed at the foot of a 390×844 layout. No pay button was on screen, so overlap with pay was not checked.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>UX-011</td><td>Tablet</td><td>Not run at a tablet width.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-012</td><td>Accessibility</td><td>Not run with a screen reader. Login fields expose names.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-013</td><td>Print</td><td>No invoice print view was opened.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-014</td><td>Consistency</td><td>Rent is £1,250.00 on the landlord tenancy list and on the tenant home and tenancy page. Plan price is £290.00 on the pricing annual toggle, Stripe Checkout in GBP, and the billing page.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="performance">
+  <h2>7. Performance Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>PF-000</td><td>Public pages</td><td>One curl each: home TTFB 0.85s, total 1.10s, 28,674 bytes. Pricing TTFB 0.87s, total 1.39s, 41,461 bytes. Login TTFB 0.88s, total 0.88s, 2,229 bytes. All HTTP 200.</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-001</td><td>Property list</td><td>Large portfolio pagination</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>PF-002</td><td>Repair list</td><td>Status filters</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-003</td><td>Calendar</td><td>Month instance fetch</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-004</td><td>Accounting reports</td><td>Large ledger</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-005</td><td>Search</td><td>Indexed search</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-006</td><td>Uploads</td><td>Maximum upload size</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-007</td><td>N+1</td><td>Query counts</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-008</td><td>Queues</td><td>Invite mail arrived, so the request was not left hanging. Whether a queue worker is running was not visible.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+  </table>
+  <p class="note">PF-000 is a measurement from this run. It is not one of the eight inventory rows. Those eight stay Not Tested except where noted.</p>
+</section>
+
+<section id="seo">
+  <h2>8. SEO Testing</h2>
+  <table>
+    <tr><th>ID</th><th>SEO Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>SEO-001</td><td>Home title “ResiSquare — property operations”, description, and H1 “One Workspace for Your Entire Portfolio.” Pricing title and description exist. Pricing’s only H1 is the hidden demo modal.</td><td><span class="badge fail">Fail</span></td><td>See BUG-007. Put a visible H1 on pricing.</td></tr>
+    <tr><td>SEO-002</td><td>Canonical URL</td><td><span class="badge fail">Fail</span></td><td>Add a canonical link on home and pricing.</td></tr>
+    <tr><td>SEO-003</td><td>robots.txt allows <span class="path">/</span> and disallows <span class="path">/admin</span>, <span class="path">/aiz-uploader</span>, <span class="path">/contractor</span>, and <span class="path">/_debug</span>. The sitemap URL is declared.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>SEO-004</td><td>sitemap.xml lists home, pricing, login, and register only.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>SEO-005</td><td>Open Graph tags</td><td><span class="badge fail">Fail</span></td><td>Add Open Graph title, description, and image on home and pricing.</td></tr>
+    <tr><td>SEO-006</td><td>The logo image has alt “ResiSquare”. No other content images were in the home DOM.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>SEO-007</td><td>An unknown URL returns HTTP 404 and the page title “404 · Resisquare” with heading “Record Not Found”.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>SEO-008</td><td>Tenant home has no robots meta. Crawlers that honour robots.txt still skip <span class="path">/admin</span>.</td><td><span class="badge fail">Fail</span></td><td>Add noindex on the authenticated layout.</td></tr>
+  </table>
+</section>
+
+<section id="content">
+  <h2>9. Content Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Content Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>CT-001</td><td>Pricing figures on the Landlord Basic card match billing and Stripe GBP. The comparison table does not match that plan.</td><td><span class="badge fail">Fail</span></td><td>See BUG-002.</td></tr>
+    <tr><td>CT-002</td><td>Empty rent and repair copy on the tenant home is plain language.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>CT-003</td><td>Onboarding results are labelled “Filled from test”. Favicon and invite image use placeholder.jpg.</td><td><span class="badge fail">Fail</span></td><td>See BUG-003 and BUG-006.</td></tr>
+    <tr><td>CT-004</td><td>Rent the tenant sees is the £1,250 the landlord entered. No card charge was offered because there was no invoice.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>CT-005</td><td>Contractor terms page loads with its own heading.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>CT-006</td><td>The bad-login sentence does not name the wrong role.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="compatibility">
+  <h2>10. Browser &amp; Device Testing</h2>
+  <table>
+    <tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>Chrome Desktop</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>Firefox Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Edge Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Safari</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Android Mobile</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>iPhone</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Tablet</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Chromium emulated 390×844</td><td><span class="badge pass">Pass</span></td><td>Tenant home and bottom nav only. This is not a device test.</td></tr>
+  </table>
+</section>
+
+<section id="api">
+  <h2>11. API Testing</h2>
+  <table>
+    <tr><th>ID</th><th>API / Feature</th><th>Test</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>API-001</td><td>Stripe subscription webhook</td><td>Valid signature, bad signature, replay</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-002</td><td>Stripe rent webhook</td><td>Settles the right invoice once</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-003</td><td>Property search AJAX</td><td>Auth and account scope</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-004</td><td>Users and tenants by property</td><td>Participants only</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-005</td><td>Address lookup</td><td>SW1A 1AA returned two addresses and the UI left the pending state. Fixture facts are BUG-003. Throttle and provider-down were not tried.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>API-006</td><td>Calendar instances</td><td>Date range and account scope</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-007</td><td>Repair category lookups</td><td>Unknown parent</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-008</td><td>Invoice JSON helpers</td><td>Other account’s invoice</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="database">
+  <h2>12. Database Testing</h2>
+  <p>Not Tested. The database was not queried. The screens agreed with each other: one property, one active tenancy, rent £1,250.00, deposit £1,250.00, property limit 5.</p>
+  <table>
+    <tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>DB-001</td><td>Rent invoice, payment, and void in one transaction</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-002</td><td>Property soft delete and force delete</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-003</td><td>Membership uniqueness</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-004</td><td>Foreign keys share one account</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-005</td><td>Plan code uniqueness</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-006</td><td>Duplicate webhook payments</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-007</td><td>Migrations match form columns</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-008</td><td>Null optional fields</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="deployment">
+  <h2>13. Production / Deployment Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>DP-001</td><td>Forced 500 page</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-002</td><td>HTTPS on the site and on the Stripe return, which landed on <span class="path">https://laravel.resisquare.co.uk/admin/billing</span></td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>DP-003</td><td>OTP, welcome, and tenant invite messages were delivered</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>DP-004</td><td>Scheduler for rent auto-invoice</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-005</td><td>Checkout was Stripe test mode (sandbox badge, <span class="path">cs_test</span> session). That matches this laravel subdomain. Live keys were not observed.</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>DP-006</td><td>Mail send</td><td><span class="badge fail">Fail</span></td><td>See BUG-006. Delivery works. The From address should be the product domain, and the OTP should not be in the subject.</td></tr>
+    <tr><td>DP-007</td><td>Private upload disk</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-008</td><td>Registration OTP debug route</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>DP-009</td><td>First-property onboarding ran, so that path is enabled on this host</td><td><span class="badge pass">Pass</span></td><td>-</td></tr>
+    <tr><td>DP-010</td><td>Backups</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="score">
+  <h2>14. Overall Score</h2>
+  <p class="score">88%</p>
+  <p>Average. Calculated only from checks that were executed. Not Tested rows are excluded. API, database, and deployment are reported above and are not in this weight table.</p>
+  <table>
+    <tr><th>Category</th><th>Weight</th><th>Executed</th><th>Passed</th><th>Category score</th></tr>
+    <tr><td>Functional</td><td>30%</td><td>26</td><td>25</td><td>96%</td></tr>
+    <tr><td>Security</td><td>20%</td><td>8</td><td>7</td><td>88%</td></tr>
+    <tr><td>UI/UX</td><td>15%</td><td>7</td><td>6</td><td>86%</td></tr>
+    <tr><td>Performance</td><td>15%</td><td>1</td><td>1</td><td>100%</td></tr>
+    <tr><td>SEO</td><td>10%</td><td>8</td><td>4</td><td>50%</td></tr>
+    <tr><td>Compatibility</td><td>5%</td><td>2</td><td>2</td><td>100%</td></tr>
+    <tr><td>Content</td><td>5%</td><td>6</td><td>4</td><td>67%</td></tr>
+  </table>
+  <p class="note">0.30×96.15 + 0.20×87.5 + 0.15×85.71 + 0.15×100 + 0.10×50 + 0.05×100 + 0.05×66.67 = 87.5, reported as 88%.</p>
+</section>
+
+<section id="status">
+  <h2>15. Final Status</h2>
+  <p><strong>Needs Fixes and Retesting</strong></p>
+  <h3>Recommendation</h3>
+  <p>Registration, Stripe’s test-card trial, landlord onboarding, tenant invite, and the tenant home all work on this host. Landlord and tenant sessions are separated on the routes that were requested, and the debug OTP URL is closed.</p>
+  <p>Fix the hidden OTP error, the pricing table that sells plans the cards do not offer, and the onboarding results that save fixture beds, baths, and EPC ratings. Retest those three, then run the untested Critical rows: contractor registration and approval, rent invoice and the 4242 card on a tenant invoice, repair marketplace through to a paid contractor invoice, and Super Admin login-as. This slice is not a release sign-off for the full inventory.</p>
+</section>
+
+<section id="limits">
+  <h2>16. Testing Limitations</h2>
+  <ul>
+    <li>188 of 214 functional inventory rows were not clicked. Contractor signup was opened only as a URL check. Super Admin was not used.</li>
+    <li>No rent invoice existed, so Stripe’s demo card was used for the subscription trial only, not for tenant rent.</li>
+    <li>Webhook signature, replay, expired OTP, resend throttle, and reset-token reuse were not exercised.</li>
+    <li>The database was not opened. Counts come from the screens.</li>
+    <li>Firefox, Edge, Safari, Android, iPhone, and a tablet were not available. The phone check was a 390px emulation in Chromium.</li>
+    <li>A login payload that looks like SQL was stopped by Mod_Security before the application. That is evidence the database was not queried with it, not a full injection suite.</li>
+    <li>Two test accounts remain on the host: the landlord trial and the tenant on 1 The Mall. They can be removed when this data is no longer needed.</li>
+  </ul>
+</section>
+
+<footer>Generated 19 October 2026. ResiSquare live click-through. Scores use executed checks only.</footer>
+</div>
+</body>
+</html>

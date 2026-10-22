@@ -136,6 +136,49 @@ class ContractorProfileController extends Controller
         return redirect()->route('contractor.profile.edit');
     }
 
+    public function bank(Request $request)
+    {
+        $profile = $this->profile($request);
+        abort_if($profile->approval_status === ContractorProfile::REMOVED, 403, 'This contractor account has been removed.');
+
+        return view('frontend.contractor.bank', ['profile' => $profile]);
+    }
+
+    public function updateBank(Request $request)
+    {
+        $profile = $this->profile($request);
+        abort_if($profile->approval_status === ContractorProfile::REMOVED, 403, 'This contractor account has been removed.');
+
+        $data = $request->validate([
+            'bank_account_name' => ['required', 'string', 'max:191'],
+            'bank_sort_code' => ['required', 'string', 'max:12'],
+            'bank_account_number' => ['required', 'string', 'max:12'],
+            'bank_name' => ['nullable', 'string', 'max:191'],
+        ]);
+
+        $sortCode = preg_replace('/\D/', '', $data['bank_sort_code']) ?? '';
+        $accountNumber = preg_replace('/\D/', '', $data['bank_account_number']) ?? '';
+        $errors = [];
+        if (strlen($sortCode) !== 6) {
+            $errors['bank_sort_code'] = 'Enter a 6-digit sort code, for example 11-22-33.';
+        }
+        if (strlen($accountNumber) !== 8) {
+            $errors['bank_account_number'] = 'Enter an 8-digit account number.';
+        }
+        if ($errors !== []) {
+            return back()->withInput()->withErrors($errors);
+        }
+
+        $profile->forceFill([
+            'bank_account_name' => trim($data['bank_account_name']),
+            'bank_sort_code' => $sortCode,
+            'bank_account_number' => $accountNumber,
+            'bank_name' => filled($data['bank_name'] ?? null) ? trim($data['bank_name']) : null,
+        ])->save();
+
+        return redirect()->route('contractor.profile.bank')->with('success', 'Payment details saved.');
+    }
+
     public function updateDocuments(Request $request)
     {
         $profile = $this->profile($request);

@@ -228,6 +228,52 @@ class RepairIssue extends Model
         return $this->tenant_availability->format('j M Y').', '.$when;
     }
 
+    /**
+     * A stored time counts as the tenant's own only when they reported the repair,
+     * or when the row predates a recorded reporter.
+     */
+    public function tenantChoseAvailability(): bool
+    {
+        if (! $this->tenant_availability) {
+            return false;
+        }
+        if (! $this->created_by) {
+            return true;
+        }
+
+        return (int) $this->created_by === (int) $this->tenant_id;
+    }
+
+    public function reportedByLandlord(): bool
+    {
+        return (bool) $this->created_by && (int) $this->created_by !== (int) $this->tenant_id;
+    }
+
+    /**
+     * True when a proposed visit sits on the day and window the tenant chose.
+     */
+    public function coversVisit(?\Carbon\Carbon $when): bool
+    {
+        if (! $when || ! $this->tenant_availability || ! $when->isSameDay($this->tenant_availability)) {
+            return false;
+        }
+
+        $window = $this->tenantAvailabilityWindow();
+        if ($window === null) {
+            return $when->equalTo($this->tenant_availability);
+        }
+
+        [$startHour, $endHour] = match ($window) {
+            'morning' => [9, 13],
+            'afternoon' => [13, 17],
+            default => [17, 21],
+        };
+        $start = $this->tenant_availability->copy()->setTime($startHour, 0);
+        $end = $this->tenant_availability->copy()->setTime($endHour, 0);
+
+        return $when->greaterThanOrEqualTo($start) && $when->lt($end);
+    }
+
     public function repairIssueUsers()
     {
         return $this->hasMany(RepairIssueUser::class);

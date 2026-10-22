@@ -299,6 +299,15 @@ class TenantPortalHttpTest extends TestCase
             ])
             ->assertRedirect(route('tenant.maintenance'));
 
+        $this->actingAs($tenant)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('tenant.maintenance'))
+            ->assertOk()
+            ->assertSee('Kitchen tap is dripping', false)
+            ->assertSee('No visit booked yet', false)
+            ->assertSee('What has happened', false)
+            ->assertSee('You reported this', false);
+
         $this->assertDatabaseHas('repair_issues', [
             'account_id' => $accountId,
             'property_id' => $property->id,

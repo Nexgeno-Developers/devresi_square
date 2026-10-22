@@ -131,8 +131,43 @@
 <style>
     #rruleModal .modal-body {
         background: #eee;
-        max-height: 400px;
+        max-height: min(400px, calc(100vh - 12rem));
         overflow-y: auto;
+    }
+
+    /* The form wraps header, body and footer, so Bootstrap's scrollable
+       dialog never constrains the body. Pin the footer and scroll the fields. */
+    #eventModal .modal-dialog {
+        height: auto;
+        max-height: calc(100vh - 2rem);
+        margin: 1rem auto;
+    }
+    #eventModal .modal-content {
+        max-height: calc(100vh - 2rem);
+        overflow: hidden;
+    }
+    #eventModal #eventForm {
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 2rem);
+        min-height: 0;
+        overflow: hidden;
+    }
+    #eventModal .modal-header,
+    #eventModal .modal-footer {
+        flex: 0 0 auto;
+    }
+    #eventModal .modal-body {
+        overflow-y: auto;
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+    #eventModal .reminder-row .input-group {
+        flex-wrap: nowrap;
+    }
+    #eventModal .reminder-row .form-control {
+        max-width: 6.5rem;
+        flex: 0 0 6.5rem;
     }
 </style>
 
@@ -167,7 +202,7 @@
     <div class="modal-dialog modal-dialog-scrollable modal-lg">
         <div class="modal-content">
             {{-- Form for creating/editing events --}}
-            <form id="eventForm">
+            <form id="eventForm" novalidate>
                 @csrf
                 <div class="modal-header">
                     <h5 class="modal-title">Create / Edit Event</h5>
@@ -249,8 +284,9 @@
                             <div class="text-danger" data-error-for="end_datetime"></div>
                         </div>
 
-                        <div id="remindersContainer" class="mb-3">
+                        <div id="remindersContainer" class="col-12 mb-3">
                             <label class="form-label">Reminders</label>
+                            <p class="form-text mt-0 mb-2">Each number is how many minutes before the start. Invited people get an email and an in-app notification at that time.</p>
                             <div id="reminderList"></div>
                             <button type="button" id="addReminderBtn" class="btn btn-sm btn-outline-primary">
                                 + Add Reminder
@@ -309,12 +345,73 @@
     </div>
 </div>
 
+@push('scripts')
+<script>
+    // The calendar page binds its own submit (it also refreshes the calendar).
+    // Every other page that shows this modal, including a property, saves here.
+    $(function () {
+        if (document.getElementById('calendar')) return;
+
+        $('#eventForm').on('submit', function (event) {
+            event.preventDefault();
+            const form = this;
+            if (!form.checkValidity()) {
+                const invalid = form.querySelector(':invalid');
+                if (invalid) {
+                    invalid.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                    invalid.reportValidity();
+                }
+                return;
+            }
+
+            const $form = $(form);
+            const $save = $form.find('button[type="submit"]').prop('disabled', true);
+            $.ajax({
+                url: '{{ route('backend.events.store') }}',
+                method: 'POST',
+                data: $form.serialize(),
+                success: function () {
+                    const modal = document.getElementById('eventModal');
+                    if (window.bootstrap?.Modal) {
+                        bootstrap.Modal.getOrCreateInstance(modal).hide();
+                    }
+                    if (typeof fetchAppointments === 'function') {
+                        fetchAppointments($('#appointments-filter-form').serialize());
+                    }
+                },
+                error: function (xhr) {
+                    const errors = xhr.responseJSON?.errors || {};
+                    const first = Object.values(errors)[0];
+                    const message = (Array.isArray(first) ? first[0] : null)
+                        || xhr.responseJSON?.message
+                        || 'Could not save this event.';
+                    $('#eventFormAlert').remove();
+                    const safe = String(message).replace(/[&<>"']/g, function (char) {
+                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char];
+                    });
+                    $form.find('.modal-body').prepend(
+                        '<div id="eventFormAlert" class="alert alert-danger">' + safe + '</div>'
+                    );
+                    const body = $form.find('.modal-body').get(0);
+                    if (body) body.scrollTop = 0;
+                },
+                complete: function () {
+                    $save.prop('disabled', false);
+                }
+            });
+        });
+    });
+</script>
+@endpush
+
 <template id="reminderTpl">
-    <div class="input-group mb-2 reminder-row">
-        <input type="number" name="reminders[][minutes_before]" class="form-control w-25" min="0" value="30">
+    <div class="reminder-row mb-2">
+        <div class="input-group">
+            <input type="number" name="reminders[][minutes_before]" class="form-control" min="0" value="30" aria-label="Minutes before the start">
+            <span class="input-group-text">minutes before the start</span>
+            <button type="button" class="btn btn-outline-danger removeReminderBtn" aria-label="Remove reminder">&times;</button>
+        </div>
         <input type="hidden" name="reminders[][channel]" value="email">
-        <span class="input-group-text w-25">EMAIL &amp; IN-APP</span>
-        <span class="input-group-text">minutes before</span>
-        <button type="button" class="btn btn-outline-danger removeReminderBtn">&times;</button>
+        <div class="form-text">Email and in-app notification</div>
     </div>
 </template>

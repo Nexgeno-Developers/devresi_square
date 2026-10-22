@@ -359,6 +359,7 @@ body #header .toggle_icon {
 }
 
 body #header .rs-notify {
+    position: relative;
     width: 40px;
     height: 40px;
     padding: 0;
@@ -378,8 +379,24 @@ body #header .rs-notify:focus {
     background: #fff;
 }
 
-body #header .rs-notify .badge {
-    font-size: 0.65rem;
+body #header .rs-notify .badge,
+body #header .rs-notify-count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    left: auto;
+    transform: none;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    pointer-events: none;
 }
 
 body #header .rs-account-chip {
@@ -516,10 +533,90 @@ body #header .rs-return-admin {
     font-weight: 650;
 }
 
-body #header .notification-menu {
+body #header .dropdown-menu.notification-menu {
+    position: fixed !important;
+    top: 76px !important;
+    right: 16px !important;
+    left: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    margin: 0 !important;
+    width: min(380px, calc(100vw - 32px)) !important;
+    min-width: 0 !important;
+    max-width: min(380px, calc(100vw - 32px)) !important;
+    max-height: min(460px, calc(100vh - 96px));
+    padding: 0;
     border: 1px solid #e6e9ef;
     border-radius: 12px;
     overflow: hidden;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14);
+    z-index: 1080;
+}
+
+body #header .notification-menu.show {
+    display: flex;
+    flex-direction: column;
+}
+
+body #header .notification-menu .notification-head,
+body #header .notification-menu .notification-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    white-space: nowrap;
+}
+
+body #header .notification-menu .notification-head {
+    border-bottom: 1px solid #e6e9ef;
+}
+
+body #header .notification-menu .notification-foot {
+    border-top: 1px solid #e6e9ef;
+}
+
+body #header .notification-menu .notification-list {
+    overflow: auto;
+    min-height: 0;
+}
+
+body #header .notification-menu .notification-item {
+    display: block;
+    white-space: normal;
+    border-radius: 0;
+    border-bottom: 1px solid #e6e9ef;
+    padding: 10px 14px;
+}
+
+body #header .notification-menu .notification-title {
+    font-weight: 650;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+body #header .notification-menu .notification-body,
+body #header .notification-menu .notification-when {
+    color: #5b6573;
+    font-size: 0.82rem;
+    font-weight: 500;
+    line-height: 1.35;
+}
+
+body #header .notification-menu .notification-body {
+    margin-top: 2px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+body #header .notification-menu .notification-when {
+    margin-top: 4px;
 }
 
 body #header .notification-menu a {

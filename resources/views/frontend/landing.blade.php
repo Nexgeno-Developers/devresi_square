@@ -78,6 +78,7 @@
 
     <main id="content">
         <section class="hero" aria-labelledby="hero-title">
+            <div class="hero-atmosphere" aria-hidden="true"></div>
             <div class="wrap hero-copy">
                 <p class="eyebrow">Property operations</p>
                 <h1 id="hero-title">One Workspace for Your Entire Portfolio.</h1>
@@ -91,6 +92,67 @@
                     @endif
                 </div>
                 <p class="fine">Try ResiSquare free for 7 days. <a href="{{ route('pricing') }}">View pricing</a></p>
+            </div>
+
+            <div class="hero-stage" aria-hidden="true">
+                <aside class="orbit orbit-rent">
+                    <p>07:40 · Rent received</p>
+                    <strong>£1,250</strong>
+                    <span>14 Elm Row · October invoice</span>
+                </aside>
+                <aside class="orbit orbit-visit">
+                    <p>Thursday · 09:30</p>
+                    <strong>Visit confirmed</strong>
+                    <span>Northline Heating · boiler</span>
+                </aside>
+                <div class="window hero-window">
+                    <div class="window-bar">
+                        <span class="hero-live"><i></i> Portfolio</span>
+                        <span class="window-meta">Updated this morning</span>
+                    </div>
+                    <div class="app">
+                        <aside class="side">
+                            <p class="side-label">Portfolio</p>
+                            @foreach ($navItems as $item)
+                                <span class="{{ $item === 'Properties' ? 'is-active' : '' }}">{{ $item }}</span>
+                            @endforeach
+                        </aside>
+                        <div class="app-main">
+                            <div class="hero-metrics">
+                                <div>
+                                    <p>Properties</p>
+                                    <strong>24</strong>
+                                    <span>Across 4 cities</span>
+                                </div>
+                                <div>
+                                    <p>Collected</p>
+                                    <strong>£18,420</strong>
+                                    <span>October, so far</span>
+                                </div>
+                                <div>
+                                    <p>Open repairs</p>
+                                    <strong>3</strong>
+                                    <span>1 visit today</span>
+                                </div>
+                            </div>
+                            <div class="occ">
+                                <span class="occ-track">
+                                    <i class="occ-a"></i>
+                                    <i class="occ-b"></i>
+                                    <i class="occ-c"></i>
+                                </span>
+                                <span class="occ-meta"><span>22 occupied</span><span>1 notice</span><span>1 vacant</span></span>
+                            </div>
+                            <div class="table hero-table">
+                                <div class="tr th"><span>Property</span><span>City</span><span>Status</span><span>Rent</span></div>
+                                <div class="tr is-fresh"><span>14 Elm Row</span><span>Manchester</span><span class="chip">Occupied</span><span>£1,250</span></div>
+                                <div class="tr"><span>8 Chapel Street</span><span>Leeds</span><span class="chip chip-alert">Notice</span><span>£980</span></div>
+                                <div class="tr"><span>22 Quay House</span><span>Bristol</span><span class="chip chip-quiet">Vacant</span><span>—</span></div>
+                                <div class="tr"><span>Unit 4, Harbour Court</span><span>Liverpool</span><span class="chip">Occupied</span><span>£1,450</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 

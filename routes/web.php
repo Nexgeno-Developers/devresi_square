@@ -139,6 +139,8 @@ Route::group(['middleware' => 'web'], function () {
         Route::post('/jobs/{offer}/invoice', [ContractorJobController::class, 'issueInvoice'])->name('jobs.invoice.store');
 
         Route::get('/profile', [ContractorProfileController::class, 'edit'])->name('profile.edit');
+        Route::get('/profile/bank', [ContractorProfileController::class, 'bank'])->name('profile.bank');
+        Route::post('/profile/bank', [ContractorProfileController::class, 'updateBank'])->name('profile.bank.update');
         Route::post('/profile/business', [ContractorProfileController::class, 'updateBusiness'])->name('profile.business');
         Route::post('/profile/documents', [ContractorProfileController::class, 'updateDocuments'])->name('profile.documents');
         Route::post('/profile/reapply', [ContractorProfileController::class, 'reapply'])->name('profile.reapply');

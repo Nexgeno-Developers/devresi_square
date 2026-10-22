@@ -301,6 +301,27 @@ class RepairJobOffer extends Model
         return self::PRICING_TYPES[$this->pricing_type] ?? '—';
     }
 
+    /** The time everyone should treat as the visit: booked time, or the earliest proposal. */
+    public function agreedVisitAt(): ?\Illuminate\Support\Carbon
+    {
+        return $this->scheduled_for ?: $this->earliestSlot();
+    }
+
+    /**
+     * Settled when the tenant confirmed this time, or the contractor kept a window the tenant chose.
+     * A time typed by the landlord, a blank window, or a different proposal still needs the tenant.
+     */
+    public function visitIsSettled(): bool
+    {
+        if ($this->tenant_confirmed_at) {
+            return true;
+        }
+        $when = $this->agreedVisitAt();
+        $repair = $this->repairIssue;
+
+        return (bool) ($when && $repair && $repair->tenantChoseAvailability() && $repair->coversVisit($when));
+    }
+
     /** Earliest proposed visit, used for sorting offers. */
     public function earliestSlot(): ?\Illuminate\Support\Carbon
     {

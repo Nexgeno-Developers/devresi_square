@@ -68,7 +68,9 @@
                 .from('.hero-copy h1', { y: 26, autoAlpha: 0, duration: 0.75, clearProps: 'transform,opacity,visibility' }, 0.14)
                 .from('.hero-copy .lede', { y: 16, autoAlpha: 0, duration: 0.55, clearProps: 'transform,opacity,visibility' }, 0.28)
                 .from('.hero-copy .hero-actions .btn', { y: 12, autoAlpha: 0, duration: 0.4, stagger: 0.08, clearProps: 'transform,opacity,visibility' }, 0.4)
-                .from('.hero-copy .fine', { autoAlpha: 0, duration: 0.4, clearProps: 'opacity,visibility' }, 0.52);
+                .from('.hero-copy .fine', { autoAlpha: 0, duration: 0.4, clearProps: 'opacity,visibility' }, 0.52)
+                .from('.hero-window', { y: 42, autoAlpha: 0, duration: 0.9, clearProps: 'transform,opacity,visibility' }, 0.42)
+                .from('.orbit', { y: 16, autoAlpha: 0, duration: 0.5, stagger: 0.12, clearProps: 'transform,opacity,visibility' }, 0.78);
 
             reveal('.spec li', '.spec', 0.07);
             reveal('.cost .section-head', '.cost', 0);

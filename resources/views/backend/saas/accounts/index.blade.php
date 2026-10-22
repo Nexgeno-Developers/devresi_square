@@ -69,22 +69,20 @@
             </thead>
             <tbody>
                 @forelse($accounts as $account)
-                    @php($subscription = $account->currentSubscription ?? $account->latestSubscription)
+                    @php
+                        $subscription = $account->currentSubscription ?? $account->latestSubscription;
+                        $accountLabel = trim((string) $account->account_name);
+                        if ($accountLabel === '') {
+                            $accountLabel = trim((string) ($account->owner?->name ?: $account->billing_email ?: ('Account '.$account->id)));
+                        }
+                        $ownerName = trim((string) ($account->owner?->name ?: ''));
+                        if ($ownerName === '') {
+                            $ownerName = $account->owner?->email ?: '—';
+                        }
+                    @endphp
                     <tr>
                         <td>{{ $accounts->firstItem() + $loop->index }}</td>
-                        <td>
-                            @php
-                                $accountLabel = trim((string) $account->account_name);
-                                if ($accountLabel === '') {
-                                    $accountLabel = trim((string) ($account->owner?->name ?: $account->billing_email ?: ('Account '.$account->id)));
-                                }
-                                $ownerName = trim((string) ($account->owner?->name ?: ''));
-                                if ($ownerName === '') {
-                                    $ownerName = $account->owner?->email ?: '—';
-                                }
-                            @endphp
-                            {{ $accountLabel }}
-                        </td>
+                        <td>{{ $accountLabel }}</td>
                         <td>{{ ucwords(str_replace('_', ' ', $account->account_type)) }}</td>
                         <td>
                             {{ $ownerName }}<br>

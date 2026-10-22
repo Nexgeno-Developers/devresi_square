@@ -109,7 +109,16 @@ class TenantPortalService
         }
 
         return RepairIssue::query()
-            ->with(['property', 'repairPhotos', 'repairCategory'])
+            ->with([
+                'property',
+                'repairPhotos',
+                'repairCategory',
+                'creator',
+                'awardedOffer.contractor.contractorProfile',
+                'awardedOffer.events.actor',
+                'jobOffers.contractor.contractorProfile',
+                'jobOffers.events.actor',
+            ])
             ->when($accountId && ! $user->isSuperAdmin(), fn ($query) => $query->forAccount($accountId))
             ->where(function ($outer) use ($tenancies) {
                 foreach ($tenancies as $tenancy) {

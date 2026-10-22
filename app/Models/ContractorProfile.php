@@ -56,6 +56,10 @@ class ContractorProfile extends Model
         'claim_invited_at',
         'claim_token_hash',
         'claim_expires_at',
+        'bank_account_name',
+        'bank_sort_code',
+        'bank_account_number',
+        'bank_name',
     ];
 
     protected $casts = [
@@ -108,6 +112,23 @@ class ContractorProfile extends Model
     public function displayName(): string
     {
         return $this->trading_name ?: ($this->legal_name ?: ($this->user?->name ?: 'Contractor'));
+    }
+
+    public function hasBankDetails(): bool
+    {
+        return filled($this->bank_account_name)
+            && strlen((string) $this->bank_sort_code) === 6
+            && strlen((string) $this->bank_account_number) === 8;
+    }
+
+    public function formattedSortCode(): ?string
+    {
+        $digits = preg_replace('/\D/', '', (string) $this->bank_sort_code) ?? '';
+        if (strlen($digits) !== 6) {
+            return null;
+        }
+
+        return substr($digits, 0, 2).'-'.substr($digits, 2, 2).'-'.substr($digits, 4, 2);
     }
 
     public function hasTrade(string $trade): bool

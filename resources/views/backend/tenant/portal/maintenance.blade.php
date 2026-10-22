@@ -237,6 +237,15 @@ document.addEventListener('DOMContentLoaded', function () {
         sync();
     }
 
+    document.querySelectorAll('[data-open-repair]').forEach(function (button) {
+        button.addEventListener('click', function () {
+            var dialog = document.getElementById(button.getAttribute('data-open-repair'));
+            if (dialog && typeof dialog.showModal === 'function') {
+                dialog.showModal();
+            }
+        });
+    });
+
     var availability = document.querySelector('[data-availability]');
     if (!availability) return;
     var today = availability.getAttribute('data-today');
