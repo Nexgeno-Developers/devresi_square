@@ -180,7 +180,8 @@
                 </p>
             @endif
             @php
-                $desk = app(\App\Services\Repairs\RepairDeskService::class)->openFor($repairIssue);
+                $deskReady = \Illuminate\Support\Facades\Schema::hasTable('repair_desk_requests');
+                $desk = $deskReady ? app(\App\Services\Repairs\RepairDeskService::class)->openFor($repairIssue) : null;
                 $marketplaceOpen = $contractorRequest && $open;
             @endphp
             @if($desk)
@@ -200,7 +201,7 @@
                     <a class="btn btn-primary btn-sm" href="{{ route('admin.property_repairs.marketplace.find', $repairIssue) }}">
                         {{ $marketplaceOpen ? 'Add more contractors' : ($contractorRequest ? 'Send again' : 'Find a contractor') }}
                     </a>
-                    @unless($marketplaceOpen)
+                    @unless($marketplaceOpen || ! $deskReady)
                         <form method="POST" action="{{ route('admin.property_repairs.desk.store', $repairIssue) }}" class="d-flex flex-wrap gap-2">
                             @csrf
                             <input name="note" maxlength="1000" class="form-control form-control-sm" style="max-width:280px" placeholder="Note for the Resisquare team (optional)">

@@ -24,15 +24,49 @@ class LaunchFixesHttpTest extends TestCase
         config(['contractor_marketplace.geocode.enabled' => false]);
     }
 
-    public function test_public_migrate_is_closed_and_the_new_migration_does_not_seed(): void
+    public function test_migrate_url_is_super_admin_only_and_does_not_seed(): void
     {
-        $this->get('/migrate')->assertNotFound();
+        $this->get('/migrate')->assertRedirect(route('login'));
+        $this->post('/migrate', ['action' => 'run', 'seed' => '1'])->assertRedirect(route('login'));
+
+        [$landlord] = $this->createLandlord();
+        $this->actingAs($landlord)->get('/migrate')->assertForbidden();
+        $this->actingAs($landlord)->post('/migrate', ['action' => 'run', 'seed' => '1'])->assertForbidden();
+
+        $admin = $this->superAdmin();
+        $this->actingAs($admin)->get('/migrate')
+            ->assertOk()
+            ->assertSee('Migrations not run yet')
+            ->assertDontSee('Migrate token');
+
+        $this->actingAs($admin)->post('/migrate', ['action' => 'preview', 'seed' => '1'])
+            ->assertOk()
+            ->assertDontSee('Database seeding');
 
         $migration = file_get_contents(database_path('migrations/2026_10_15_000004_create_repair_desk_requests_table.php'));
         $this->assertStringNotContainsString('db:seed', $migration);
         $this->assertStringNotContainsString('Staging', $migration);
         $this->assertStringNotContainsString('Schema::dropIfExists(\'users\'', $migration);
         $this->assertStringContainsString('Schema::dropIfExists(\'repair_desk_requests\')', $migration);
+
+        $guard = app(\App\Services\Schema\WebMigrator::class);
+        $this->assertNull($guard->rejectionReason(database_path('migrations/2026_10_15_000004_create_repair_desk_requests_table.php')));
+
+        $probe = database_path('migrations/2099_01_01_000000_web_migrate_guard_probe.php');
+        file_put_contents($probe, <<<'PHP'
+<?php
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\Schema;
+return new class extends Migration {
+    public function up(): void { Schema::dropIfExists('users'); }
+    public function down(): void {}
+};
+PHP);
+        try {
+            $this->assertSame('drops a table', $guard->rejectionReason($probe));
+        } finally {
+            @unlink($probe);
+        }
     }
 
     public function test_people_page_lists_tenants_only(): void

@@ -39,6 +39,9 @@ class RepairDeskService
         if ($this->marketplaceIsOpen($repair)) {
             throw new ContractorMarketplaceException('Contractors have already been asked. Close that request before sending it to Resisquare.');
         }
+        if (! Schema::hasTable('repair_desk_requests')) {
+            throw new ContractorMarketplaceException('The Resisquare desk is not set up on this workspace yet.');
+        }
 
         return RepairDeskRequest::query()->create([
             'account_id' => $repair->account_id ?: current_account_id(),

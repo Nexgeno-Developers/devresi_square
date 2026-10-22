@@ -16,6 +16,13 @@ use App\Http\Controllers\Frontend\RepairVisitController;
 use Illuminate\Support\Facades\Route;
 use niklasravnsborg\LaravelPdf\Facades\Pdf;
 
+Route::get('/migrate', [\App\Http\Controllers\SchemaMigrateController::class, 'show'])
+    ->middleware(['auth', 'throttle:20,1'])
+    ->name('schema.migrate.show');
+Route::post('/migrate', [\App\Http\Controllers\SchemaMigrateController::class, 'store'])
+    ->middleware(['auth', 'throttle:5,1'])
+    ->name('schema.migrate.store');
+
 Route::post('/stripe/webhook', [\App\Http\Controllers\Webhook\StripeWebhookController::class, 'handle'])->name('stripe.webhook');
 Route::post('/stripe/rent/webhook', [\App\Http\Controllers\Webhook\StripeRentWebhookController::class, 'handle'])->name('stripe.rent.webhook');
 
@@ -24,8 +31,7 @@ Route::post('/stripe/rent/webhook', [\App\Http\Controllers\Webhook\StripeRentWeb
 //     return $pdf->download('test.pdf');
 // });
 
-// Schema changes run with `php artisan migrate`. That applies pending migrations only.
-// It does not seed, refresh, or wipe existing rows. There is no public /migrate URL.
+// /migrate applies migrations that have not run yet. Super Admin only. It never seeds or wipes.
 
 // Group for web routes
 Route::group(['middleware' => 'web'], function () {
@@ -60,6 +66,7 @@ Route::group(['middleware' => 'web'], function () {
             'Disallow: /aiz-uploader',
             'Disallow: /contractor',
             'Disallow: /_debug',
+            'Disallow: /migrate',
             '',
             'Sitemap: '.url('/sitemap.xml'),
             '',

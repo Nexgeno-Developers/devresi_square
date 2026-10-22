@@ -205,8 +205,13 @@ class DashboardController extends Controller
                 if ($overdue) {
                     $days = $overdue->due_date ? (int) $overdue->due_date->startOfDay()->diffInDays(now()->startOfDay()) : 0;
                     $address = $overdue->property?->line_1 ?: 'A property';
+                    $detail = rs_money($overdue->balance).' outstanding · '.$days.' '.($days === 1 ? 'day' : 'days').' overdue';
                     $actions[] = [
-                        'text' => $address.' — '.rs_money($overdue->balance).' outstanding · '.$days.' '.($days === 1 ? 'day' : 'days').' overdue',
+                        'kind' => 'Rent',
+                        'tone' => 'alert',
+                        'place' => $address,
+                        'detail' => $detail,
+                        'text' => $address.' — '.$detail,
                         'url' => route('admin.finance.index', ['status' => 'overdue']),
                         'cta' => 'View Rent',
                     ];
@@ -220,13 +225,18 @@ class DashboardController extends Controller
                     $expiry = $gap['record']?->expiry_date;
                     if ($expiry && $expiry->isFuture()) {
                         $days = (int) now()->startOfDay()->diffInDays($expiry->copy()->startOfDay());
-                        $text = $address.' — '.$name.' expires in '.$days.' '.($days === 1 ? 'day' : 'days').'.';
+                        $detail = $name.' expires in '.$days.' '.($days === 1 ? 'day' : 'days').'.';
                     } elseif ($expiry) {
-                        $text = $address.' — '.$name.' has expired.';
+                        $detail = $name.' has expired.';
                     } else {
-                        $text = $address.' — '.$name.' is missing.';
+                        $detail = $name.' is missing.';
                     }
+                    $text = $address.' — '.$detail;
                     $actions[] = [
+                        'kind' => 'Compliance',
+                        'tone' => 'alert',
+                        'place' => $address,
+                        'detail' => $detail,
                         'text' => $text,
                         'url' => route('admin.compliance.index'),
                         'cta' => 'Book Inspection',
@@ -238,8 +248,13 @@ class DashboardController extends Controller
             if ($repair) {
                 $address = $repair->property?->line_1 ?: 'A property';
                 $title = \Illuminate\Support\Str::limit($repair->description ?: 'Repair', 80);
+                $detail = $title.' reported by tenant.';
                 $actions[] = [
-                    'text' => $address.' — '.$title.' reported by tenant.',
+                    'kind' => 'Repair',
+                    'tone' => 'work',
+                    'place' => $address,
+                    'detail' => $detail,
+                    'text' => $address.' — '.$detail,
                     'url' => route('admin.property_repairs.show', $repair->id),
                     'cta' => 'Assign Contractor',
                 ];
