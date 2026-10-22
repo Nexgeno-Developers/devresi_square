@@ -45,8 +45,9 @@
                         <input class="form-control form-control-sm" value="{{ $trades[$required] ?? $required }} (required)" disabled>
                     @else
                         <select name="trade" class="form-select form-select-sm">
+                            <option value="" @selected(($filters['trade'] ?? '') === '')>All trades</option>
                             @foreach($trades as $key => $label)
-                                <option value="{{ $key }}" @selected($trade === $key)>{{ $label }}</option>
+                                <option value="{{ $key }}" @selected(($filters['trade'] ?? '') === $key)>{{ $label }}</option>
                             @endforeach
                         </select>
                     @endif
@@ -54,7 +55,7 @@
                 <div class="col-6 col-md-2">
                     <label class="form-label small mb-1">Distance</label>
                     <select name="distance" class="form-select form-select-sm">
-                        <option value="">Their coverage area</option>
+                        <option value="">Any distance</option>
                         @foreach([5, 10, 15, 25] as $miles)
                             <option value="{{ $miles }}" @selected(($filters['distance'] ?? '') == $miles)>Within {{ $miles }} miles</option>
                         @endforeach
@@ -73,6 +74,9 @@
                     <label class="d-block"><input type="checkbox" name="badges[]" value="gas_safe" @checked(in_array('gas_safe', (array) ($filters['badges'] ?? []), true))> Gas Safe</label>
                     <label class="d-block"><input type="checkbox" name="badges[]" value="dbs" @checked(in_array('dbs', (array) ($filters['badges'] ?? []), true))> DBS checked</label>
                 </div>
+                @if(! $required && $trade)
+                    <div class="col-12 small text-muted">This repair looks like {{ strtolower($trades[$trade] ?? $trade) }}. Anyone outside that is marked below and cannot be sent this job.</div>
+                @endif
                 <div class="col-12 col-md-2 d-flex gap-2">
                     <button class="btn lw-btn-secondary btn-sm" type="submit">Filter</button>
                     @if(array_filter($filters))
@@ -82,10 +86,6 @@
             </form>
         </div>
     </div>
-
-    @if(!empty($omitted) && $candidates->isNotEmpty())
-        <div class="alert alert-warning">Not listed: {{ implode(' ', $omitted) }}</div>
-    @endif
 
     @if($candidates->isEmpty())
         <div class="card lw-card mb-3">
@@ -118,33 +118,40 @@
             <div class="card lw-card mb-3">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <div class="lw-section-title m-0">{{ $candidates->count() }} {{ \Illuminate\Support\Str::plural('contractor', $candidates->count()) }} available</div>
+                        <div class="lw-section-title m-0">{{ $ready }} can take this · {{ $candidates->count() }} listed</div>
                         <span class="small text-muted" id="pick-count" data-cap="{{ $remaining }}">Pick up to {{ $remaining }}</span>
                     </div>
+                    @if($ready === 0 && $emptyReason)
+                        <p class="small text-muted">{{ $emptyReason }}</p>
+                    @endif
                     @if($openCount)
                         <p class="small text-muted">{{ $openCount }} already invited. You can add more.</p>
                     @endif
                     <div class="list-group mb-2">
                         @foreach($candidates as $row)
-                            <label class="list-group-item d-flex gap-3 align-items-start">
-                                <input type="checkbox" class="form-check-input mt-1 pick" name="contractor_ids[]" value="{{ $row->user_id }}" @checked(in_array($row->user_id, (array) old('contractor_ids', [])))>
+                            <div class="list-group-item d-flex gap-3 align-items-start">
+                                @if($row->can_take)
+                                    <input type="checkbox" class="form-check-input mt-1 pick" name="contractor_ids[]" value="{{ $row->user_id }}" @checked(in_array($row->user_id, (array) old('contractor_ids', [])))>
+                                @endif
                                 <span class="flex-grow-1">
                                     <strong>{{ $row->name }}</strong>
+                                    <x-lw.pill :tone="$row->tone">{{ $row->scope }}</x-lw.pill>
                                     @if($row->mine)<x-lw.pill tone="ok">My contractor</x-lw.pill>@endif
                                     @if($row->worked)<x-lw.pill tone="idle">Worked with you</x-lw.pill>@endif
                                     <span class="d-block small text-muted">
-                                        {{ $row->miles !== null ? $row->miles.' miles away' : 'Covers this area' }}
+                                        {{ $row->miles !== null ? $row->miles.' miles away' : 'Distance unknown' }}
                                         @foreach($row->badges as $badge) · {{ $badge }} @endforeach
                                         @if(($row->rating ?? null) !== null) · {{ $row->rating }}★ ({{ $row->ratings }}) @endif
+                                        @if(! $row->can_take && $row->reason) · {{ $row->reason }} @endif
                                     </span>
                                 </span>
                                 <button type="submit" class="btn btn-link btn-sm p-0 text-decoration-none" title="{{ $row->favourite ? 'Remove favourite' : 'Add favourite' }}"
                                     formaction="{{ route('admin.property_repairs.marketplace.favourite', $row->user_id) }}" formnovalidate>{{ $row->favourite ? '★' : '☆' }}</button>
-                            </label>
+                            </div>
                         @endforeach
                     </div>
                     <label class="small d-none" id="send-all-wrap">
-                        <input type="checkbox" name="send_all" value="1" id="send-all"> Send to all {{ $candidates->count() }} matching contractors (emergency)
+                        <input type="checkbox" name="send_all" value="1" id="send-all"> Send to all {{ $ready }} who can take this (emergency)
                     </label>
                 </div>
             </div>
@@ -174,7 +181,9 @@
             </div>
 
             <p class="small text-muted">Before you accept, contractors see the description, photos, postcode district ({{ \App\Support\ContractorCompliance::postcodeDistrict($property?->postcode) ?: '—' }}), urgency and tenant availability. Never the full address or tenant contact.</p>
-            <button class="btn btn-primary mb-4" type="submit">Send to selected</button>
+            @if($ready > 0)
+                <button class="btn btn-primary mb-4" type="submit">Send to selected</button>
+            @endif
         </form>
     @endif
 

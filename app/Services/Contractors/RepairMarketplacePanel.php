@@ -69,7 +69,8 @@ class RepairMarketplacePanel
     public function find(RepairIssue $repair, int $accountId, array $filters = []): array
     {
         $required = ContractorCompliance::requiredTrade($repair);
-        $trade = $required ?: (array_key_exists($filters['trade'] ?? '', ContractorCompliance::trades()) ? $filters['trade'] : ContractorCompliance::suggestedTrade($repair));
+        $tradeFilter = array_key_exists($filters['trade'] ?? '', ContractorCompliance::trades()) ? $filters['trade'] : null;
+        $trade = $required ?: ContractorCompliance::suggestedTrade($repair);
         $postcode = $repair->property?->postcode;
         $origin = PostcodeGeo::locate($postcode);
         $area = PostcodeGeo::area($postcode);
@@ -84,39 +85,36 @@ class RepairMarketplacePanel
             ->where('approval_status', ContractorProfile::APPROVED)
             ->whereNull('removed_at')
             ->get();
-        $omitted = [];
 
         $candidates = $profiles
-            ->map(function (ContractorProfile $profile) use ($repair, $trade, $relations, &$omitted) {
+            ->map(function (ContractorProfile $profile) use ($repair, $trade, $tradeFilter, $relations, $busy) {
                 $decision = $this->eligibility->assess($profile, $repair, $trade);
                 $id = (int) $profile->user_id;
-                if (! $decision['ok']) {
-                    $omitted[] = $profile->displayName().': '.$decision['reason'];
-
-                    return null;
-                }
+                $invited = $busy->has($id);
+                [$scope, $tone, $canTake] = $this->scope($decision, $invited);
 
                 return (object) [
                     'profile' => $profile,
                     'user_id' => $id,
                     'name' => $profile->displayName(),
                     'miles' => $decision['miles'],
-                    'in_area' => true,
+                    'in_area' => $decision['ok'],
+                    'reason' => $decision['reason'],
+                    'scope' => $scope,
+                    'tone' => $tone,
+                    'can_take' => $canTake,
+                    'has_trade' => $tradeFilter === null || ContractorCompliance::tradeBlock($profile, $tradeFilter) === null,
                     'badges' => ContractorCompliance::badges($profile),
                     'mine' => isset($relations['mine'][$id]),
                     'favourite' => isset($relations['favourite'][$id]),
                     'worked' => isset($relations['worked'][$id]),
                 ];
             })
-            ->filter()
+            ->filter(fn ($row) => $row->has_trade)
             ->filter(fn ($row) => $maxMiles === null || ($row->miles !== null && $row->miles <= $maxMiles))
             ->filter(fn ($row) => collect($badges)->every(fn ($badge) => ContractorCompliance::hasBadge($row->profile, $badge)))
             ->filter(fn ($row) => $only === null || $row->{$only})
-            ->values();
-        $alreadyInvited = $candidates->contains(fn ($row) => $busy->has($row->user_id));
-        $candidates = $candidates
-            ->reject(fn ($row) => $busy->has($row->user_id))
-            ->sortBy(fn ($row) => [($row->mine || $row->favourite) ? 0 : 1, $row->worked ? 0 : 1, $row->miles ?? 999])
+            ->sortBy(fn ($row) => [$row->can_take ? 0 : 1, ($row->mine || $row->favourite) ? 0 : 1, $row->miles ?? 999])
             ->values();
         $stats = $this->directory->performance($candidates->pluck('user_id')->all());
         $candidates->each(function ($row) use ($stats) {
@@ -124,34 +122,59 @@ class RepairMarketplacePanel
             $row->ratings = $stats[$row->user_id]['ratings'] ?? 0;
         });
 
-        $filtered = ($filters['distance'] ?? null) || $badges || $only;
+        $filtered = $tradeFilter || $maxMiles !== null || $badges || $only;
+        $ready = $candidates->where('can_take', true)->count();
         $emptyReason = null;
         $gap = false;
         if ($candidates->isEmpty()) {
-            $label = strtolower(ContractorCompliance::trades()[$trade] ?? 'this trade');
-            if ($filtered) {
-                $emptyReason = 'No contractors match these filters. Try clearing them.';
-            } elseif ($alreadyInvited && $omitted === []) {
-                $emptyReason = 'Everyone who covers this repair has already been invited.';
-            } elseif ($omitted !== []) {
-                $emptyReason = implode(' ', $omitted);
-            } else {
-                $emptyReason = 'No approved '.$label.' contractors cover '.($area ?: 'this area').' yet.';
-                $gap = true;
-            }
+            $emptyReason = $filtered
+                ? 'No contractors match these filters. Try clearing them.'
+                : 'No approved contractors are on Resisquare yet.';
+            $gap = ! $filtered;
+        } elseif ($ready === 0) {
+            $emptyReason = 'Nobody in this list can take this repair. The reason is on each row.';
         }
 
         return [
             'candidates' => $candidates,
+            'ready' => $ready,
             'trade' => $trade,
             'required' => $required,
             'origin' => $origin,
             'emptyReason' => $emptyReason,
-            'omitted' => $candidates->isEmpty() ? [] : $omitted,
+            'omitted' => [],
             'gap' => $gap,
             'cap' => ContractorSettings::maxPerSend(),
             'emergency' => ContractorCompliance::looksLikeEmergency($repair),
+            'area' => $area,
         ];
+    }
+
+    /**
+     * @param  array{ok: bool, miles: ?float, reason: ?string}  $decision
+     * @return array{0: string, 1: string, 2: bool}
+     */
+    private function scope(array $decision, bool $invited): array
+    {
+        if ($invited) {
+            return ['Already invited', 'idle', false];
+        }
+        if ($decision['ok']) {
+            return ['Can take this', 'ok', true];
+        }
+
+        $reason = (string) $decision['reason'];
+        if (str_contains($reason, 'coverage') || str_contains($reason, 'miles away')) {
+            return ['Outside their area', 'warn', false];
+        }
+        if (str_contains($reason, 'Not approved for') || str_contains($reason, 'needs a') || str_contains($reason, 'not approved yet') || str_contains($reason, 'No trade')) {
+            return ['Outside their trade', 'idle', false];
+        }
+        if (str_contains($reason, 'distance')) {
+            return ['Area unknown', 'idle', false];
+        }
+
+        return ['Cannot take this', 'bad', false];
     }
 
     /** Records a coverage gap once per repair and trade, and tells admins. */

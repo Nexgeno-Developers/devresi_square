@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers\Backend;
 
+use App\Enums\CrmNotificationEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Models\RentInvoice;
+use App\Models\RepairHistory;
 use App\Models\RepairIssue;
 use App\Models\RepairJobOffer;
+use App\Services\Notifications\CrmNotificationService;
 use App\Services\Auth\EmailChangeService;
 use App\Services\Contractors\ContractorMarketplaceException;
 use App\Services\Contractors\RepairJobAftercareService;
@@ -331,6 +334,49 @@ class TenantPortalController extends Controller
         }
 
         flash('Thanks. The contractor knows that time works for you.')->success();
+
+        return redirect()->route('tenant.maintenance');
+    }
+
+    public function confirmFixed(Request $request, RepairIssue $repair, TenantPortalService $portal): RedirectResponse
+    {
+        $user = $request->user();
+        $accountId = current_account_id();
+        $visible = $portal->repairsFor($user, $accountId, $portal->tenanciesFor($user, $accountId))
+            ->contains(fn (RepairIssue $row) => (int) $row->id === (int) $repair->id);
+        abort_unless($visible, 404);
+        abort_unless($repair->tenantStatusLabel() === 'Done', 404);
+
+        $already = $repair->repairHistories()->where('action', 'Tenant confirmed this is fixed')->exists();
+        if ($already) {
+            flash('You have already confirmed this repair.')->success();
+
+            return redirect()->route('tenant.maintenance');
+        }
+
+        RepairHistory::create([
+            'repair_issue_id' => $repair->id,
+            'action' => 'Tenant confirmed this is fixed',
+            'previous_status' => (string) $repair->status,
+            'new_status' => (string) $repair->status,
+        ]);
+
+        app(CrmNotificationService::class)->dispatch(
+            CrmNotificationEvent::RepairJobCompleted,
+            $repair,
+            [
+                'account_id' => (int) ($repair->account_id ?: $accountId),
+                'include_account_admins' => true,
+                'notice_subject' => 'Tenant confirmed the repair',
+                'notice' => 'The tenant confirmed this repair is fixed.',
+                'repair_reference' => $repair->reference_number ?: ('#'.$repair->id),
+                'milestone' => 'tenant-confirmed-'.$repair->id,
+                ...$repair->notificationLinks(),
+            ],
+            $user,
+        );
+
+        flash('Thanks. Your landlord has been told.')->success();
 
         return redirect()->route('tenant.maintenance');
     }

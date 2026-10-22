@@ -111,6 +111,13 @@
                 </section>
             @endif
 
+            @if($label === 'Done' && ! $repair->repairHistories->contains('action', 'Tenant confirmed this is fixed'))
+                <form method="POST" action="{{ route('tenant.maintenance.fixed', $repair) }}" class="mb-3">
+                    @csrf
+                    <button type="submit" class="tp-btn">This is fixed</button>
+                </form>
+            @endif
+
             @if($photoIds->isNotEmpty())
                 <div class="tp-repair-photos">
                     @foreach($photoIds as $photoId)

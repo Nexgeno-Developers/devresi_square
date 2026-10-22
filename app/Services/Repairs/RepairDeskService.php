@@ -111,6 +111,13 @@ class RepairDeskService
             'team_note' => filled($note) ? trim($note) : $desk->team_note,
         ])->save();
         $this->moveRepair($desk, ['Pending', 'Reported'], 'Under Process');
+        $repair = $desk->repairIssue;
+        if ($repair && ! $repair->dispatched_at) {
+            $repair->forceFill([
+                'dispatched_at' => now(),
+                'dispatched_by' => $assignee->id,
+            ])->save();
+        }
 
         $body = filled($note) ? trim($note) : 'The Resisquare team is handling this repair.';
         $this->event($desk, $assignee, RepairDeskEvent::TAKEN, $body);
@@ -200,6 +207,13 @@ class RepairDeskService
             'team_note' => $note,
         ])->save();
         $this->moveRepair($desk, ['Under Process'], 'Pending');
+        $repair = $desk->repairIssue?->fresh();
+        if ($repair && ! $repair->awarded_offer_id && $repair->dispatched_by && (int) $repair->dispatched_by === (int) $desk->assigned_to) {
+            $repair->forceFill([
+                'dispatched_at' => null,
+                'dispatched_by' => null,
+            ])->save();
+        }
         $this->event($desk, $actor, RepairDeskEvent::RETURNED, $note);
         $this->notify(
             $desk,
@@ -247,10 +261,27 @@ class RepairDeskService
         return $desk;
     }
 
+    public function completedFor(RepairIssue $repair): bool
+    {
+        if (! Schema::hasTable('repair_desk_requests')) {
+            return false;
+        }
+
+        $latest = RepairDeskRequest::query()
+            ->where('repair_issue_id', $repair->id)
+            ->latest('id')
+            ->first();
+
+        return $latest?->status === RepairDeskRequest::COMPLETED;
+    }
+
     public function assertMarketplaceAvailable(RepairIssue $repair): void
     {
         if ($this->openFor($repair)) {
-            throw new ContractorMarketplaceException('This repair is with the Resisquare team. Take it back before you send it to contractors.');
+            throw new ContractorMarketplaceException('The Resisquare team has this repair. A contractor can be invited only if they return it.');
+        }
+        if ($this->completedFor($repair)) {
+            throw new ContractorMarketplaceException('The Resisquare team has finished this repair.');
         }
     }
 

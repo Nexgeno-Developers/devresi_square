@@ -186,6 +186,7 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         Route::get('/portal/maintenance', [TenantPortalController::class, 'maintenance'])->name('tenant.maintenance');
         Route::post('/portal/maintenance', [TenantPortalController::class, 'storeRepair'])->name('tenant.maintenance.store');
         Route::post('/portal/maintenance/{repair}/visit', [TenantPortalController::class, 'confirmVisit'])->name('tenant.maintenance.visit');
+        Route::post('/portal/maintenance/{repair}/fixed', [TenantPortalController::class, 'confirmFixed'])->name('tenant.maintenance.fixed');
         Route::get('/portal/documents', [TenantPortalController::class, 'documents'])->name('tenant.documents');
         Route::get('/portal/documents/{document}/download', [TenantPortalController::class, 'downloadDocument'])->name('tenant.documents.download');
         Route::get('/portal/calendar', [TenantPortalController::class, 'calendar'])->name('tenant.calendar');
@@ -553,6 +554,7 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
                 ->whereIn('event', ['dispatched', 'made_safe', 'resolved'])
                 ->name('property_repairs.sla.store');
 
+            Route::post('/{repairIssue}/close', [\App\Http\Controllers\Backend\PropertyRepairController::class, 'close'])->name('property_repairs.close');
             Route::post('/{repairIssue}/resisquare', [\App\Http\Controllers\Backend\RepairDeskController::class, 'store'])->name('property_repairs.desk.store');
             Route::post('/{repairIssue}/resisquare/withdraw', [\App\Http\Controllers\Backend\RepairDeskController::class, 'withdraw'])->name('property_repairs.desk.withdraw');
 

@@ -35,10 +35,13 @@ class RepairJobOfferController extends Controller
     public function find(Request $request, RepairIssue $repairIssue)
     {
         $this->authorizeRepair($repairIssue);
-        if (app(\App\Services\Repairs\RepairDeskService::class)->openFor($repairIssue)) {
+        $desk = app(\App\Services\Repairs\RepairDeskService::class);
+        if ($desk->openFor($repairIssue) || $desk->completedFor($repairIssue)) {
             return redirect()
                 ->to(route('admin.property_repairs.show', $repairIssue).'#contractors')
-                ->with('error', 'This repair is with the Resisquare team. Take it back before you send it to contractors.');
+                ->with('error', $desk->openFor($repairIssue)
+                    ? 'The Resisquare team has this repair. A contractor can be invited only if they return it.'
+                    : 'The Resisquare team has finished this repair.');
         }
         $filters = $request->only(['trade', 'distance', 'badges', 'only']);
         $result = $this->panel->find($repairIssue, (int) current_account_id(), $filters);
@@ -76,7 +79,10 @@ class RepairJobOfferController extends Controller
 
         $ids = $data['contractor_ids'] ?? [];
         if ($data['urgency'] === 'emergency' && ! empty($data['send_all'])) {
-            $ids = $this->panel->find($repairIssue, (int) current_account_id())['candidates']->pluck('user_id')->all();
+            $ids = $this->panel->find($repairIssue, (int) current_account_id())['candidates']
+                ->where('can_take', true)
+                ->pluck('user_id')
+                ->all();
         }
         if ($ids === []) {
             return back()->withInput()->with('error', 'Pick at least one contractor.');

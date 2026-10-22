@@ -1617,18 +1617,18 @@ body.landlord-workspace .lw-repairs .lw-btn-primary:hover {
 
 .lw-repair-actions {
     display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
     justify-content: flex-end;
+    align-items: center;
 }
 
-.lw-repair-actions a {
-    color: var(--rs-teal);
-    font-size: 0.875rem;
-    font-weight: 650;
-    text-decoration: none;
+.lw-repair-actions form {
+    margin: 0;
 }
 
-.lw-repair-actions a:hover {
-    color: #0f173a;
+.lw-repair-actions .lw-btn {
+    white-space: nowrap;
 }
 
 .lw-repair-summary {
@@ -1770,7 +1770,6 @@ body.landlord-workspace #wrapper .lw-hero p,
 body.landlord-workspace .pcc-toolbar-kicker,
 body.landlord-workspace #wrapper .lw-repair-address,
 body.landlord-workspace #wrapper .lw-repair-meta,
-body.landlord-workspace #wrapper .lw-repair-actions a,
 body.landlord-workspace #wrapper .text-muted,
 body.landlord-workspace #wrapper small {
     font-size: var(--lw-type-meta);
@@ -1846,10 +1845,50 @@ body.landlord-workspace .lw-repair-grid {
 }
 
 body.landlord-workspace .lw-repair-card {
-    grid-template-columns: 40px minmax(0, 1.6fr) minmax(160px, 1fr) auto;
+    grid-template-columns: 40px minmax(0, 1.4fr) minmax(140px, 0.8fr) auto;
     gap: 12px;
-    padding: 12px;
+    padding: 12px 14px;
     border-radius: 12px;
+}
+
+body.landlord-workspace #wrapper .lw-repair-actions .lw-btn {
+    min-height: 32px;
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 650;
+}
+
+body.landlord-workspace #wrapper .lw-repairs .lw-repair-actions .lw-btn-primary {
+    background: var(--rs-blue);
+    border-color: var(--rs-blue);
+    color: #fff;
+}
+
+body.landlord-workspace #wrapper .lw-repairs .lw-repair-actions .lw-btn-secondary {
+    background: #fff;
+    border: 1px solid #d7dbe3;
+    color: var(--rs-blue);
+}
+
+body.landlord-workspace #wrapper .lw-repairs .lw-repair-actions .lw-btn-secondary:hover {
+    border-color: var(--rs-blue);
+    background: #f4f6fb;
+    color: var(--rs-blue);
+}
+
+body.landlord-workspace #wrapper .lw-repairs .lw-repair-actions .lw-btn-ghost {
+    border: 1px solid #e4e7ee;
+    background: #fff;
+    color: #5c6578;
+    padding: 0 12px;
+}
+
+body.landlord-workspace #wrapper .lw-repairs .lw-repair-actions .lw-btn-ghost:hover {
+    background: var(--lw-wash);
+    color: var(--rs-blue);
 }
 
 body.landlord-workspace .lw-repair-thumb,

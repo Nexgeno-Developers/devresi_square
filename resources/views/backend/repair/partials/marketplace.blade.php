@@ -18,6 +18,20 @@
     $pendingVariations = $awarded ? $awarded->variations->where('status', 'pending') : collect();
     $approvedVariations = $awarded ? $awarded->variations->where('status', 'approved') : collect();
     $visitBooked = $awarded && $awarded->scheduled_for && ! $awarded->isFinished();
+    $deskReady = \Illuminate\Support\Facades\Schema::hasTable('repair_desk_requests');
+    $desk = $deskReady ? app(\App\Services\Repairs\RepairDeskService::class)->openFor($repairIssue) : null;
+    $deskDone = null;
+    if ($deskReady && ! $desk) {
+        $latestDesk = \App\Models\RepairDeskRequest::query()
+            ->where('repair_issue_id', $repairIssue->id)
+            ->latest('id')
+            ->first();
+        if ($latestDesk && $latestDesk->status === \App\Models\RepairDeskRequest::COMPLETED) {
+            $deskDone = $latestDesk;
+        }
+    }
+    $finished = $closed || in_array($repairIssue->status, ['Work Completed', 'Invoice Received', 'Invoice Paid'], true);
+    $stepTitle = ($awarded || $desk || $deskDone || $finished) ? 'This job' : 'Next step';
 @endphp
 <style>
     .job-stars{display:inline-flex;flex-direction:row-reverse;gap:.1rem}
@@ -30,7 +44,7 @@
 <div class="card lw-card mb-3" id="contractors">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-            <div class="lw-section-title m-0">Contractor</div>
+            <div class="lw-section-title m-0">{{ $stepTitle }}</div>
             @if($contractorRequest)
                 <span class="d-flex gap-1 flex-wrap">
                     <x-lw.pill :tone="$contractorRequest->isEmergency() ? 'bad' : 'idle'">{{ \App\Models\RepairContractorRequest::URGENCIES[$contractorRequest->urgency] ?? 'Routine' }}</x-lw.pill>
@@ -180,23 +194,11 @@
                 </p>
             @endif
             @php
-                $deskReady = \Illuminate\Support\Facades\Schema::hasTable('repair_desk_requests');
-                $desk = $deskReady ? app(\App\Services\Repairs\RepairDeskService::class)->openFor($repairIssue) : null;
-                $deskDone = null;
-                if ($deskReady && ! $desk) {
-                    $latestDesk = \App\Models\RepairDeskRequest::query()
-                        ->where('repair_issue_id', $repairIssue->id)
-                        ->latest('id')
-                        ->first();
-                    if ($latestDesk && $latestDesk->status === \App\Models\RepairDeskRequest::COMPLETED) {
-                        $deskDone = $latestDesk;
-                    }
-                }
                 $marketplaceOpen = $contractorRequest && $open;
             @endphp
             @if($desk)
                 <div class="alert alert-info small mb-2">
-                    With the Resisquare team · {{ $desk->statusLabel() }}
+                    {{ $desk->statusLabel() }}
                     @if($desk->assignee)<div>With {{ $desk->assignee->name }}</div>@endif
                 </div>
                 @include('backend.repair.partials.desk-story', ['events' => \Illuminate\Support\Facades\Schema::hasTable('repair_desk_events') ? $desk->events()->with('actor')->get() : collect()])
@@ -214,6 +216,9 @@
                     </div>
                     @include('backend.repair.partials.desk-story', ['events' => \Illuminate\Support\Facades\Schema::hasTable('repair_desk_events') ? $deskDone->events()->with('actor')->get() : collect()])
                 @endif
+                @if($finished || $deskDone)
+                    <p class="small text-muted mb-0">This repair is finished.</p>
+                @else
                 <div class="d-flex flex-wrap gap-2 align-items-start">
                     <a class="btn btn-primary btn-sm" href="{{ route('admin.property_repairs.marketplace.find', $repairIssue) }}">
                         {{ $marketplaceOpen ? 'Add more contractors' : ($contractorRequest ? 'Send again' : 'Find a contractor') }}
@@ -229,12 +234,13 @@
                 @if($marketplaceOpen)
                     <p class="small text-muted mt-2 mb-0">Contractors have been asked. Close that request before sending this repair to Resisquare.</p>
                 @endif
+                @endif
             @endif
         @endif
     </div>
 </div>
 
-@if($compare->isNotEmpty() && ! $awarded)
+@if($compare->isNotEmpty() && ! $awarded && ! $desk && ! $deskDone)
     <div class="card lw-card mb-3">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">

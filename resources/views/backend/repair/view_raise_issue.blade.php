@@ -8,7 +8,7 @@
         : null;
     $title = $property?->short_title ?: ($address ?: 'Repair');
     $statusTone = match (true) {
-        in_array($repairIssue->status, ['Completed', 'Closed', 'Resolved'], true) => 'ok',
+        in_array($repairIssue->status, ['Completed', 'Work Completed', 'Closed', 'Resolved', 'Invoice Paid'], true) => 'ok',
         in_array($repairIssue->status, ['Cancelled', 'Rejected'], true) => 'idle',
         in_array($repairIssue->priority, ['urgent', 'emergency', 'high'], true) => 'bad',
         default => 'warn',
@@ -18,28 +18,29 @@
     <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
         <div>
             <h4>{{ $title }}</h4>
-            <p>Repair details · reported {{ $repairIssue->created_at?->format('j M Y') ?? '—' }}</p>
+            <p>{{ $address ?: 'Repair' }} · reported {{ $repairIssue->created_at?->format('j M Y') ?? '—' }}</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
             <x-lw.pill :tone="$statusTone">{{ $repairIssue->status }}</x-lw.pill>
-            <a href="{{ route('admin.property_repairs.edit', $repairIssue->id) }}" class="btn lw-btn-secondary btn-sm">Edit</a>
+            @php
+                $deskGate = app(\App\Services\Repairs\RepairDeskService::class);
+                $mayEdit = $repairIssue->reportedByLandlord()
+                    && ! $repairIssue->awarded_offer_id
+                    && ! $deskGate->openFor($repairIssue)
+                    && ! $deskGate->completedFor($repairIssue)
+                    && ! in_array($repairIssue->status, ['Work Completed', 'Completed', 'Closed', 'Invoice Received', 'Invoice Paid', 'Cancelled', 'Rejected'], true);
+            @endphp
+            @if($mayEdit)
+                <a href="{{ route('admin.property_repairs.edit', $repairIssue->id) }}" class="btn lw-btn-secondary btn-sm">Edit</a>
+            @endif
             <a href="{{ route('admin.property_repairs.index') }}" class="btn lw-btn-ghost btn-sm">Back</a>
         </div>
     </div>
 
-    <div class="card lw-card mb-3">
-        <div class="card-body">
-            <div class="lw-section-title mt-0">Property</div>
-            @if($property)
-                <p class="mb-0"><strong>{{ $property->short_title ?: ($address ?: 'Property') }}</strong></p>
-            @else
-                <p class="mb-0 text-muted">No property linked.</p>
-            @endif
-        </div>
-    </div>
+    @include('backend.repair.partials.marketplace')
 
-    @include('backend.repair.partials.priority-sla')
-
+    <div class="row g-3">
+    <div class="col-lg-7">
     <div class="card lw-card mb-3">
         <div class="card-body">
             <div class="lw-section-title mt-0">What needs fixing</div>
@@ -79,6 +80,10 @@
             @endif
         </div>
     </div>
+    </div>
+
+    <div class="col-lg-5">
+    @include('backend.repair.partials.priority-sla')
 
     @unless(is_landlord_plan_user())
     <div class="card lw-card mb-3">
@@ -105,8 +110,6 @@
 
     @endunless
 
-    @include('backend.repair.partials.marketplace')
-
     <div class="card lw-card mb-3">
         <div class="card-body">
             <div class="lw-section-title mt-0">History</div>
@@ -124,6 +127,8 @@
                 <p class="mb-0 text-muted">No history yet.</p>
             @endif
         </div>
+    </div>
+    </div>
     </div>
 </div>
 @endsection

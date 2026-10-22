@@ -168,7 +168,7 @@ class RepairPriorityComplaintHttpTest extends TestCase
         $repair->refresh();
         $this->assertNotNull($repair->make_safe_at);
         $this->assertNotNull($repair->resolved_at);
-        $this->assertSame('Completed', $repair->status);
+        $this->assertSame('Work Completed', $repair->status);
 
         $this->actingAs($tenant)->withSession($session)
             ->post(route('admin.property_repairs.sla.store', [$repair, 'dispatched']))

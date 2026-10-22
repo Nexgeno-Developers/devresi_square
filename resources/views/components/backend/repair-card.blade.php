@@ -22,6 +22,15 @@
         'normal', 'medium' => 'Normal',
         default => $repair->priority ? ucfirst((string) $repair->priority) : 'Normal',
     };
+    $deskRows = $repair->relationLoaded('deskRequests') ? $repair->deskRequests : collect();
+    $openDesk = $deskRows->first(fn ($row) => in_array($row->status, \App\Models\RepairDeskRequest::OPEN, true));
+    $deskFinished = $deskRows->sortByDesc('id')->first()?->status === \App\Models\RepairDeskRequest::COMPLETED;
+    $finished = $deskFinished || in_array((string) $repair->status, ['Work Completed', 'Completed', 'Closed', 'Invoice Received', 'Invoice Paid', 'Cancelled', 'Rejected'], true);
+    $awarded = (bool) $repair->awarded_offer_id;
+    $marketplaceOpen = $repair->relationLoaded('contractorRequest')
+        && $repair->contractorRequest
+        && in_array($repair->contractorRequest->status, ['sent', 'awaiting_contractor'], true);
+    $holds = ! $finished && ! $openDesk && ! $awarded;
 @endphp
 
 <article
@@ -56,6 +65,19 @@
         @endif
     </div>
     <div class="lw-repair-actions" onclick="event.stopPropagation()">
-        <a href="{{ route('admin.property_repairs.edit', $repair->id) }}">Edit</a>
+        @if($openDesk)
+            <span class="lw-pill lw-pill-warn">{{ $openDesk->statusLabel() }}</span>
+        @elseif($holds)
+            <a class="lw-btn lw-btn-primary lw-btn-sm" href="{{ route('admin.property_repairs.marketplace.find', $repair->id) }}">{{ $marketplaceOpen ? 'Review contractors' : 'Assign a contractor' }}</a>
+            @unless($marketplaceOpen)
+                <form method="POST" action="{{ route('admin.property_repairs.desk.store', $repair) }}">
+                    @csrf
+                    <button class="lw-btn lw-btn-secondary lw-btn-sm" type="submit">Send to Resisquare</button>
+                </form>
+            @endunless
+            @if($repair->reportedByLandlord())
+                <a class="lw-btn lw-btn-ghost lw-btn-sm" href="{{ route('admin.property_repairs.edit', $repair->id) }}">Edit</a>
+            @endif
+        @endif
     </div>
 </article>

@@ -52,7 +52,8 @@ class JourneyFourMarketplaceHttpTest extends TestCase
         $find = $this->landlord($landlord, $accountId)->get(route('admin.property_repairs.marketplace.find', $repair));
         $find->assertOk()
             ->assertSee('Near Contractor', false)
-            ->assertSee('Far Contractor: Outside their coverage', false)
+            ->assertSee('Far Contractor', false)
+            ->assertSee('Outside their area', false)
             ->assertDontSee('value="'.$far->id.'"', false);
 
         $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.store', $repair), [

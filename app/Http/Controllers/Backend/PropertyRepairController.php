@@ -157,6 +157,9 @@ class PropertyRepairController
             'tenant',
             'workOrder',
             'invoice',
+            'deskRequests',
+            'contractorRequest',
+            'awardedOffer',
         ]);
         $this->scopeRepairQuery($query);
         $categories = RepairCategory::all();
@@ -755,6 +758,14 @@ class PropertyRepairController
         ])->findOrFail($id);
         ensureModelBelongsToCurrentAccount($repairIssue);
         $this->ensurePortalCanAccessRepair($repairIssue, 'edit');
+        if (! $this->landlordMayEdit($repairIssue)) {
+            flash($repairIssue->reportedByLandlord()
+                ? 'This repair is already with someone, so it cannot be edited.'
+                : 'The tenant reported this, so the description stays as they wrote it.'
+            )->error();
+
+            return redirect()->route('admin.property_repairs.show', $repairIssue);
+        }
 
         // Load additional data for the form:
         $categories = RepairCategory::all();  // or get only the top-level categories for step2
@@ -868,6 +879,11 @@ class PropertyRepairController
         $repairIssue = RepairIssue::findOrFail($id);
         ensureModelBelongsToCurrentAccount($repairIssue);
         $this->ensurePortalCanAccessRepair($repairIssue, 'edit');
+        if (! $this->landlordMayEdit($repairIssue)) {
+            flash('This repair cannot be edited.')->error();
+
+            return redirect()->route('admin.property_repairs.show', $repairIssue);
+        }
 
         // Process property_id: If it's a JSON-encoded array, decode it first.
         $propertyId = $validated['property_id'];
@@ -1387,6 +1403,9 @@ class PropertyRepairController
         }
 
         ensureModelBelongsToCurrentAccount($repairIssue);
+        if (! $this->landlordMayEdit($repairIssue)) {
+            return response()->json(['error' => 'This repair cannot be edited.'], 403);
+        }
 
         $extraData = [];  // <-- This prevents undefined variable errors
         $previousPropertyId = (int) $repairIssue->property_id;
@@ -1850,6 +1869,66 @@ class PropertyRepairController
         }
 
         return $query;
+    }
+
+    public function close(Request $request, RepairIssue $repairIssue)
+    {
+        ensureModelBelongsToCurrentAccount($repairIssue);
+        $this->ensurePortalCanAccessRepair($repairIssue, 'edit');
+        if (! $this->landlordHolds($repairIssue)) {
+            flash('This repair is already with someone. Close it only while it is still with you.')->error();
+
+            return redirect()->route('admin.property_repairs.show', $repairIssue);
+        }
+
+        $previous = (string) $repairIssue->status;
+        $repairIssue->forceFill([
+            'status' => 'Closed',
+            'sub_status' => 'Closed',
+        ])->save();
+        RepairHistory::create([
+            'repair_issue_id' => $repairIssue->id,
+            'action' => 'Landlord closed this repair',
+            'previous_status' => $previous,
+            'new_status' => 'Closed',
+        ]);
+
+        app(CrmNotificationService::class)->dispatch(
+            CrmNotificationEvent::RepairJobCancelled,
+            $repairIssue,
+            [
+                'account_id' => (int) ($repairIssue->account_id ?: current_account_id()),
+                'notice_subject' => 'Repair closed',
+                'notice' => 'Your landlord closed this repair.',
+                'repair_reference' => $repairIssue->reference_number ?: ('#'.$repairIssue->id),
+                'milestone' => 'landlord-closed-'.$repairIssue->id,
+                ...$repairIssue->notificationLinks(),
+            ],
+            $request->user(),
+        );
+
+        flash('The repair is closed. The tenant has been told.')->success();
+
+        return redirect()->route('admin.property_repairs.index');
+    }
+
+    private function landlordHolds(RepairIssue $repair): bool
+    {
+        if (in_array((string) $repair->status, ['Work Completed', 'Completed', 'Closed', 'Invoice Received', 'Invoice Paid', 'Cancelled', 'Rejected'], true)) {
+            return false;
+        }
+        if ($repair->awarded_offer_id) {
+            return false;
+        }
+
+        $desk = app(\App\Services\Repairs\RepairDeskService::class);
+
+        return ! $desk->openFor($repair) && ! $desk->completedFor($repair);
+    }
+
+    private function landlordMayEdit(RepairIssue $repair): bool
+    {
+        return $repair->reportedByLandlord() && $this->landlordHolds($repair);
     }
 
     private function ensurePortalCanAccessRepair(RepairIssue $repairIssue, string $permission = 'view'): void

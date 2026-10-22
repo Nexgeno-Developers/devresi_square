@@ -56,8 +56,8 @@ class RepairSlaRecorder
             }
 
             if ($event === 'resolved') {
-                $repair->status = 'Completed';
-                $repair->sub_status = 'Completed';
+                $repair->status = 'Work Completed';
+                $repair->sub_status = 'Work Completed';
             }
 
             $repair->save();

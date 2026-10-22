@@ -673,6 +673,15 @@ class RepairJobOfferService
         }
         $offer->forceFill(['job_status' => RepairJobOffer::JOB_CONFIRMED, 'confirmed_at' => now()])->save();
         RepairContractorRequest::query()->where('repair_issue_id', $offer->repair_issue_id)->update(['status' => RepairContractorRequest::COMPLETED]);
+        $repair = $offer->repairIssue;
+        if ($repair && in_array((string) $repair->status, ['Pending', 'Reported', 'Under Process', 'Completed'], true)) {
+            RepairIssue::withoutEvents(fn () => $repair->forceFill([
+                'status' => 'Work Completed',
+                'sub_status' => 'Work Completed',
+                'resolved_at' => $repair->resolved_at ?: now(),
+                'resolved_by' => $repair->resolved_by ?: $landlord->id,
+            ])->save());
+        }
         $this->log($offer, $offer->status, $offer->status, $landlord, 'Landlord confirmed completion.');
         $this->notify(CrmNotificationEvent::RepairJobCompleted, $offer, [$offer->contractor], 'Job confirmed complete', 'The landlord confirmed the job is complete.', 'confirmed-'.$offer->id);
     }
@@ -1173,8 +1182,8 @@ class RepairJobOfferService
         if ($repair->awarded_offer_id) {
             throw new ContractorMarketplaceException('This repair already has an accepted contractor.');
         }
-        if (in_array($repair->status, ['Closed', 'Invoice Paid', 'Cancelled', 'Rejected'], true)) {
-            throw new ContractorMarketplaceException('This repair is closed.');
+        if (in_array($repair->status, ['Closed', 'Invoice Paid', 'Invoice Received', 'Cancelled', 'Rejected', 'Work Completed', 'Completed'], true)) {
+            throw new ContractorMarketplaceException('This repair is already finished.');
         }
     }
 
