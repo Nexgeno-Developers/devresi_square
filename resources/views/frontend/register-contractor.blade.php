@@ -38,7 +38,10 @@
         </label>
         <label class="auth-field">
             <span>Password</span>
-            <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+            <div class="pw-wrap">
+                <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+                @include('auth.partials.password-eye')
+            </div>
         </label>
         <label class="auth-check">
             <input type="checkbox" name="terms" value="1" @checked(old('terms')) required>

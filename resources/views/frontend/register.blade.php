@@ -82,16 +82,22 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <input type="password" class="form-control form-control-lg"
-                                               id="password" name="password"
-                                               placeholder="Password" minlength="8" autocomplete="new-password" required />
+                                        <div class="pw-wrap">
+                                            <input type="password" class="form-control form-control-lg"
+                                                   id="password" name="password"
+                                                   placeholder="Password" minlength="8" autocomplete="new-password" required />
+                                            @include('auth.partials.password-eye')
+                                        </div>
                                         <div class="invalid-feedback"></div>
                                     </div>
 
                                     <div class="col-md-6">
-                                        <input type="password" class="form-control form-control-lg"
-                                               id="password_confirmation" name="password_confirmation"
-                                               placeholder="Confirm Password" minlength="8" autocomplete="new-password" required />
+                                        <div class="pw-wrap">
+                                            <input type="password" class="form-control form-control-lg"
+                                                   id="password_confirmation" name="password_confirmation"
+                                                   placeholder="Confirm Password" minlength="8" autocomplete="new-password" required />
+                                            @include('auth.partials.password-eye')
+                                        </div>
                                         <div class="invalid-feedback"></div>
                                     </div>
 
@@ -240,7 +246,8 @@
     function showFieldError(name, msg) {
         const el = regForm.querySelector('[name="' + name + '"]');
         if (!el || el.type === 'hidden' || el.type === 'radio') return false;
-        const fb = el.nextElementSibling;
+        const scope = el.closest('.col-12, .col-md-6') || el.parentElement;
+        const fb = scope ? scope.querySelector('.invalid-feedback') : null;
         if (!fb || !fb.classList.contains('invalid-feedback')) return false;
         el.classList.add('is-invalid');
         fb.textContent = msg;

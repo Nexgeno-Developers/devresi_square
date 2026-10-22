@@ -16,8 +16,11 @@
             </div>
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
-                <input type="password" class="form-control @error('password') is-invalid @enderror" id="password"
-                    name="password" autocomplete="current-password" required>
+                <div class="pw-wrap">
+                    <input type="password" class="form-control @error('password') is-invalid @enderror" id="password"
+                        name="password" autocomplete="current-password" required>
+                    @include('auth.partials.password-eye')
+                </div>
             </div>
             <div class="mb-3 form-check">
                 <input type="checkbox" class="form-check-input" id="remember" name="remember" checked>

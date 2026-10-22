@@ -18,7 +18,10 @@
         </label>
         <label class="auth-field">
             <span>Password</span>
-            <input type="password" name="password" autocomplete="current-password" required>
+            <div class="pw-wrap">
+                <input type="password" name="password" autocomplete="current-password" required>
+                @include('auth.partials.password-eye')
+            </div>
         </label>
         <label class="auth-check">
             <input type="checkbox" name="remember" value="1">
