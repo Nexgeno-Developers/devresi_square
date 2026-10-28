@@ -733,11 +733,18 @@ class TenancyController
 
     private function usersWithRoleForCurrentAccount(string $role)
     {
+        $memberType = match ($role) {
+            'Tenant' => 'tenant',
+            'Property Manager' => 'property_manager',
+            default => null,
+        };
+
         return User::role($role)
-            ->when(
-                ! auth()->user()?->hasRole('Super Admin'),
-                fn ($query) => $query->forAccount(current_account_id())
-            )
+            ->whereHas('accountUsers', function ($query) use ($memberType) {
+                $query->where('account_id', current_account_id())
+                    ->where('status', 'active')
+                    ->when($memberType, fn ($membership) => $membership->where('member_type', $memberType));
+            })
             ->orderBy('name');
     }
 

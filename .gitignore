@@ -21,3 +21,5 @@ yarn-error.log
 /.vscode
 /.zed
 server.php
+
+CODEBASE_HANDOFF.md

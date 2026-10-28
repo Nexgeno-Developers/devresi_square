@@ -937,6 +937,27 @@ class LandlordOnboardingService
         $existing = User::query()->where('email', $email)->first();
 
         if ($existing) {
+            // An email is a global login identity. Never silently turn a
+            // contractor (or another workspace operator) into a tenant just
+            // because their address was typed into the household form. Apart
+            // from showing the wrong name in the tenancy, that would grant a
+            // conflicting portal membership to an unrelated user.
+            if (
+                $memberType === AccountMembership::TENANT
+                && $existing->hasAnyRole([
+                    'Contractor',
+                    'Landlord',
+                    'Property Manager',
+                    'Estate Agent',
+                    'Staff',
+                    'Super Admin',
+                ])
+            ) {
+                throw ValidationException::withMessages([
+                    'email' => 'This email belongs to an existing Resisquare workspace or contractor account. Use the tenant’s own email address.',
+                ]);
+            }
+
             if (! $existing->hasRole($roleName) && $existing->id !== $actor->id) {
                 $existing->assignRole($roleName);
             }

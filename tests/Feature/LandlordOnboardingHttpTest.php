@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\MailManager;
+use App\Models\OwnerGroupUser;
 use App\Models\Tenancy;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -346,6 +347,46 @@ class LandlordOnboardingHttpTest extends TestCase
         $user->refresh();
         $this->assertSame('Confirmed Landlord', $user->name);
         $this->assertSame('07123456789', $user->phone);
+        $this->assertTrue(OwnerGroupUser::query()
+            ->where('contact_name', 'Pat Coowner')
+            ->where('contact_email', $coOwner)
+            ->whereNull('user_id')
+            ->exists());
+
+        $property = \App\Models\Property::query()->where('account_id', $accountId)->firstOrFail();
+        $ownersTab = $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('admin.properties.tabs-all', $property))
+            ->assertOk();
+        $this->assertStringContainsString('Pat Coowner', (string) $ownersTab->json('owners'));
+        $this->assertStringContainsString($coOwner, (string) $ownersTab->json('owners'));
+    }
+
+    public function test_household_cannot_reuse_a_contractor_identity_as_a_tenant(): void
+    {
+        [$user, $accountId] = $this->createConfirmedLandlord();
+        $this->seedOnboardingProperty($user, $accountId);
+
+        $contractor = User::create([
+            'name' => 'Existing Contractor',
+            'email' => 'contractor-'.uniqid().'@resisquare.test',
+            'password' => bcrypt('password'),
+        ]);
+        $contractor->assignRole(Role::findOrCreate('Contractor', 'web'));
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->postJson(route('admin.onboarding.landlord.tenancy'), [
+                'name' => 'Not The Contractor',
+                'email' => $contractor->email,
+                'rent' => 950,
+                'invite' => false,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('email');
+
+        $this->assertSame('Existing Contractor', $contractor->fresh()->name);
+        $this->assertFalse(Tenancy::query()->where('account_id', $accountId)->exists());
     }
 
     public function test_saved_property_includes_schema_fields_from_chimnie(): void
