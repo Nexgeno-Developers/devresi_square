@@ -247,13 +247,18 @@ class OwnerGroupController
             ->findOrFail($id);
         $users = $this->ownersForForm();
         $selectedUsers = $ownerGroup->ownerGroupUsers->pluck('user_id')->toArray();
-        $properties = $this->propertiesForCurrentAccount()->get();
+        $returnUrl = $request->boolean('from_property')
+            ? route('admin.properties.index', [
+                'property_id' => $ownerGroup->property_id,
+                'tabname' => 'owners',
+            ])
+            : null;
 
         if ($request->ajax()) {
-            return view('backend.owner_groups.edit-group', compact('ownerGroup', 'users', 'selectedUsers'));
+            return view('backend.owner_groups.edit-group', compact('ownerGroup', 'users', 'selectedUsers', 'returnUrl'));
         }
 
-        return view('backend.owner_groups.edit', compact('ownerGroup', 'users', 'selectedUsers', 'properties'));
+        return view('backend.owner_groups.edit-page', compact('ownerGroup', 'users', 'selectedUsers', 'returnUrl'));
     }
     // public function edit($id)
     // {

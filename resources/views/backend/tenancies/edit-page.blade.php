@@ -11,7 +11,11 @@
             <h4>Edit tenancy</h4>
             <p>Every let must sit on a property. That is what unlocks portal invite and rent invoices.</p>
         </div>
-        <a href="{{ route('admin.tenancies.all') }}" class="btn btn-light">Back</a>
+        @if($returnToProperty ?? false)
+            <a href="{{ route('admin.properties.index', ['property_id' => $tenancy->property_id, 'tabname' => 'tenancy']) }}" class="btn btn-light">Back to property</a>
+        @else
+            <a href="{{ route('admin.tenancies.all') }}" class="btn btn-light">Back</a>
+        @endif
     </div>
     <div class="card lw-card">
         <div class="card-body">

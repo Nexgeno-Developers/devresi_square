@@ -1,6 +1,5 @@
 {{-- Hidden div for property ID --}}
 <div id="hidden-property-id" class="d-none" data-property-id="{{ $propertyId }}"></div>
-
 <div class="tab-content">
 
     {{-- Filter by status --}}
@@ -62,8 +61,8 @@
                                             <button data-url="{{ route('admin.tenancies.edit', $tenancy->id) }}" class="popup-tab-tenancy-edit btn btn-sm btn-outline-warning me-1" title="Edit Tenancy">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger me-1 action-icon" title="Delete Tenancy"
-                                                onclick="deleteTenancy('{{ route('admin.tenancies.delete', $tenancy->id) }}', this)">
+                                            <button type="button" class="btn btn-sm btn-outline-danger me-1 action-icon pcc-tenancy-delete" title="Delete Tenancy"
+                                                data-url="{{ route('admin.tenancies.delete', $tenancy->id) }}">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                             @endunless
@@ -82,19 +81,3 @@
     </div>
 
 </div>
-
-{{-- JavaScript for filtering --}}
-<script>
-    document.getElementById('statusFilter').addEventListener('change', function() {
-        const selectedStatus = this.value.toLowerCase();
-        const sections = document.querySelectorAll('.status-section');
-
-        sections.forEach(function(section) {
-            if (selectedStatus === '' || section.id === 'status-' + selectedStatus) {
-                section.style.display = 'block';
-            } else {
-                section.style.display = 'none';
-            }
-        });
-    });
-</script>

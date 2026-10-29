@@ -45,15 +45,15 @@
                 <td>{{ ucfirst($ownerGroup->status ?? 'unknown') }}</td>
 
                 <!-- Action -->
-                <td>
-                    <div class="d-flex justify-content-end">
+                <td class="pcc-owner-actions-cell">
+                    <div class="pcc-owner-actions">
                         @unless(auth()->user()->hasRole('Tenant'))
-                        <button class="btn btn-sm btn-outline-warning popup-tab-owner-group-edit me-1" title="Edit Owner Group" data-url="{{ route('admin.owner-groups.edit', $ownerGroup->id) }}">
-                            <i class="bi bi-pencil">Edit</i>
+                        <button type="button" class="btn btn-sm btn-outline-warning popup-tab-owner-group-edit" title="Edit Owner Group" data-url="{{ route('admin.owner-groups.edit', $ownerGroup->id) }}">
+                            <i class="bi bi-pencil" aria-hidden="true"></i><span>Edit</span>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger me-1" title="Delete Owner Group"
-                            onclick="deleteOwnerGroup('{{ route('admin.owner-groups.delete_group', $ownerGroup->id) }}', this)">
-                            <i class="bi bi-trash"></i> Delete
+                        <button type="button" class="btn btn-sm btn-outline-danger pcc-owner-group-delete" title="Delete Owner Group"
+                            data-url="{{ route('admin.owner-groups.delete_group', $ownerGroup->id) }}">
+                            <i class="bi bi-trash" aria-hidden="true"></i><span>Delete</span>
                         </button>
                         @endunless
                     </div>
@@ -123,7 +123,9 @@
                                                 </a>
                                             @endif
                                             @if($contact && !$user->is_main)
-                                            <button class="btn btn-sm btn_secondary" onclick="setAsMain({{ $user->id }}, {{ $ownerGroup->id }})">
+                                            <button type="button" class="btn btn-sm btn_secondary pcc-owner-set-main"
+                                                data-url="{{ route('admin.owner-groups.updateMain', ['id' => $ownerGroup->id]) }}"
+                                                data-owner-group-id="{{ $ownerGroup->id }}" data-user-id="{{ $user->id }}">
                                                 Set as Main
                                             </button>
                                             @endif
@@ -138,61 +140,6 @@
         @endforeach
     </tbody>
 </table>
-
-<!-- JavaScript functions -->
-<script>
-
-    function deleteOwnerGroup(url, btn) {
-        if (!confirm('Are you sure you want to delete this owner group?')) return;
-
-        btn.disabled = true;
-
-        $.ajax({
-            type: 'POST',
-            url: url,
-            data: { _token: $('meta[name="csrf-token"]').attr('content') },
-            success: function () {
-                location.reload();
-            },
-            error: function (xhr) {
-                btn.disabled = false;
-                alert('Failed to delete. Please try again.');
-            }
-        });
-    }
-
-    function setAsMain(userId, groupId) {
-        if (!confirm('Are you sure you want to set this user as the main user?')) return;
-
-        var actionUrl = "{{ route('admin.owner-groups.updateMain', ['id' => ':groupId']) }}".replace(':groupId', groupId);
-        var csrfToken = $('meta[name="csrf-token"]').attr('content');
-        var formData = new FormData();
-        formData.append('owner_group_id', groupId);
-        formData.append('user_id', userId);
-        formData.append('_token', csrfToken);
-
-        $.ajax({
-            type: 'POST',
-            url: actionUrl,
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function (response) {
-                if (response.status) {
-                    location.reload();
-                } else {
-                    alert(response.notification || 'Failed to update.');
-                }
-            },
-            error: function () {
-                alert('Something went wrong. Please try again.');
-            }
-        });
-    }
-
-</script>
-
-
 
 @else
     @if(is_landlord_plan_user())

@@ -65,6 +65,7 @@
         bindMobileBack();
         bindListDelegation();
         bindPagination();
+        bindTabActions();
 
         if (state.propertyId && state.tabs.length) {
             if (els.tabContent && state.tabName) {
@@ -101,6 +102,87 @@
             if (!link || !link.href) return;
             e.preventDefault();
             loadList(link.href);
+        });
+    }
+
+    // Tab markup is fetched and inserted asynchronously, so scripts embedded
+    // in a tab do not run. Keep all property-tab actions delegated from this
+    // persistent control-centre shell instead.
+    function bindTabActions() {
+        document.addEventListener('change', (e) => {
+            if (!els.root?.contains(e.target) || e.target.id !== 'statusFilter') return;
+
+            const selectedStatus = String(e.target.value || '').toLowerCase();
+            els.tabContent?.querySelectorAll('.status-section').forEach((section) => {
+                section.style.display = !selectedStatus || section.id === `status-${selectedStatus}`
+                    ? 'block'
+                    : 'none';
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            const action = e.target.closest(
+                '.popup-tab-owner-group-edit, .popup-tab-tenancy-view, .popup-tab-tenancy-edit, .pcc-owner-group-delete, .pcc-tenancy-delete, .pcc-owner-set-main'
+            );
+            if (!action || !els.root?.contains(action)) return;
+
+            e.preventDefault();
+
+            if (
+                action.classList.contains('popup-tab-owner-group-edit')
+                || action.classList.contains('popup-tab-tenancy-view')
+                || action.classList.contains('popup-tab-tenancy-edit')
+            ) {
+                // These screens contain substantial forms and document tools.
+                // Open them as full pages rather than nesting the application
+                // layout or a large form inside a modal.
+                const destination = new URL(action.dataset.url, window.location.origin);
+                destination.searchParams.set('from_property', '1');
+                window.location.assign(destination.toString());
+                return;
+            }
+
+            if (action.classList.contains('pcc-owner-set-main')) {
+                if (!window.confirm('Set this owner as the main owner?')) return;
+                action.disabled = true;
+                $.ajax({
+                    type: 'POST',
+                    url: action.dataset.url,
+                    data: {
+                        _token: csrfToken(),
+                        owner_group_id: action.dataset.ownerGroupId,
+                        user_id: action.dataset.userId,
+                    },
+                    success: (response) => {
+                        if (response?.status) window.location.reload();
+                        else {
+                            action.disabled = false;
+                            showToast(response?.notification || 'Unable to update the main owner.', 'danger');
+                        }
+                    },
+                    error: () => {
+                        action.disabled = false;
+                        showToast('Unable to update the main owner.', 'danger');
+                    },
+                });
+                return;
+            }
+
+            const kind = action.classList.contains('pcc-owner-group-delete') ? 'owner group' : 'tenancy';
+            if (!window.confirm(`Delete this ${kind}? This cannot be undone.`)) return;
+
+            action.disabled = true;
+            $.ajax({
+                type: 'POST',
+                url: action.dataset.url,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                data: { _token: csrfToken() },
+                success: () => window.location.reload(),
+                error: (xhr) => {
+                    action.disabled = false;
+                    showToast(xhr.responseJSON?.message || `Unable to delete this ${kind}.`, 'danger');
+                },
+            });
         });
     }
 
