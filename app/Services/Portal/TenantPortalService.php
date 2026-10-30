@@ -240,7 +240,7 @@ class TenantPortalService
         $propertyIds = $this->propertyIds($tenancies)->all();
 
         return Event::query()
-            ->with(['type', 'subType', 'properties'])
+            ->with(['type', 'subType', 'properties', 'responses'])
             ->when($accountId && ! $user->isSuperAdmin(), fn ($query) => $query->forAccount($accountId))
             ->where('status', '!=', 'Cancelled')
             ->where(function ($query) use ($user, $propertyIds) {

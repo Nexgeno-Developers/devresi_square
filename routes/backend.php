@@ -190,6 +190,7 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         Route::get('/portal/documents', [TenantPortalController::class, 'documents'])->name('tenant.documents');
         Route::get('/portal/documents/{document}/download', [TenantPortalController::class, 'downloadDocument'])->name('tenant.documents.download');
         Route::get('/portal/calendar', [TenantPortalController::class, 'calendar'])->name('tenant.calendar');
+        Route::post('/portal/calendar/{event}/respond', [TenantPortalController::class, 'respondToEvent'])->name('tenant.calendar.respond');
         Route::get('/portal/profile', [TenantPortalController::class, 'profile'])->name('tenant.profile');
         Route::post('/portal/profile', [TenantPortalController::class, 'updateProfile'])->name('tenant.profile.update');
         Route::post('/portal/profile/password', [TenantPortalController::class, 'updatePassword'])->name('tenant.profile.password');
@@ -578,7 +579,8 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
                 Route::post('/job-offers/{offer}/rate', 'rate')->name('property_repairs.job_offers.rate');
                 Route::get('/job-offers/{offer}/completion-photos/{index}', 'completionPhoto')->whereNumber('index')->name('property_repairs.job_offers.completion_photo');
                 Route::get('/job-offers/{offer}/invoice', 'invoice')->name('property_repairs.job_offers.invoice');
-                Route::post('/job-offers/{offer}/invoice/paid', 'invoicePaid')->name('property_repairs.job_offers.invoice.paid');
+                Route::post('/job-offers/{offer}/invoice/pay', 'invoicePay')->name('property_repairs.job_offers.invoice.pay');
+                Route::get('/job-offers/{offer}/invoice/paid', 'invoiceReturn')->name('property_repairs.job_offers.invoice.return');
             });
         });
 
@@ -660,6 +662,7 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::post('/instances/delete/{id}', 'deleteInstance')->name('deleteInstance');
 
             Route::post('/instances/change-status/{id}', 'changeStatus')->name('changeStatus');
+            Route::post('/instances/{event}/respond', 'respond')->name('respond');
             Route::get('/events', 'list')->name('list');
 
         });
@@ -913,6 +916,8 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::get('/coverage', 'coverage')->name('coverage');
             Route::get('/jobs', 'jobs')->name('jobs');
             Route::post('/jobs/{offer}/override', 'override')->name('jobs.override');
+            Route::get('/payouts', 'payouts')->name('payouts');
+            Route::post('/payouts/{payment}', 'markPayout')->whereNumber('payment')->name('payouts.sent');
             Route::post('/legacy-invitations', 'inviteLegacy')->name('legacy');
             Route::get('/{profile}', 'show')->whereNumber('profile')->name('show');
             Route::get('/{profile}/documents/{document}', 'document')->whereNumber('profile')->name('document');

@@ -1,329 +1,242 @@
-<div id="mainForm">
-
+@include('backend.tenancies._record-form-styles')
+<div id="mainForm" class="rs-sheet">
     <form id="addTenancyForm" action="{{ route('admin.tenancies.store') }}" method="POST" enctype="multipart/form-data" novalidate>
         @csrf
-        @if(! empty($propertyId))
-            <input type="hidden" name="property_id" class="form-control" value="{{ old('property_id', $propertyId) }}">
-        @else
-            <div class="form-group mb-3">
-                <label for="property_id">Property <span class="text-danger">*</span></label>
-                <select name="property_id" id="property_id" class="form-control" required>
-                    <option value="">Select a property</option>
-                    @foreach(($properties ?? []) as $property)
-                        <option value="{{ $property->id }}" @selected((string) old('property_id') === (string) $property->id)>
-                            {{ $property->full_address ?: ($property->line_1 ?: 'Property #'.$property->id) }}
-                        </option>
-                    @endforeach
-                </select>
-                @error('property_id')
-                    <div class="text-danger small mt-1">{{ $message }}</div>
-                @enderror
-                @if(($properties ?? collect())->isEmpty())
-                    <div class="form-text">Add a property first, then you can create a tenancy for it.</div>
-                @endif
-            </div>
-        @endif
 
-        <div class="form-group">
-            <button type="button" class="btn btn-outline-primary btn-sm" id="addUserBtn">
-                Quick add tenant
-            </button>
-            <label for="tenant_id">Tenants <span class="text-danger">*</span></label>
-            <select name="user_id[]" id="tenant_id" multiple class="form-control select2" required>
-                @foreach ($tenants as $user)
-                    <option value="{{ $user->id }}" {{ in_array($user->id, old('user_id', [])) ? 'selected' : '' }}>{{ $user->name }}</option>
-                @endforeach
-            </select>
-            @error('user_id')
-                <div class="text-danger small mt-1">{{ $message }}</div>
-            @enderror
-            <div class="form-check mt-3">
-                <input type="checkbox" name="invite" value="1" id="invite_tenant" class="form-check-input" @checked(old('invite'))>
-                <label for="invite_tenant" class="form-check-label">Invite these tenants to the portal</label>
-                <div class="form-text">Leave this off to save the tenancy without a login.</div>
-            </div>
-        </div>
-
-        <div id="tenant-options" class="mt-3"></div>
-
-        <div class="row">
-            <div class="col">
-                <div class="mb-3">
-                    <div class="form-group field-tenancies-status required">
-                        <label class="control-label" for="tenancies-status">Status</label>
-                        <select required id="tenancies-status" class="form-control" name="status" aria-required="true">
-                            <option value="Active" {{ old('status') == 'Active' ? 'selected' : '' }}>Active</option>
-                            <option value="Archived" {{ in_array(old('status'), ['Archived', 'Archive'], true) ? 'selected' : '' }}>Archived</option>
-                        </select>
-                        @error('status')
-                            <div class="text-danger small mt-1">{{ $message }}</div>
-                        @enderror
-                    </div>
+        <section class="rs-section">
+            <div class="rs-section-head">
+                <div>
+                    <h2>Household</h2>
+                    <p>The home, who lives there, and whether they can sign in.</p>
                 </div>
+                <button type="button" class="btn btn-outline-primary btn-sm" id="addUserBtn">Quick add tenant</button>
             </div>
-            <div class="col">
-                <div class="mb-3">
-                    <div class="form-group field-tenancy-type required">
-                        <label class="control-label" for="tenancy-type">Tenancy type</label>
-                        <select id="tenancy-type" class="form-control" aria-required="true" name="tenancy_type_id" required>
-                            <option value="" disabled {{ old('tenancy_type_id') ? '' : 'selected' }}>Select tenancy type</option>
-                            @foreach ($tenancyTypes as $tenancyType)
-                                <option value="{{ $tenancyType->id }}" {{ old('tenancy_type_id') == $tenancyType->id ? 'selected' : '' }}>{{ $tenancyType->name }}</option>
+            <div class="rs-grid">
+                @if(! empty($propertyId))
+                    @php
+                        $linkedProperty = ($properties ?? collect())->firstWhere('id', (int) old('property_id', $propertyId));
+                    @endphp
+                    <input type="hidden" name="property_id" id="property_id" value="{{ old('property_id', $propertyId) }}" data-property-label="{{ $linkedProperty->full_address ?? ($linkedProperty->line_1 ?? '') }}">
+                @else
+                    <label class="rs-field rs-span-4" for="property_id">
+                        Property
+                        <select name="property_id" id="property_id" class="form-select" required>
+                            <option value="">Select a property</option>
+                            @foreach(($properties ?? []) as $property)
+                                <option value="{{ $property->id }}" @selected((string) old('property_id') === (string) $property->id)>
+                                    {{ $property->full_address ?: ($property->line_1 ?: 'Property #'.$property->id) }}
+                                </option>
                             @endforeach
                         </select>
-                        @error('tenancy_type_id')
-                            <div class="text-danger small mt-1">{{ $message }}</div>
+                        @error('property_id')
+                            <span class="text-danger small">{{ $message }}</span>
                         @enderror
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-12">
-                <div class="mb-3">
-                    <div class="form-group field-tenancies-sub_status">
-                        @if(is_landlord_plan_user())
-                            @php
-                                $currentSub = $tenancySubStatuses->firstWhere('name', 'Current Tenancy')
-                                    ?? $tenancySubStatuses->first();
-                            @endphp
-                            <input type="hidden" name="tenancy_sub_status_id" value="{{ old('tenancy_sub_status_id', $currentSub->id ?? '') }}">
-                        @else
-                        <label class="control-label" for="tenancies-sub_status">Sub Status</label>
-                        <select id="tenancies-sub_status" class="form-control" name="tenancy_sub_status_id" aria-required="true" required>
-                            <option value="" disabled {{ old('tenancy_sub_status_id') ? '' : 'selected' }}>Select Sub Status</option>
-                            @foreach ($tenancySubStatuses as $subStatus)
-                                <option value="{{ $subStatus->id }}" {{ old('tenancy_sub_status_id') == $subStatus->id ? 'selected' : '' }}>{{ $subStatus->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('tenancy_sub_status_id')
-                            <div class="text-danger small mt-1">{{ $message }}</div>
-                        @enderror
+                        @if(($properties ?? collect())->isEmpty())
+                            <span class="form-text">Add a property first, then you can create a tenancy for it.</span>
                         @endif
-                    </div>
+                    </label>
+                @endif
+
+                <label class="rs-field rs-span-2" for="tenancies-status">
+                    Status
+                    <select required id="tenancies-status" class="form-select" name="status">
+                        <option value="Active" @selected(old('status', 'Active') === 'Active')>Active</option>
+                        <option value="Archived" @selected(in_array(old('status'), ['Archived', 'Archive'], true))>Archived</option>
+                    </select>
+                    @error('status')
+                        <span class="text-danger small">{{ $message }}</span>
+                    @enderror
+                </label>
+
+                <label class="rs-field rs-span-6" for="tenant_id">
+                    Tenants
+                    <select name="user_id[]" id="tenant_id" multiple class="form-control select2" required>
+                        @foreach ($tenants as $user)
+                            <option value="{{ $user->id }}" @selected(in_array($user->id, old('user_id', [])))>{{ $user->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('user_id')
+                        <span class="text-danger small">{{ $message }}</span>
+                    @enderror
+                </label>
+
+                <div id="tenant-options" class="rs-span-6"></div>
+
+                <div class="rs-span-6">
+                    <label class="rs-check" for="invite_tenant">
+                        <input type="checkbox" name="invite" value="1" id="invite_tenant" class="form-check-input" @checked(old('invite'))>
+                        <span>
+                            Invite these tenants to the portal
+                            <span class="form-text">Leave this off to save the tenancy without a login.</span>
+                        </span>
+                    </label>
                 </div>
             </div>
+        </section>
 
-            <div class="lw-chip-row col-12">
-                <label>
-                    <input type="checkbox" name="periodic" {{ old('periodic') ? 'checked' : '' }}>
-                    Periodic
-                </label>
-                <label>
-                    <input type="checkbox" name="rolling_contract" {{ old('rolling_contract') ? 'checked' : '' }}>
-                    Rolling contract
-                </label>
-                <label>
-                    <input type="checkbox" name="renewal_exempt" {{ old('renewal_exempt') ? 'checked' : '' }}>
-                    Renewal exempt
-                </label>
+        <section class="rs-section">
+            <div class="rs-section-head">
+                <div>
+                    <h2>Dates</h2>
+                    <p>When the let starts, how long it runs, and when it ends.</p>
+                </div>
             </div>
-        </div>
-
-        <div class="row mt-3">
-            <div class="col">
-                <div class="mb-3">
-                    <label class="control-label" for="tenancies-move_in">Move In <span class="text-danger">*</span></label>
+            <div class="rs-grid">
+                <label class="rs-field rs-span-2" for="tenancies-move_in">
+                    Move in
                     <input type="date" id="tenancies-move_in" class="form-control" name="move_in" required value="{{ old('move_in') }}">
                     @error('move_in')
-                        <div class="text-danger small mt-1">{{ $message }}</div>
+                        <span class="text-danger small">{{ $message }}</span>
                     @enderror
-                </div>
-            </div>
-            <div class="col">
-                <div class="mb-3">
-                    <label class="control-label" for="tenancies-term_months">Term (Months)</label>
-                    <input type="number" id="tenancies-term_months" class="form-control" name="term_months" min="0" pattern="^[0-9]+$" value="{{ old('term_months') }}">
-                </div>
-            </div>
-            <div class="col">
-                <div class="mb-3">
-                    <label class="control-label" for="tenancies-term_days">Term (Days)</label>
-                    <input type="number" id="tenancies-term_days" class="form-control" name="term_days" min="0" pattern="^[0-9]+$" value="{{ old('term_days') }}">
-                </div>
-            </div>
-            <div class="col">
-                <div class="mb-3">
-                    <label class="control-label" for="tenancies-move_out">Move Out</label>
+                </label>
+                <label class="rs-field rs-span-2" for="tenancies-term_months">
+                    Term (months)
+                    <input type="number" id="tenancies-term_months" class="form-control" name="term_months" min="1" max="36" value="{{ old('term_months', 12) }}">
+                </label>
+                <label class="rs-field rs-span-2" for="tenancies-move_out">
+                    Move out
                     <input type="date" id="tenancies-move_out" class="form-control" name="move_out" value="{{ old('move_out') }}">
-                </div>
+                </label>
             </div>
-        </div>
+        </section>
 
-        <div class="row">
-            <div class="col">
-                <div class="mb-3">
-                    <div class="form-group field-tenancies-tenancy_renewal_confirm_date">
-                        <label class="control-label" for="tenancies-tenancy_renewal_confirm_date">Renewal Confirm Date</label>
-                        <input type="date" id="tenancies-tenancy_renewal_confirm_date" class="form-control"
-                            name="tenancy_renewal_confirm_date" min="{{ todayDate() }}" value="{{ old('tenancy_renewal_confirm_date') }}">
-                    </div>
+        <section class="rs-section">
+            <div class="rs-section-head">
+                <div>
+                    <h2>Rent</h2>
+                    <p>The amount, how often it is paid, and the deposit held for this let.</p>
                 </div>
             </div>
-            <div class="col">
-                <div class="mb-3">
-                    <div class="form-group field-tenancies-extension_date">
-                        <label class="control-label" for="tenancies-extension_date">Extension Date</label>
-                        <input type="date" id="tenancies-extension_date" class="form-control"
-                            name="extension_date" min="{{ tomorrowDate() }}" value="{{ old('extension_date') }}">
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col">
-                <div class="mb-3">
-                    <div class="form-group field-tenancies-rent">
-                        <label class="control-label" for="tenancies-rent">Rent <span class="text-danger">*</span></label>
-                        <input type="number" inputmode="numeric" pattern="[0-9]" id="tenancies-rent"
-                            class="form-control" name="rent" required value="{{ old('rent') }}">
-                        @error('rent')
-                            <div class="text-danger small mt-1">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-            <div class="col">
-                <div class="mb-3">
-                    <label class="form-label" for="tenancies-frequency">How often</label>
+            <div class="rs-grid">
+                <label class="rs-field rs-span-3" for="tenancies-rent">
+                    Rent
+                    <input type="number" inputmode="decimal" step="0.01" min="0.01" id="tenancies-rent" class="form-control" name="rent" required value="{{ old('rent') }}">
+                    @error('rent')
+                        <span class="text-danger small">{{ $message }}</span>
+                    @enderror
+                </label>
+                <label class="rs-field rs-span-3" for="tenancies-frequency">
+                    How often
                     <select class="form-select" id="tenancies-frequency" name="frequency">
                         <option value="Monthly" @selected(old('frequency', 'Monthly') === 'Monthly')>Monthly</option>
                         <option value="Weekly" @selected(old('frequency') === 'Weekly')>Weekly</option>
                     </select>
-                </div>
-            </div>
-            <div class="col">
-                <div class="mb-3">
-                    <label class="form-label" for="tenancies-rent-due-day">Rent due day</label>
+                </label>
+                <label class="rs-field rs-span-3" for="tenancies-rent-due-day">
+                    Rent due day
                     <input type="number" min="1" max="28" class="form-control" id="tenancies-rent-due-day" name="rent_due_day" value="{{ old('rent_due_day', 1) }}">
-                    <div class="form-text">Day of the month rent is due. Weekly rent is due on the first day of each week.</div>
-                </div>
+                    <span class="form-text">Day of the month. Weekly rent is due on the first day of each week.</span>
+                </label>
+                <label class="rs-field rs-span-3" for="tenancies-deposit">
+                    Deposit
+                    <input type="number" inputmode="decimal" step="0.01" min="0" id="tenancies-deposit" class="form-control" name="deposit" required value="{{ old('deposit') }}">
+                    @error('deposit')
+                        <span class="text-danger small">{{ $message }}</span>
+                    @enderror
+                </label>
             </div>
-            <div class="col">
-                <div class="mb-3">
-                    <div class="form-group field-tenancies-deposit">
-                        <label class="control-label" for="tenancies-deposit">Deposit <span class="text-danger">*</span></label>
-                        <input type="number" inputmode="numeric" pattern="[0-9]" id="tenancies-deposit"
-                            class="form-control" name="deposit" required value="{{ old('deposit') }}" readonly>
-                        @error('deposit')
-                            <div class="text-danger small mt-1">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
 
-        <div class="row my-4">
-            <div class="col">
-                <div class="mb-3">
-                    <label for="depositType" class="form-label">Deposit Type</label>
-                    <select class="form-select" id="depositType" name="deposit_type">
-                        <option value="weeks_deposit">No of Weeks Deposit</option>
-                        {{-- <option value="months_deposit">No of Months Deposit</option> --}}
-                    </select>
+        <section class="rs-section">
+            <div class="rs-section-head">
+                <div>
+                    <h2>Deposit protection</h2>
+                    <p>Scheme and the dates that start the 30-day protection clock. You can fill these after the let is saved.</p>
                 </div>
             </div>
-            <div class="col">
-                <div class="mb-3">
-                    <label for="depositNumber" class="form-label">Number of deposit type (Weeks)</label>
-                    <input type="number" class="form-control" id="depositNumber" name="deposit_number" min="1" placeholder="Enter number of weeks or months" required value="{{ old('deposit_number') }}">
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col">
-                <div class="mb-3">
-                    <label for="deposit_held_by" class="form-label">Deposit Held By</label>
-                    <select class="form-select" id="deposit_held_by" name="deposit_held_by">
-                        <option value="landlord_holding">Landlord holding</option>
-                        <option value="deposit_protection_service">Deposit Protection Service</option>
-                        <option value="deposit_replacement_scheme">Deposit Replacement Scheme</option>
-                        @unless(is_landlord_plan_user())
-                        <option value="agent_holding_as_stakeholder">Agent Holding As Stake Holder</option>
-                        @endunless
-                    </select>
-                </div>
-            </div>
-            <div class="col">
-                <div class="mb-3">
-                    <label for="depositService" class="form-label">Deposit Service</label>
-                    <select class="form-select" id="depositService" name="deposit_service">
-                        <option value="tds_dps_number">*TDS or DPS Number</option>
-                        <option value="number_of_scheme_or_number_of_reference">Name of the scheme Reference | Number of Scheme</option>
-                    </select>
-                </div>
-
-                <div class="mb-3 d-none" id="tds_dps_numberField">
-                    <label for="tds_dps_number" class="form-label">TDS / DPS Reference Number</label>
-                    <input type="text" class="form-control" id="tds_dps_number" name="tds_dps_number" />
-                </div>
-                <div class="row g-2 mb-3">
-                    <div class="col-md-3"><label class="form-label">Deposit received</label><input type="datetime-local" class="form-control" name="deposit_received_at" value="{{ old('deposit_received_at') }}"></div>
-                    <div class="col-md-3"><label class="form-label">Deposit protected</label><input type="datetime-local" class="form-control" name="deposit_protected_at" value="{{ old('deposit_protected_at') }}"></div>
-                    <div class="col-md-3"><label class="form-label">Prescribed information sent</label><input type="datetime-local" class="form-control" name="prescribed_information_sent_at" value="{{ old('prescribed_information_sent_at') }}"></div>
-                    <div class="col-md-3"><label class="form-label">Written information sent</label><input type="datetime-local" class="form-control" name="written_terms_sent_at" value="{{ old('written_terms_sent_at') }}"></div>
-                </div>
-
-                <div class="mb-3 d-none" id="referenceNumberSchemeField">
-                    <label for="referenceNumber" class="form-label">Reference Number</label>
-                    <input type="text" class="form-control" id="referenceNumber" name="reference_number" />
-                </div>
-            
-                <div class="mb-3 d-none" id="depositSchemeDropdown">
-                    <label for="depositScheme" class="form-label">Deposit Scheme</label>
+            <div class="rs-grid">
+                <label class="rs-field rs-span-3" for="depositScheme">
+                    Scheme
                     <select class="form-select" id="depositScheme" name="deposit_scheme">
-                        <option value="">-- Select a scheme --</option>
-                        <option value="dps">Deposit Protection Service</option>
-                        <option value="tds">Tenancy Deposit Scheme</option>
-                        <option value="drs">Deposit Replacement Scheme</option>
+                        <option value="">Not set</option>
+                        <option value="dps" @selected(old('deposit_scheme') === 'dps')>Deposit Protection Service</option>
+                        <option value="tds" @selected(old('deposit_scheme') === 'tds')>Tenancy Deposit Scheme</option>
+                        <option value="drs" @selected(old('deposit_scheme') === 'drs')>Deposit Replacement Scheme</option>
                     </select>
-                </div>
+                </label>
+                <label class="rs-field rs-span-3" for="referenceNumber">
+                    Scheme reference
+                    <input type="text" class="form-control" id="referenceNumber" name="reference_number" value="{{ old('reference_number') }}">
+                </label>
+                <label class="rs-field rs-span-3">
+                    Deposit received
+                    <input type="datetime-local" class="form-control" name="deposit_received_at" value="{{ old('deposit_received_at') }}">
+                </label>
+                <label class="rs-field rs-span-3">
+                    Deposit protected
+                    <input type="datetime-local" class="form-control" name="deposit_protected_at" value="{{ old('deposit_protected_at') }}">
+                </label>
+                <label class="rs-field rs-span-3">
+                    Prescribed information sent
+                    <input type="datetime-local" class="form-control" name="prescribed_information_sent_at" value="{{ old('prescribed_information_sent_at') }}">
+                </label>
+                <label class="rs-field rs-span-3">
+                    Written terms sent
+                    <input type="datetime-local" class="form-control" name="written_terms_sent_at" value="{{ old('written_terms_sent_at') }}">
+                </label>
+            </div>
+        </section>
 
-            </div>
-        </div>
         @if(! is_landlord_plan_user())
-        <div class="row">
-            <div class="col">
-                <div class="mb-3">
-                    <div class="form-group field-property_manager required has-success">
-                        <label class="control-label" for="property_manager">Property Manager</label>
-                        <select name="property_manager[]" id="property_manager" multiple class="form-control select2">
-                            @foreach ($property_managers as $property_manager)
-                                <option value="{{ $property_manager->id }}" {{ in_array($property_manager->id, old('property_manager', [])) ? 'selected' : '' }}>{{ $property_manager->name }}</option>
-                            @endforeach
-                        </select>
-                        @error('property_manager')
-                            <div class="text-danger small mt-1">{{ $message }}</div>
-                        @enderror
-                    </div>
+        <section class="rs-section">
+            <div class="rs-section-head">
+                <div>
+                    <h2>Assignment</h2>
+                    <p>Who looks after this let inside the agency.</p>
                 </div>
             </div>
-        </div>
+            <div class="rs-grid">
+                <label class="rs-field rs-span-4" for="property_manager">
+                    Property Manager
+                    <select name="property_manager[]" id="property_manager" multiple class="form-control select2">
+                        @foreach ($property_managers as $property_manager)
+                            <option value="{{ $property_manager->id }}" @selected(in_array($property_manager->id, old('property_manager', [])))>{{ $property_manager->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('property_manager')
+                        <span class="text-danger small">{{ $message }}</span>
+                    @enderror
+                </label>
+            </div>
+        </section>
         @endif
-        <button type="submit" class="float-end mt-3 btn btn-dark lw-btn-primary">Save tenancy</button>
+
+        <div class="rs-actions">
+            <button type="submit" class="btn lw-btn-primary">Save tenancy</button>
+        </div>
     </form>
 </div>
 
-<!-- Add User Form (Step 2) -->
-<div id="addUserFormContainer" style="display: none;">
+<div id="addUserFormContainer" class="rs-sheet" style="display: none;">
     <form id="addUserForm">
         @csrf
-        {{-- <input type="hidden" class="form-control" id="category_id" name="category_id" value="3"> --}}
         <input type="hidden" name="role" value="Tenant">
-        <div class="mb-3">
-            <label for="user_name" class="form-label">Full Name</label>
-            <input type="text" class="form-control" id="user_name" name="name" required>
-        </div>
-        <div class="mb-3">
-            <label for="user_email" class="form-label">Email</label>
-            <input type="email" class="form-control" id="user_email" name="email" required>
-        </div>
-        <div class="mb-3">
-            <label for="user_phone" class="form-label">Phone</label>
-            <input type="text" class="form-control" id="user_phone" name="phone" required>
-        </div>
-        <button type="submit" class="btn lw-btn-primary">Save User</button>
-        <button type="button" class="btn btn-secondary" id="backToMainForm">Back</button>
+        <section class="rs-section">
+            <div class="rs-section-head">
+                <div>
+                    <h2>New tenant</h2>
+                    <p>Name and email are enough. Phone can wait.</p>
+                </div>
+            </div>
+            <div class="rs-grid">
+                <label class="rs-field rs-span-2" for="user_name">
+                    Full name
+                    <input type="text" class="form-control" id="user_name" name="name" required>
+                </label>
+                <label class="rs-field rs-span-2" for="user_email">
+                    Email
+                    <input type="email" class="form-control" id="user_email" name="email" required>
+                </label>
+                <label class="rs-field rs-span-2" for="user_phone">
+                    Phone
+                    <input type="text" class="form-control" id="user_phone" name="phone" maxlength="40">
+                </label>
+            </div>
+            <div class="rs-actions">
+                <button type="button" class="btn btn-light" id="backToMainForm">Back</button>
+                <button type="submit" class="btn lw-btn-primary">Save tenant</button>
+            </div>
+        </section>
     </form>
 </div>
 @if(request()->ajax())

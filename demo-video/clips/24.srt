@@ -1,0 +1,4 @@
+﻿1
+00:00:00,000 --> 00:00:08,350
+On the repair, she can find a contractor, invite her own, or hand the job to the Resisquare
+team.

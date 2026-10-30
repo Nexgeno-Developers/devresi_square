@@ -9,6 +9,10 @@
     $trades = \App\Support\ContractorCompliance::trades();
     $guidance = config('contractor_marketplace.emergency_guidance');
     $remaining = max(0, $cap - $openCount);
+    $yourContractors = $candidates->where('mine', true)->values();
+    $marketplaceContractors = $candidates->filter(fn ($row) => $row->marketplace && ! $row->mine)->values();
+    $marketReady = $marketplaceContractors->where('can_take', true)->count()
+        + $yourContractors->where('marketplace', true)->where('can_take', true)->count();
 @endphp
 <div class="container-fluid lw-page">
     <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
@@ -127,32 +131,29 @@
                     @if($openCount)
                         <p class="small text-muted">{{ $openCount }} already invited. You can add more.</p>
                     @endif
-                    <div class="list-group mb-2">
-                        @foreach($candidates as $row)
-                            <div class="list-group-item d-flex gap-3 align-items-start">
-                                @if($row->can_take)
-                                    <input type="checkbox" class="form-check-input mt-1 pick" name="contractor_ids[]" value="{{ $row->user_id }}" @checked(in_array($row->user_id, (array) old('contractor_ids', [])))>
-                                @endif
-                                <span class="flex-grow-1">
-                                    <strong>{{ $row->name }}</strong>
-                                    <x-lw.pill :tone="$row->tone">{{ $row->scope }}</x-lw.pill>
-                                    @if($row->mine)<x-lw.pill tone="ok">My contractor</x-lw.pill>@endif
-                                    @if($row->worked)<x-lw.pill tone="idle">Worked with you</x-lw.pill>@endif
-                                    <span class="d-block small text-muted">
-                                        {{ $row->miles !== null ? $row->miles.' miles away' : 'Distance unknown' }}
-                                        @foreach($row->badges as $badge) · {{ $badge }} @endforeach
-                                        @if(($row->rating ?? null) !== null) · {{ $row->rating }}★ ({{ $row->ratings }}) @endif
-                                        @if(! $row->can_take && $row->reason) · {{ $row->reason }} @endif
-                                    </span>
-                                </span>
-                                <button type="submit" class="btn btn-link btn-sm p-0 text-decoration-none" title="{{ $row->favourite ? 'Remove favourite' : 'Add favourite' }}"
-                                    formaction="{{ route('admin.property_repairs.marketplace.favourite', $row->user_id) }}" formnovalidate>{{ $row->favourite ? '★' : '☆' }}</button>
-                            </div>
-                        @endforeach
-                    </div>
-                    <label class="small d-none" id="send-all-wrap">
-                        <input type="checkbox" name="send_all" value="1" id="send-all"> Send to all {{ $ready }} who can take this (emergency)
-                    </label>
+                    @if($yourContractors->isNotEmpty())
+                        <h3 class="h6 mt-3">Your contractors</h3>
+                        <p class="small text-muted">Only you can send them work, unless they have also joined the Resisquare marketplace.</p>
+                        <div class="list-group mb-3">
+                            @foreach($yourContractors as $row)
+                                @include('backend.repair.partials.candidate-row', ['row' => $row])
+                            @endforeach
+                        </div>
+                    @endif
+                    @if($marketplaceContractors->isNotEmpty())
+                        <h3 class="h6 mt-3">Resisquare marketplace</h3>
+                        <p class="small text-muted">These contractors agreed to a Resisquare commission, so any landlord can send them a job.</p>
+                        <div class="list-group mb-2">
+                            @foreach($marketplaceContractors as $row)
+                                @include('backend.repair.partials.candidate-row', ['row' => $row])
+                            @endforeach
+                        </div>
+                    @endif
+                    @if($marketReady > 0)
+                        <label class="small d-none" id="send-all-wrap">
+                            <input type="checkbox" name="send_all" value="1" id="send-all"> Send to all {{ $marketReady }} marketplace contractors who can take this (emergency)
+                        </label>
+                    @endif
                 </div>
             </div>
 
@@ -197,7 +198,7 @@
                     <div class="col-md-4"><input type="text" name="name" class="form-control form-control-sm" placeholder="Name (optional)" value="{{ old('name') }}"></div>
                     <div class="col-md-3"><button class="btn lw-btn-secondary btn-sm w-100" type="submit">Send invite</button></div>
                     @error('email')<div class="col-12 small text-danger">{{ $message }}</div>@enderror
-                    <div class="col-12 small text-muted">They sign up free and go through the same checks. Once approved they appear here tagged “My contractor”.</div>
+                    <div class="col-12 small text-muted">They sign up free and go through the same checks. Once approved they are your contractor. Other landlords do not see them unless they join the Resisquare marketplace.</div>
                 </form>
             </details>
         </div>
@@ -222,7 +223,7 @@
         const chosen = picks.filter(p => p.checked).length;
         picks.forEach(p => { p.disabled = !emergency && !p.checked && chosen >= cap; });
         counter.textContent = emergency ? chosen + ' selected' : chosen + ' of ' + cap + ' selected';
-        sendAllWrap.classList.toggle('d-none', !emergency);
+        if (sendAllWrap) sendAllWrap.classList.toggle('d-none', !emergency);
         form.querySelectorAll('input[name="urgency"]').forEach(r => {
             r.parentElement.classList.toggle('btn-primary', r.checked);
             r.parentElement.classList.toggle('btn-outline-secondary', !r.checked);

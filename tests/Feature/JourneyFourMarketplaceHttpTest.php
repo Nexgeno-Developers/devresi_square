@@ -451,6 +451,9 @@ class JourneyFourMarketplaceHttpTest extends TestCase
             'trades' => $trades,
             'approval_status' => ContractorProfile::APPROVED,
             'terms_accepted_at' => now(),
+            'marketplace_accepted_at' => now(),
+            'marketplace_terms_version' => config('contractor_marketplace.marketplace_terms_version'),
+            'marketplace_commission_percent' => 0,
         ]);
         foreach ($trades as $trade) {
             ContractorTrade::create([

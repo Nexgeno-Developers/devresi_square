@@ -1,0 +1,4 @@
+﻿1
+00:00:00,000 --> 00:00:09,220
+The form already knows his name and email, because they came from the invite. He accepts the
+contractor terms.

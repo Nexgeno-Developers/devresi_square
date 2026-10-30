@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResiSquare — FT-002 Pricing QA Report</title>
+<style>
+  :root {
+    --ink: #1c2430;
+    --muted: #5c6778;
+    --line: #d8dee8;
+    --bg: #f4f6f9;
+    --card: #fff;
+    --header: #152033;
+    --pass: #1f7a45;
+    --fail: #b42318;
+    --crit: #7a1212;
+    --high: #c2410c;
+    --med: #b45309;
+    --low: #3b5b8a;
+    --blocked: #c2410c;
+    --nt: #5c6778;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 "Segoe UI", Calibri, sans-serif; color: var(--ink); background: var(--bg); }
+  header.top { background: var(--header); color: #fff; padding: 28px 32px 22px; }
+  header.top h1 { margin: 0 0 6px; font-size: 28px; font-weight: 650; }
+  header.top p { margin: 0; color: #c5d0e0; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 48px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; letter-spacing: .02em; }
+  .badge.nt, .badge.na { background: #eceff3; color: var(--nt); }
+  .badge.pass, .badge.fixed { background: #e5f6ec; color: var(--pass); }
+  .badge.fail, .badge.open, .badge.critical { background: #fde8e6; color: var(--fail); }
+  .badge.high, .badge.blocked { background: #ffedd5; color: var(--high); }
+  .badge.medium { background: #fef3c7; color: var(--med); }
+  .badge.low { background: #e8eef8; color: var(--low); }
+  .status-pill { display: inline-block; margin-top: 12px; background: #9a3412; color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: 650; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 18px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card strong { display: block; font-size: 22px; }
+  .card span { color: var(--muted); font-size: 13px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px 8px; margin: 16px 0; }
+  h2 { margin: 0 0 8px; font-size: 20px; }
+  h3 { margin: 18px 0 8px; font-size: 16px; }
+  p, li { color: var(--ink); }
+  .note { color: var(--muted); font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 13.5px; }
+  th, td { border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; padding: 8px 8px; }
+  th { background: #eef2f7; font-weight: 650; }
+  tr:nth-child(even) td { background: #fafbfd; }
+  code, .path { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+  td.rec { font-size: 13px; }
+  .score { font-size: 40px; font-weight: 700; margin: 0; }
+  footer { color: var(--muted); font-size: 13px; padding: 8px 4px 24px; }
+  @media print {
+    body { background: #fff; }
+    header.top, .badge, .status-pill, th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    section { break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+  @media (max-width: 720px) {
+    header.top, .wrap { padding-left: 12px; padding-right: 12px; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>ResiSquare — FT-002 public pricing</h1>
+  <p>Smoke, black-box, white-box, and UAT for landlord plan prices on the public pricing page</p>
+  <div class="status-pill">Needs Fixes and Retesting</div>
+</header>
+<div class="wrap">
+
+<section id="project">
+  <h2>1. Project Information</h2>
+  <table>
+    <tr><th>Field</th><th>Value</th></tr>
+    <tr><td>Project</td><td>ResiSquare (devresi_square) — Laravel property SaaS</td></tr>
+    <tr><td>Case</td><td>FT-002 — Public pricing page lists landlord plans with monthly and annual prices from plan records</td></tr>
+    <tr><td>Testing date</td><td>23 October 2026</td></tr>
+    <tr><td>Environment</td><td>Local app at http://127.0.0.1:8001 (php artisan serve). Chrome via the Cursor browser. Live <span class="path">plans</span> and <span class="path">addons</span> tables. Guest session, no login.</td></tr>
+    <tr><td>Scope</td><td>Smoke, black-box, white-box, and user acceptance of the public pricing page. Related checks on that page (security headers, SEO, content, phone-width layout) were recorded only where they were actually exercised.</td></tr>
+    <tr><td>Build under test</td><td><span class="path">routes/web.php</span> GET <span class="path">/pricing</span> → <span class="path">FrontendController::pricing()</span> → <span class="path">resources/views/frontend/pricing.blade.php</span>. Prices come from <span class="path">Plan::formattedMonthlyPrice()</span> and <span class="path">formattedAnnualPrice()</span>.</td></tr>
+    <tr><td>Live landlord plan</td><td>One active landlord row: id 1, code <span class="path">landlord_basic</span>, name Landlord Basic, <span class="path">monthly_price_minor</span> 2900, <span class="path">annual_price_minor</span> 29000, currency GBP, trial 7 days, property limit 3, sort 10. Active estate-agent row id 2 (Estate Agent Company, £149.00 / £1,490.00) is stored and must stay off this page.</td></tr>
+  </table>
+  <p class="note">Acceptance used for UAT: a guest can open pricing, see each active landlord plan, read the monthly and annual amounts stored on that plan, and start a trial on the cycle they selected.</p>
+</section>
+
+<section id="summary">
+  <h2>2. Testing Summary</h2>
+  <div class="cards">
+    <div class="card"><strong>77%</strong><span>Overall score</span></div>
+    <div class="card"><strong>24 / 26</strong><span>Functional passed</span></div>
+    <div class="card"><strong>0</strong><span>Critical issues</span></div>
+    <div class="card"><strong>1</strong><span>High issues</span></div>
+    <div class="card"><strong>9</strong><span>Open issues</span></div>
+    <div class="card"><strong>Poor</strong><span>Quality rating</span></div>
+  </div>
+  <table>
+    <tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr>
+    <tr><td>Functional Testing</td><td>26</td><td>24</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Security Testing</td><td>7</td><td>5</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>UI/UX Testing</td><td>4</td><td>2</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Performance Testing</td><td>2</td><td>2</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+    <tr><td>SEO Testing</td><td>7</td><td>3</td><td>4</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Content Testing</td><td>6</td><td>4</td><td>2</td><td><span class="badge fail">Fail</span></td></tr>
+    <tr><td>Compatibility Testing</td><td>2</td><td>2</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+    <tr><td>Database Testing</td><td>4</td><td>4</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+    <tr><td>Deployment Testing</td><td>1</td><td>1</td><td>0</td><td><span class="badge pass">Pass</span></td></tr>
+  </table>
+  <p class="note">Functional rows cover smoke (SM), black box (BB), white box (WB), and UAT. Not Tested rows are omitted from these passed/failed counts. Database and deployment were exercised and are listed here; they are excluded from the weighted score because the standard weights do not include them. API testing was not applicable.</p>
+</section>
+
+<section id="functional">
+  <h2>3. Functional Testing</h2>
+  <p>The listing requirement passed. Landlord Basic shows £29.00 /month and £290.00 /year, which are the plan row divided by 100. The failure is the lower trial button, which stays on monthly billing after Annual is selected.</p>
+
+  <h3>Smoke</h3>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>SM-001</td><td>Public</td><td>Guest GET /pricing returns HTTP 200 with text/html</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>SM-002</td><td>Public</td><td>The page renders a landlord plan card plus Monthly and Annual controls</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+  </table>
+
+  <h3>Black box</h3>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>BB-001</td><td>Public</td><td>The Pricing link on the home page opens /pricing</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>BB-002</td><td>Public</td><td>Default billing shows Landlord Basic at £29.00 /month</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td class="rec">-</td></tr>
+    <tr><td>BB-003</td><td>Public</td><td>Annual shows £290.00 /year on the same card</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td class="rec">-</td></tr>
+    <tr><td>BB-004</td><td>Public</td><td>Reloading the page restores the monthly price</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+    <tr><td>BB-005</td><td>Public</td><td>Choosing Monthly after Annual restores £29.00 /month</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>BB-006</td><td>Public</td><td>The plan-card Start Free Trial link opens register with the selected plan and price</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>BB-007</td><td>Public</td><td>The active Estate Agent Company plan is not shown in the plan cards</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>BB-008</td><td>Public</td><td>/pricing?billing_cycle=annual&amp;plan_id=999 still returns 200 and the stored monthly price</td><td><span class="badge pass">Pass</span></td><td><span class="badge low">Low</span></td><td class="rec">-</td></tr>
+    <tr><td>BB-009</td><td>Public</td><td>POST /pricing returns 405</td><td><span class="badge pass">Pass</span></td><td><span class="badge low">Low</span></td><td class="rec">-</td></tr>
+    <tr><td>BB-010</td><td>Public</td><td>The lower Start 7-Day Free Trial button follows Annual when Annual is selected</td><td><span class="badge fail">Fail</span></td><td><span class="badge high">High</span></td><td class="rec">See BUG-001. <span class="path">resources/views/frontend/pricing.blade.php</span> → Start 7-Day Free Trial anchor → add the <span class="path">js-register-plan</span> class and monthly/annual data URLs so <span class="path">setBillingCycle()</span> updates it.</td></tr>
+    <tr><td>BB-011</td><td>Public</td><td>Add-on cards switch with the same toggle and match addon records (£5/£50, £20/£200, £10/£100, £15/£150)</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+  </table>
+
+  <h3>White box</h3>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>WB-001</td><td>Plans</td><td>pricing() loads is_active landlord plans ordered by sort_order, then name</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>WB-002</td><td>Plans</td><td>2900 and 29000 minor units render £29.00 and £290.00</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td class="rec">-</td></tr>
+    <tr><td>WB-003</td><td>Plans</td><td>data-monthly and data-annual on the card match formattedMonthlyPrice() and formattedAnnualPrice()</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>WB-004</td><td>Plans</td><td>An inactive landlord plan inserted in a transaction is omitted, then rolled back</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>WB-005</td><td>Plans</td><td>An active estate-agent freelance plan inserted in a transaction is omitted</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>WB-006</td><td>Plans</td><td>Deactivating every landlord plan shows “No active plans are available right now.”</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+    <tr><td>WB-007</td><td>Plans</td><td>A plan name containing a script tag is escaped in the card</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>WB-008</td><td>Plans</td><td>A new active landlord plan with sort_order 0 is listed first, with £123.45 and £9,999.99 from its own minor amounts</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+    <tr><td>WB-009</td><td>Plans</td><td>A null price amount formats as £0.00; a USD amount uses a “USD ” prefix</td><td><span class="badge pass">Pass</span></td><td><span class="badge low">Low</span></td><td class="rec">-</td></tr>
+  </table>
+
+  <h3>UAT</h3>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>UAT-001</td><td>Acceptance</td><td>A visitor sees the landlord plan name, “Up to 3 properties”, and the monthly price from the plan record</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td class="rec">-</td></tr>
+    <tr><td>UAT-002</td><td>Acceptance</td><td>A visitor can switch to the annual price stored on that same record</td><td><span class="badge pass">Pass</span></td><td><span class="badge critical">Critical</span></td><td class="rec">-</td></tr>
+    <tr><td>UAT-003</td><td>Acceptance</td><td>Start Free Trial on the card opens register as Landlord Basic, Billing Annual, Price £290.00/year, 7-day trial, 3 properties</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>UAT-004</td><td>Acceptance</td><td>Choosing Annual and using the lower trial button keeps annual billing</td><td><span class="badge fail">Fail</span></td><td><span class="badge high">High</span></td><td class="rec">See BUG-001. While the card showed £290.00 /year, the lower link remained <span class="path">/register?plan_id=1&amp;billing_cycle=monthly&amp;account_type=landlord</span>.</td></tr>
+  </table>
+</section>
+
+<section id="bugs">
+  <h2>4. Bug / Issue Report</h2>
+  <table>
+    <tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr>
+    <tr>
+      <td>BUG-001</td><td>Public pricing</td>
+      <td>With Annual selected, the plan card price and its trial link use the annual record (£290.00/year, billing_cycle=annual). The lower “Start 7-Day Free Trial” link stays on monthly billing.</td>
+      <td><span class="badge high">High</span></td><td><span class="badge open">Open</span></td>
+      <td class="rec"><span class="path">resources/views/frontend/pricing.blade.php</span> → Start 7-Day Free Trial anchor in the “Ready to Bring Your Portfolio Together” section → add <span class="path">js-register-plan</span> plus <span class="path">data-monthly-url</span> and <span class="path">data-annual-url</span>, matching the plan card, so <span class="path">setBillingCycle()</span> updates this href.</td>
+    </tr>
+    <tr>
+      <td>BUG-002</td><td>Public pricing</td>
+      <td>The Compare Plan Features table lists Starter, Growth, Pro, and Business with property counts 3, 10, 25, and 50. The only active landlord plan is Landlord Basic with property_limit 3. The other bands are not plan records.</td>
+      <td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td>
+      <td class="rec"><span class="path">resources/views/frontend/pricing.blade.php</span> → Compare Plan Features table → build the columns from the active landlord plans (name and property_limit) instead of the fixed four-column array.</td>
+    </tr>
+    <tr>
+      <td>BUG-003</td><td>Public pricing</td>
+      <td>The FAQ says Pro, Business, and Portfolio plans are built for professional landlords and agencies. Pro and Business are not rows in <span class="path">plans</span>. Portfolio is a custom-sales block, not a priced plan.</td>
+      <td><span class="badge medium">Medium</span></td><td><span class="badge open">Open</span></td>
+      <td class="rec"><span class="path">resources/views/frontend/pricing.blade.php</span> → FAQ “Is ResiSquare suitable for independent agents?” → name only plans that exist, and describe Portfolio as the custom-sales offer.</td>
+    </tr>
+    <tr>
+      <td>BUG-004</td><td>Public pricing</td>
+      <td>The only h1 on the page is “Book a Demo” inside the modal. The visible page title is an h2, and the property line “Up to 3 properties” is an h5 directly under an h3.</td>
+      <td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td>
+      <td class="rec"><span class="path">resources/views/frontend/pricing.blade.php</span> → intro heading and the Book a Demo modal title → make the visible page title the h1, and use a lower heading for the modal and the property line.</td>
+    </tr>
+    <tr>
+      <td>BUG-005</td><td>Public pricing</td>
+      <td>The pricing response has a title and meta description, and no canonical link or Open Graph tags.</td>
+      <td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td>
+      <td class="rec"><span class="path">resources/views/frontend/layout/home.blade.php</span> → head → add a canonical link and Open Graph title and description. The pricing view already yields the title and meta description.</td>
+    </tr>
+    <tr>
+      <td>BUG-006</td><td>Security headers</td>
+      <td>The pricing response sends X-Content-Type-Options, X-Frame-Options, and Referrer-Policy. It does not send Content-Security-Policy.</td>
+      <td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td>
+      <td class="rec"><span class="path">app/Http/Middleware/SecurityHeaders.php</span> → <span class="path">handle()</span> → set a Content-Security-Policy that covers the page and the stylesheets it loads.</td>
+    </tr>
+    <tr>
+      <td>BUG-007</td><td>Security headers</td>
+      <td>The pricing response includes X-Powered-By: PHP/8.2.12.</td>
+      <td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td>
+      <td class="rec"><span class="path">app/Http/Middleware/SecurityHeaders.php</span> → <span class="path">handle()</span> → remove the X-Powered-By header on the response.</td>
+    </tr>
+    <tr>
+      <td>BUG-008</td><td>Pricing toggle</td>
+      <td>Monthly and Annual are buttons with no aria-pressed. Selection is only the CSS active class, so the selected cycle is not exposed as a state.</td>
+      <td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td>
+      <td class="rec"><span class="path">resources/views/frontend/pricing.blade.php</span> → billing toggle buttons and <span class="path">setBillingCycle()</span> → set aria-pressed to match the selected cycle.</td>
+    </tr>
+    <tr>
+      <td>BUG-009</td><td>Header</td>
+      <td>At a 390px width the header “Book a demo” label wraps onto several lines and sits against Pricing. The plan price itself stays readable and the page does not scroll sideways.</td>
+      <td><span class="badge low">Low</span></td><td><span class="badge open">Open</span></td>
+      <td class="rec"><span class="path">resources/views/components/frontend/header.blade.php</span> → Book a demo button and nav → let the header wrap or collapse at a phone width so the button label stays on one line.</td>
+    </tr>
+  </table>
+</section>
+
+<section id="security">
+  <h2>5. Security Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Security Check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr>
+    <tr><td>SEC-001</td><td>Public read of /pricing without a login</td><td><span class="badge pass">Pass</span></td><td><span class="badge low">Low</span></td><td class="rec">-</td></tr>
+    <tr><td>SEC-002</td><td>Plan name output is escaped (script tag in a temporary plan name did not render as HTML)</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>SEC-003</td><td>Stripe price ids are not present in the pricing HTML</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+    <tr><td>SEC-004</td><td>pricing() does not read request input, so a crafted query string is not used in the plan query</td><td><span class="badge pass">Pass</span></td><td><span class="badge high">High</span></td><td class="rec">-</td></tr>
+    <tr><td>SEC-005</td><td>X-Content-Type-Options, X-Frame-Options, and Referrer-Policy are set</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+    <tr><td>SEC-006</td><td>Content-Security-Policy header</td><td><span class="badge fail">Fail</span></td><td><span class="badge low">Low</span></td><td class="rec">See BUG-006. <span class="path">SecurityHeaders.php</span> → <span class="path">handle()</span> → add a Content-Security-Policy.</td></tr>
+    <tr><td>SEC-007</td><td>PHP version is not disclosed in X-Powered-By</td><td><span class="badge fail">Fail</span></td><td><span class="badge low">Low</span></td><td class="rec">See BUG-007. <span class="path">SecurityHeaders.php</span> → <span class="path">handle()</span> → remove X-Powered-By.</td></tr>
+    <tr><td>SEC-008</td><td>HTTPS</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+  </table>
+  <p class="note">SEC-008 is excluded from the security score. HSTS is set in <span class="path">SecurityHeaders.php</span> only when the request is secure and the environment is not local, so it was not exercised on http://127.0.0.1:8001.</p>
+</section>
+
+<section id="ui">
+  <h2>6. UI/UX Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>UX-001</td><td>Desktop</td><td>Plan card, £29.00 /month, and the Monthly / Annual toggle are readable</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>UX-002</td><td>390px width</td><td>The plan name and price stay readable, Annual still switches to £290.00 /year, and the document does not overflow horizontally</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>UX-003</td><td>390px header</td><td>Book a demo stays on one line beside Pricing, Login, and Register</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-009. <span class="path">resources/views/components/frontend/header.blade.php</span> → header nav → stop the Book a demo label wrapping into the links at phone width.</td></tr>
+    <tr><td>UX-004</td><td>Billing toggle</td><td>The selected cycle is exposed with aria-pressed</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-008. <span class="path">resources/views/frontend/pricing.blade.php</span> → billing buttons and <span class="path">setBillingCycle()</span> → set aria-pressed.</td></tr>
+  </table>
+</section>
+
+<section id="performance">
+  <h2>7. Performance Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>PERF-001</td><td>Pricing page</td><td>Guest GET /pricing on the local artisan server</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+    <tr><td>PERF-002</td><td>Database</td><td>pricing() runs two bounded queries (active landlord plans, active addons) and does not query per card</td><td><span class="badge pass">Pass</span></td><td><span class="badge medium">Medium</span></td><td class="rec">-</td></tr>
+  </table>
+  <p class="note">Measured local response: HTTP 200 in 605 ms, about 40 KB of HTML. That figure is the local artisan server, not a production host. Production latency was not measured.</p>
+</section>
+
+<section id="seo">
+  <h2>8. SEO Testing</h2>
+  <table>
+    <tr><th>ID</th><th>SEO Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>SEO-001</td><td>Page title: “ResiSquare Pricing — Simple Pricing for Your Entire Portfolio”</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>SEO-002</td><td>Meta description is present and describes the pricing offer</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>SEO-003</td><td>A visible h1 describes the pricing page</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-004. <span class="path">pricing.blade.php</span> → intro heading → use an h1 for the page title.</td></tr>
+    <tr><td>SEO-004</td><td>Canonical URL</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-005. <span class="path">frontend/layout/home.blade.php</span> → head → add a canonical link.</td></tr>
+    <tr><td>SEO-005</td><td>Open Graph title</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-005. <span class="path">frontend/layout/home.blade.php</span> → head → add Open Graph title and description.</td></tr>
+    <tr><td>SEO-006</td><td>robots.txt allows / and sitemap.xml lists /pricing</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>SEO-007</td><td>Heading levels do not skip from the plan name (h3) to the property line (h5)</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-004. <span class="path">pricing.blade.php</span> → “Up to N properties” → use a heading level that follows the plan name.</td></tr>
+  </table>
+</section>
+
+<section id="content">
+  <h2>9. Content Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Content Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>CT-001</td><td>Displayed monthly and annual prices match the landlord plan record</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>CT-002</td><td>Trial length (7 days) and property limit (3) match the plan row</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>CT-003</td><td>The page states that prices exclude VAT where applicable</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>CT-004</td><td>“Save 2 Months” matches this record: 12 × £29.00 − £290.00 = £58.00</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>CT-005</td><td>Compare-table property bands come from plan records</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-002. <span class="path">pricing.blade.php</span> → Compare Plan Features table → drive the columns from active landlord plans.</td></tr>
+    <tr><td>CT-006</td><td>FAQ plan names match plan records</td><td><span class="badge fail">Fail</span></td><td class="rec">See BUG-003. <span class="path">pricing.blade.php</span> → independent-agents FAQ → remove Pro and Business until those plans exist.</td></tr>
+  </table>
+</section>
+
+<section id="compatibility">
+  <h2>10. Browser &amp; Device Testing</h2>
+  <table>
+    <tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>Chrome desktop</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>Chrome, 390×844 viewport (emulated)</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>Firefox desktop</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
+    <tr><td>Edge desktop</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
+    <tr><td>Safari</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
+    <tr><td>Android phone</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
+    <tr><td>iPhone</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
+    <tr><td>Tablet</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
+  </table>
+  <p class="note">The 390px result is a Chrome viewport override, not a physical phone. Header wrapping is recorded as BUG-009. The price and annual toggle passed at that width.</p>
+</section>
+
+<section id="api">
+  <h2>11. API Testing</h2>
+  <p>Not Applicable. FT-002 is a server-rendered public page. No pricing JSON endpoint was part of this case.</p>
+</section>
+
+<section id="database">
+  <h2>12. Database Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>DB-001</td><td>plans.monthly_price_minor and annual_price_minor are integers and the page shows those values divided by 100</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>DB-002</td><td>is_active and target_account_type decide which rows are listed</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>DB-003</td><td>Temporary plan rows used for the filter, sort, and escaping checks were rolled back. Plan count stayed at 2</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>DB-004</td><td>The live landlord row has currency GBP, trial_days 7, property_limit 3, and sort_order 10, matching the card</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+  </table>
+  <p class="note">Database testing was read-only against live rows, plus inserts inside a transaction that was rolled back. No plan row was left changed.</p>
+</section>
+
+<section id="deployment">
+  <h2>13. Production / Deployment Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>DEP-001</td><td>Local site responds on http://127.0.0.1:8001/pricing</td><td><span class="badge pass">Pass</span></td><td class="rec">-</td></tr>
+    <tr><td>DEP-002</td><td>HTTPS / production host</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
+    <tr><td>DEP-003</td><td>Production debug mode and production error pages</td><td><span class="badge nt">Not Tested</span></td><td class="rec">-</td></tr>
+  </table>
+</section>
+
+<section id="score">
+  <h2>14. Overall Score</h2>
+  <p class="score">77%</p>
+  <p>Quality rating: <strong>Poor</strong> (70–79%). The rating uses passed ÷ applicable tests, then the standard weights. Blocked and Not Tested rows are excluded. Database and deployment are reported above and are not in the weights.</p>
+  <table>
+    <tr><th>Category</th><th>Weight</th><th>Passed / Applicable</th><th>Category score</th><th>Weighted</th></tr>
+    <tr><td>Functional</td><td>30%</td><td>24 / 26</td><td>92.31%</td><td>27.69</td></tr>
+    <tr><td>Security</td><td>20%</td><td>5 / 7</td><td>71.43%</td><td>14.29</td></tr>
+    <tr><td>UI/UX</td><td>15%</td><td>2 / 4</td><td>50.00%</td><td>7.50</td></tr>
+    <tr><td>Performance</td><td>15%</td><td>2 / 2</td><td>100%</td><td>15.00</td></tr>
+    <tr><td>SEO</td><td>10%</td><td>3 / 7</td><td>42.86%</td><td>4.29</td></tr>
+    <tr><td>Compatibility</td><td>5%</td><td>2 / 2</td><td>100%</td><td>5.00</td></tr>
+    <tr><td>Content</td><td>5%</td><td>4 / 6</td><td>66.67%</td><td>3.33</td></tr>
+    <tr><td>Total</td><td>100%</td><td></td><td></td><td>77.10 → 77%</td></tr>
+  </table>
+  <p class="note">Excluded from the score: HTTPS, Firefox, Edge, Safari, Android, iPhone, tablet, production deployment, and API testing. The 77% is pulled down by low-severity header, accessibility, and SEO gaps on this page, plus the high billing-cycle defect. The price-listing checks themselves are 24 of 26 functional tests.</p>
+</section>
+
+<section id="status">
+  <h2>15. Final Status</h2>
+  <p><strong>Needs Fixes and Retesting</strong></p>
+  <h3>Recommendation</h3>
+  <p>The public pricing page does list the active landlord plan, and both prices come from that plan record. Landlord Basic is £29.00 per month and £290.00 per year. The Annual control updates the card, the add-ons, and the card’s Start Free Trial link. Register then shows Landlord Basic at £290.00/year. Inactive and non-landlord plans stay off the card list. A guest can open the page from the home navigation without signing in.</p>
+  <p>Fix BUG-001 before treating FT-002 as accepted. A visitor who selects Annual and then uses the lower “Start 7-Day Free Trial” button is sent to monthly billing while the card still shows the annual price. Retest that button on both cycles, and retest the card link so the annual path still opens £290.00/year.</p>
+  <p>Also correct the compare table and the FAQ so they do not name Starter, Growth, Pro, and Business as if they were plan records. One high issue remains open (BUG-001). Two medium issues remain (BUG-002, BUG-003). No critical defect was found. Production deployment was not tested.</p>
+</section>
+
+<section id="limitations">
+  <h2>16. Testing Limitations</h2>
+  <ul>
+    <li>Only the local artisan server was available. HTTPS, HSTS, production caching, and production error pages were not tested.</li>
+    <li>The phone check was a 390×844 Chrome viewport, not a physical Android, iPhone, or tablet, and not Firefox, Edge, or Safari.</li>
+    <li>The database held one active landlord plan. A second priced landlord plan was created only inside a rolled-back transaction, so the live page was not rechecked in the browser with two real cards.</li>
+    <li>Feature bullets on the card are chosen in the Blade from the property-limit band (a limit of 3 uses the starter list). They are not a features column. This run did not treat that as a price defect.</li>
+    <li>“Save 2 Months” is fixed text in the Blade. It matches this record (two months of £29.00). A later plan with a different annual amount would still show that badge. That was not failed because the current record matches.</li>
+    <li>WB-009 confirms the formatter. No live plan has a null or zero price, and no live plan uses a currency other than GBP.</li>
+    <li>The layout loads Bootstrap Icons, Font Awesome, and Slick from public CDNs. Offline icon rendering was not tested.</li>
+    <li>Admin editing of plan prices, Stripe checkout, and registration submit were outside FT-002. The register page was opened only to confirm the selected plan and price.</li>
+  </ul>
+  <h3>Evidence</h3>
+  <ul>
+    <li>Page: http://127.0.0.1:8001/pricing — HTTP 200, about 40 KB, 605 ms on the local server.</li>
+    <li>Plan row id 1: monthly_price_minor 2900 → £29.00; annual_price_minor 29000 → £290.00. Card data attributes matched those strings.</li>
+    <li>Annual card link: /register?plan_id=1&amp;billing_cycle=annual&amp;account_type=landlord. Register text: “Selected Plan: Landlord Basic”, “Billing: Annual”, “Price: £290.00/year”.</li>
+    <li>At the same moment the lower link was /register?plan_id=1&amp;billing_cycle=monthly&amp;account_type=landlord.</li>
+    <li>Code: <span class="path">app/Http/Controllers/Frontend/FrontendController.php</span> → <span class="path">pricing()</span>; <span class="path">app/Models/Plan.php</span> → <span class="path">formatMinorPrice()</span>; <span class="path">resources/views/frontend/pricing.blade.php</span> → plan card and <span class="path">setBillingCycle()</span>.</li>
+  </ul>
+</section>
+
+<footer>
+  Report generated 23 October 2026. Case FT-002. Environment: local http://127.0.0.1:8001. Standalone HTML, no external stylesheets.
+</footer>
+</div>
+</body>
+</html>

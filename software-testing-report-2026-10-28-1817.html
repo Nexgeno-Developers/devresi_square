@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ResiSquare workspace walkthrough — 28 Oct 2026</title>
+<style>
+  body { font-family: Segoe UI, sans-serif; margin: 32px; color: #1c1c1c; line-height: 1.45; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
+  h2 { font-size: 1.15rem; margin-top: 2rem; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; }
+  table { border-collapse: collapse; width: 100%; margin: 0.6rem 0 1rem; font-size: 0.92rem; }
+  th, td { border: 1px solid #ccc; padding: 6px 8px; vertical-align: top; text-align: left; }
+  th { background: #f4f4f4; }
+  .fail { color: #9b1c1c; font-weight: 600; }
+  .pass { color: #146c2e; font-weight: 600; }
+  .na { color: #666; }
+  .score { font-size: 1.8rem; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>Software testing report</h1>
+<p>ResiSquare landlord workspace walkthrough. Local app at http://127.0.0.1:8001, signed in as the trial landlord created earlier today. Focus: dead controls, raw HTML, dead-end flows, alignment, and the two property/repair data formats sharing one database.</p>
+
+<h2>1. Executive summary</h2>
+<p class="score">34% — Critical</p>
+<p><strong>Final status: Not Ready.</strong> A new landlord with no homes is covered by the property-setup overlay on every workspace page. Behind that overlay, the product still serves the old estate-agent property form, points “Upload Document” at the property list, and fills the new repair form with 115 leftover repair categories whose names are “General maintenance” or “Smell Gas” plus a hash. No page was found rendering CSS or HTML tags as visible text.</p>
+<p>Critical defects: none that trap the account with no way out (Later is on the overlay). High defects: 4. Recommendation: stop shipping the old Quick Add form to landlords, scope repair categories to real home areas, and keep the setup overlay off pages that are not property setup.</p>
+
+<h2>2. Test environment</h2>
+<table>
+<tr><th>Item</th><th>Value</th></tr>
+<tr><td>App</td><td>Laravel, php artisan serve 127.0.0.1:8001, APP_ENV local, APP_DEBUG true</td></tr>
+<tr><td>Database</td><td>MySQL via XAMPP, database resisquare_laravel_webdeveloper</td></tr>
+<tr><td>Account</td><td>Trial landlord, account id 546, zero properties</td></tr>
+<tr><td>Browser</td><td>Cursor browser, desktop only</td></tr>
+<tr><td>Date</td><td>28 October 2026, about 18:17 local</td></tr>
+</table>
+
+<h2>3. Scope</h2>
+<p>In scope: landlord navigation after login — dashboard, calendar, properties, legacy property create, tenancies, rent, repairs list, raise-repair form, people, compliance, documents, profile, and the onboarding overlay that follows those pages. Code and database checks where the screen could not show the cause.</p>
+<p>Out of scope this run: Stripe paywalls (reported earlier today), tenant rent card, contractor marketplace, super-admin menus, mobile viewports, and a second browser.</p>
+
+<h2>4. Functional test cases</h2>
+<table>
+<tr><th>ID</th><th>Case</th><th>Result</th><th>Evidence</th><th>Recommendation</th></tr>
+<tr><td>FT-001</td><td>Signed-in session reaches the landlord dashboard</td><td class="pass">Pass</td><td>Account chip “Paywall Tester / Landlord” on every page opened</td><td>Keep</td></tr>
+<tr><td>FT-002</td><td>Main landlord links open a page</td><td class="pass">Pass</td><td>Calendar, properties, tenancies, rent, repairs issue list, people, compliance, documents, profile, and billing all returned a page. /admin/property-repairs and /admin/repairs are 404; the live list is /admin/property-repairs/issue-list</td><td>Remove or redirect the short URLs</td></tr>
+<tr><td>FT-003</td><td>Calendar renders a month</td><td class="pass">Pass</td><td>/admin/calendar shows October 2026 with month, week, and day controls</td><td>Keep</td></tr>
+<tr><td>FT-004</td><td>Rent empty state explains the next step</td><td class="pass">Pass</td><td>Rent page states there are no properties and points at adding one; rent-pay shows the bank-details form</td><td>Keep the copy; do not cover it with the setup overlay</td></tr>
+<tr><td>FT-005</td><td>A landlord with no homes can use the rest of the workspace</td><td class="fail">Fail</td><td>The setup overlay (postcode, Finish later, Later) is in the accessibility tree on calendar, repairs, raise-repair, documents, and the legacy create page. LandlordOnboardingService::shouldIncludeOverlay returns true whenever shouldShow is true, which is the no-property state</td><td>Show the overlay on the dashboard and properties only. Leave calendar, repairs, documents, and settings clickable</td></tr>
+<tr><td>FT-006</td><td>First property overlay uses the right title</td><td class="fail">Fail</td><td>After /admin/properties?add_property=1 the heading is “Add another property” with zero homes. The blade uses session add_mode, and isAddingProperty is only a session flag, not a property count</td><td>Use “Add your first property” when the account has no homes</td></tr>
+<tr><td>FT-007</td><td>Properties empty state is one message</td><td class="fail">Fail</td><td>The page shows “Add Your First Property” and “importing multiple properties at once” on the left, and “No homes yet” on the right. There is no import control. Screenshot of /admin/properties?add_property=1</td><td>One empty state. Delete the import sentence until import exists</td></tr>
+<tr><td>FT-008</td><td>Adding a property uses one form</td><td class="fail">Fail</td><td>Navbar and property_create_url() open the postcode overlay. /admin/properties/create still renders Quick Add: Property Name, free-text Country, sales / lettings / both, bedrooms, bathrooms, receptions, Price. The overlay was also open on top of that form</td><td>Redirect landlords away from Quick Add. Keep one create path</td></tr>
+<tr><td>FT-009</td><td>Old quick-add URL still works for non-landlords</td><td class="fail">Fail</td><td>GET /admin/properties/quick is 404. property_create_url() still returns that route when the user is not a landlord. The property view still links admin.properties.quick</td><td>Point the helper and the view at a route that exists</td></tr>
+<tr><td>FT-010</td><td>Upload Document starts an upload</td><td class="fail">Fail</td><td>Both buttons on /admin/documents have href /admin/properties (documents/index.blade.php lines 11 and 64). With no homes, that page is the empty list plus the overlay</td><td>Link to a document form, or hide the button until a property exists and say so</td></tr>
+<tr><td>FT-011</td><td>Raise a repair without a property</td><td class="fail">Fail</td><td>/admin/property-repairs/raise-repair-issue-create: property select has only “Select a property” and the helper text “Add a property first”. Submit stays required, so the flow stops. Area select is required and lists the legacy catalogue</td><td>Block the page with one action: add a property. Do not show a required area list that cannot be completed</td></tr>
+<tr><td>FT-012</td><td>Repair area list is landlord home areas</td><td class="fail">Fail</td><td>The select options are names such as “General maintenance 6ac61293406b1” and “Smell Gas 6ac61293600b8”. repair_categories has 115 rows. Sample ids 16, 18, 20, 22, 24, 26 are “General maintenance” plus a hash, parent_id null. The new form prints $categories with no account or parent filter</td><td>Seed a short fixed area list for the landlord form. Stop writing test hashes into the shared categories table</td></tr>
+</table>
+<p>Functional score: 4 pass, 8 fail, 0 blocked. 4/12 = 33%.</p>
+
+<h2>5. UI and layout</h2>
+<table>
+<tr><th>ID</th><th>Case</th><th>Result</th><th>Evidence</th><th>Recommendation</th></tr>
+<tr><td>UI-001</td><td>Properties empty layout</td><td class="fail">Fail</td><td>Left column empty card sits lower than the right “No homes yet” pane. Filters (All statuses, Expiring compliance, Open repairs, Reset) sit above an empty list</td><td>One column, no filters until there is a row</td></tr>
+<tr><td>UI-002</td><td>Overlay versus page content</td><td class="fail">Fail</td><td>On properties the overlay covers both empty states. The same overlay is present on calendar, repairs, and documents, so those pages cannot be aligned or used until Later</td><td>Dismiss or omit the overlay before measuring the page underneath</td></tr>
+<tr><td>UI-003</td><td>Repair photo control</td><td class="fail">Fail</td><td>common_form.blade.php uses data-toggle="aizuploader". The Browse control and the file field are class d-none. Only the label “Upload Photos” and a hidden input remain</td><td>Use a normal file input on the landlord form</td></tr>
+<tr><td>UI-004</td><td>Calendar grid</td><td class="pass">Pass</td><td>Month grid, weekday headers, and October 2026 are present</td><td>Keep</td></tr>
+<tr><td>UI-005</td><td>Sidebar labels</td><td class="pass">Pass</td><td>Dashboard through Settings are readable and in one list for this landlord</td><td>Keep the flat list</td></tr>
+</table>
+<p>UI score: 2 pass, 3 fail. 2/5 = 40%.</p>
+
+<h2>6. Content</h2>
+<table>
+<tr><th>ID</th><th>Case</th><th>Result</th><th>Evidence</th><th>Recommendation</th></tr>
+<tr><td>CT-001</td><td>Visible raw HTML or CSS</td><td class="pass">Pass</td><td>Text-node scan of the landlord pages found no visible “&lt;tag&gt;” content. Profile and dashboard &lt;style&gt; blocks are display none</td><td>Keep unescaped {!! $content !!} in control-center off until stored HTML is sanitized; none of it was visible on these empty pages</td></tr>
+<tr><td>CT-002</td><td>Import promise</td><td class="fail">Fail</td><td>“importing multiple properties at once” with only an Add Property link</td><td>Remove the sentence</td></tr>
+<tr><td>CT-003</td><td>Trial name</td><td class="fail">Fail</td><td>Banner says “Pro Trial” for the Landlord Basic plan</td><td>Use the plan name</td></tr>
+<tr><td>CT-004</td><td>Settings menu</td><td class="fail">Fail</td><td>Plan &amp; Billing and Workspace Settings both go to /admin/billing</td><td>Give workspace settings its own page or drop the second label</td></tr>
+<tr><td>CT-005</td><td>Repair status words</td><td class="fail">Fail</td><td>Repair tabs show Reviewing, In Progress, Completed. CrmLanguage maps stored “Pending” to display “Reviewing”. client_facing_repair_statuses still lists Pending and Under Process for landlords</td><td>One status vocabulary in the database, the tabs, and the helper</td></tr>
+</table>
+<p>Content score: 1 pass, 4 fail. 1/5 = 20%.</p>
+
+<h2>7. Dead ends observed</h2>
+<table>
+<tr><th>Start</th><th>Where it stops</th><th>Recommendation</th></tr>
+<tr><td>Documents → Upload Document</td><td>Property list, not an upload</td><td>Change the href</td></tr>
+<tr><td>Repairs → Add Repair</td><td>Required property select with no options</td><td>Send the user to add a property</td></tr>
+<tr><td>Tenancies create, People, Compliance</td><td>Copy says add a property or a tenancy first</td><td>Acceptable empty copy, but the overlay sits on top of it</td></tr>
+<tr><td>Navbar + Add New → Property</td><td>Overlay titled “Add another property”</td><td>Fix the title; this path is the intended one</td></tr>
+<tr><td>Direct /admin/properties/create</td><td>Old Quick Add, still submittable, overlay on top</td><td>Redirect</td></tr>
+</table>
+
+<h2>8. Two formats on one database</h2>
+<table>
+<tr><th>Surface</th><th>New</th><th>Still in the product</th><th>Recommendation</th></tr>
+<tr><td>Property create</td><td>Postcode overlay, open-data match</td><td>Quick Add posts prop_name, country as text, transaction_type sales/lettings, bedroom counts. Property model still fillable prop_name</td><td>One write path</td></tr>
+<tr><td>Navigation</td><td>aside2 flat landlord list</td><td>aside.blade.php is unused. Non-landlords still get the old submenu, and their create URL 404s</td><td>Delete or redirect the dead route</td></tr>
+<tr><td>Repair areas</td><td>Label “Where in the home”</td><td>Shared repair_categories, 115 rows, hashed names from older runs</td><td>Do not list the shared catalogue on the landlord form</td></tr>
+<tr><td>Uploads</td><td>Landlord card layout</td><td>aizuploader from the old admin theme, browse hidden</td><td>Replace on landlord forms</td></tr>
+<tr><td>Profile</td><td>Edit uses title and country_id</td><td>Show page still prints address lines and country name, often N/A</td><td>Show the same fields the edit form saves</td></tr>
+<tr><td>Invoices</td><td>Landlord plan</td><td>GET /admin/invoices returns 403 “not available on the landlord plan”</td><td>Hide the legacy entry points that still reach it</td></tr>
+</table>
+
+<h2>9. Security</h2>
+<p class="na">Not scored. This walkthrough did not repeat guest access, checkout, or permission tests. The landlord session was already authenticated. /admin/invoices returned 403 for this plan, which matches the plan gate.</p>
+
+<h2>10. Performance</h2>
+<p class="na">Not scored. No timings were collected for this pass. Pages opened completed in the local server.</p>
+
+<h2>11. SEO</h2>
+<p class="na">Not scored. Authenticated app pages, not the public site.</p>
+
+<h2>12. Compatibility</h2>
+<p class="na">Not scored. Chrome desktop only. No second browser and no phone viewport.</p>
+
+<h2>13. Defects</h2>
+<table>
+<tr><th>ID</th><th>Severity</th><th>Title</th><th>Recommendation</th></tr>
+<tr><td>BUG-001</td><td>High</td><td>Setup overlay covers every landlord page until a property exists</td><td>Limit shouldIncludeOverlay on the first run the same way add-another mode is already limited</td></tr>
+<tr><td>BUG-002</td><td>High</td><td>Upload Document opens the property index</td><td>Point both links at a document upload</td></tr>
+<tr><td>BUG-003</td><td>High</td><td>Repair area dropdown is 115 hashed legacy categories</td><td>Filter or replace the list; clean the shared table</td></tr>
+<tr><td>BUG-004</td><td>High</td><td>Quick Add and the postcode overlay both create properties</td><td>Redirect /admin/properties/create for landlords</td></tr>
+<tr><td>BUG-005</td><td>Medium</td><td>Overlay says “Add another property” with zero homes</td><td>Title from property count</td></tr>
+<tr><td>BUG-006</td><td>Medium</td><td>Two empty states, one of which promises import</td><td>Single empty state</td></tr>
+<tr><td>BUG-007</td><td>Medium</td><td>Repair photos depend on aizuploader with Browse hidden</td><td>Native file input</td></tr>
+<tr><td>BUG-008</td><td>Medium</td><td>Workspace Settings and Plan &amp; Billing are the same page; banner says Pro Trial</td><td>Separate settings; use the plan name</td></tr>
+<tr><td>BUG-009</td><td>Medium</td><td>/admin/properties/quick is 404 and is still the non-landlord create URL</td><td>Fix property_create_url and the property view link</td></tr>
+<tr><td>BUG-010</td><td>Low</td><td>Repair statuses are Pending in code and Reviewing on the tabs</td><td>One list</td></tr>
+</table>
+
+<h2>14. Score</h2>
+<table>
+<tr><th>Category</th><th>Result</th><th>Weight used</th></tr>
+<tr><td>Functional</td><td>33% (4/12)</td><td>30</td></tr>
+<tr><td>UI</td><td>40% (2/5)</td><td>15</td></tr>
+<tr><td>Content</td><td>20% (1/5)</td><td>5</td></tr>
+<tr><td>Security, performance, SEO, compatibility</td><td>Excluded</td><td>0</td></tr>
+</table>
+<p>Weights that were scored sum to 50. Overall = (33.33×30 + 40×15 + 20×5) / 50 = <strong>34%</strong>. Rating band 0–49 is Critical. Final status Not Ready.</p>
+
+<h2>15. Limitations</h2>
+<ul>
+<li>One landlord trial account with an empty portfolio. Estate-agent, contractor, tenant, and super-admin menus were not clicked.</li>
+<li>The overlay was left in the session on purpose so later pages could show whether it follows the user. Later was not used as the main path.</li>
+<li>Clicks that the browser tool did not follow were not recorded as dead buttons. Dead targets in this report are hrefs, required fields with no options, or controls marked hidden in the template.</li>
+<li>Ctrl+K was visible and was not proven broken.</li>
+<li>No production data was changed. The local database already contained the hashed repair categories.</li>
+</ul>
+
+<h2>16. Recommendation</h2>
+<p>Do not treat the landlord workspace as one product yet. Restrict the setup overlay, retire Quick Add for this plan, stop listing the shared repair catalogue, and fix the document button. Re-test the same account after those four changes, then walk the same pages with one real property so edit screens can be compared with the columns they save.</p>
+
+</body>
+</html>

@@ -283,6 +283,23 @@ class ContractorProfileController extends Controller
         return redirect()->route('contractor.jobs.index')->with('success', 'Sent for review. We’ll email you when you can take jobs.');
     }
 
+    public function acceptMarketplace(Request $request)
+    {
+        $request->validate([
+            'accept' => ['accepted'],
+        ]);
+        $profile = $request->user()->contractorProfile;
+        abort_unless($profile && $profile->approval_status === ContractorProfile::APPROVED, 403);
+        $already = $profile->onMarketplace();
+        $profile->acceptMarketplace($request->user());
+
+        return redirect()
+            ->route('contractor.jobs.index')
+            ->with('success', $already
+                ? 'You are already on the marketplace.'
+                : 'You are on the marketplace. Other landlords can now send you jobs.');
+    }
+
     private function alertAdmins(ContractorProfile $profile, string $subject): void
     {
         $this->mail->toAdmins(

@@ -13,6 +13,10 @@ return [
 
     'privacy_version' => '2026-10',
 
+    // Bump this when the marketplace commission terms change. Contractors who
+    // already accepted keep the rate stored on their profile.
+    'marketplace_terms_version' => '2026-10',
+
     // Defaults; Super Admin can override these on the contractor settings page.
     'defaults' => [
         'public_liability_minimum' => 1000000,
@@ -27,6 +31,10 @@ return [
         'reminder_days' => [30, 14, 7],
         'emergency_sms' => 1,
         'invoice_due_days' => 14,
+        // Percent of the invoice gross kept by Resisquare. 0 charges nothing.
+        'job_commission_percent' => 0,
+        // contractor: deducted from the contractor's share. landlord: added on top of the invoice.
+        'job_commission_bearer' => 'contractor',
         'trade_documents' => [
             'gas' => ['gas_safe'],
             'electrical' => ['electrical_scheme'],

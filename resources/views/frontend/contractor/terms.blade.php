@@ -8,6 +8,9 @@
     <h2>Contractor terms and privacy notice</h2>
     <p class="auth-muted">Version {{ config('contractor_marketplace.privacy_version') }}. Applies to work on properties in England.</p>
 
+    <h3 class="auth-h3">Marketplace</h3>
+    <p>If a landlord invites you, only that landlord can send you jobs. To be shown to other landlords you accept the marketplace terms. Resisquare then keeps the commission rate shown when you accept, on each marketplace job you are awarded. A later change to the rate applies to new acceptances. Work from a landlord who invited you stays between you and that landlord.</p>
+
     <h3 class="auth-h3">Using the platform</h3>
     <p>You join free. You are self-employed or a company, not our employee, and you set your own prices. Landlords choose who to instruct. We do not deduct or report CIS; the landlord or their accountant decides how CIS applies.</p>
     <p>You must hold the insurance and registrations your trades need, including Gas Safe for gas work and a competent person scheme for electrical work, and keep them in date. We pause your account if they lapse.</p>

@@ -4,6 +4,11 @@
 <head>
     <title>@yield('title', 'Resisquare')</title>
     <meta name="description" content="@yield('meta_description', 'Resisquare helps landlords manage homes, rent, and repairs in one workspace.')">
+    <link rel="canonical" href="{{ url()->current() }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ url()->current() }}">
+    <meta property="og:title" content="@yield('title', 'Resisquare')">
+    <meta property="og:description" content="@yield('meta_description', 'Resisquare helps landlords manage homes, rent, and repairs in one workspace.')">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 	<meta name="app-url" content="{{ getBaseURL() }}">
 	<meta name="file-base-url" content="{{ getFileBaseURL() }}">

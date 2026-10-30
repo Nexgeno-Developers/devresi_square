@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ContractorSettings;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -48,6 +49,9 @@ class ContractorProfile extends Model
         'submitted_at',
         'terms_accepted_at',
         'privacy_version',
+        'marketplace_accepted_at',
+        'marketplace_terms_version',
+        'marketplace_commission_percent',
         'paused_at',
         'pause_reason',
         'removed_at',
@@ -78,6 +82,8 @@ class ContractorProfile extends Model
         'reviewed_at' => 'datetime',
         'submitted_at' => 'datetime',
         'terms_accepted_at' => 'datetime',
+        'marketplace_accepted_at' => 'datetime',
+        'marketplace_commission_percent' => 'decimal:2',
         'paused_at' => 'datetime',
         'removed_at' => 'datetime',
         'claim_invited_at' => 'datetime',
@@ -112,6 +118,31 @@ class ContractorProfile extends Model
     public function displayName(): string
     {
         return $this->trading_name ?: ($this->legal_name ?: ($this->user?->name ?: 'Contractor'));
+    }
+
+    public function onMarketplace(): bool
+    {
+        return $this->marketplace_accepted_at !== null;
+    }
+
+    /** Records the commission rate in force today. Later rate changes do not rewrite this. */
+    public function acceptMarketplace(?User $actor = null): void
+    {
+        if ($this->onMarketplace()) {
+            return;
+        }
+
+        $percent = ContractorSettings::commissionPercent();
+        $version = (string) config('contractor_marketplace.marketplace_terms_version');
+        $this->forceFill([
+            'marketplace_accepted_at' => now(),
+            'marketplace_terms_version' => $version,
+            'marketplace_commission_percent' => $percent,
+        ])->save();
+        $this->log('marketplace_accepted', $actor, null, 'Agreed marketplace commission of '.$percent.'%.', [
+            'version' => $version,
+            'commission_percent' => $percent,
+        ]);
     }
 
     public function hasBankDetails(): bool

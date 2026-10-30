@@ -113,18 +113,51 @@
     <div class="card lw-card mb-3">
         <div class="card-body">
             <div class="lw-section-title mt-0">History</div>
-            @if($repairIssue->repairHistories->count())
-                <ul class="list-unstyled mb-0">
-                    @foreach($repairIssue->repairHistories as $history)
+            @php
+                $historyEntries = $repairIssue->repairHistories->map(function ($history) {
+                    $changed = filled($history->previous_status) && (string) $history->previous_status !== (string) $history->new_status;
+
+                    return (object) [
+                        'at' => $history->created_at,
+                        'title' => $history->action,
+                        'body' => $history->note,
+                        'meta' => $changed ? $history->previous_status.' → '.$history->new_status : null,
+                        'who' => null,
+                    ];
+                });
+                if (\Illuminate\Support\Facades\Schema::hasTable('repair_desk_events')) {
+                    $historyEntries = $historyEntries->concat(
+                        $repairIssue->deskRequests()->with('events.actor')->get()->flatMap(fn ($desk) => $desk->events)->map(function ($event) {
+                            $fromTeam = ! $event->actor || $event->actor->hasRole('Super Admin');
+
+                            return (object) [
+                                'at' => $event->created_at,
+                                'title' => $event->label(),
+                                'body' => $event->body,
+                                'meta' => null,
+                                'who' => $fromTeam ? 'Resisquare' : $event->actor->name,
+                            ];
+                        })
+                    );
+                }
+                $historyEntries = $historyEntries->sortByDesc(fn ($entry) => $entry->at?->getTimestamp() ?? 0)->values();
+            @endphp
+            @if($historyEntries->isEmpty())
+                <p class="mb-0 text-muted">No history yet.</p>
+            @else
+                <ul class="list-unstyled mb-0 repair-history">
+                    @foreach($historyEntries as $entry)
                         <li class="mb-2 pb-2 border-bottom">
-                            <strong>{{ $history->action }}</strong>
-                            <span class="text-muted"> · {{ $history->previous_status }} → {{ $history->new_status }}</span>
-                            <div class="small text-muted">{{ \Carbon\Carbon::parse($history->created_at)->format('j M Y, H:i') }}</div>
+                            <strong>{{ $entry->title }}</strong>
+                            @if($entry->meta)<span class="text-muted"> · {{ $entry->meta }}</span>@endif
+                            @if(filled($entry->body))<div>{{ $entry->body }}</div>@endif
+                            <div class="small text-muted">
+                                @if($entry->who){{ $entry->who }} · @endif
+                                {{ $entry->at ? \Carbon\Carbon::parse($entry->at)->format('j M Y, H:i') : '' }}
+                            </div>
                         </li>
                     @endforeach
                 </ul>
-            @else
-                <p class="mb-0 text-muted">No history yet.</p>
             @endif
         </div>
     </div>

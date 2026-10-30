@@ -23,6 +23,7 @@ class RepairJobOfferService
         private readonly CrmNotificationService $notifications,
         private readonly ContractorMail $mail,
         private readonly ContractorSms $sms,
+        private readonly ContractorDirectory $directory,
     ) {
     }
 
@@ -123,6 +124,11 @@ class RepairJobOfferService
             $profile = $user?->contractorProfile;
             if (! $profile) {
                 $skipped[] = 'Contractor #'.$contractorId.' is not on the approved list.';
+                continue;
+            }
+            $accountId = (int) ($repair->account_id ?: $request->account_id);
+            if (! $this->directory->isListedFor($profile, $accountId)) {
+                $skipped[] = $profile->displayName().' is not on your list. They only take jobs from landlords who invited them.';
                 continue;
             }
             $decision = app(ContractorEligibility::class)->assess($profile, $repair, $trade);

@@ -133,6 +133,11 @@ class Event extends Model implements Auditable
         return $this->hasMany(EventReminder::class, 'event_id');
     }
 
+    public function responses()
+    {
+        return $this->hasMany(EventResponse::class, 'event_id');
+    }
+
     /**
      * All the Properties attached to this Event.
      */

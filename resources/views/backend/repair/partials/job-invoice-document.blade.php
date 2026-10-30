@@ -11,9 +11,28 @@
     $billName = $billTo['name'] ?? null;
     $billContact = $billTo['contact'] ?? null;
     $showContact = filled($billContact) && $billContact !== $billName;
+    $showContractorBank = (bool) ($showContractorBank ?? false);
+    $cardPayment = $invoice->cardPayment;
+    $platformFee = (! $showContractorBank && isset($charge) && ($charge['bearer'] ?? '') === 'landlord' && (float) ($charge['commission'] ?? 0) >= 0.01)
+        ? $charge
+        : null;
     $statusLine = $invoice->status === 'paid' && $invoice->paid_at
         ? 'Paid on '.rs_date($invoice->paid_at)
         : $invoice->statusLabel();
+    if ($cardPayment && $cardPayment->isPaid()) {
+        if ($showContractorBank) {
+            $owed = (float) $cardPayment->contractor_amount;
+            if ($owed < 0.01) {
+                $statusLine = 'The landlord has paid. No transfer is due after the Resisquare commission.';
+            } elseif ($cardPayment->payoutIsSent()) {
+                $statusLine = 'Resisquare sent £'.number_format($owed, 2).($cardPayment->payout_reference ? '. Reference '.$cardPayment->payout_reference : '').'.';
+            } else {
+                $statusLine = 'The landlord has paid. Resisquare will transfer £'.number_format($owed, 2).' to the account on this invoice.';
+            }
+        } else {
+            $statusLine = 'Paid on '.rs_date($invoice->paid_at).'. Charged £'.number_format((float) $cardPayment->landlord_amount, 2).'. Resisquare pays the contractor.';
+        }
+    }
 @endphp
 <style>
     .job-invoice {
@@ -130,12 +149,22 @@
                 <td class="num" colspan="{{ $invoice->vat_number ? 3 : 2 }}">Amount due</td>
                 <td class="num">£{{ number_format((float) $invoice->gross_amount, 2) }}</td>
             </tr>
+            @if($platformFee)
+                <tr>
+                    <td class="num" colspan="{{ $invoice->vat_number ? 3 : 2 }}">Resisquare commission ({{ rtrim(rtrim(number_format((float) $platformFee['percent'], 2), '0'), '.') }}%)</td>
+                    <td class="num">£{{ number_format((float) $platformFee['commission'], 2) }}</td>
+                </tr>
+                <tr class="due">
+                    <td class="num" colspan="{{ $invoice->vat_number ? 3 : 2 }}">Card total</td>
+                    <td class="num">£{{ number_format((float) $platformFee['landlord_amount'], 2) }}</td>
+                </tr>
+            @endif
         </tfoot>
     </table>
 
-    @if($payment !== [])
+    @if($showContractorBank && $payment !== [])
         <div class="pay">
-            <div class="label">How to pay</div>
+            <div class="label">Resisquare pays this account</div>
             <p>Account name {{ $payment['account_name'] ?? '' }}</p>
             @if(filled($payment['bank_name'] ?? null))<p>{{ $payment['bank_name'] }}</p>@endif
             <p>Sort code {{ $payment['sort_code'] ?? '' }}</p>

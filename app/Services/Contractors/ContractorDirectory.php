@@ -130,6 +130,26 @@ class ContractorDirectory
         return $sent;
     }
 
+    /**
+     * Marketplace contractors are listed for every landlord. Anyone else is
+     * listed only for the accounts that invited them.
+     */
+    public function isListedFor(ContractorProfile $profile, int $accountId): bool
+    {
+        if ($profile->approval_status !== ContractorProfile::APPROVED || $profile->removed_at !== null) {
+            return false;
+        }
+        if ($profile->onMarketplace()) {
+            return true;
+        }
+
+        return AccountContractor::query()
+            ->where('account_id', $accountId)
+            ->where('contractor_user_id', $profile->user_id)
+            ->where('invited', true)
+            ->exists();
+    }
+
     public function toggleFavourite(int $accountId, int $contractorUserId): bool
     {
         $link = AccountContractor::query()->firstOrNew(['account_id' => $accountId, 'contractor_user_id' => $contractorUserId]);

@@ -215,17 +215,37 @@
             // Utility: render the human‐readable summary in #rruleSummary
             function renderRRuleSummary(rruleString, exdatesArray) {
                 if (!rruleString) {
-                    $('#rruleSummary').text('No recurrence');
+                    $('#rruleSummary').text('Does not repeat');
+                    $('#editRRuleBtn').text('Set repeat');
                     return;
                 }
                 try {
                     const rule = RRule.fromString(rruleString);
-                    const human = rule.toText(); // e.g. “Every week on Monday, Wednesday until December 31, 2025”
-                    $('#rruleSummary').text(human);
+                    const human = rule.toText();
+                    $('#rruleSummary').text(human.charAt(0).toUpperCase() + human.slice(1));
+                    $('#editRRuleBtn').text('Change repeat');
                 }
                 catch (e) {
-                    $('#rruleSummary').text('Invalid recurrence rule');
+                    $('#rruleSummary').text('Repeat needs another look');
+                    $('#editRRuleBtn').text('Change repeat');
                 }
+            }
+
+            function setVisitDialog(mode, copy) {
+                const modal = document.getElementById('eventModal');
+                modal.dataset.mode = mode;
+                $('#eventKicker').text(copy.kicker);
+                $('#eventModalTitle').text(copy.title);
+                if (mode === 'create') {
+                    $('#eventDeleteBtn').addClass('d-none').off('click');
+                    $('#eventStage').text('');
+                    $('#eventResponses').addClass('d-none');
+                } else {
+                    $('#eventEditLead').text(copy.lead);
+                    $('#eventStage').text(copy.stage || 'Scheduled');
+                    $('#eventDeleteBtn').removeClass('d-none').text(copy.deleteLabel);
+                }
+                $('#eventSubmitBtn').text(mode === 'create' ? 'Create visit' : 'Save changes');
             }
             
             function onFrequencyChange() {
@@ -595,7 +615,10 @@
                     $('input[name="form_action"]').val('create');
                     $('#eventForm [data-error-for]').empty();
                     $('#eventForm .js-field-error, #eventFormAlert').remove();
-                    $('#eventModal .modal-footer .js-single-delete-btn').remove();
+                    setVisitDialog('create', {
+                        kicker: 'New visit',
+                        title: 'Add to the calendar'
+                    });
                     var start = startStr || '';
                     var end = endStr || start;
                     if (start && start.indexOf('T') === -1) {
@@ -608,7 +631,8 @@
                     updateEndMin();
                     $('#rruleInput').val('');
                     $('#exdatesInput').val('');
-                    $('#rruleSummary').text('No recurrence');
+                    $('#rruleSummary').text('Does not repeat');
+                    $('#editRRuleBtn').text('Set repeat');
                     $('#freqSelect').val('DAILY');
                     $('#intervalInput').val(1);
                     onFrequencyChange();
@@ -616,8 +640,8 @@
                     $endAfterC.addClass('d-none');
                     $endByDateC.addClass('d-none');
                     $exdateList.empty();
-                    $('#type_id').val('');
-                    $('#sub_type_id').html('<option value="">— Select Sub-Type —</option>');
+                    $('#eventResponses').addClass('d-none');
+                    $('#eventRsvp').addClass('d-none');
                     $('#reminderList').empty();
                     $('#addReminderBtn').click();
                     $('.select-entity').each(function () {
@@ -634,14 +658,48 @@
                 var d = String(today.getDate()).padStart(2, '0');
                 openCreateEvent(y + '-' + m + '-' + d);
             };
+            function calendarStatusColors(status) {
+                var palette = {
+                    Confirmed: { backgroundColor: '#e7f6ee', borderColor: '#b7e4c7', textColor: '#0f6b3c' },
+                    Scheduled: { backgroundColor: '#eef1f8', borderColor: '#d5dced', textColor: '#0f173a' },
+                    Pending: { backgroundColor: '#fff4e8', borderColor: '#ffd7b8', textColor: '#9a3412' },
+                    Cancelled: { backgroundColor: '#fdecec', borderColor: '#f6c7c4', textColor: '#b42318' },
+                    Rescheduled: { backgroundColor: '#f3e8ff', borderColor: '#e4d4fb', textColor: '#6d28d9' }
+                };
+                return palette[status] || palette.Scheduled;
+            }
+
+            function escapeCalendarText(value) {
+                return String(value == null ? '' : value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
             var calendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
                 locale: 'en-gb',
                 firstDay: 1,
+                height: '100%',
+                expandRows: true,
+                nowIndicator: true,
+                dayMaxEventRows: 3,
+                eventDisplay: 'block',
+                buttonText: {
+                    today: 'Today',
+                    month: 'Month',
+                    week: 'Week',
+                    day: 'Day'
+                },
                 headerToolbar: {
-                    right: 'prev,next today',
+                    left: 'prev,next today',
                     center: 'title',
-                    left: 'dayGridMonth,timeGridWeek,timeGridDay'
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                eventDataTransform: function (event) {
+                    var status = event.status || (event.extendedProps && event.extendedProps.event_status) || 'Scheduled';
+                    return Object.assign({}, event, calendarStatusColors(status));
                 },
                 events: '{{ route("backend.events.index") }}',
                 editable: true,
@@ -686,10 +744,6 @@
                     }
 
                     // If no recurrence → treat as a single
-                    if ((inst.invite_ids || []).length) {
-                        preselectSelect2($('#invite-select'), inst.invite_ids, inst.users);
-                    }
-
                     $('#visible-to-tenant').prop('checked', Boolean(inst.visible_to_tenant));
 
                     if (!inst.rrule) {
@@ -732,36 +786,85 @@
                 },
                 eventContent: function (arg) {
                     const hasReminder = arg.event.extendedProps.remindersCount > 0;
-                    let html = `<div>${arg.event.title}</div>`;
-                    if (hasReminder) {
-                        html += `<div class="fc-event-bell">🔔</div>`;
+                    const start = arg.event.start;
+                    const time = start
+                        ? start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                        : '';
+                    const title = escapeCalendarText(arg.event.title);
+                    const label = escapeCalendarText((time ? time + ' ' : '') + (arg.event.title || ''));
+                    let html = `<div class="fc-event-chip" title="${label}">`;
+                    if (time) {
+                        html += `<span class="fc-event-time">${escapeCalendarText(time)}</span>`;
                     }
+                    html += `<span class="fc-event-name">${title}</span>`;
+                    if (hasReminder) {
+                        html += `<span class="fc-event-bell" title="Reminder"></span>`;
+                    }
+                    html += `</div>`;
                     return { html };
-                },
-                events: '{{ route("backend.events.index") }}'
+                }
             });
+
+            const currentUserId = {{ (int) auth()->id() }};
+            const respondUrlTemplate = '{{ route("backend.events.respond", ["event" => "__EVENT__"]) }}';
+
+            function renderEventReplies(inst) {
+                const replies = inst.responses || [];
+                const $box = $('#eventResponses');
+                const $list = $('#eventResponseList');
+                const mine = replies.find(function (reply) { return Number(reply.user_id) === currentUserId; });
+                if (!replies.length) {
+                    $box.addClass('d-none');
+                    return;
+                }
+                $box.removeClass('d-none');
+                $list.html(replies.map(function (reply) {
+                    const note = reply.note ? escapeCalendarText(reply.note) : '';
+                    return '<div class="reply-row"><span>' + escapeCalendarText(reply.name || 'Guest') + '</span><span>' + escapeCalendarText(reply.response || 'pending') + (note ? ' · ' + note : '') + '</span></div>';
+                }).join(''));
+                $('#rsvpNote').val(mine && mine.note ? mine.note : '');
+                $('#rsvpError').text('');
+                $('#eventRsvp').toggleClass('d-none', !mine);
+                $('#eventRsvp').data('event-id', inst.event_id);
+            }
+
+            function sendRsvp(response) {
+                const eventId = $('#eventRsvp').data('event-id');
+                const note = $('#rsvpNote').val();
+                if (response === 'rejected' && !String(note || '').trim()) {
+                    $('#rsvpError').text('Add a note to decline.');
+                    return;
+                }
+                $('#rsvpError').text('');
+                $.ajax({
+                    url: respondUrlTemplate.replace('__EVENT__', String(eventId)),
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        response: response,
+                        note: note
+                    },
+                    success: function () {
+                        $('#eventModal').modal('hide');
+                        calendar.refetchEvents();
+                    },
+                    error: function (xhr) {
+                        const message = xhr.responseJSON && xhr.responseJSON.message
+                            ? xhr.responseJSON.message
+                            : 'Could not save your reply.';
+                        $('#rsvpError').text(message);
+                    }
+                });
+            }
+
+            $('#rsvpAccept').on('click', function () { sendRsvp('accepted'); });
+            $('#rsvpReject').on('click', function () { sendRsvp('rejected'); });
 
             calendar.render();
-
-
-            $('#type_id').on('change', function () {
-                var typeId = $(this).val();
-                var $sub = $('#sub_type_id');
-
-                // Clear existing options
-                $sub.html('<option value="">— Select Sub-Type —</option>');
-
-                if (!typeId) {
-                    return; // no type chosen
-                }
-
-                $.getJSON('/admin/api/event-sub-types/' + typeId, function (data) {
-                    // data is an object {id: name, ...}
-                    $.each(data, function (id, name) {
-                        $sub.append(`<option value="${id}">${name}</option>`);
-                    });
-                });
+            window.addEventListener('load', function () {
+                calendar.updateSize();
             });
+
 
             $('#eventForm').on('submit', function (e) {
                 e.preventDefault();
@@ -809,7 +912,16 @@
                 const inst = info.event.extendedProps;
                 const isSingle = (mode === 'single');
                 const isSeries = (mode === 'series');
-                const isSplitFuture = (mode === 'future');
+                const scopeLead = isSingle
+                    ? 'You are editing this occurrence only.'
+                    : isSeries
+                        ? 'You are editing the whole series.'
+                        : 'You are editing this occurrence and every one after it.';
+                const deleteLabel = isSingle
+                    ? 'Delete this occurrence'
+                    : isSeries
+                        ? 'Delete entire series'
+                        : 'Delete this and future';
                 // onsole.log(inst.status);
                 // clear + reset form
                 $('#eventForm')[0].reset();
@@ -821,18 +933,22 @@
                 $('input[name="master_id"]').val(inst.master_id ?? '');
                 $('input[name="form_action"]').val('updateMaster');
                 $('input[name="choice_action"]').val(mode);
+                setVisitDialog('edit', {
+                    kicker: 'Edit visit',
+                    title: info.event.title || 'Edit visit',
+                    lead: scopeLead,
+                    stage: inst.event_status || 'Scheduled',
+                    deleteLabel: deleteLabel
+                });
                 // console.log('Setting status:', inst.event_status);
                 // console.log('Available options:', $('select[name="status"]').html());
 
-                // fill the common fields (title, office, etc.)
                 $('input[name="title"]').val(info.event.title);
-                $('input[name="office"]').val(inst.office);
-                $('select[name="status"]').val((inst.event_status || '').trim());
                 $('input[name="diary_owner"]').val(inst.diary_owner);
                 $('input[name="on_behalf_of"]').val(inst.on_behalf_of);
-                $('input[name="location"]').val(inst.location);
                 $('input[name="reminder"]').val(inst.reminder);
                 $('textarea[name="description"]').val(inst.description);
+                renderEventReplies(inst);
 
                 // start / end: always use the clicked instance’s dates
                 const start = moment(info.event.start).format('YYYY-MM-DDTHH:mm');
@@ -847,70 +963,36 @@
                 renderRRuleSummary(inst.rrule, inst.exdates ? JSON.parse(inst.exdates) : []);
 
                 // For editing the rule itself, always show the button
-                $('#editRRuleBtn').show();
-
-                // type / sub-type
-                $('#type_id').val(inst.type_id);
-                $('#sub_type_id').html('<option value="">— Select Sub‑Type —</option>');
-                if (inst.type_id) {
-                    $.getJSON('/admin/api/event-sub-types/' + inst.type_id, data => {
-                        $.each(data, (id, name) => {
-                            $('#sub_type_id').append($('<option>').val(id).text(name));
-                        });
-                        $('#sub_type_id').val(inst.sub_type_id);
-                    });
-                }
-
-                // ---------- DELETE BUTTON ----------
-                const $footer = $('#eventModal .modal-footer');
-                $footer.find('.js-delete-btn').remove(); // remove existing delete buttons
-
-                const btnText = isSingle
-                    ? 'Delete this occurrence'
-                    : isSeries
-                        ? 'Delete entire series'
-                        : 'Delete this & future';
-
                 const targetId = isSingle ? inst.event_id : inst.master_id;
-                const url = '{{ route("backend.events.deleteInstance", ":id") }}'.replace(':id', targetId);
-                const method = 'POST';
-
-                const $del = $('<button>')
-                    .addClass('btn btn-danger me-auto js-delete-btn')
-                    .text(btnText)
-                    .on('click', e => {
-                        e.preventDefault();
-                        if (!confirm(btnText + '?')) return;
-
-                        const data = {
+                const deleteUrl = '{{ route("backend.events.deleteInstance", ":id") }}'.replace(':id', targetId);
+                $('#eventDeleteBtn').off('click').on('click', function (e) {
+                    e.preventDefault();
+                    if (!confirm(deleteLabel + '?')) return;
+                    $.ajax({
+                        url: deleteUrl,
+                        method: 'POST',
+                        data: {
                             _token: '{{ csrf_token() }}',
                             choice_action: mode,
                             occurrence_start: info.event.startStr
-                        };
-
-                        $.ajax({
-                            url: url,
-                            method: method,
-                            data: data,
-                            success(response) {
-                                if (response.success) {
-                                    AIZ.plugins.notify('success', response.message || 'Event deleted successfully.');
-                                } else {
-                                    AIZ.plugins.notify('error', response.message || 'Could not delete event.');
-                                }
-                                $('#eventModal').modal('hide');
-                                calendar.refetchEvents();
-                            },
-                            error(xhr) {
-                                let errorMsg = 'Could not delete.';
-                                if (xhr.responseJSON && xhr.responseJSON.message) {
-                                    errorMsg = xhr.responseJSON.message;
-                                }
-                                AIZ.plugins.notify('error', errorMsg);
+                        },
+                        success(response) {
+                            if (response.success) {
+                                AIZ.plugins.notify('success', response.message || 'Event deleted successfully.');
+                            } else {
+                                AIZ.plugins.notify('error', response.message || 'Could not delete event.');
                             }
-                        });
+                            $('#eventModal').modal('hide');
+                            calendar.refetchEvents();
+                        },
+                        error(xhr) {
+                            const errorMsg = xhr.responseJSON && xhr.responseJSON.message
+                                ? xhr.responseJSON.message
+                                : 'Could not delete.';
+                            AIZ.plugins.notify('error', errorMsg);
+                        }
                     });
-                $footer.prepend($del);
+                });
 
                 // load reminders into the form
                 loadExistingReminders(inst.reminders);

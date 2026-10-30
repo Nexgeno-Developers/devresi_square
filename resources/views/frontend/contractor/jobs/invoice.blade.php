@@ -8,6 +8,6 @@
     </div>
     @if(session('success')) <div class="alert alert-success no-print">{{ session('success') }}</div> @endif
     @if(session('error')) <div class="alert alert-danger no-print">{{ session('error') }}</div> @endif
-    @include('backend.repair.partials.job-invoice-document')
+    @include('backend.repair.partials.job-invoice-document', ['showContractorBank' => true])
 </div>
 @endsection

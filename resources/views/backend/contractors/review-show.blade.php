@@ -8,27 +8,29 @@
     $pill = fn ($s) => match ($s) { 'approved' => 'ok', 'rejected' => 'bad', 'pending', 'more_info' => 'warn', default => 'idle' };
     $companyUrl = $profile->company_number ? 'https://find-and-update.company-information.service.gov.uk/company/'.urlencode($profile->company_number) : null;
 @endphp
-<div class="container-fluid lw-page" style="max-width: 1100px;">
+<div class="container-fluid lw-page contractor-review" style="max-width: 1100px;">
     <a href="{{ route('admin.registrations.contractors.index') }}" class="small">← Review queue</a>
     <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap mt-2">
         <div>
             <h4>{{ $profile->displayName() }}</h4>
             <p>{{ $profile->user?->email }} · {{ $profile->phone ?: $profile->user?->phone }} · signed up {{ $profile->created_at?->format('j M Y') }}</p>
         </div>
-        <x-lw.pill :tone="$status === 'approved' ? 'ok' : (in_array($status, ['rejected', 'suspended', 'removed'], true) ? 'bad' : 'warn')">{{ $profile->statusLabel() }}</x-lw.pill>
+        <span id="review-status"><x-lw.pill :tone="$status === 'approved' ? 'ok' : (in_array($status, ['rejected', 'suspended', 'removed'], true) ? 'bad' : 'warn')">{{ $profile->statusLabel() }}</x-lw.pill></span>
     </div>
 
-    @foreach(['success', 'error'] as $flash)
-        @if(session($flash))<div class="alert alert-{{ $flash === 'success' ? 'success' : 'danger' }}">{{ session($flash) }}</div>@endif
-    @endforeach
-    @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+    <div id="review-flash">
+        @foreach(['success', 'error'] as $flash)
+            @if(session($flash))<div class="alert alert-{{ $flash === 'success' ? 'success' : 'danger' }}">{{ session($flash) }}</div>@endif
+        @endforeach
+        @if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+    </div>
     @if($duplicates->isNotEmpty())
         <div class="alert alert-warning small">Company number also used by: {{ $duplicates->map(fn ($d) => $d->displayName().' ('.$d->user?->email.')')->implode(', ') }}. One account per firm.</div>
     @endif
 
     <div class="row g-3">
         <div class="col-lg-8">
-            <div class="card lw-card mb-3">
+            <div class="card lw-card mb-3" id="review-documents">
                 <div class="card-body">
                     <div class="lw-section-title mt-0">Documents</div>
                     @foreach($types as $type)
@@ -45,7 +47,7 @@
                         @endif
                         @foreach($rows as $doc)
                             @php $isRenewal = str_ends_with($doc->type, '.renewal'); @endphp
-                            <div class="border rounded p-3 mb-2">
+                            <div class="border rounded p-3 mb-2 doc-card is-{{ $doc->status }}">
                                 <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                                     <div>
                                         <strong>{{ $spec['label'] ?? $type }}</strong>
@@ -63,7 +65,7 @@
                                     </div>
                                     <x-lw.pill :tone="$pill($doc->status)">{{ ucfirst($doc->status) }}@if($doc->isExpired()) · expired @endif</x-lw.pill>
                                 </div>
-                                <form method="POST" action="{{ route('admin.registrations.contractors.document.decide', [$profile, $doc]) }}" class="row g-2 align-items-end">
+                                <form method="POST" action="{{ route('admin.registrations.contractors.document.decide', [$profile, $doc]) }}" class="row g-2 align-items-end js-review-decide">
                                     @csrf
                                     @if(! empty($spec['reference']) || $doc->reference)
                                         <div class="col-6 col-md-3">
@@ -90,7 +92,7 @@
                                         </div>
                                     @endif
                                     <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
-                                        <button class="btn btn-success btn-sm" name="decision" value="approve" type="submit">Approve</button>
+                                        <button class="btn btn-sm {{ $doc->status === 'approved' ? 'btn-outline-success' : 'btn-success' }}" name="decision" value="approve" type="submit" @disabled($doc->status === 'approved')>{{ $doc->status === 'approved' ? 'Approved' : 'Approve' }}</button>
                                         <select name="reason_code" class="form-select form-select-sm w-auto">
                                             <option value="">Reject reason…</option>
                                             @foreach($rejectReasons as $code => $label)
@@ -98,7 +100,7 @@
                                             @endforeach
                                         </select>
                                         <input name="reason" class="form-control form-control-sm w-auto flex-grow-1" placeholder="Or type a reason">
-                                        <button class="btn btn-outline-danger btn-sm" name="decision" value="reject" type="submit">Reject</button>
+                                        <button class="btn btn-sm {{ $doc->status === 'rejected' ? 'btn-danger' : 'btn-outline-danger' }}" name="decision" value="reject" type="submit" @disabled($doc->status === 'rejected')>{{ $doc->status === 'rejected' ? 'Rejected' : 'Reject' }}</button>
                                     </div>
                                 </form>
                             </div>
@@ -107,7 +109,7 @@
                 </div>
             </div>
 
-            <div class="card lw-card mb-3">
+            <div class="card lw-card mb-3" id="review-trades">
                 <div class="card-body">
                     <div class="lw-section-title mt-0">Trades</div>
                     <p class="small text-muted">Approval is per trade. Gas needs Gas Safe; electrical needs a scheme registration.</p>
@@ -124,12 +126,12 @@
                                     @endforeach
                                     @if($approval->reason)<span class="small text-muted">· {{ $approval->reason }}</span>@endif
                                 </span>
-                                <form method="POST" action="{{ route('admin.registrations.contractors.trade.decide', [$profile, $approval->trade]) }}" class="d-flex gap-1 flex-wrap">
+                                <form method="POST" action="{{ route('admin.registrations.contractors.trade.decide', [$profile, $approval->trade]) }}" class="d-flex gap-1 flex-wrap js-review-decide">
                                     @csrf
                                     <input name="reason" class="form-control form-control-sm" style="width:180px" placeholder="Reason (if not approving)">
-                                    <button class="btn btn-success btn-sm" name="decision" value="approved" type="submit">Approve</button>
-                                    <button class="btn btn-outline-secondary btn-sm" name="decision" value="more_info" type="submit">More info</button>
-                                    <button class="btn btn-outline-danger btn-sm" name="decision" value="rejected" type="submit">Reject</button>
+                                    <button class="btn btn-sm {{ $approval->status === 'approved' ? 'btn-outline-success' : 'btn-success' }}" name="decision" value="approved" type="submit" @disabled($approval->status === 'approved')>{{ $approval->status === 'approved' ? 'Approved' : 'Approve' }}</button>
+                                    <button class="btn btn-sm {{ $approval->status === 'more_info' ? 'btn-secondary' : 'btn-outline-secondary' }}" name="decision" value="more_info" type="submit" @disabled($approval->status === 'more_info')>More info</button>
+                                    <button class="btn btn-sm {{ $approval->status === 'rejected' ? 'btn-danger' : 'btn-outline-danger' }}" name="decision" value="rejected" type="submit" @disabled($approval->status === 'rejected')>{{ $approval->status === 'rejected' ? 'Rejected' : 'Reject' }}</button>
                                 </form>
                             </div>
                         </div>
@@ -156,7 +158,7 @@
                 </div>
             </div>
 
-            <div class="card lw-card mb-3">
+            <div class="card lw-card mb-3" id="review-decision">
                 <div class="card-body">
                     <div class="lw-section-title mt-0">Decision</div>
                     @if($ready)
@@ -221,7 +223,7 @@
                 </div>
             </div>
 
-            <div class="card lw-card mb-3">
+            <div class="card lw-card mb-3" id="review-history">
                 <div class="card-body small">
                     <div class="lw-section-title mt-0">History</div>
                     <ul class="list-unstyled mb-0" style="max-height: 320px; overflow:auto">
@@ -242,3 +244,92 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    .contractor-review .lw-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.15rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 650;
+        line-height: 1.4;
+        white-space: nowrap;
+    }
+    .contractor-review .lw-pill-ok { background: #e7f6ee; color: #157347; }
+    .contractor-review .lw-pill-warn { background: #fff6df; color: #9a6700; }
+    .contractor-review .lw-pill-bad { background: #fdecec; color: #b42318; }
+    .contractor-review .lw-pill-idle { background: #f1f3f6; color: #5c6578; }
+    .contractor-review .doc-card.is-approved { background: #f4fbf6; border-color: #9ed9b5 !important; }
+    .contractor-review .doc-card.is-rejected { background: #fff7f7; border-color: #f0b4b4 !important; }
+    .contractor-review .doc-card.is-pending { background: #fffdf6; border-color: #ead48a !important; }
+    .contractor-review .doc-card.is-saving { opacity: 0.65; }
+</style>
+@endpush
+
+@push('scripts')
+<script>
+document.addEventListener('input', function (event) {
+    const form = event.target.closest('form.js-review-decide');
+    if (!form) return;
+    form.querySelectorAll('button[disabled]').forEach(function (button) {
+        button.disabled = false;
+        if (button.value === 'approve' || button.value === 'approved') {
+            button.classList.remove('btn-outline-success');
+            button.classList.add('btn-success');
+            button.textContent = 'Approve';
+        }
+        if (button.value === 'reject' || button.value === 'rejected') {
+            button.classList.remove('btn-danger');
+            button.classList.add('btn-outline-danger');
+            button.textContent = 'Reject';
+        }
+    });
+});
+
+document.addEventListener('submit', function (event) {
+    const form = event.target.closest ? event.target.closest('form.js-review-decide') : null;
+    if (!form || !form.classList.contains('js-review-decide')) return;
+    event.preventDefault();
+    const submitter = event.submitter;
+    const data = new FormData(form);
+    if (submitter && submitter.name) data.set(submitter.name, submitter.value);
+    const card = form.closest('.doc-card');
+    if (card) card.classList.add('is-saving');
+    form.querySelectorAll('button').forEach(function (button) { button.disabled = true; });
+    if (submitter) submitter.textContent = 'Saving…';
+
+    fetch(form.action, {
+        method: 'POST',
+        body: data,
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' }
+    }).then(function (response) {
+        if (response.redirected && /login|sign-in/i.test(response.url)) {
+            window.location = response.url;
+            return null;
+        }
+        return response.text();
+    }).then(function (html) {
+        if (!html) return;
+        const next = new DOMParser().parseFromString(html, 'text/html');
+        if (!next.getElementById('review-documents')) {
+            window.location.reload();
+            return;
+        }
+        ['review-flash', 'review-status', 'review-documents', 'review-trades', 'review-decision', 'review-history'].forEach(function (id) {
+            const fresh = next.getElementById(id);
+            const current = document.getElementById(id);
+            if (fresh && current) current.replaceWith(fresh);
+        });
+        const flash = document.getElementById('review-flash');
+        if (flash && flash.querySelector('.alert-danger') && flash.scrollIntoView) {
+            flash.scrollIntoView({ block: 'nearest' });
+        }
+    }).catch(function () {
+        window.location.reload();
+    });
+});
+</script>
+@endpush

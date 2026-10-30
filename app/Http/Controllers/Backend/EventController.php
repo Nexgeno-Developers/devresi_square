@@ -23,6 +23,7 @@ use RRule\RRule;
 use App\Notifications\EventInvitationNotification;
 use App\Enums\CrmNotificationEvent;
 use App\Models\TenantMember;
+use App\Services\Events\EventStageService;
 use App\Services\Notifications\CrmNotificationService;
 
 class EventController
@@ -147,7 +148,7 @@ class EventController
             ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->whereBetween('start_datetime', [$start, $end])
             ->where('status', '!=', 'Cancelled')
-            ->with('reminders', 'properties', 'repairIssues', 'users')
+            ->with('reminders', 'properties', 'repairIssues', 'users', 'responses.user')
             ->get();
 
         $data = $events->map(function ($event) {
@@ -181,6 +182,12 @@ class EventController
                     'diary_owner' => optional($event->diaryOwner)->id,
                     'on_behalf_of' => optional($event->onBehalfOf)->id,
                     'invite_ids' => $event->users->pluck('id')->all(),
+                    'responses' => $event->responses->map(fn ($response) => [
+                        'user_id' => $response->user_id,
+                        'name' => $response->user?->name,
+                        'response' => $response->response,
+                        'note' => $response->note,
+                    ])->values(),
                     'visible_to_tenant' => (bool) $event->visible_to_tenant,
                     'users' => $event->users
                         ->map(fn($u) => ['id' => $u->id, 'text' => $u->display_label]),
@@ -254,6 +261,7 @@ class EventController
             'invite_ids.*' => 'exists:users,id',
             'visible_to_tenant' => 'nullable|boolean',
         ]);
+        $validated = $this->normalizeEventInput($validated);
         $this->ensureEventRelationsAreAccessible($validated);
         $validated = $this->attachPropertyHouseholdInvites($validated);
 
@@ -352,29 +360,6 @@ class EventController
             }
 
             \DB::commit();
-            \DB::afterCommit(function () use ($master): void {
-                try {
-                    $master->refresh()->load('users');
-                    app(CrmNotificationService::class)->dispatch(
-                        CrmNotificationEvent::AppointmentInvited,
-                        $master,
-                        [
-                            'account_id' => $master->account_id,
-                            'recipients' => $master->users,
-                            'appointment_title' => $master->title,
-                            'appointment_at' => $master->start_datetime->timezone(current_account()?->timezone ?: 'Europe/London')->format('d M Y, H:i'),
-                            'action_url' => route('backend.events.calendar'),
-                            'portal_action_url' => route('tenant.calendar'),
-                        ],
-                        auth()->user(),
-                    );
-                } catch (\Throwable $exception) {
-                    Log::error('Unable to send appointment invitations.', [
-                        'event_id' => $master->id,
-                        'exception' => $exception,
-                    ]);
-                }
-            });
             return response()->json(['success' => true]);
         } catch (\Throwable $th) {
             \DB::rollBack();
@@ -411,6 +396,7 @@ class EventController
             'instance_status' => 'Rescheduled',
             'is_exception' => true,
         ]);
+        app(EventStageService::class)->settle($event->fresh(), true);
 
         if ($oldStart !== $data['start_datetime']) {
             DB::table('event_instance_changes')->insert([
@@ -498,6 +484,7 @@ class EventController
             'invite_ids.*' => 'exists:users,id',
             'visible_to_tenant' => 'nullable|boolean',
         ]);
+        $validated = $this->normalizeEventInput($validated);
         $this->ensureEventRelationsAreAccessible($validated);
         $validated = $this->attachPropertyHouseholdInvites($validated);
 
@@ -1234,6 +1221,7 @@ class EventController
         $event->properties()->sync($propertyIds);
         $event->repairIssues()->sync($repairIds);
         $event->users()->sync($validated['invite_ids'] ?? []);
+        app(EventStageService::class)->settle($event);
     }
 
     private function ensureEventRelationsAreAccessible(array $validated): void
@@ -1298,9 +1286,40 @@ class EventController
         $subTypeIds = EventSubType::query()->visibleToCurrentUser()->pluck('id')->all();
 
         return [
-            'type_id' => ['required', 'integer', Rule::in($typeIds)],
-            'sub_type_id' => ['required', 'integer', Rule::in($subTypeIds)],
+            'type_id' => ['nullable', 'integer', Rule::in($typeIds)],
+            'sub_type_id' => ['nullable', 'integer', Rule::in($subTypeIds)],
         ];
+    }
+
+    private function normalizeEventInput(array $validated): array
+    {
+        $validated['type_id'] = $validated['type_id'] ?? null;
+        $validated['sub_type_id'] = $validated['sub_type_id'] ?? null;
+        $validated['office'] = $validated['office'] ?? null;
+        $validated['location'] = $validated['location'] ?? null;
+        $validated['description'] = $validated['description'] ?? null;
+
+        return $validated;
+    }
+
+    public function respond(Request $request, Event $event)
+    {
+        $this->assertStaffCalendarAccess();
+        ensureModelBelongsToCurrentAccount($event);
+
+        $validated = $request->validate([
+            'response' => 'required|in:accepted,rejected',
+            'note' => 'nullable|string|max:500|required_if:response,rejected',
+        ]);
+
+        app(EventStageService::class)->record(
+            $event,
+            $request->user(),
+            $validated['response'],
+            $validated['note'] ?? null
+        );
+
+        return response()->json(['success' => true, 'status' => $event->fresh()->status]);
     }
 
     private function assertStaffCalendarAccess(): void
@@ -1335,7 +1354,7 @@ class EventController
     {
         $validated['visible_to_tenant'] = (bool) ($validated['visible_to_tenant'] ?? false);
 
-        if (! $validated['visible_to_tenant'] || ! is_landlord_plan_user(auth()->user()) || empty($validated['property_ids'])) {
+        if (! $validated['visible_to_tenant'] || empty($validated['property_ids'])) {
             return $validated;
         }
 

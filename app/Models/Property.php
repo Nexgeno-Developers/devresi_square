@@ -88,10 +88,6 @@ class Property extends Model
         'youtube_url',
         'instagram_url',
         'imp_notes',
-        // 'designation',
-        // 'branch',
-        // 'commission_percentage',
-        // 'commission_amount',
         'step',
         'quick_step',
         'property_identity_hash',
@@ -102,11 +98,56 @@ class Property extends Model
     ];
     protected $casts = [
         'market_on' => 'json',
-        // 'photos' => 'json',
-        // 'floor_plan' => 'json',
-        // 'view_360' => 'json',
-        // 'video_url' => 'array',
     ];
+
+    /**
+     * Columns the add-property lookup may set.
+     * Address and building facts come from the lookup. Beds, type, tenure, EPC,
+     * area, and floor are stored only when the feed actually returned them.
+     *
+     * @param  array<string, mixed>  $record
+     * @return array<string, mixed>
+     */
+    public static function attributesFromAddressRecord(array $record, int $countryId): array
+    {
+        $text = static function (array $record, string $key): ?string {
+            $value = $record[$key] ?? null;
+
+            if ($value === null || trim((string) $value) === '') {
+                return null;
+            }
+
+            return trim((string) $value);
+        };
+
+        $epcRequired = $record['epc_required'] ?? null;
+
+        return array_filter([
+            'line_1' => $text($record, 'line_1'),
+            'line_2' => $text($record, 'line_2'),
+            'city' => $text($record, 'city'),
+            'county' => $text($record, 'county'),
+            'postcode' => $text($record, 'postcode'),
+            'country' => $countryId,
+            'currency' => 'GBP',
+            'uprn' => $text($record, 'uprn'),
+            'prop_name' => $text($record, 'line_1'),
+            'specific_property_type' => $text($record, 'specific_property_type'),
+            'property_type' => 'lettings',
+            'bedroom' => $text($record, 'bedroom'),
+            'bathroom' => $text($record, 'bathroom'),
+            'reception' => $text($record, 'reception'),
+            'tenure' => $text($record, 'tenure'),
+            'epc_rating' => $text($record, 'epc_rating'),
+            'epc_required' => $epcRequired === null || trim((string) $epcRequired) === '' ? null : (int) (bool) $epcRequired,
+            'council_tax_band' => $text($record, 'council_tax_band'),
+            'square_meter' => $text($record, 'square_meter'),
+            'square_feet' => $text($record, 'square_feet'),
+            'floor' => $text($record, 'floor'),
+            'local_authority' => $text($record, 'local_authority'),
+            'letting_current_status' => 'available',
+        ], fn ($value) => $value !== null && $value !== '');
+    }
 
     protected static function booted(): void
     {

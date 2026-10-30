@@ -15,23 +15,15 @@ class TenantMember extends Model
         'account_id',
         'tenancy_id',
         'user_id',
-        // 'name',
-        // 'email',
-        // 'phone',
-        // 'employment_status',
-        // 'business_name',
-        // 'guarantee',
-        // 'previously_rented',
-        // 'poor_credit',
         'access_level',
         'can_login',
         'details_status',
         'details_confirmed_at',
         'is_main_person',
-        'group_id'
-        ,'right_to_rent_required'
-        ,'right_to_rent_checked_at'
-        ,'right_to_rent_follow_up_due_at'
+        'group_id',
+        'right_to_rent_required',
+        'right_to_rent_checked_at',
+        'right_to_rent_follow_up_due_at',
     ];
 
     protected $casts = [

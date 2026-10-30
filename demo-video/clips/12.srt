@@ -1,0 +1,4 @@
+﻿1
+00:00:00,000 --> 00:00:08,720
+The same invite also appears in the app. Every important step sends both an email and an in app
+notification.

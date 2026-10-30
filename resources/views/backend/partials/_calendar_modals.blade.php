@@ -4,7 +4,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Set Recurrence Rule</h5>
+                <h5 class="modal-title">Repeat</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -122,17 +122,147 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="saveRRuleBtn">
-                    Save Recurrence
+                    Save repeat
                 </button>
             </div>
         </div>
     </div>
 </div>
 <style>
+    #rruleModal .modal-content,
+    #eventModal .modal-content,
+    #seriesChoiceModal .modal-content {
+        border: 0;
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 24px 60px rgba(15, 23, 58, 0.18);
+    }
+    #rruleModal .modal-header,
+    #seriesChoiceModal .modal-header,
+    #eventModal .visit-modal-head {
+        flex: 0 0 auto;
+        border-bottom: 1px solid #e8edf3;
+        padding: 1.1rem 1.25rem;
+    }
+    #rruleModal .modal-title,
+    #seriesChoiceModal .modal-title,
+    #eventModal .visit-modal-head h5 {
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: #0f173a;
+    }
     #rruleModal .modal-body {
-        background: #eee;
-        max-height: min(400px, calc(100vh - 12rem));
+        background: #fff;
+        max-height: min(440px, calc(100vh - 12rem));
         overflow-y: auto;
+    }
+    #rruleModal .modal-footer,
+    #eventModal .modal-footer {
+        border-top: 1px solid #e8edf3;
+        background: #fbfcfe;
+    }
+    #rruleModal #saveRRuleBtn,
+    #eventModal .visit-primary {
+        background: #ff5c1d;
+        border-color: #ff5c1d;
+        border-radius: 999px;
+        font-weight: 700;
+        padding: 0.45rem 1rem;
+    }
+    #rruleModal #saveRRuleBtn:hover,
+    #eventModal .visit-primary:hover {
+        background: #e84e12;
+        border-color: #e84e12;
+    }
+    #eventModal .visit-kicker {
+        margin: 0 0 0.15rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #ff5c1d;
+    }
+    #eventModal .visit-lead {
+        margin: 0.25rem 0 0;
+        color: #5b6573;
+        font-size: 0.92rem;
+    }
+    #eventModal .visit-stage {
+        display: inline-flex;
+        align-items: center;
+        margin-top: 0.55rem;
+        padding: 0.15rem 0.6rem;
+        border-radius: 999px;
+        background: #fff4e8;
+        color: #9a3412;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+    #eventModal .visit-block {
+        padding-bottom: 0.25rem;
+    }
+    #eventModal .visit-block h6 {
+        margin: 0 0 0.65rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #5b6573;
+    }
+    #eventModal .visit-repeat {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.75rem 0.9rem;
+        border: 1px solid #e8edf3;
+        border-radius: 12px;
+        background: #f8f9fc;
+    }
+    #eventModal .visit-repeat strong {
+        display: block;
+        color: #0f173a;
+        font-size: 0.92rem;
+    }
+    #eventModal .visit-repeat span {
+        color: #5b6573;
+        font-size: 0.8rem;
+    }
+    #eventModal #editRRuleBtn,
+    #eventModal .visit-cancel {
+        border-radius: 999px;
+        font-weight: 700;
+    }
+    #eventModal .visit-delete {
+        margin-right: auto;
+        border: 0;
+        background: transparent;
+        color: #b42318;
+        font-weight: 700;
+        padding-left: 0;
+    }
+    #eventModal .visit-delete:hover {
+        color: #8f1d14;
+    }
+    #eventModal[data-mode="create"] .is-edit-only {
+        display: none !important;
+    }
+    #eventModal[data-mode="edit"] .is-create-only {
+        display: none !important;
+    }
+    #eventModal .reply-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.55rem 0;
+        border-bottom: 1px solid #eef1f4;
+    }
+    #eventModal #eventRsvp {
+        margin-top: 0.75rem;
+        border: 1px solid #e8edf3;
+        border-radius: 12px;
+        padding: 0.85rem;
+        background: #fff;
     }
 
     /* The form wraps header, body and footer, so Bootstrap's scrollable
@@ -197,138 +327,101 @@
     </div>
 </div>
 
-<!-- Modal -->
-<div class="modal fade" id="eventModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+<div class="modal fade" id="eventModal" data-mode="create" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
     <div class="modal-dialog modal-dialog-scrollable modal-lg">
         <div class="modal-content">
-            {{-- Form for creating/editing events --}}
             <form id="eventForm" novalidate>
                 @csrf
-                <div class="modal-header">
-                    <h5 class="modal-title">Create / Edit Event</h5>
+                <div class="visit-modal-head d-flex justify-content-between align-items-start gap-3">
+                    <div>
+                        <p class="visit-kicker" id="eventKicker">New visit</p>
+                        <h5 class="modal-title mb-0" id="eventModalTitle">Add to the calendar</h5>
+                        <p class="visit-lead is-create-only" id="eventCreateLead">Set the time, then choose the homes this visit is for.</p>
+                        <p class="visit-lead is-edit-only" id="eventEditLead">This occurrence</p>
+                        <span class="visit-stage is-edit-only" id="eventStage">Pending</span>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-
                     <div class="row g-3">
-                        {{-- Master fields (updated) --}}
-                        <div class="col-md-6">
-                            <label class="form-label">Title *</label>
-                            <input type="text" name="title" class="form-control" placeholder="Subject" required>
+                        <div class="col-12 visit-block">
+                            <h6>Visit</h6>
+                            <label class="form-label" for="eventTitle">Title</label>
+                            <input id="eventTitle" type="text" name="title" class="form-control" placeholder="Inspection, viewing, check-in" required>
                             <div class="text-danger" data-error-for="title"></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Type *</label>
-                            <select name="type_id" id="type_id" class="form-select" required>
-                                <option value="">— Select Type —</option>
-                                @foreach(\App\Models\EventType::query()->visibleToCurrentUser()->orderBy('name')->get() as $type)
-                                    <option value="{{ $type->id }}">{{ $type->name }}</option>
-                                @endforeach
-                            </select>
-                            <div class="text-danger" data-error-for="type_id"></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Sub-Type *</label>
-                            <select name="sub_type_id" id="sub_type_id" class="form-select" required>
-                                <option value="">— Select Sub-Type —</option>
-                                {{-- Options will be filled via AJAX when a Type is chosen --}}
-                            </select>
-                            <div class="text-danger" data-error-for="sub_type_id"></div>
-                        </div>
-
-                        @unless(auth()->user()->hasRole('Landlord'))
-                        <div class="col-md-6">
-                            <label class="form-label">Office</label>
-                            <input type="text" name="office" class="form-control" placeholder="Office name">
-                            <div class="text-danger" data-error-for="office"></div>
-                        </div>
-                        @endunless
-                        <div class="col-md-6">
-                            <label class="form-label">Status</label>
-                            <select name="status" class="form-select">
-                                <option value="" selected>— Select —</option>
-                                <option value="Confirmed">Confirmed</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Cancelled">Cancelled</option>
-                                <option value="Rescheduled">Rescheduled</option>
-                                <option value="Scheduled">Scheduled</option>
-                            </select>
-                            <div class="text-danger" data-error-for="status"></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Invites</label>
-                            <select id="invite-select" class="form-control select-entity" data-entity="invite" data-mode="multi" data-max="20" data-url="{{ route('admin.users.ajax') }}"></select>
-                            <div class="text-danger" data-error-for="invite_ids"></div>
-                        </div>
-                        <div class="col-md-6 d-flex align-items-end">
-                            <div class="form-check mb-2">
+                            <div class="form-check mt-3">
                                 <input class="form-check-input" type="checkbox" name="visible_to_tenant" id="visible-to-tenant" value="1">
-                                <label class="form-check-label" for="visible-to-tenant">Show this visit to the tenant</label>
+                                <label class="form-check-label" for="visible-to-tenant">Invite the tenants at the selected properties</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Location</label>
-                            <input type="text" name="location" class="form-control" placeholder="Meeting location">
-                            <div class="text-danger" data-error-for="location"></div>
+
+                        <div class="col-12 visit-block">
+                            <h6>When</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Starts</label>
+                                    <input type="datetime-local" name="start_datetime" class="form-control" required>
+                                    <div class="text-danger" data-error-for="start_datetime"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Ends</label>
+                                    <input type="datetime-local" name="end_datetime" class="form-control" required>
+                                    <div class="text-danger" data-error-for="end_datetime"></div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="visit-repeat">
+                                        <div>
+                                            <strong id="rruleSummary">Does not repeat</strong>
+                                            <span class="is-create-only">Leave this as a single visit, or set a repeat.</span>
+                                            <span class="is-edit-only">Change the repeat for the scope shown above.</span>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-dark" type="button" id="editRRuleBtn">Set repeat</button>
+                                    </div>
+                                    <textarea name="rrule" id="rruleInput" class="d-none"></textarea>
+                                    <textarea name="exdates" id="exdatesInput" class="d-none"></textarea>
+                                </div>
+                            </div>
                         </div>
 
-                        {{-- Instance fields (unchanged except error placeholders) --}}
-                        <div class="col-md-6">
-                            <label class="form-label">Start Date &amp; Time *</label>
-                            <input type="datetime-local" name="start_datetime" class="form-control" required>
-                            <div class="text-danger" data-error-for="start_datetime"></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">End Date &amp; Time *</label>
-                            <input type="datetime-local" name="end_datetime" class="form-control" required>
-                            <div class="text-danger" data-error-for="end_datetime"></div>
-                        </div>
-
-                        <div id="remindersContainer" class="col-12 mb-3">
-                            <label class="form-label">Reminders</label>
-                            <p class="form-text mt-0 mb-2">Each number is how many minutes before the start. Invited people get an email and an in-app notification at that time.</p>
+                        <div id="remindersContainer" class="col-12 visit-block">
+                            <h6>Reminders</h6>
+                            <p class="form-text mt-0 mb-2">Minutes before the start. Invited people get an email and an in-app notice.</p>
                             <div id="reminderList"></div>
-                            <button type="button" id="addReminderBtn" class="btn btn-sm btn-outline-primary">
-                                + Add Reminder
-                            </button>
+                            <button type="button" id="addReminderBtn" class="btn btn-sm btn-outline-dark">Add reminder</button>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label">Recurrence</label>
-                            <button class="btn btn-sm btn-outline-secondary" type="button" id="editRRuleBtn">
-                                Set Recurrence…
-                            </button>
-                            <div id="rruleSummary" class="mt-2 text-muted"></div>
-                            <!-- Hidden field to store the serialized RRULE string -->
-                            <textarea name="rrule" id="rruleInput" class="d-none"></textarea>
-                        </div>
-
-                        <!-- We’ll also keep a hidden JSON field for exdates -->
-                        <textarea name="exdates" id="exdatesInput" class="d-none">
-                        </textarea>
-
-                        <div class="mb-3">
+                        <div class="col-md-6">
                             <label class="form-label">Properties</label>
                             <select id="property-select" class="form-control select-entity" data-entity="property"
                                 data-mode="multi" data-max="3" data-url="{{ route('admin.properties.ajax') }}">
                             </select>
                         </div>
-
-                        <div class="mb-3">
+                        <div class="col-md-6">
                             <label class="form-label">Repairs</label>
                             <select id="repair-select" class="form-control select-entity" data-entity="repair" data-mode="multi" data-max="5" data-url="{{ route('admin.property_repairs.ajax') }}"></select>
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label">Description</label>
-                            <textarea name="description" class="form-control" rows="3"
-                                placeholder="Add any notes…"></textarea>
+                            <label class="form-label" for="eventNotes">Notes</label>
+                            <textarea id="eventNotes" name="description" class="form-control" rows="3" placeholder="Anything the invited people should know"></textarea>
                         </div>
 
+                        <div class="col-12 is-edit-only d-none" id="eventResponses">
+                            <h6 class="visit-block">Replies</h6>
+                            <div id="eventResponseList"></div>
+                            <div id="eventRsvp" class="d-none">
+                                <p class="mb-2">Accept this visit, or decline it with a note.</p>
+                                <textarea id="rsvpNote" class="form-control mb-2" rows="2" placeholder="Required if you decline"></textarea>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-success" id="rsvpAccept">Accept</button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="rsvpReject">Decline</button>
+                                </div>
+                                <div class="text-danger small mt-2" id="rsvpError"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <!-- Hidden for update; fill in via JS if needed -->
                     <input type="hidden" name="event_id" value="">
                     <input type="hidden" name="instance_id" value="">
                     <input type="hidden" name="master_id" value="">
@@ -336,9 +429,9 @@
                     <input type="hidden" name="choice_action" value="">
                     <input type="hidden" name="original_start" value="">
                     <input type="hidden" name="original_end" value="">
-                    {{-- Submit button --}}
-                    <button type="submit" class="btn btn-primary">Save</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="visit-delete js-delete-btn d-none" id="eventDeleteBtn">Delete</button>
+                    <button type="button" class="btn btn-outline-secondary visit-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary visit-primary" id="eventSubmitBtn">Create visit</button>
                 </div>
             </form>
         </div>

@@ -101,7 +101,7 @@ class ContractorJobController extends Controller
         $this->owns($request, $offer);
         $offer->load(['repairIssue.property', 'repairIssue.repairCategory.parentCategory', 'repairIssue.repairPhotos', 'repairIssue.tenant', 'request', 'events']);
         $this->offers->expireStale($offer->repairIssue);
-        $offer->refresh()->load(['messages', 'variations', 'invoice']);
+        $offer->refresh()->load(['messages', 'variations', 'invoice.cardPayment']);
         $this->offers->markViewed($offer);
         $this->aftercare->markRead($offer, RepairJobMessage::CONTRACTOR);
 

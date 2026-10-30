@@ -27,7 +27,7 @@
                 <tr>
                     <th>Property</th>
                     <th>Tenant</th>
-                    <th>Tenancy Type</th>
+                    <th>How often</th>
                     <th>Start Date</th>
                     <th>End Date</th>
                     <th>Rent</th>
@@ -53,7 +53,7 @@
                     <td>
                         {{ $tenancy->tenantMembers->map(fn($m) => rs_person($m->user))->filter(fn ($n) => $n !== 'Someone')->implode(', ') ?: '—' }}
                     </td>
-                    <td>{{ $tenancy->tenancyType?->name ?: (($tenancy->periodic || $tenancy->rolling_contract) ? 'Periodic / Rolling' : '—') }}</td>
+                    <td>{{ $tenancy->rentFrequencyLabel() }}</td>
                     <td>{{ rs_date($tenancy->move_in) }}</td>
                     <td>{{ rs_date($tenancy->move_out) }}</td>
                     <td>{{ rs_money($tenancy->rent) }}</td>

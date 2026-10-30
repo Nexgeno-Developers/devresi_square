@@ -1,0 +1,4 @@
+﻿1
+00:00:00,000 --> 00:00:07,640
+He checks the tenancy the landlord entered: the address, the rent, the deposit, and the move in
+date.

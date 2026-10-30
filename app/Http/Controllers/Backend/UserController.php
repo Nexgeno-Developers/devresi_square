@@ -16,6 +16,7 @@ use App\Models\AccountUser;
 use App\Models\OwnerGroup;
 use App\Models\PropertyParticipant;
 use App\Models\Property;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Models\UserCategory;
 use App\Services\Accounting\StatementService;
@@ -921,22 +922,29 @@ class UserController
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'phone' => 'required|string|max:20',
+            'phone' => 'nullable|string|max:40',
             'role' => 'nullable|exists:roles,name',
         ]);
 
-        // Create a new user
-        $user = User::create([
-            // 'category_id'   => $request->category_id ?? 9,
+        $phone = trim((string) ($validated['phone'] ?? ''));
+        $parts = preg_split('/\s+/', $validated['name'], 2) ?: [$validated['name']];
+        $attributes = [
             'name' => $validated['name'],
+            'first_name' => $parts[0] ?? $validated['name'],
+            'last_name' => $parts[1] ?? '',
             'email' => $validated['email'],
-            'phone' => $validated['phone'],
+            'phone' => $phone !== '' ? $phone : null,
             'created_by' => Auth::id(),
             'password' => Hash::make('password'),
-        ]);
+            'status' => 1,
+            'can_login' => true,
+        ];
 
-        // Assign default role if not provided
-        $role = $request->input('role', 'User'); // Use a sensible fallback
+        $role = $request->input('role', 'User');
+        $user = $role === 'Tenant'
+            ? Tenant::create($attributes)
+            : User::create($attributes);
+
         $user->assignRole($role);
         $this->syncCurrentAccountMembership($user, [$role]);
 

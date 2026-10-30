@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class RepairJobInvoice extends Model
 {
@@ -43,6 +44,11 @@ class RepairJobInvoice extends Model
     public function contractor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'contractor_user_id');
+    }
+
+    public function cardPayment(): HasOne
+    {
+        return $this->hasOne(RepairJobPayment::class);
     }
 
     /**

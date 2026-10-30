@@ -1,0 +1,605 @@
+﻿[
+    {
+        "id":  "01",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\01-landlord-signup-form.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\01.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\01.srt",
+        "seconds":  10.54,
+        "email":  "0",
+        "caption":  "A landlord starts on Resisquare. Priya Sharma creates an account, accepts the terms, and chooses the landlord plan."
+    },
+    {
+        "id":  "02",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\02-stripe-trial-checkout.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\02.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\02.srt",
+        "seconds":  11.55,
+        "email":  "0",
+        "caption":  "The paywall is Stripe in test mode. A successful demo card starts a seven day trial. The card is saved, and nothing is charged today."
+    },
+    {
+        "id":  "03",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\03-landlord-billing-after-trial.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\03.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\03.srt",
+        "seconds":  7.84,
+        "email":  "0",
+        "caption":  "The trial is live. Priya is asked to add her first property before she can use the workspace."
+    },
+    {
+        "id":  "04",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\04-property-owner-step.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\04.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\04.srt",
+        "seconds":  8.26,
+        "email":  "0",
+        "caption":  "She searches the demo postcode, S W 1 A 1 A A, and chooses 1 The Mall in London."
+    },
+    {
+        "id":  "05",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\05-lead-tenant-invite.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\05.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\05.srt",
+        "seconds":  12.63,
+        "email":  "0",
+        "caption":  "Next she adds the lead tenant. James Okonkwo, his email, phone, rent of one thousand four hundred and fifty pounds, and a twelve month term."
+    },
+    {
+        "id":  "06",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\05b-invite-household-button.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\06.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\06.srt",
+        "seconds":  13.11,
+        "email":  "0",
+        "caption":  "Invite household sends the tenancy to James. If he is new, the email asks him to create a password. If he already has an account, he just signs in."
+    },
+    {
+        "id":  "07",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\06-property-added-invite-sent.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\07.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\07.srt",
+        "seconds":  4.52,
+        "email":  "0",
+        "caption":  "The property is saved and the portal invite has gone out."
+    },
+    {
+        "id":  "08",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\07-tenant-invite-email.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\08.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\08.srt",
+        "seconds":  6.62,
+        "email":  "1",
+        "caption":  "This is James inbox. The invite email is the way into the tenant portal."
+    },
+    {
+        "id":  "09",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\08-tenant-set-password.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\09.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\09.srt",
+        "seconds":  4.87,
+        "email":  "0",
+        "caption":  "James sets a password from that link and accepts the terms."
+    },
+    {
+        "id":  "10",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\09-tenant-confirm-tenancy.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\10.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\10.srt",
+        "seconds":  7.64,
+        "email":  "0",
+        "caption":  "He checks the tenancy the landlord entered: the address, the rent, the deposit, and the move in date."
+    },
+    {
+        "id":  "11",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\10-tenant-tenancy-confirmed.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\11.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\11.srt",
+        "seconds":  5.86,
+        "email":  "0",
+        "caption":  "He confirms it. The tenancy is now active on both sides."
+    },
+    {
+        "id":  "12",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\11-tenant-inapp-invite-notification.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\12.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\12.srt",
+        "seconds":  8.72,
+        "email":  "0",
+        "caption":  "The same invite also appears in the app. Every important step sends both an email and an in app notification."
+    },
+    {
+        "id":  "13",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\12-tenant-raise-repair.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\13.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\13.srt",
+        "seconds":  10.94,
+        "email":  "0",
+        "caption":  "From maintenance, James raises a repair. The kitchen tap is dripping. He adds a photo and says he is free on Tuesday morning."
+    },
+    {
+        "id":  "14",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\13-tenant-repair-submitted.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\14.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\14.srt",
+        "seconds":  9.97,
+        "email":  "0",
+        "caption":  "The repair is in. Reference R E S I S Q R P R 23. The landlord is notified straight away."
+    },
+    {
+        "id":  "15",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\14-tenant-three-repairs.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\15.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\15.srt",
+        "seconds":  9.67,
+        "email":  "0",
+        "caption":  "James reports two more, so we can show every route. A sticking bedroom door, and a hallway light that flickers."
+    },
+    {
+        "id":  "16",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\15-contractor-signup.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\16.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\16.srt",
+        "seconds":  11.73,
+        "email":  "0",
+        "caption":  "Case one uses a contractor already on the marketplace. Aisha Khan signs up, accepts the contractor terms, and verifies her email."
+    },
+    {
+        "id":  "17",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\16-contractor-business.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\17.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\17.srt",
+        "seconds":  8.94,
+        "email":  "0",
+        "caption":  "She is a sole trader, covering general repairs and plumbing, within twenty five miles of the same demo postcode."
+    },
+    {
+        "id":  "18",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\17-contractor-documents.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\18.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\18.srt",
+        "seconds":  9.08,
+        "email":  "0",
+        "caption":  "She uploads photo I D and public liability insurance of two million pounds, valid to December 2027."
+    },
+    {
+        "id":  "19",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\18-contractor-pending-review.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\19.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\19.srt",
+        "seconds":  4.97,
+        "email":  "0",
+        "caption":  "Jobs stay locked until a super admin approves the documents."
+    },
+    {
+        "id":  "20",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\19-admin-review-aisha.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\20.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\20.srt",
+        "seconds":  8.01,
+        "email":  "0",
+        "caption":  "Production Admin opens the review queue, checks the files, and approves the documents and both trades."
+    },
+    {
+        "id":  "21",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\20-admin-aisha-approved.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\21.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\21.srt",
+        "seconds":  12.86,
+        "email":  "0",
+        "caption":  "Aisha is approved for general repairs and plumbing. C I S is recorded as net, twenty percent. The platform does not deduct C I S itself."
+    },
+    {
+        "id":  "22",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\21-contractor-approved-email.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\22.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\22.srt",
+        "seconds":  5.86,
+        "email":  "1",
+        "caption":  "Her inbox confirms it. Landlords can now send her work."
+    },
+    {
+        "id":  "23",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\22-landlord-repair-notifications.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\23.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\23.srt",
+        "seconds":  8.19,
+        "email":  "0",
+        "caption":  "Back with Priya. The bell shows three new repair reports, one for each issue James raised."
+    },
+    {
+        "id":  "24",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\23-landlord-repair-list.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\24.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\24.srt",
+        "seconds":  8.35,
+        "email":  "0",
+        "caption":  "On the repair, she can find a contractor, invite her own, or hand the job to the Resisquare team."
+    },
+    {
+        "id":  "25",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\24-landlord-pick-aisha.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\25.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\25.srt",
+        "seconds":  7.89,
+        "email":  "0",
+        "caption":  "She picks Aisha, sets the job as routine, and shows a budget of one hundred and eighty pounds."
+    },
+    {
+        "id":  "26",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\25-landlord-job-sent-to-aisha.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\26.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\26.srt",
+        "seconds":  8.68,
+        "email":  "0",
+        "caption":  "The request is sent. Aisha has until Monday to reply. Other contractors were left unticked."
+    },
+    {
+        "id":  "27",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\26-contractor-job-email.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\27.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\27.srt",
+        "seconds":  10.22,
+        "email":  "1",
+        "caption":  "Aisha email says London S W 1 A only. Before she is accepted she never sees the full address or the tenant phone number."
+    },
+    {
+        "id":  "28",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\27-contractor-job-inbox.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\28.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\28.srt",
+        "seconds":  8.11,
+        "email":  "0",
+        "caption":  "The same job is waiting in her jobs list, with the tenant availability and a decline option if she cannot take it."
+    },
+    {
+        "id":  "29",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\28-contractor-quote-form.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\29.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\29.srt",
+        "seconds":  10.71,
+        "email":  "0",
+        "caption":  "She quotes a fixed price of one hundred and forty five pounds, materials included, and accepts Tuesday morning, the slot James offered."
+    },
+    {
+        "id":  "30",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\29-contractor-offer-sent.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\30.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\30.srt",
+        "seconds":  8.38,
+        "email":  "0",
+        "caption":  "The offer is sent. She could have proposed a different time. Here she agrees to the tenant time."
+    },
+    {
+        "id":  "31",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\30-landlord-offer-email.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\31.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\31.srt",
+        "seconds":  4.67,
+        "email":  "1",
+        "caption":  "Priya receives the offer by email as well as in the app."
+    },
+    {
+        "id":  "32",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\31-landlord-review-quote.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\32.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\32.srt",
+        "seconds":  10.68,
+        "email":  "0",
+        "caption":  "On the repair she compares the price, the visit, and the note. Several contractors can quote. She accepts the one she wants."
+    },
+    {
+        "id":  "33",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\32-landlord-confirm-accept.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\33.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\33.srt",
+        "seconds":  8.02,
+        "email":  "0",
+        "caption":  "Accepting shares the full address, access notes, and tenant contact, and tells James who is coming."
+    },
+    {
+        "id":  "34",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\33-landlord-job-accepted.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\34.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\34.srt",
+        "seconds":  7.21,
+        "email":  "0",
+        "caption":  "The job is scheduled. Visit Tuesday at nine, and the tenant time is confirmed."
+    },
+    {
+        "id":  "35",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\35-contractor-instructed-address.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\35.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\35.srt",
+        "seconds":  9.68,
+        "email":  "0",
+        "caption":  "Only now does Aisha see 1 The Mall and James phone number. She saves demo bank details so she can invoice later."
+    },
+    {
+        "id":  "36",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\36-contractor-marked-complete.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\36.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\36.srt",
+        "seconds":  6.82,
+        "email":  "0",
+        "caption":  "She starts the job, then marks it complete with a photo and a note that the drip has stopped."
+    },
+    {
+        "id":  "37",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\37-landlord-confirm-complete.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\37.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\37.srt",
+        "seconds":  4.53,
+        "email":  "0",
+        "caption":  "Priya reviews that update and confirms the work is done."
+    },
+    {
+        "id":  "38",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\38-landlord-confirmed-and-rated.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\38.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\38.srt",
+        "seconds":  6.5,
+        "email":  "0",
+        "caption":  "She rates Aisha five out of five. The repair moves to work completed."
+    },
+    {
+        "id":  "39",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\39-contractor-invoice.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\39.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\39.srt",
+        "seconds":  9.92,
+        "email":  "0",
+        "caption":  "Aisha issues invoice R J 8 for one hundred and forty five pounds, due the sixth of November, with her bank details on it."
+    },
+    {
+        "id":  "40",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\40-landlord-invoice-unpaid.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\40.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\40.srt",
+        "seconds":  8.76,
+        "email":  "0",
+        "caption":  "Priya sees the invoice as unpaid. Resisquare records the payment. It does not take the money."
+    },
+    {
+        "id":  "41",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\41-landlord-invoice-paid.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\41.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\41.srt",
+        "seconds":  5.32,
+        "email":  "0",
+        "caption":  "She marks it paid. Aisha is told immediately."
+    },
+    {
+        "id":  "42",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\71-aisha-paid-email.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\42.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\42.srt",
+        "seconds":  10.1,
+        "email":  "1",
+        "caption":  "And the paid notice lands in Aisha inbox. Case one is closed. Appointed, updated, confirmed, and paid."
+    },
+    {
+        "id":  "43",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\42-landlord-invited-owen.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\43.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\43.srt",
+        "seconds":  10.92,
+        "email":  "0",
+        "caption":  "Case two. For the bedroom door, Priya does not use the marketplace. She invites her own carpenter, Owen Brooks."
+    },
+    {
+        "id":  "44",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\44-owen-invite-email.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\44.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\44.srt",
+        "seconds":  8.89,
+        "email":  "1",
+        "caption":  "Owen inbox has the invite. He signs up on that link, still free, and still has to be approved."
+    },
+    {
+        "id":  "45",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\45-owen-signup.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\45.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\45.srt",
+        "seconds":  9.22,
+        "email":  "0",
+        "caption":  "The form already knows his name and email, because they came from the invite. He accepts the contractor terms."
+    },
+    {
+        "id":  "46",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\46-owen-otp.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\46.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\46.srt",
+        "seconds":  7.78,
+        "email":  "0",
+        "caption":  "A six digit code arrives by email. He enters it before the two minute window closes."
+    },
+    {
+        "id":  "47",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\47-owen-business.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\47.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\47.srt",
+        "seconds":  7.49,
+        "email":  "0",
+        "caption":  "He registers as a sole trader for general repairs and carpentry, covering twenty five miles."
+    },
+    {
+        "id":  "48",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\48-owen-documents.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\48.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\48.srt",
+        "seconds":  6.78,
+        "email":  "0",
+        "caption":  "Photo I D and public liability are both ready. He sends them for review."
+    },
+    {
+        "id":  "49",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\49-owen-pending.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\49.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\49.srt",
+        "seconds":  4.66,
+        "email":  "0",
+        "caption":  "Until approval, his jobs page stays locked."
+    },
+    {
+        "id":  "50",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\50-admin-review-owen.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\50.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\50.srt",
+        "seconds":  8.87,
+        "email":  "0",
+        "caption":  "The super admin reviews Owen, approves both documents, approves both trades, and approves the profile."
+    },
+    {
+        "id":  "51",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\67-owen-approved-email.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\51.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\51.srt",
+        "seconds":  5.33,
+        "email":  "1",
+        "caption":  "Owen is emailed that he is approved for general repairs and carpentry."
+    },
+    {
+        "id":  "52",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\56-landlord-sent-to-owen.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\52.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\52.srt",
+        "seconds":  9.9,
+        "email":  "0",
+        "caption":  "Priya can now see him as her contractor. She sends only this job to Owen, with a budget of one hundred and sixty pounds."
+    },
+    {
+        "id":  "53",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\57-owen-job-email.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\53.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\53.srt",
+        "seconds":  9.68,
+        "email":  "1",
+        "caption":  "His email still hides the full address. It gives the district, London S W 1 A, and a reply deadline."
+    },
+    {
+        "id":  "54",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\58-owen-sees-job.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\54.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\54.srt",
+        "seconds":  6.88,
+        "email":  "0",
+        "caption":  "The bedroom door is now a live offer. He can decline, or make an offer."
+    },
+    {
+        "id":  "55",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\59-owen-quote.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\55.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\55.srt",
+        "seconds":  7.48,
+        "email":  "0",
+        "caption":  "He quotes ninety five pounds and keeps Wednesday afternoon, the time James said he would be home."
+    },
+    {
+        "id":  "56",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\61-landlord-owen-quote.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\56.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\56.srt",
+        "seconds":  5.8,
+        "email":  "0",
+        "caption":  "Priya sees that quote on the repair, next to the insurance and the visit."
+    },
+    {
+        "id":  "57",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\62-landlord-accept-owen.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\57.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\57.srt",
+        "seconds":  8.82,
+        "email":  "0",
+        "caption":  "She accepts. Owen receives the address and a calendar invite. James is told who is coming."
+    },
+    {
+        "id":  "58",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\63-landlord-owen-accepted.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\58.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\58.srt",
+        "seconds":  10.41,
+        "email":  "0",
+        "caption":  "The door job is scheduled for Wednesday at one. From here it follows the same update, confirm, and invoice path as case one."
+    },
+    {
+        "id":  "59",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\70-tenant-booked-email.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\59.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\59.srt",
+        "seconds":  5.12,
+        "email":  "1",
+        "caption":  "James email says a contractor will visit on Wednesday at one."
+    },
+    {
+        "id":  "60",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\43-landlord-sent-to-resisquare.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\60.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\60.srt",
+        "seconds":  11.23,
+        "email":  "0",
+        "caption":  "Case three. The hallway light goes to Resisquare instead of a contractor. Priya adds a note asking for an electrician on Thursday evening."
+    },
+    {
+        "id":  "61",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\51-admin-owen-approved.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\61.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\61.srt",
+        "seconds":  8.25,
+        "email":  "0",
+        "caption":  "On the repair desk, the super admin sees the job waiting, with the landlord note and the tenant availability."
+    },
+    {
+        "id":  "62",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\52-admin-take-repair.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\62.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\62.srt",
+        "seconds":  10.39,
+        "email":  "0",
+        "caption":  "Taking the repair tells the landlord and the tenant that Resisquare is handling it. The team books Thursday at five, when James is home."
+    },
+    {
+        "id":  "63",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\53-admin-desk-update.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\63.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\63.srt",
+        "seconds":  10.21,
+        "email":  "0",
+        "caption":  "A progress update is posted on the desk. That note is emailed and shown in the app. No contractor quote is involved."
+    },
+    {
+        "id":  "64",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\65-landlord-desk-complete.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\64.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\64.srt",
+        "seconds":  10.01,
+        "email":  "0",
+        "caption":  "When the fitting is replaced, the admin marks it complete. Priya sees the outcome on the repair. Work completed."
+    },
+    {
+        "id":  "65",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\69-tenant-desk-complete-email.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\65.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\65.srt",
+        "seconds":  11.62,
+        "email":  "1",
+        "caption":  "James gets the same outcome by email. The rest of a Resisquare job stays with the team. Only the updates travel to the landlord and the tenant."
+    },
+    {
+        "id":  "66",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\64-landlord-notifications.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\66.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\66.srt",
+        "seconds":  11.56,
+        "email":  "0",
+        "caption":  "Priya notification list shows the whole trail. Job accepted, offer received, sent to contractors, and the Resisquare completion."
+    },
+    {
+        "id":  "67",
+        "image":  "C:\\Users\\abc\\AppData\\Local\\Temp\\cursor\\screenshots\\66-tenant-notifications.png",
+        "wav":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\67.wav",
+        "srt":  "C:\\Users\\abc\\Desktop\\faaz-dev_resisqaure\\devresi_square\\demo-video\\clips\\67.srt",
+        "seconds":  15.24,
+        "email":  "0",
+        "caption":  "James list matches it. A contractor booked for the door, and the hallway light updated, then completed. Repairs raised, appointed, and resolved, with every notice in the inbox and in the app."
+    }
+]

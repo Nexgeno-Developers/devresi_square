@@ -22,12 +22,12 @@ class CalendarIntegrationHttpTest extends TestCase
             ->withSession(['current_account_id' => $accountId])
             ->get(route('backend.events.calendar'))
             ->assertOk()
-            ->assertSee('Appointments', false)
+            ->assertSee('Calendar', false)
+            ->assertSee('Add Event', false)
+            ->assertSee('Visits, inspections, viewings and appointments across your portfolio.', false)
             ->assertDontSee('All Offices', false)
-            ->assertDontSee('Buyer Viewing', false)
-            ->assertDontSee('Valuation', false)
-            ->assertDontSee('Mortgage Appointment', false)
-            ->assertSee('Inspection', false);
+            ->assertDontSee('All Types', false)
+            ->assertDontSee('Search events', false);
     }
 
     public function test_landlord_event_on_property_is_visible_to_household_in_portal(): void

@@ -228,11 +228,12 @@
                         <details class="border rounded p-2" open>
                             <summary class="fw-semibold small">Send your invoice</summary>
                             @if(! $profile?->hasBankDetails())
-                                <p class="small mt-2 mb-2">Add the account the landlord should pay. It is printed on the invoice. ResiSquare does not take the payment.</p>
+                                <p class="small mt-2 mb-2">Add the account Resisquare pays after the landlord pays this invoice.</p>
                                 <a class="btn btn-primary btn-sm" href="{{ route('contractor.profile.bank') }}">Add bank details</a>
                             @else
                             <form method="POST" action="{{ route('contractor.jobs.invoice.store', $offer) }}" class="mt-2">
                                 @csrf
+                                <p class="small text-muted mb-2">Resisquare pays this account after the landlord pays the invoice.</p>
                                 @if($offer->price_is_estimate)
                                     <label class="form-label small mb-1">Final price before VAT £</label>
                                     <input type="number" step="0.01" min="0.01" name="final_net" class="form-control form-control-sm mb-1" style="max-width:180px" inputmode="decimal"
@@ -249,11 +250,21 @@
                     @endif
                     @break
                 @case('invoiced')
-                    <p class="small mb-0">
+                    @php $jobPayment = $offer->invoice?->cardPayment; @endphp
+                    <p class="small mb-1">
                         Invoice {{ $offer->invoice?->number }} sent ·
                         <span class="badge {{ $offer->invoice?->status === 'paid' ? 'text-bg-success' : ($offer->invoice?->isOverdue() ? 'text-bg-danger' : 'text-bg-warning') }}">{{ $offer->invoice?->statusLabel() }}</span>
                         @if($offer->invoice)<a href="{{ route('contractor.jobs.invoice', $offer) }}" class="ms-1">View invoice</a>@endif
                     </p>
+                    @if($jobPayment && $jobPayment->isPaid())
+                        @if((float) $jobPayment->contractor_amount < 0.01)
+                            <p class="small mb-0">The landlord has paid. No transfer is due after the Resisquare commission.</p>
+                        @elseif($jobPayment->payoutIsSent())
+                            <p class="small mb-0">Resisquare sent £{{ number_format((float) $jobPayment->contractor_amount, 2) }}.@if($jobPayment->payout_reference) Reference {{ $jobPayment->payout_reference }}.@endif</p>
+                        @else
+                            <p class="small mb-0">The landlord has paid. Resisquare will transfer £{{ number_format((float) $jobPayment->contractor_amount, 2) }} to the account on this invoice.</p>
+                        @endif
+                    @endif
                     @break
                 @default
                     @if($offer->reschedule_requested_at)

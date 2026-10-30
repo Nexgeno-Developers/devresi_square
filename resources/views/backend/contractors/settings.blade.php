@@ -54,6 +54,19 @@
                         <label class="form-label small mb-1">Contractor invoices due after (days)</label>
                         <input type="number" name="invoice_due_days" class="form-control form-control-sm" value="{{ old('invoice_due_days', $values['invoice_due_days']) }}">
                     </div>
+                    <div class="col-md-4">
+                        <label class="form-label small mb-1">Commission on job payments (%)</label>
+                        <input type="number" name="job_commission_percent" class="form-control form-control-sm" min="0" max="100" step="0.01" value="{{ old('job_commission_percent', $values['job_commission_percent']) }}">
+                        <div class="form-text">Use 0 to charge nothing. Taken from the invoice total, including VAT.</div>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label small mb-1">Who pays the commission</label>
+                        <select name="job_commission_bearer" class="form-select form-select-sm">
+                            @foreach(['contractor' => 'Taken from the contractor. The landlord pays the invoice total.', 'landlord' => 'Added on top. The landlord pays the invoice plus the commission.'] as $bearer => $bearerLabel)
+                                <option value="{{ $bearer }}" @selected(old('job_commission_bearer', $values['job_commission_bearer']) === $bearer)>{{ $bearerLabel }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="col-12">
                         <label class="form-check small">
                             <input type="hidden" name="emergency_sms" value="0">

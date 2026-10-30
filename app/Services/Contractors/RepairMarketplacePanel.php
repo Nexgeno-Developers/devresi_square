@@ -108,8 +108,10 @@ class RepairMarketplacePanel
                     'mine' => isset($relations['mine'][$id]),
                     'favourite' => isset($relations['favourite'][$id]),
                     'worked' => isset($relations['worked'][$id]),
+                    'marketplace' => $profile->onMarketplace(),
                 ];
             })
+            ->filter(fn ($row) => $row->marketplace || $row->mine)
             ->filter(fn ($row) => $row->has_trade)
             ->filter(fn ($row) => $maxMiles === null || ($row->miles !== null && $row->miles <= $maxMiles))
             ->filter(fn ($row) => collect($badges)->every(fn ($badge) => ContractorCompliance::hasBadge($row->profile, $badge)))
@@ -129,7 +131,7 @@ class RepairMarketplacePanel
         if ($candidates->isEmpty()) {
             $emptyReason = $filtered
                 ? 'No contractors match these filters. Try clearing them.'
-                : 'No approved contractors are on Resisquare yet.';
+                : 'No marketplace contractors match this repair. Invite your own, or send the repair to Resisquare.';
             $gap = ! $filtered;
         } elseif ($ready === 0) {
             $emptyReason = 'Nobody in this list can take this repair. The reason is on each row.';
