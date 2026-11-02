@@ -9,10 +9,12 @@ use App\Models\RepairJobMessage;
 use App\Models\RepairJobOffer;
 use App\Models\RepairJobVariation;
 use App\Models\User;
+use App\Models\RepairJobPayment;
 use App\Services\Contractors\ContractorDirectory;
 use App\Services\Contractors\ContractorMarketplaceException;
 use App\Services\Contractors\RepairJobAftercareService;
 use App\Services\Contractors\RepairJobOfferService;
+use App\Services\Contractors\RepairJobPaymentService;
 use App\Services\Contractors\RepairMarketplacePanel;
 use App\Support\ContractorCompliance;
 use App\Support\ContractorSettings;
@@ -29,6 +31,7 @@ class RepairJobOfferController extends Controller
         private readonly RepairMarketplacePanel $panel,
         private readonly ContractorDirectory $directory,
         private readonly RepairJobAftercareService $aftercare,
+        private readonly RepairJobPaymentService $payments,
     ) {
     }
 
@@ -81,6 +84,7 @@ class RepairJobOfferController extends Controller
         if ($data['urgency'] === 'emergency' && ! empty($data['send_all'])) {
             $ids = $this->panel->find($repairIssue, (int) current_account_id())['candidates']
                 ->where('can_take', true)
+                ->where('marketplace', true)
                 ->pluck('user_id')
                 ->all();
         }
@@ -278,28 +282,52 @@ class RepairJobOfferController extends Controller
     public function invoice(RepairJobOffer $offer)
     {
         $this->authorizeRepair($offer->repairIssue);
-        $offer->load(['invoice', 'repairIssue.property', 'contractor.contractorProfile']);
+        $offer->load(['invoice.cardPayment', 'repairIssue.property', 'contractor.contractorProfile']);
         abort_unless($offer->invoice, 404);
 
         return view('backend.repair.job-invoice', [
             'offer' => $offer,
             'invoice' => $offer->invoice,
             'profile' => $offer->contractor?->contractorProfile,
+            'charge' => $this->payments->chargeFor($offer->invoice),
+            'cardPaymentsReady' => $this->payments->isConfigured(),
         ]);
     }
 
-    public function invoicePaid(Request $request, RepairJobOffer $offer)
+    public function invoicePay(Request $request, RepairJobOffer $offer)
     {
         $this->authorizeRepair($offer->repairIssue);
         $invoice = $offer->invoice;
         abort_unless($invoice, 404);
-        try {
-            $this->aftercare->markPaid($invoice, $request->user());
-        } catch (ContractorMarketplaceException $exception) {
-            return back()->with('error', $exception->getMessage());
+
+        return redirect()->away($this->payments->createCheckoutUrl($request->user(), $invoice));
+    }
+
+    public function invoiceReturn(RepairJobOffer $offer)
+    {
+        $this->authorizeRepair($offer->repairIssue);
+        $invoice = $offer->invoice;
+        abort_unless($invoice, 404);
+        $back = redirect()->route('admin.property_repairs.job_offers.invoice', $offer);
+
+        $sessionId = (string) ($invoice->cardPayment?->stripe_checkout_session_id ?? '');
+        if ($sessionId === '' || ! str_starts_with($sessionId, 'cs_')) {
+            return $back->with('error', 'We could not confirm that payment. If you were charged, it will show on this page shortly.');
         }
 
-        return redirect()->route('admin.property_repairs.job_offers.invoice', $offer)->with('success', 'Marked as paid. The contractor has been told.');
+        try {
+            $payment = $this->payments->fulfillCheckoutSessionId($sessionId);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return $back->with('error', 'Your card payment is processing. Refresh this page in a moment if the invoice is still unpaid.');
+        }
+
+        if ($payment && $payment->status === RepairJobPayment::PAID) {
+            return $back->with('success', 'Payment received. Resisquare will pay the contractor.');
+        }
+
+        return $back->with('error', 'Your card payment is processing. Refresh this page in a moment if the invoice is still unpaid.');
     }
 
     private function run(callable $action, string $success, RepairJobOffer $offer)

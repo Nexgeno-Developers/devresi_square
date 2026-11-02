@@ -233,9 +233,12 @@
         $renewIn = ($expiring && $expiring->expires_at)
             ? (int) now()->startOfDay()->diffInDays($expiring->expires_at->copy()->startOfDay(), false)
             : null;
-        $coverLine = $profile->postcode
-            ? 'Landlords within '.($profile->coverage_radius_miles ?: 0).' miles of '.$profile->postcode.' send repairs that match your trades.'
-            : 'Landlords send repairs that match your trades.';
+        $commission = \App\Support\ContractorSettings::commissionPercent();
+        $coverLine = $profile->onMarketplace()
+            ? ($profile->postcode
+                ? 'Landlords within '.($profile->coverage_radius_miles ?: 0).' miles of '.$profile->postcode.' send repairs that match your trades.'
+                : 'Landlords send repairs that match your trades.')
+            : 'You receive jobs from the landlords who invited you. Other landlords cannot see you until you join the marketplace.';
         $spotlight = [
             'new' => 'New',
             'offer_sent' => 'Offers out',
@@ -257,13 +260,29 @@
             @endif
         </div>
         <div class="contractor-home-actions">
-            <span class="contractor-home-status {{ $paused ? 'is-paused' : 'is-ready' }}">{{ $paused ? 'Paused' : 'Ready for jobs' }}</span>
+            <span class="contractor-home-status {{ $paused ? 'is-paused' : 'is-ready' }}">{{ $paused ? 'Paused' : ($profile->onMarketplace() ? 'Ready for jobs' : 'Your landlords only') }}</span>
             <a href="{{ route('contractor.profile.edit') }}">Documents</a>
         </div>
     </header>
 
     @if(session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
     @if(session('error')) <div class="alert alert-danger">{{ session('error') }}</div> @endif
+
+    @unless($profile->onMarketplace())
+        <form method="POST" action="{{ route('contractor.marketplace.accept') }}" class="contractor-alert mb-3">
+            @csrf
+            <div>
+                <h2>Join the marketplace</h2>
+                <p>Agree that Resisquare keeps {{ rtrim(rtrim(number_format($commission, 2), '0'), '.') }}% of each marketplace job you are awarded. That rate is saved on your account. Jobs from landlords who invited you are unchanged. <a href="{{ route('contractor.terms') }}">Read the terms</a>.</p>
+                <label class="small">
+                    <input type="checkbox" name="accept" value="1" @checked(old('accept')) required>
+                    I agree to the marketplace terms
+                </label>
+                @error('accept')<div class="small text-danger">Tick the box to join the marketplace.</div>@enderror
+            </div>
+            <button class="btn btn-primary" type="submit">Join the marketplace</button>
+        </form>
+    @endunless
 
     <div class="contractor-stats">
         @foreach($spotlight as $key => $label)
@@ -309,6 +328,10 @@
     </nav>
 
     @forelse($items as $offer)
+        @if($offer instanceof \App\Models\ComplianceJobOffer)
+            @include('frontend.contractor.jobs.partials.compliance-card', ['offer' => $offer, 'declineReasons' => $declineReasons])
+            @continue
+        @endif
         @php
             $repair = $offer->repairIssue;
             $property = $repair?->property;

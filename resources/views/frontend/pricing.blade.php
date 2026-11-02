@@ -8,7 +8,7 @@
         <div class="container pricing_container">
             <div class="pricing_intro">
                 <p class="pricing_kicker">Transparent SaaS Pricing</p>
-                <h2>Simple Pricing That Grows With Your Portfolio</h2>
+                <h1>Simple Pricing That Grows With Your Portfolio</h1>
                 <p class="pricing_lead">ResiSquare charges for the software — never a percentage of your rent. Choose the plan that fits your portfolio today and upgrade as you grow.</p>
             </div>
 
@@ -19,10 +19,32 @@
                 <div class="alert alert-info text-center">{{ session('info') }}</div>
             @endif
 
+            @php
+                $annualSavedMonths = null;
+                if ($plans->isNotEmpty()) {
+                    $savedMonths = $plans->map(function ($plan) {
+                        $monthly = (int) $plan->monthly_price_minor;
+                        $annual = (int) $plan->annual_price_minor;
+                        if ($monthly <= 0 || $annual <= 0 || $annual % $monthly !== 0) {
+                            return null;
+                        }
+
+                        return 12 - intdiv($annual, $monthly);
+                    });
+                    $firstSaved = $savedMonths->first();
+                    if ($firstSaved > 0 && $savedMonths->every(fn ($months) => $months === $firstSaved)) {
+                        $annualSavedMonths = $firstSaved;
+                    }
+                }
+            @endphp
             <div class="pricing_toggle_wrapper">
                 <div class="btn-group billing-toggle" role="group" aria-label="Billing cycle">
-                    <button type="button" class="btn btn-outline-primary active" data-billing-option="monthly">Monthly</button>
-                    <button type="button" class="btn btn-outline-primary" data-billing-option="annual">Annual <span class="pricing_save">Save 2 Months</span></button>
+                    <button type="button" class="btn btn-outline-primary active" data-billing-option="monthly" aria-pressed="true">Monthly</button>
+                    <button type="button" class="btn btn-outline-primary" data-billing-option="annual" aria-pressed="false">Annual
+                        @if($annualSavedMonths)
+                            <span class="pricing_save">Save {{ $annualSavedMonths }} {{ \Illuminate\Support\Str::plural('Month', $annualSavedMonths) }}</span>
+                        @endif
+                    </button>
                 </div>
             </div>
         </div>
@@ -77,7 +99,7 @@
                                     <span class="pricing_badge">{{ $planGroups[$plan->target_account_type] ?? ucwords(str_replace('_', ' ', $plan->target_account_type)) }}</span>
                                 @endif
                                 <h3>{{ $plan->name }}</h3>
-                                <h5>Up to {{ $limit }} {{ \Illuminate\Support\Str::plural('property', $limit) }}</h5>
+                                <p class="plan_limit">Up to {{ $limit }} {{ \Illuminate\Support\Str::plural('property', $limit) }}</p>
                             </div>
                             <div class="price_table_content">
                                 <p class="desc">{{ $bandCopy[0] }}</p>
@@ -182,45 +204,70 @@
         <div class="container pricing_container">
             <div class="pricing_intro">
                 <h2>Compare Plan Features</h2>
-                <p class="pricing_lead">Detailed breakdown of what is included in every plan tier.</p>
+                <p class="pricing_lead">What each landlord plan includes. Property limits come from the plan records.</p>
             </div>
-            <div class="table-responsive">
-                <table class="table pricing_compare">
-                    <thead>
-                        <tr>
-                            <th>Feature</th>
-                            <th>Starter</th>
-                            <th>Growth</th>
-                            <th>Pro</th>
-                            <th>Business</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach([
-                            ['Managed Properties', '3', '10', '25', '50'],
-                            ['Tenancies & Lease Tracking', '✓', '✓', '✓', '✓'],
-                            ['Rent Tracking & Ledgers', '✓', '✓', '✓', '✓'],
-                            ['Repairs & Maintenance', '✓', '✓', '✓', '✓'],
-                            ['Compliance Tracking', '✓', '✓', '✓', '✓'],
-                            ['Document Vault', '✓', '✓', '✓', '✓'],
-                            ['Tenant Portal Access', '✓', '✓', '✓', '✓'],
-                            ['Contractor Portal Access', '—', '✓', '✓', '✓'],
-                            ['Property CSV Imports', '—', '✓', '✓', '✓'],
-                            ['Team Access', '—', 'Limited', '✓', '✓'],
-                            ['Advanced Permissions', '—', '—', '✓', '✓'],
-                            ['Portfolio Reporting Export', '—', '—', '✓', '✓'],
-                            ['Bulk Actions', '—', '—', '✓', '✓'],
-                            ['Priority Onboarding', '—', '—', '—', '✓'],
-                        ] as $row)
+            @if($plans->isEmpty())
+                <div class="alert alert-info text-center">No active plans are available right now.</div>
+            @else
+                @php
+                    $compareRows = [
+                        ['label' => 'Managed Properties', 'kind' => 'limit'],
+                        ['label' => 'Tenancies & Lease Tracking', 'kind' => 'min', 'min' => 0],
+                        ['label' => 'Rent Tracking & Ledgers', 'kind' => 'min', 'min' => 0],
+                        ['label' => 'Repairs & Maintenance', 'kind' => 'min', 'min' => 0],
+                        ['label' => 'Compliance Tracking', 'kind' => 'min', 'min' => 0],
+                        ['label' => 'Document Vault', 'kind' => 'min', 'min' => 0],
+                        ['label' => 'Tenant Portal Access', 'kind' => 'min', 'min' => 0],
+                        ['label' => 'Contractor Portal Access', 'kind' => 'min', 'min' => 1],
+                        ['label' => 'Property CSV Imports', 'kind' => 'min', 'min' => 1],
+                        ['label' => 'Team Access', 'kind' => 'team'],
+                        ['label' => 'Advanced Permissions', 'kind' => 'min', 'min' => 2],
+                        ['label' => 'Portfolio Reporting Export', 'kind' => 'min', 'min' => 2],
+                        ['label' => 'Bulk Actions', 'kind' => 'min', 'min' => 2],
+                        ['label' => 'Priority Onboarding', 'kind' => 'min', 'min' => 3],
+                    ];
+                    $planRank = function ($plan): int {
+                        $limit = (int) $plan->property_limit;
+
+                        return match (true) {
+                            $limit <= 3 => 0,
+                            $limit <= 10 => 1,
+                            $limit <= 25 => 2,
+                            default => 3,
+                        };
+                    };
+                @endphp
+                <div class="table-responsive">
+                    <table class="table pricing_compare">
+                        <thead>
                             <tr>
-                                @foreach($row as $cell)
-                                    <td>{{ $cell }}</td>
+                                <th>Feature</th>
+                                @foreach($plans as $plan)
+                                    <th>{{ $plan->name }}</th>
                                 @endforeach
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody>
+                            @foreach($compareRows as $row)
+                                <tr>
+                                    <td>{{ $row['label'] }}</td>
+                                    @foreach($plans as $plan)
+                                        @php
+                                            $rank = $planRank($plan);
+                                            $cell = match ($row['kind']) {
+                                                'limit' => (string) (int) $plan->property_limit,
+                                                'team' => $rank === 0 ? '—' : ($rank === 1 ? 'Limited' : '✓'),
+                                                default => $rank >= $row['min'] ? '✓' : '—',
+                                            };
+                                        @endphp
+                                        <td>{{ $cell }}</td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
         </div>
     </section>
 
@@ -232,7 +279,7 @@
             <div class="pricing_faq">
                 <div>
                     <h3>Is there a free trial?</h3>
-                    <p>Yes. Eligible plans include a {{ $trialDays ?? ($plans->max('trial_days') ?: 14) }}-day free trial. No card details required to start.</p>
+                    <p>Yes. Eligible plans include a {{ $trialDays ?? ($plans->max('trial_days') ?: 7) }}-day free trial. No card details required to start.</p>
                 </div>
                 <div>
                     <h3>Do you take a percentage of rent?</h3>
@@ -244,7 +291,7 @@
                 </div>
                 <div>
                     <h3>Is ResiSquare suitable for independent agents?</h3>
-                    <p>Yes. Pro, Business, and Portfolio plans are built specifically for professional landlords and independent letting agencies.</p>
+                    <p>Yes. The landlord plans on this page are for independent landlords. Larger portfolios and custom setups use the Portfolio offer above.</p>
                 </div>
             </div>
         </div>
@@ -258,7 +305,10 @@
                 <div class="pricing_cta">
                     @php $entryPlan = $plans->first(); @endphp
                     @if($entryPlan)
-                        <a class="btn btn_secondary" href="{{ route('register', ['plan_id' => $entryPlan->id, 'billing_cycle' => 'monthly', 'account_type' => $entryPlan->target_account_type]) }}">Start {{ $trialDays ?? ($entryPlan->trial_days ?: 14) }}-Day Free Trial</a>
+                        <a class="btn btn_secondary js-register-plan"
+                            href="{{ route('register', ['plan_id' => $entryPlan->id, 'billing_cycle' => 'monthly', 'account_type' => $entryPlan->target_account_type]) }}"
+                            data-monthly-url="{{ route('register', ['plan_id' => $entryPlan->id, 'billing_cycle' => 'monthly', 'account_type' => $entryPlan->target_account_type]) }}"
+                            data-annual-url="{{ route('register', ['plan_id' => $entryPlan->id, 'billing_cycle' => 'annual', 'account_type' => $entryPlan->target_account_type]) }}">Start {{ $trialDays ?? ($entryPlan->trial_days ?: 7) }}-Day Free Trial</a>
                     @endif
                     <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bookDemoModal">Book a Demo</button>
                 </div>
@@ -275,7 +325,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4">
                 <div class="modal-header">
-                    <h1 class="modal-title fs-5" id="bookDemoModalLabel">Book a Demo</h1>
+                    <h2 class="modal-title fs-5" id="bookDemoModalLabel">Book a Demo</h2>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
 
@@ -301,6 +351,7 @@
             text-align: center;
             margin-bottom: 24px;
         }
+        .pricing_intro h1,
         .pricing_intro h2 {
             margin: 0;
             color: var(--primary-900, #0f172a);
@@ -449,7 +500,7 @@
             font-weight: 700;
             line-height: 1.2;
         }
-        .pricing_section .pricing_cards .price_table .price_table_header h5 {
+        .pricing_section .pricing_cards .price_table .price_table_header .plan_limit {
             margin: 0;
             font-size: 13px;
             font-weight: 500;
@@ -576,6 +627,7 @@
             .pricing_page_section {
                 padding: 36px 0;
             }
+            .pricing_intro h1,
             .pricing_intro h2 {
                 font-size: 26px;
             }
@@ -603,7 +655,9 @@
 
     function setBillingCycle(cycle) {
         buttons.forEach(button => {
-            button.classList.toggle('active', button.dataset.billingOption === cycle);
+            const selected = button.dataset.billingOption === cycle;
+            button.classList.toggle('active', selected);
+            button.setAttribute('aria-pressed', selected ? 'true' : 'false');
         });
 
         priceNodes.forEach(node => {

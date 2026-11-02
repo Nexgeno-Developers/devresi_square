@@ -2,9 +2,13 @@
     $pending = $tenancy->correctionRequests->where('status', 'pending');
     $history = $tenancy->correctionRequests->where('status', '!=', 'pending');
 @endphp
-<div class="mb-4 border rounded p-3" data-pending-corrections="{{ $pending->count() }}">
-    <strong>Tenant confirmation</strong>
-    <p class="text-muted small mb-3">Invited tenants confirm rent, dates and deposit on first login. If something looks wrong they can send a correction request here.</p>
+<section class="rs-section" data-pending-corrections="{{ $pending->count() }}">
+    <div class="rs-section-head">
+        <div>
+            <h2>Tenant confirmation</h2>
+            <p>Invited tenants confirm rent, dates and deposit on first login. If something looks wrong they can send a correction request here.</p>
+        </div>
+    </div>
 
     <ul class="list-unstyled mb-3">
         @forelse($tenancy->tenantMembers as $member)
@@ -136,4 +140,4 @@
             </ul>
         </details>
     @endif
-</div>
+</section>

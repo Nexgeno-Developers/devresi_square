@@ -984,6 +984,22 @@ Responsive
 ===========================================================================*/
 /* Mobile */
 @media (max-width:766px) {
+    .frontend_top_header{
+        flex-wrap: wrap;
+        row-gap: 8px;
+        .navbar-nav{
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            gap: 8px 12px;
+        }
+        & .nav-item,
+        & .pricing_btn,
+        & .btn_secondary{
+            flex-shrink: 0;
+            white-space: nowrap;
+            width: auto;
+        }
+    }
     .hero_section{
         .main_hero_section{
             display: block;

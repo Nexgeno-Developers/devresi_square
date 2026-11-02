@@ -618,11 +618,11 @@ h2 {
 
 .tr {
     display: grid;
-    grid-template-columns: 1.5fr 0.9fr 0.8fr 0.6fr;
+    grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr) auto minmax(7.6rem, 0.9fr);
     gap: 8px;
     align-items: center;
     min-height: 42px;
-    padding: 0 10px;
+    padding: 6px 10px;
     border-bottom: 1px solid var(--line);
     background: #fff;
     font-size: 12.5px;
@@ -638,7 +638,18 @@ h2 {
     text-transform: uppercase;
 }
 
-.tr span:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.tr span:first-child,
+.tr span:nth-child(2) {
+    min-width: 0;
+    line-height: 1.3;
+}
+
+.tr span:last-child {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.table:not(.roles) .tr span:last-child { white-space: nowrap; }
 
 .roles .tr { grid-template-columns: 0.7fr 1.4fr; }
 
@@ -921,6 +932,11 @@ h2 {
 
     .product-stage .app { height: 100%; min-height: 0; }
 
+    .product-stage .app-main {
+        min-height: 0;
+        overflow: auto;
+    }
+
     .steps .step + .step,
     .stage-screens .screen + .screen { opacity: 0; }
 
@@ -989,9 +1005,9 @@ h2 {
 }
 
 @media (max-width: 640px) {
-    .hero-window .tr { grid-template-columns: 1.4fr 0.9fr 0.7fr; }
+    .table:not(.roles) .tr { grid-template-columns: minmax(0, 1.45fr) auto minmax(7.4rem, 0.85fr); }
 
-    .hero-window .tr span:nth-child(2) { display: none; }
+    .table:not(.roles) .tr span:nth-child(2) { display: none; }
 
     .hero-metrics { gap: 6px; }
 

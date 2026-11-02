@@ -43,7 +43,7 @@
             }
             $el.select2({
                 width: '100%',
-                placeholder: 'Start typing at least 3 characters',
+                placeholder: 'Choose tenants',
                 minimumInputLength: 0,
                 minimumResultsForSearch: 0
             });
@@ -82,20 +82,6 @@
     function bootTenancyCreateForm($) {
 
 
-    // â”€â”€ Deposit auto-calculation: Rent Ã— 12 Ã· 52 Ã— Weeks â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    function calcDeposit() {
-        const rent    = parseFloat($('#tenancies-rent').val()) || 0;
-        const weeks   = parseFloat($('#depositNumber').val()) || 0;
-        if (rent > 0 && weeks > 0) {
-            const deposit = (rent * 12 / 52 * weeks).toFixed(2);
-            $('#tenancies-deposit').val(deposit);
-        } else {
-            $('#tenancies-deposit').val('');
-        }
-    }
-    $('#tenancies-rent, #depositNumber').on('input change', calcDeposit);
-    calcDeposit();
-    // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     // Render main person radio buttons when tenants are selected
     function renderMainPersonOptions() {
@@ -107,13 +93,13 @@
         $('#main-person-error').remove();
 
         if (selectedUsers.length > 0) {
-            let html = '<div class="mb-3"><label class="form-label fw-semibold">Select Main Tenant <span class="text-danger">*</span></label>';
+            let html = '<div class="rs-lead"><span>Lead tenant</span>';
             selectedUsers.forEach(function(userId) {
                 const userName = userSelect.find('option[value="' + userId + '"]').text();
-                html += '<div class="form-check">' +
+                html += '<label class="form-check" for="is_main_' + userId + '">' +
                     '<input type="radio" name="is_main_person" value="' + userId + '" id="is_main_' + userId + '" class="form-check-input">' +
-                    '<label for="is_main_' + userId + '" class="form-check-label">' + userName + '</label>' +
-                    '</div>';
+                    '<span>' + userName + '</span>' +
+                    '</label>';
             });
             html += '</div>';
             container.html(html);
@@ -166,28 +152,15 @@
             $('#tenancies-rent').addClass('is-invalid');
         }
 
-        // Validate deposit weeks
-        if (!$('#depositNumber').val()) {
-            errors.push('Number of deposit weeks is required.');
-            $('#depositNumber').addClass('is-invalid');
+        if (!$('#tenancies-deposit').val()) {
+            errors.push('Deposit is required.');
+            $('#tenancies-deposit').addClass('is-invalid');
         }
 
         // Validate move in date
         if (!$('#tenancies-move_in').val()) {
             errors.push('Move In date is required.');
             $('#tenancies-move_in').addClass('is-invalid');
-        }
-
-        // Validate tenancy type
-        if (!$('#tenancy-type').val()) {
-            errors.push('Please select a Tenancy Type.');
-            $('#tenancy-type').addClass('is-invalid');
-        }
-
-        // Agency users pick a sub status. Landlords send a hidden default, so this field is not on the form.
-        if ($('#tenancies-sub_status').length && !$('#tenancies-sub_status').val()) {
-            errors.push('Please select a Sub Status.');
-            $('#tenancies-sub_status').addClass('is-invalid');
         }
 
         // Show frontend error banner and stop
@@ -334,13 +307,13 @@
         const termDaysInput = document.getElementById('tenancies-term_days');
         const moveOutInput = document.getElementById('tenancies-move_out');
 
-        if (!moveInInput || !termMonthsInput || !termDaysInput || !moveOutInput) return;
+        if (!moveInInput || !termMonthsInput || !moveOutInput) return;
 
         // Function to calculate the "Move Out" date
         function calculateMoveOutDate() {
             const moveInDate = new Date(moveInInput.value);
             const termMonths = parseInt(termMonthsInput.value, 10) || 0; // Default to 0 if empty
-            const termDays = parseInt(termDaysInput.value, 10) || 0; // Default to 0 if empty
+            const termDays = termDaysInput ? (parseInt(termDaysInput.value, 10) || 0) : 0;
 
             if (isNaN(moveInDate.getTime())) {
                 moveOutInput.value = '';
@@ -374,7 +347,7 @@
 
             // Update the term input fields
             termMonthsInput.value = months;
-            termDaysInput.value = remainingDays;
+            if (termDaysInput) termDaysInput.value = remainingDays;
         }
 
         // Function to validate the "Move Out" date and ensure it's after the "Move In" date
@@ -394,16 +367,16 @@
         // Function to ensure that the Term fields cannot have negative values
         function validateTermInputs() {
             const termMonths = parseInt(termMonthsInput.value, 10);
-            const termDays = parseInt(termDaysInput.value, 10);
+            const termDays = termDaysInput ? parseInt(termDaysInput.value, 10) : 0;
 
             if (termMonths < 0) termMonthsInput.value = 0;
-            if (termDays < 0) termDaysInput.value = 0;
+            if (termDaysInput && termDays < 0) termDaysInput.value = 0;
         }
 
         // Add event listeners to update the "Move Out" date on input change
         moveInInput.addEventListener('change', () => {
             // Only calculate Move Out if either termMonths or termDays is set
-            if (termMonthsInput.value > 0 || termDaysInput.value > 0) {
+            if (termMonthsInput.value > 0 || (termDaysInput && termDaysInput.value > 0)) {
                 calculateMoveOutDate();
             }
         });
@@ -414,11 +387,13 @@
             validateTermInputs();
             calculateMoveOutDate();
         });
-        termDaysInput.addEventListener('input', (e)=> {
-            e.target.value = e.target.value.replace(/[^0-9]/g, '');
-            validateTermInputs();
-            calculateMoveOutDate();
-        });
+        if (termDaysInput) {
+            termDaysInput.addEventListener('input', (e)=> {
+                e.target.value = e.target.value.replace(/[^0-9]/g, '');
+                validateTermInputs();
+                calculateMoveOutDate();
+            });
+        }
         moveOutInput.addEventListener('change', () => {
             calculateMoveOutDate();
             recalculateTerm();
@@ -438,11 +413,13 @@
     $(document).off('click.tenancyQuickAdd', '#addUserBtn').on('click.tenancyQuickAdd', '#addUserBtn', function () {
         $('#mainForm').hide();
         $('#addUserFormContainer').show();
+        $('.rs-rail').prop('hidden', true);
     });
 
     $(document).off('click.tenancyQuickAdd', '#backToMainForm').on('click.tenancyQuickAdd', '#backToMainForm', function () {
         $('#addUserFormContainer').hide();
         $('#mainForm').show();
+        $('.rs-rail').prop('hidden', false);
     });
 
     $(document).off('submit.tenancyQuickAdd', '#addUserForm').on('submit.tenancyQuickAdd', '#addUserForm', function (event) {
@@ -466,6 +443,7 @@
                 $('#tenant_id').append(option).trigger('change');
                 $('#addUserFormContainer').hide();
                 $('#mainForm').show();
+                $('.rs-rail').prop('hidden', false);
                 form[0].reset();
             },
             error: function (xhr) {

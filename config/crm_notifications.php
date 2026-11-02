@@ -6,12 +6,12 @@ $both = ['email', 'system'];
 
 $events = [
         CrmNotificationEvent::AppointmentInvited->value => [
-            'category' => 'appointments', 'priority' => 'normal', 'channels' => $both,
+            'category' => 'appointments', 'priority' => 'normal', 'channels' => $both, 'locked_channels' => $both,
             'subject' => 'Appointment invitation: [[appointment_title]]',
-            'message' => 'You have been invited to [[appointment_title]] on [[appointment_at]].',
+            'message' => 'You have been invited to [[appointment_title]] on [[appointment_at]]. Accept or decline it from your calendar.',
         ],
         CrmNotificationEvent::AppointmentReminder->value => [
-            'category' => 'appointments', 'priority' => 'normal', 'channels' => $both,
+            'category' => 'appointments', 'priority' => 'normal', 'channels' => $both, 'locked_channels' => $both,
             'subject' => 'Appointment reminder: [[appointment_title]]',
             'message' => '[[appointment_title]] starts on [[appointment_at]].',
         ],

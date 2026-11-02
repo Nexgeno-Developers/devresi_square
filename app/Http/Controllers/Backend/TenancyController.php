@@ -159,12 +159,6 @@ class TenancyController
             $validated['status'] = 'Archived';
         }
 
-        // Manually convert checkbox field
-        // set it to true; if not, set to false
-        $validated['periodic'] = $request->has('periodic') ? true : false;
-        $validated['rolling_contract'] = $request->has('rolling_contract') ? true : false;
-        $validated['renewal_exempt'] = $request->has('renewal_exempt') ? true : false;
-
         $property = Property::findOrFail($validated['property_id']);
         ensureModelBelongsToCurrentAccount($property);
         $validated['account_id'] = current_account_id();
@@ -527,11 +521,6 @@ class TenancyController
         if (($validated['status'] ?? null) === 'Archive') {
             $validated['status'] = 'Archived';
         }
-
-        // Manually convert checkbox field
-        $validated['periodic'] = $request->has('periodic') ? true : false;
-        $validated['rolling_contract'] = $request->has('rolling_contract') ? true : false;
-        $validated['renewal_exempt'] = $request->has('renewal_exempt') ? true : false;
 
         // Find the existing tenancy record
         $tenancy = Tenancy::findOrFail($id);

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Backend;
 use App\Enums\CrmNotificationEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Document;
+use App\Models\Event;
+use App\Services\Events\EventStageService;
 use App\Models\RentInvoice;
 use App\Models\RepairHistory;
 use App\Models\RepairIssue;
@@ -452,6 +454,22 @@ class TenantPortalController extends Controller
             'calendarDays' => $days,
             'hasAnyEvents' => $events->isNotEmpty(),
         ]));
+    }
+
+    public function respondToEvent(Request $request, Event $event, EventStageService $stages): RedirectResponse
+    {
+        $user = $request->user();
+        ensureModelBelongsToCurrentAccount($event);
+        abort_unless($event->users()->where('users.id', $user->id)->exists(), 403);
+
+        $validated = $request->validate([
+            'response' => 'required|in:accepted,rejected',
+            'note' => 'nullable|string|max:500|required_if:response,rejected',
+        ]);
+
+        $stages->record($event, $user, $validated['response'], $validated['note'] ?? null);
+
+        return redirect()->route('tenant.calendar')->with('success', 'Your reply was saved.');
     }
 
     public function profile(Request $request): View

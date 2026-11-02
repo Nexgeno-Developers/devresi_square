@@ -131,6 +131,9 @@ Route::group(['middleware' => 'web'], function () {
         Route::get('/jobs/{offer}', [ContractorJobController::class, 'show'])->name('jobs.show');
         Route::post('/jobs/{offer}/quote', [ContractorJobController::class, 'quote'])->name('jobs.quote');
         Route::post('/jobs/{offer}/decline', [ContractorJobController::class, 'decline'])->name('jobs.decline');
+        Route::get('/compliance-jobs/{offer}', [ContractorJobController::class, 'complianceShow'])->name('jobs.compliance.show');
+        Route::post('/compliance-jobs/{offer}/quote', [ContractorJobController::class, 'complianceQuote'])->name('jobs.compliance.quote');
+        Route::post('/compliance-jobs/{offer}/decline', [ContractorJobController::class, 'complianceDecline'])->name('jobs.compliance.decline');
         Route::post('/jobs/{offer}/withdraw', [ContractorJobController::class, 'withdraw'])->name('jobs.withdraw');
         Route::post('/jobs/{offer}/cancel', [ContractorJobController::class, 'cancel'])->name('jobs.cancel');
         Route::post('/jobs/{offer}/reconfirm', [ContractorJobController::class, 'reconfirm'])->name('jobs.reconfirm');
@@ -145,6 +148,7 @@ Route::group(['middleware' => 'web'], function () {
         Route::get('/jobs/{offer}/invoice', [ContractorJobController::class, 'invoice'])->name('jobs.invoice');
         Route::post('/jobs/{offer}/invoice', [ContractorJobController::class, 'issueInvoice'])->name('jobs.invoice.store');
 
+        Route::post('/marketplace', [ContractorProfileController::class, 'acceptMarketplace'])->name('marketplace.accept');
         Route::get('/profile', [ContractorProfileController::class, 'edit'])->name('profile.edit');
         Route::get('/profile/bank', [ContractorProfileController::class, 'bank'])->name('profile.bank');
         Route::post('/profile/bank', [ContractorProfileController::class, 'updateBank'])->name('profile.bank.update');

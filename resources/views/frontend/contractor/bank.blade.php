@@ -5,8 +5,8 @@
 
 @section('content')
     <p class="auth-mark">Payment details</p>
-    <h2>Where the landlord pays you</h2>
-    <p class="auth-muted">These details are printed on your invoices. ResiSquare does not take the payment.</p>
+    <h2>Where Resisquare pays you</h2>
+    <p class="auth-muted">These details are stored on your invoices. After the landlord pays, Resisquare transfers your share to this account.</p>
 
     @if(session('success'))
         <div class="auth-alert auth-alert-success">{{ session('success') }}</div>

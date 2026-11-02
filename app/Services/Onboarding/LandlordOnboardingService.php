@@ -15,6 +15,7 @@ use App\Models\OwnerGroupUser;
 use App\Models\Property;
 use App\Models\PropertyParticipant;
 use App\Models\Tenancy;
+use App\Models\Tenant;
 use App\Models\TenantMember;
 use App\Models\Upload;
 use App\Models\User;
@@ -804,36 +805,7 @@ class LandlordOnboardingService
      */
     private function propertyAttributesFromRecord(array $record, int $countryId): array
     {
-        $blank = static fn ($value) => $value === null || trim((string) $value) === '';
-
-        return array_filter([
-            'line_1' => $record['line_1'] ?? null,
-            'line_2' => $blank($record['line_2'] ?? null) ? null : $record['line_2'],
-            'city' => $record['city'] ?? null,
-            'county' => $blank($record['county'] ?? null) ? null : $record['county'],
-            'postcode' => $record['postcode'] ?? null,
-            'country' => $countryId,
-            'currency' => $blank($record['currency'] ?? null) ? 'GBP' : $record['currency'],
-            'uprn' => $blank($record['uprn'] ?? null) ? null : $record['uprn'],
-            'prop_name' => $record['line_1'] ?? null,
-            'specific_property_type' => $blank($record['specific_property_type'] ?? null) ? 'flat' : $record['specific_property_type'],
-            'property_type' => $blank($record['property_type'] ?? null) ? 'lettings' : $record['property_type'],
-            'bedroom' => $blank($record['bedroom'] ?? null) ? '1' : (string) $record['bedroom'],
-            'bathroom' => $blank($record['bathroom'] ?? null) ? '1' : (string) $record['bathroom'],
-            'reception' => $blank($record['reception'] ?? null) ? null : (string) $record['reception'],
-            'tenure' => $blank($record['tenure'] ?? null) ? null : $record['tenure'],
-            'epc_rating' => $blank($record['epc_rating'] ?? null) ? null : $record['epc_rating'],
-            'epc_required' => $blank($record['epc_required'] ?? null) ? null : (int) (bool) $record['epc_required'],
-            'council_tax_band' => $blank($record['council_tax_band'] ?? null) ? null : $record['council_tax_band'],
-            'square_meter' => $blank($record['square_meter'] ?? null) ? null : (string) $record['square_meter'],
-            'square_feet' => $blank($record['square_feet'] ?? null) ? null : (string) $record['square_feet'],
-            'floor' => $blank($record['floor'] ?? null) ? null : $record['floor'],
-            'local_authority' => $blank($record['local_authority'] ?? null) ? null : $record['local_authority'],
-            'letting_current_status' => $blank($record['letting_current_status'] ?? null) ? 'available' : $record['letting_current_status'],
-            'useful_information' => isset($record['data_sources']) && is_array($record['data_sources'])
-                ? 'Sources: '.implode(', ', $record['data_sources'])
-                : null,
-        ], fn ($value) => $value !== null && $value !== '');
+        return Property::attributesFromAddressRecord($record, $countryId);
     }
 
     private function onboardingProperty(Account $account): ?Property
@@ -972,7 +944,7 @@ class LandlordOnboardingService
         }
 
         $parts = preg_split('/\s+/', $name, 2) ?: [$name];
-        $user = User::create([
+        $attributes = [
             'name' => $name,
             'first_name' => $parts[0] ?? $name,
             'last_name' => $parts[1] ?? '',
@@ -982,7 +954,11 @@ class LandlordOnboardingService
             'status' => 1,
             'can_login' => true,
             'created_by' => $actor->id,
-        ]);
+        ];
+
+        $user = $roleName === 'Tenant'
+            ? Tenant::create($attributes)
+            : User::create($attributes);
 
         Role::findOrCreate($roleName, 'web');
         $user->assignRole($roleName);

@@ -43,6 +43,24 @@ class ContractorSettings
         Cache::forget('business_settings');
     }
 
+    public static function commissionPercent(): float
+    {
+        $percent = round((float) self::get('job_commission_percent'), 2);
+        if ($percent < 0) {
+            return 0.0;
+        }
+        if ($percent > 100) {
+            return 100.0;
+        }
+
+        return $percent;
+    }
+
+    public static function commissionBearer(): string
+    {
+        return self::get('job_commission_bearer') === 'landlord' ? 'landlord' : 'contractor';
+    }
+
     public static function plMinimum(): float
     {
         return (float) self::get('public_liability_minimum');

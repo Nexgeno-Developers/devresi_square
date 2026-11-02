@@ -83,7 +83,8 @@ return new class extends Migration
             ");
 
             foreach ($foreignKeys as $foreignKey) {
-                $constraintName = str_replace('`', '``', $foreignKey->constraint_name);
+                $row = array_change_key_case((array) $foreignKey, CASE_LOWER);
+                $constraintName = str_replace('`', '``', (string) $row['constraint_name']);
                 DB::statement("alter table `staff` drop foreign key `{$constraintName}`");
             }
 

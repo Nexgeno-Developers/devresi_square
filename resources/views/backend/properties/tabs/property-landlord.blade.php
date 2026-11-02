@@ -20,7 +20,10 @@
     $photos = $property->photos ?? '';
     $usefulInformation = trim((string) ($property->useful_information ?? ''));
     $showSources = $usefulInformation !== '' && ! str_starts_with(strtolower($usefulInformation), 'sources:');
-    $localAuthority = $property->localAuthority->display_name ?? '';
+    $storedAuthority = $property->getAttributes()['local_authority'] ?? '';
+    $localAuthority = is_numeric($storedAuthority)
+        ? ($property->localAuthority->display_name ?? '')
+        : (string) $storedAuthority;
     $activeTenancy = $property->relationLoaded('tenancies')
         ? $property->tenancies->first()
         : \App\Models\Tenancy::query()

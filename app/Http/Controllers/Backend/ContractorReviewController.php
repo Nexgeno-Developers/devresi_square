@@ -9,6 +9,7 @@ use App\Models\ContractorProfile;
 use App\Models\ContractorTrade;
 use App\Models\RepairContractorRequest;
 use App\Models\RepairJobOffer;
+use App\Models\RepairJobPayment;
 use App\Models\Registration;
 use App\Models\User;
 use App\Services\Contractors\ContractorDirectory;
@@ -16,6 +17,7 @@ use App\Services\Contractors\ContractorDocumentStore;
 use App\Services\Contractors\ContractorMail;
 use App\Services\Contractors\ContractorMarketplaceException;
 use App\Services\Contractors\RepairJobOfferService;
+use App\Services\Contractors\RepairJobPaymentService;
 use App\Support\AuditTrail;
 use App\Support\ContractorCompliance;
 use App\Support\ContractorSettings;
@@ -507,6 +509,8 @@ class ContractorReviewController extends Controller
             'reminder_days' => ['required', 'string', 'regex:/^\s*\d+(\s*,\s*\d+)*\s*$/'],
             'emergency_sms' => ['nullable', 'boolean'],
             'invoice_due_days' => ['required', 'integer', 'min:0', 'max:90'],
+            'job_commission_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+            'job_commission_bearer' => ['required', Rule::in(['contractor', 'landlord'])],
             'trade_documents' => ['nullable', 'array'],
             'trade_documents.*' => ['array'],
             'trade_documents.*.*' => [Rule::in(array_keys(config('contractor_marketplace.documents')))],
@@ -533,6 +537,8 @@ class ContractorReviewController extends Controller
             'digest_hours' => $data['digest_hours'],
             'emergency_sms' => $request->boolean('emergency_sms') ? 1 : 0,
             'invoice_due_days' => $data['invoice_due_days'],
+            'job_commission_percent' => number_format((float) $data['job_commission_percent'], 2, '.', ''),
+            'job_commission_bearer' => $data['job_commission_bearer'],
             'reminder_days' => array_values(array_map('intval', array_filter(array_map('trim', explode(',', $data['reminder_days']))))),
             'invite_hours' => array_map('intval', $data['invite_hours']),
             'offer_valid_hours' => array_map('intval', $data['offer_valid_hours']),
@@ -589,6 +595,40 @@ class ContractorReviewController extends Controller
         }
 
         return back()->with('success', 'Done. The action is in the job’s audit trail.');
+    }
+
+    public function payouts()
+    {
+        $with = ['invoice.offer.contractor.contractorProfile', 'invoice.offer.repairIssue'];
+        $waiting = RepairJobPayment::query()
+            ->with($with)
+            ->where('status', RepairJobPayment::PAID)
+            ->where('payout_status', RepairJobPayment::PAYOUT_UNPAID)
+            ->orderBy('paid_at')
+            ->get();
+        $sent = RepairJobPayment::query()
+            ->with($with)
+            ->where('status', RepairJobPayment::PAID)
+            ->where('payout_status', RepairJobPayment::PAYOUT_PAID)
+            ->latest('payout_paid_at')
+            ->limit(30)
+            ->get();
+
+        return view('backend.contractors.payouts', compact('waiting', 'sent'));
+    }
+
+    public function markPayout(Request $request, RepairJobPayment $payment, RepairJobPaymentService $payments)
+    {
+        $data = $request->validate([
+            'payout_reference' => ['required', 'string', 'max:64'],
+        ]);
+        try {
+            $payments->markPayoutSent($payment, $request->user(), $data['payout_reference']);
+        } catch (ContractorMarketplaceException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', 'Transfer recorded. The contractor has been told.');
     }
 
     public function inviteLegacy(Request $request)

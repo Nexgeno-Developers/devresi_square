@@ -5,7 +5,7 @@
 @endpush
 
 @section('content')
-<div class="container-fluid pt-4 pb-5 lw-page">
+<div class="container-fluid pt-4 pb-5 lw-page rs-record-page">
     <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
         <div>
             <h4>Edit tenancy</h4>
@@ -17,10 +17,13 @@
             <a href="{{ route('admin.tenancies.all') }}" class="btn btn-light">Back</a>
         @endif
     </div>
-    <div class="card lw-card">
-        <div class="card-body">
-            @include('backend.tenancies.edit')
+    <div class="rs-workspace">
+        <div class="card lw-card rs-sheet-card">
+            <div class="card-body">
+                @include('backend.tenancies.edit')
+            </div>
         </div>
+        @include('backend.tenancies._record-rail', ['formId' => 'editTenancyForm'])
     </div>
 </div>
 @endsection

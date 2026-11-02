@@ -151,7 +151,7 @@ class ChimnieClient
             'postcode' => $resolvedPostcode,
             'country' => 'United Kingdom',
             'country_code' => 'GB',
-            'specific_property_type' => (string) ($row['property_type'] ?? $row['specific_property_type'] ?? 'flat'),
+            'specific_property_type' => (string) ($row['property_type'] ?? $row['specific_property_type'] ?? ''),
             'bedroom' => (string) ($row['bedrooms'] ?? $row['bedroom'] ?? ''),
             'bathroom' => (string) ($row['bathrooms'] ?? $row['bathroom'] ?? ''),
             'reception' => (string) ($row['receptions'] ?? $row['reception'] ?? ''),

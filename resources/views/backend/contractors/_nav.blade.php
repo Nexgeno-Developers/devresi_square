@@ -9,6 +9,7 @@
         'index' => 'Review queue',
         'directory' => 'All contractors',
         'jobs' => 'Stuck and disputed jobs',
+        'payouts' => 'Payouts',
         'coverage' => 'Coverage gaps',
         'settings' => 'Settings',
     ] as $route => $label)

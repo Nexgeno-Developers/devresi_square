@@ -13,6 +13,10 @@ return [
 
     'privacy_version' => '2026-10',
 
+    // Bump this when the marketplace commission terms change. Contractors who
+    // already accepted keep the rate stored on their profile.
+    'marketplace_terms_version' => '2026-10',
+
     // Defaults; Super Admin can override these on the contractor settings page.
     'defaults' => [
         'public_liability_minimum' => 1000000,
@@ -27,9 +31,14 @@ return [
         'reminder_days' => [30, 14, 7],
         'emergency_sms' => 1,
         'invoice_due_days' => 14,
+        // Percent of the invoice gross kept by Resisquare. 0 charges nothing.
+        'job_commission_percent' => 0,
+        // contractor: deducted from the contractor's share. landlord: added on top of the invoice.
+        'job_commission_bearer' => 'contractor',
         'trade_documents' => [
             'gas' => ['gas_safe'],
             'electrical' => ['electrical_scheme'],
+            'energy' => ['epc_accreditation'],
             'oil' => ['oftec'],
             'refrigeration' => ['fgas'],
         ],
@@ -40,6 +49,7 @@ return [
         'plumbing' => 'Plumbing',
         'gas' => 'Gas and heating',
         'electrical' => 'Electrical',
+        'energy' => 'Energy assessor',
         'oil' => 'Oil heating',
         'refrigeration' => 'Air con and refrigeration',
         'carpentry' => 'Carpentry',
@@ -79,6 +89,14 @@ return [
             'hint' => 'NICEIC, NAPIT or equivalent certificate',
             'issuers' => ['NICEIC', 'NAPIT', 'ELECSA', 'Stroma', 'Other'],
             'reference' => 'Registration number',
+            'file' => true,
+            'expires' => true,
+        ],
+        'epc_accreditation' => [
+            'label' => 'EPC accreditation',
+            'hint' => 'Elmhurst, Quidos, Stroma, ECMK or equivalent certificate',
+            'issuers' => ['Elmhurst', 'Quidos', 'Stroma', 'ECMK', 'Other'],
+            'reference' => 'Accreditation number',
             'file' => true,
             'expires' => true,
         ],

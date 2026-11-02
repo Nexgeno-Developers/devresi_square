@@ -1,150 +1,116 @@
-{{-- resources/views/admin/tenancies/view.blade.php --}}
-{{-- @extends('layouts.admin') --}}
+@include('backend.tenancies._record-form-styles')
+<div class="rs-workspace">
+<div class="card lw-card rs-sheet-card">
+<div class="card-body">
+<div id="mainForm" class="rs-sheet">
+    <section class="rs-section">
+        <div class="rs-section-head">
+            <div>
+                <h2>Dates</h2>
+            </div>
+        </div>
+        <div class="rs-facts" data-let-facts="landlord">
+            <div>
+                <span>Move in</span>
+                <strong>{{ rs_date($tenancy->move_in) }}</strong>
+            </div>
+            <div>
+                <span>Term</span>
+                <strong>{{ $tenancy->displayTerm() }}</strong>
+            </div>
+            <div>
+                <span>Move out</span>
+                <strong>{{ rs_date($tenancy->move_out) }}</strong>
+            </div>
+        </div>
+    </section>
 
-{{-- @section('content') --}}
-<div id="mainForm">
-    
-    <div class="mb-3">
-        <strong>Property:</strong> {{ $tenancy->property->full_address ?? 'N/A' }}
-    </div>
-
-    @include('backend.tenancies._correction-requests')
-
-    <div class="mb-3">
-        <strong>Right to rent follow-up register</strong>
-        @foreach($tenancy->tenantMembers as $member)
-            <form method="POST" action="{{ route('admin.tenancies.right-to-rent.update', [$tenancy, $member]) }}" class="row g-2 align-items-end border rounded p-2 mt-2">
-                @csrf @method('PUT')
-                <div class="col-md-3"><span>{{ $member->user?->name ?? 'Tenant' }}</span></div>
-                <div class="col-md-2"><div class="form-check"><input type="hidden" name="right_to_rent_required" value="0"><input class="form-check-input" type="checkbox" name="right_to_rent_required" value="1" @checked($member->right_to_rent_required)><label class="form-check-label">Follow-up required</label></div></div>
-                <div class="col-md-3"><label class="form-label">Checked at</label><input type="datetime-local" name="right_to_rent_checked_at" class="form-control" value="{{ $member->right_to_rent_checked_at?->format('Y-m-d\\TH:i') }}"></div>
-                <div class="col-md-3"><label class="form-label">Follow-up due</label><input type="datetime-local" name="right_to_rent_follow_up_due_at" class="form-control" value="{{ $member->right_to_rent_follow_up_due_at?->format('Y-m-d\\TH:i') }}"></div>
-                <div class="col-md-1"><button class="btn btn-sm btn-outline-primary">Save</button></div>
-            </form>
-        @endforeach
-        <small class="text-muted">Reminder text never includes immigration details.</small>
-    </div>
-
-    <div class="mb-3">
-        <strong>Tenants:</strong>
-        <ul>
-            @foreach($tenancy->tenantMembers as $member)
-                <li>
-                    {{ $member->user->name ?? 'N/A' }} ({{ $member->user->email ?? '' }})
-                    @if($member->is_main_person)
-                        <span class="badge bg-success ms-2">Main Tenant</span>
-                    @endif
-                </li>
-            @endforeach
-        </ul>
-    </div>
-
-    <div class="row">
-        <div class="col">
-            <strong>Status:</strong> {{ $tenancy->status }}
+    <section class="rs-section">
+        <div class="rs-section-head">
+            <div>
+                <h2>Rent</h2>
+            </div>
         </div>
-        <div class="col">
-            <strong>Tenancy Type:</strong> {{ $tenancy->tenancyType->name ?? 'N/A' }}
+        <div class="rs-facts">
+            <div>
+                <span>Rent</span>
+                <strong>{{ rs_money($tenancy->rent) }}</strong>
+            </div>
+            <div>
+                <span>How often</span>
+                <strong>{{ $tenancy->rentFrequencyLabel() }}</strong>
+            </div>
+            <div>
+                <span>Due day</span>
+                <strong>{{ $tenancy->rentDueLabel() }}</strong>
+            </div>
+            <div>
+                <span>Deposit</span>
+                <strong>£{{ number_format($tenancy->deposit, 2) }}</strong>
+            </div>
         </div>
-        <div class="col">
-            <strong>Sub Status:</strong> {{ $tenancy->tenancySubStatus->name ?? 'N/A' }}
-        </div>
-    </div>
-
-    <div class="mt-3">
-        <strong>Periodic:</strong> {{ $tenancy->periodic ? 'Yes' : 'No' }}<br>
-        <strong>Rolling Contract:</strong> {{ $tenancy->rolling_contract ? 'Yes' : 'No' }}<br>
-        <strong>Renewal Exempt:</strong> {{ $tenancy->renewal_exempt ? 'Yes' : 'No' }}
-    </div>
-
-    <hr>
-
-    <div class="row" data-let-facts="landlord">
-        <div class="col">
-            <strong>Move In:</strong> {{ rs_date($tenancy->move_in) }}
-        </div>
-        <div class="col">
-            <strong>Term:</strong> {{ $tenancy->displayTerm() }}
-        </div>
-        <div class="col">
-            <strong>Move Out:</strong> {{ rs_date($tenancy->move_out) }}
-        </div>
-    </div>
-
-    <div class="row mt-3">
-        <div class="col">
-            <strong>Renewal Confirm Date:</strong> {{ $tenancy->tenancy_renewal_confirm_date ?? 'N/A' }}
-        </div>
-        <div class="col">
-            <strong>Extension Date:</strong> {{ $tenancy->extension_date ?? 'N/A' }}
-        </div>
-    </div>
-
-    <hr>
-
-    <div class="row">
-        <div class="col">
-            <strong>Rent:</strong> {{ rs_money($tenancy->rent) }}
-        </div>
-        <div class="col">
-            <strong>Frequency:</strong> {{ $tenancy->rentFrequencyLabel() }}
-        </div>
-        <div class="col">
-            <strong>Due day:</strong> {{ $tenancy->rentDueLabel() }}
-        </div>
-        <div class="col">
-            <strong>Deposit:</strong> £{{ number_format($tenancy->deposit, 2) }}
-        </div>
-    </div>
-
-    <div class="row mt-3">
-        <div class="col">
-            <strong>Deposit Type:</strong> {{ $tenancy->deposit_type ? beautify_string($tenancy->deposit_type) : 'N/A' }}
-        </div>
-        <div class="col">
-            <strong>Deposit Number:</strong> {{ $tenancy->deposit_number }}
-        </div>
-    </div>
-
-    <div class="row mt-3">
-        <div class="col">
-            <strong>Deposit Held By:</strong> {{ $tenancy->deposit_held_by ? beautify_string($tenancy->deposit_held_by) : 'N/A' }}
-        </div>
-        <div class="col">
-            <strong>Deposit Service:</strong> {{ $tenancy->deposit_service ? beautify_string($tenancy->deposit_service) : 'N/A' }}
-        </div>
-    </div>
-
-    @if($tenancy->deposit_service === 'tds_dps_number' || $tenancy->tds_dps_number)
-    <div class="mt-2">
-        <strong>TDS / DPS Reference Number:</strong> {{ $tenancy->tds_dps_number ?? 'N/A' }}
-    </div>
-    @endif
-
-    @if($tenancy->reference_number || $tenancy->deposit_scheme)
-    <div class="mt-2">
-        <strong>Reference Number:</strong> {{ $tenancy->reference_number ?? 'N/A' }}<br>
-        <strong>Deposit Scheme:</strong> {{ $tenancy->deposit_scheme ?? 'N/A' }}
-    </div>
-    @endif
+    </section>
 
     @include('backend.tenancies._deposit-protection')
 
-    <hr>
+    <section class="rs-section">
+        <div class="rs-section-head">
+            <div>
+                <h2>Right to rent follow-up register</h2>
+                <p>Reminder text never includes immigration details.</p>
+            </div>
+        </div>
+        @foreach($tenancy->tenantMembers as $member)
+            <form method="POST" action="{{ route('admin.tenancies.right-to-rent.update', [$tenancy, $member]) }}" class="rs-grid mb-3">
+                @csrf @method('PUT')
+                <div class="rs-field rs-span-2">
+                    <span>Tenant</span>
+                    <strong>{{ $member->user?->name ?? 'Tenant' }}</strong>
+                </div>
+                <label class="rs-check rs-span-2">
+                    <input type="hidden" name="right_to_rent_required" value="0">
+                    <input class="form-check-input" type="checkbox" name="right_to_rent_required" value="1" @checked($member->right_to_rent_required)>
+                    <span>Follow-up required</span>
+                </label>
+                <label class="rs-field rs-span-2">
+                    Checked at
+                    <input type="datetime-local" name="right_to_rent_checked_at" class="form-control" value="{{ $member->right_to_rent_checked_at?->format('Y-m-d\TH:i') }}">
+                </label>
+                <label class="rs-field rs-span-2">
+                    Follow-up due
+                    <input type="datetime-local" name="right_to_rent_follow_up_due_at" class="form-control" value="{{ $member->right_to_rent_follow_up_due_at?->format('Y-m-d\TH:i') }}">
+                </label>
+                <div class="rs-span-6 rs-actions">
+                    <button class="btn btn-sm btn-outline-primary">Save</button>
+                </div>
+            </form>
+        @endforeach
+    </section>
 
-    <div class="mb-3">
-        <strong>Property Managers:</strong>
-        <ul>
-            @foreach($tenancy->propertyManagers as $manager)
-                <li>{{ $manager->name }}</li>
-            @endforeach
-        </ul>
-    </div>
+    @unless(is_landlord_plan_user())
+    <section class="rs-section">
+        <div class="rs-section-head">
+            <div>
+                <h2>Assignment</h2>
+            </div>
+        </div>
+        <div class="rs-people">
+            @forelse($tenancy->propertyManagers as $manager)
+                <div class="rs-person"><p class="mb-0">{{ $manager->name }}</p></div>
+            @empty
+                <p class="text-muted mb-0">No property manager assigned.</p>
+            @endforelse
+        </div>
+    </section>
+    @endunless
 
-    <hr>
-    <div class="mb-3">
-        <strong>Notice register</strong>
-        <table class="table lw-table table-sm mt-2">
+    <section class="rs-section">
+        <div class="rs-section-head">
+            <div>
+                <h2>Notice register</h2>
+            </div>
+        </div>
+        <table class="table lw-table table-sm">
             <thead><tr><th>Type</th><th>Served</th><th>Effective</th><th>Recipient</th><th>Status</th></tr></thead>
             <tbody>
             @forelse($tenancy->notices()->with('recipient')->latest('served_at')->get() as $notice)
@@ -160,32 +126,91 @@
             @endforelse
             </tbody>
         </table>
-
-        <form method="POST" action="{{ route('admin.tenancies.notices.store', $tenancy) }}" class="row g-2">
+        <form method="POST" action="{{ route('admin.tenancies.notices.store', $tenancy) }}" class="rs-grid">
             @csrf
-            <div class="col-md-3">
+            <label class="rs-field rs-span-3">
+                Notice type
                 <select name="notice_type" class="form-select" required>
-                    <option value="">Notice type</option>
+                    <option value="">Choose a type</option>
                     <option value="written_information">Written information</option>
                     <option value="rent_increase">Rent increase</option>
                     <option value="tenant_notice">Tenant notice</option>
                     <option value="possession_notice">Possession notice</option>
                 </select>
-            </div>
-            <div class="col-md-3">
+            </label>
+            <label class="rs-field rs-span-3">
+                Recipient
                 <select name="recipient_user_id" class="form-select">
                     <option value="">All tenants</option>
                     @foreach($tenancy->tenantMembers as $member)
                         <option value="{{ $member->user_id }}">{{ $member->user?->name }}</option>
                     @endforeach
                 </select>
+            </label>
+            <label class="rs-field rs-span-3">
+                Served
+                <input type="datetime-local" name="served_at" class="form-control" required>
+            </label>
+            <label class="rs-field rs-span-3">
+                Effective
+                <input type="date" name="effective_at" class="form-control">
+            </label>
+            <label class="rs-field rs-span-6">
+                Note
+                <textarea name="notes" class="form-control" rows="2" placeholder="Evidence or internal notes"></textarea>
+            </label>
+            <div class="rs-span-6 rs-actions">
+                <button class="btn lw-btn-primary">Record and notify</button>
             </div>
-            <div class="col-md-2"><input type="datetime-local" name="served_at" class="form-control" required></div>
-            <div class="col-md-2"><input type="date" name="effective_at" class="form-control"></div>
-            <div class="col-md-2"><button class="btn lw-btn-primary w-100">Record &amp; notify</button></div>
-            <div class="col-12"><textarea name="notes" class="form-control" rows="2" placeholder="Evidence or internal notes"></textarea></div>
         </form>
-    </div>
-
+    </section>
 </div>
-{{-- @endsection --}}
+</div>
+</div>
+<aside class="rs-rail">
+    <div class="card lw-card">
+        <div class="card-body">
+            <section class="rs-section">
+                <div class="rs-section-head">
+                    <div>
+                        <h2>Household</h2>
+                        <p>The home and the people on this let.</p>
+                    </div>
+                </div>
+                <div class="rs-facts">
+                    <div class="is-wide">
+                        <span>Property</span>
+                        <strong>{{ $tenancy->property?->full_address ?? 'Not linked' }}</strong>
+                    </div>
+                    <div>
+                        <span>Status</span>
+                        <strong>{{ $tenancy->status }}</strong>
+                    </div>
+                </div>
+                <div class="rs-people mt-3">
+                    @forelse($tenancy->tenantMembers as $member)
+                        <div class="rs-person">
+                            <p>
+                                {{ $member->user->name ?? 'Tenant' }}
+                                @if($member->is_main_person)
+                                    <span class="badge bg-success ms-1">Lead tenant</span>
+                                @endif
+                                <br>
+                                <small>
+                                    {{ $member->user?->email }}
+                                    @if($member->user?->phone)
+                                        · {{ $member->user->phone }}
+                                    @endif
+                                </small>
+                            </p>
+                        </div>
+                    @empty
+                        <p class="text-muted mb-0">No tenants linked yet.</p>
+                    @endforelse
+                </div>
+            </section>
+            @include('backend.tenancies._correction-requests')
+        </div>
+    </div>
+</aside>
+</div>

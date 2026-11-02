@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Mail\MailManager;
+use App\Models\AccountContractor;
 use App\Models\ContractorDocument;
 use App\Models\ContractorProfile;
 use App\Models\ContractorTrade;
@@ -14,6 +15,7 @@ use App\Models\RepairIssue;
 use App\Models\RepairJobInvoice;
 use App\Models\RepairJobMessage;
 use App\Models\RepairJobOffer;
+use App\Models\RepairJobPayment;
 use App\Models\Registration;
 use App\Models\NotificationLog;
 use App\Models\RepairJobVariation;
@@ -22,12 +24,15 @@ use App\Services\Contractors\ContractorDirectory;
 use App\Services\Contractors\ContractorMarketplaceException;
 use App\Services\Contractors\ContractorSms;
 use App\Services\Contractors\RepairJobOfferService;
+use App\Services\Contractors\RepairJobPaymentService;
 use App\Services\SendSmsService;
 use Mockery\MockInterface;
 use App\Support\ContractorCompliance;
+use App\Support\ContractorSettings;
 use App\Support\PostcodeGeo;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -45,7 +50,10 @@ class ContractorMarketplaceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        Cache::forget('business_settings');
         config(['contractor_marketplace.geocode.enabled' => false]);
+        Role::findOrCreate('Property Manager', 'web');
+        Role::findOrCreate('Contractor', 'web');
         Queue::fake();
         Mail::fake();
         $this->sms = $this->spy(SendSmsService::class);
@@ -155,20 +163,34 @@ class ContractorMarketplaceTest extends TestCase
         $this->assertSame('trialing', \DB::table('accounts')->where('id', $accountId)->value('status'));
         $this->assertSame(1, (int) $contractor->fresh()->can_login);
         $this->actingAs($contractor)->get(route('contractor.jobs.invoice', $offer))
-            ->assertOk()->assertSee($invoice->number, false)->assertSee('£150.00', false)->assertDontSee('Tidy and quick', false);
-        $this->landlord($landlord, $accountId)->get(route('admin.property_repairs.job_offers.invoice', $offer))
             ->assertOk()
-            ->assertSee('Mark as paid', false)
-            ->assertSee('Sort code 00-00-00', false)
+            ->assertSee($invoice->number, false)
+            ->assertSee('£150.00', false)
+            ->assertSee('Resisquare pays this account', false)
             ->assertSee('11-22-33', false)
             ->assertSee('12345678', false)
             ->assertSee('Ada Plumbing', false)
-            ->assertSee('How to pay', false)
+            ->assertDontSee('Tidy and quick', false);
+        config(['services.stripe.secret' => 'sk_test_jobs']);
+        $this->landlord($landlord, $accountId)->get(route('admin.property_repairs.job_offers.invoice', $offer))
+            ->assertOk()
+            ->assertSee('Pay £150.00', false)
+            ->assertSee('Sort code 00-00-00', false)
+            ->assertDontSee('Mark as paid', false)
+            ->assertDontSee('11-22-33', false)
+            ->assertDontSee('Account number', false)
+            ->assertDontSee('Ada Plumbing', false)
+            ->assertDontSee('How to pay', false)
             ->assertDontSee('deductions may apply', false)
             ->assertDontSee('Construction Industry', false);
-        $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.invoice.paid', $offer))->assertSessionHas('success');
+        app(RepairJobPaymentService::class)->fulfillSession($this->paidJobSession($invoice, $landlord, [
+            'gross_amount' => '150.00',
+            'commission_percent' => '0.00',
+            'commission_bearer' => 'contractor',
+        ]));
         $this->assertSame(RepairJobInvoice::PAID, $invoice->fresh()->status);
         $this->assertNotNull($invoice->fresh()->paid_at);
+        $this->assertSame(1, $invoice->cardPayment()->count());
     }
 
     public function test_estimate_invoice_respects_the_cap(): void
@@ -960,6 +982,235 @@ class ContractorMarketplaceTest extends TestCase
         ]);
     }
 
+    public function test_job_commission_settings_allow_zero_and_reject_a_percent_outside_the_range(): void
+    {
+        $admin = $this->superAdmin();
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.settings.save'), $this->settingsPayload([
+            'job_commission_percent' => 101,
+        ]))->assertSessionHasErrors('job_commission_percent');
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.settings.save'), $this->settingsPayload([
+            'job_commission_percent' => -1,
+        ]))->assertSessionHasErrors('job_commission_percent');
+
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.settings.save'), $this->settingsPayload([
+            'job_commission_percent' => 0,
+            'job_commission_bearer' => 'landlord',
+        ]))->assertSessionHas('success');
+
+        $this->assertSame(0.0, ContractorSettings::commissionPercent());
+        $this->assertSame('landlord', ContractorSettings::commissionBearer());
+    }
+
+    public function test_commission_is_taken_from_the_gross_for_either_bearer(): void
+    {
+        $service = app(RepairJobPaymentService::class);
+        $zero = $service->breakdown(150, 0, 'contractor');
+        $this->assertEquals(0.0, $zero['commission']);
+        $this->assertEquals(150.0, $zero['landlord_amount']);
+        $this->assertEquals(150.0, $zero['contractor_amount']);
+
+        ContractorSettings::put([
+            'job_commission_percent' => '99.00',
+            'job_commission_bearer' => 'landlord',
+        ]);
+
+        [$landlord, $accountId, , $contractor, $offer] = $this->awardedJob();
+        $fromContractor = $this->issuedInvoice($contractor, $offer, $accountId, 150);
+        $taken = $service->fulfillSession($this->paidJobSession($fromContractor, $landlord, [
+            'gross_amount' => '150.00',
+            'commission_percent' => '10.00',
+            'commission_bearer' => 'contractor',
+        ]));
+        $this->assertEquals(15.0, (float) $taken->commission_amount);
+        $this->assertEquals(150.0, (float) $taken->landlord_amount);
+        $this->assertEquals(135.0, (float) $taken->contractor_amount);
+        $this->assertSame('contractor', $taken->commission_bearer);
+
+        [$landlord, $accountId, , $contractor, $offer] = $this->awardedJob();
+        $fromLandlord = $this->issuedInvoice($contractor, $offer, $accountId, 150);
+        config(['services.stripe.secret' => 'sk_test_jobs']);
+        ContractorSettings::put([
+            'job_commission_percent' => '10.00',
+            'job_commission_bearer' => 'landlord',
+        ]);
+        $this->landlord($landlord, $accountId)->get(route('admin.property_repairs.job_offers.invoice', $offer))
+            ->assertOk()
+            ->assertSee('Pay £165.00', false)
+            ->assertSee('Resisquare commission', false)
+            ->assertDontSee('11-22-33', false);
+        $added = $service->fulfillSession($this->paidJobSession($fromLandlord, $landlord, [
+            'gross_amount' => '150.00',
+            'commission_percent' => '10.00',
+            'commission_bearer' => 'landlord',
+        ], 'b'));
+        $this->assertEquals(15.0, (float) $added->commission_amount);
+        $this->assertEquals(165.0, (float) $added->landlord_amount);
+        $this->assertEquals(150.0, (float) $added->contractor_amount);
+
+        ContractorSettings::put([
+            'job_commission_percent' => '50.00',
+            'job_commission_bearer' => 'contractor',
+        ]);
+        $again = $service->fulfillSession($this->paidJobSession($fromLandlord, $landlord, [
+            'gross_amount' => '150.00',
+            'commission_percent' => '10.00',
+            'commission_bearer' => 'landlord',
+        ], 'b'));
+        $this->assertSame($added->id, $again->id);
+        $this->assertEquals(15.0, (float) $again->fresh()->commission_amount);
+        $this->assertEquals(165.0, (float) $again->fresh()->landlord_amount);
+    }
+
+    public function test_a_second_webhook_does_not_pay_a_job_invoice_again(): void
+    {
+        [$landlord, $accountId, , $contractor, $offer] = $this->awardedJob();
+        $invoice = $this->issuedInvoice($contractor, $offer, $accountId, 150);
+        config([
+            'services.stripe.webhook_secret' => 'whsec_jobs',
+            'services.stripe.secret' => 'sk_test_jobs',
+        ]);
+        ContractorSettings::put([
+            'job_commission_percent' => '25.00',
+            'job_commission_bearer' => 'landlord',
+        ]);
+
+        $payload = json_encode([
+            'id' => 'evt_job_pay_'.$invoice->id,
+            'type' => 'checkout.session.completed',
+            'data' => [
+                'object' => [
+                    'id' => 'cs_job_hook_'.$invoice->id,
+                    'payment_status' => 'paid',
+                    'payment_intent' => 'pi_job_hook_'.$invoice->id,
+                    'metadata' => [
+                        'type' => 'repair_job_payment',
+                        'repair_job_invoice_id' => (string) $invoice->id,
+                        'account_id' => (string) $accountId,
+                        'landlord_user_id' => (string) $landlord->id,
+                        'gross_amount' => '150.00',
+                        'commission_percent' => '0.00',
+                        'commission_bearer' => 'contractor',
+                    ],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $this->postStripe('/stripe/webhook', $payload, 'whsec_jobs')->assertOk();
+        $this->postStripe('/stripe/webhook', $payload, 'whsec_jobs')->assertOk();
+
+        $invoice->refresh();
+        $this->assertSame(RepairJobInvoice::PAID, $invoice->status);
+        $this->assertSame(1, RepairJobPayment::query()->where('repair_job_invoice_id', $invoice->id)->count());
+        $payment = $invoice->cardPayment;
+        $this->assertEquals(150.0, (float) $payment->landlord_amount);
+        $this->assertEquals(150.0, (float) $payment->contractor_amount);
+        $this->assertEquals(0.0, (float) $payment->commission_amount);
+        $this->assertSame(RepairJobPayment::PAYOUT_UNPAID, $payment->payout_status);
+    }
+
+    public function test_an_unpaid_return_leaves_the_invoice_unpaid_and_payout_waits_for_the_card(): void
+    {
+        [$landlord, $accountId, , $contractor, $offer] = $this->awardedJob();
+        $invoice = $this->issuedInvoice($contractor, $offer, $accountId, 150);
+        config(['services.stripe.secret' => '']);
+
+        $this->landlord($landlord, $accountId)->get(route('admin.property_repairs.job_offers.invoice', $offer))
+            ->assertOk()
+            ->assertSee('Card payments are not available yet.', false)
+            ->assertDontSee('Mark as paid', false);
+        $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.invoice.pay', $offer))
+            ->assertSessionHasErrors('invoice');
+        $this->assertSame(RepairJobInvoice::ISSUED, $invoice->fresh()->status);
+
+        [$other, $otherAccount] = $this->createLandlord();
+        config(['services.stripe.secret' => 'sk_test_jobs']);
+        $this->landlord($other, $otherAccount)->post(route('admin.property_repairs.job_offers.invoice.pay', $offer))
+            ->assertForbidden();
+        $this->assertSame(RepairJobInvoice::ISSUED, $invoice->fresh()->status);
+
+        $this->landlord($landlord, $accountId)->get(route('admin.property_repairs.job_offers.invoice.return', $offer))
+            ->assertRedirect(route('admin.property_repairs.job_offers.invoice', $offer))
+            ->assertSessionHas('error');
+        $this->assertSame(RepairJobInvoice::ISSUED, $invoice->fresh()->status);
+
+        $pending = RepairJobPayment::create([
+            'repair_job_invoice_id' => $invoice->id,
+            'account_id' => $accountId,
+            'paid_by' => $landlord->id,
+            'gross_amount' => 150,
+            'commission_percent' => 0,
+            'commission_bearer' => 'contractor',
+            'commission_amount' => 0,
+            'landlord_amount' => 150,
+            'contractor_amount' => 150,
+            'currency' => 'gbp',
+            'stripe_checkout_session_id' => 'cs_unpaid_'.$invoice->id,
+            'status' => RepairJobPayment::PENDING,
+            'payout_status' => RepairJobPayment::PAYOUT_UNPAID,
+        ]);
+
+        $admin = $this->superAdmin();
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.payouts.sent', $pending), [
+            'payout_reference' => 'TOO-SOON',
+        ])->assertSessionHas('error');
+        $this->assertSame(RepairJobPayment::PENDING, $pending->fresh()->status);
+        $this->assertSame(RepairJobPayment::PAYOUT_UNPAID, $pending->fresh()->payout_status);
+
+        $this->app->bind(RepairJobPaymentService::class, function ($app) {
+            return new class($app->make(RepairJobOfferService::class)) extends RepairJobPaymentService
+            {
+                public function fulfillCheckoutSessionId(string $sessionId): ?RepairJobPayment
+                {
+                    $payment = RepairJobPayment::query()->where('stripe_checkout_session_id', $sessionId)->first();
+
+                    return $this->fulfillSession((object) [
+                        'id' => $sessionId,
+                        'payment_status' => 'unpaid',
+                        'metadata' => [
+                            'type' => 'repair_job_payment',
+                            'repair_job_invoice_id' => (string) $payment->repair_job_invoice_id,
+                            'gross_amount' => '150.00',
+                            'commission_percent' => '0',
+                            'commission_bearer' => 'contractor',
+                        ],
+                    ]);
+                }
+            };
+        });
+
+        $this->landlord($landlord, $accountId)->get(route('admin.property_repairs.job_offers.invoice.return', $offer))
+            ->assertRedirect(route('admin.property_repairs.job_offers.invoice', $offer))
+            ->assertSessionHas('error');
+        $this->assertSame(RepairJobInvoice::ISSUED, $invoice->fresh()->status);
+        $this->assertSame(RepairJobPayment::PENDING, $pending->fresh()->status);
+
+        $this->app->offsetUnset(RepairJobPaymentService::class);
+        app(RepairJobPaymentService::class)->fulfillSession($this->paidJobSession($invoice, $landlord, [
+            'gross_amount' => '150.00',
+            'commission_percent' => '0.00',
+            'commission_bearer' => 'contractor',
+        ], 'due'));
+
+        $paid = $pending->fresh();
+        $this->assertSame(RepairJobPayment::PAID, $paid->status);
+        $this->actingAs($admin)->get(route('admin.registrations.contractors.payouts'))
+            ->assertOk()
+            ->assertSee('£150.00', false)
+            ->assertSee('11-22-33', false)
+            ->assertSee('12345678', false)
+            ->assertSee('Ada Plumbing', false);
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.payouts.sent', $paid), [
+            'payout_reference' => 'BANK-8841',
+        ])->assertSessionHas('success');
+        $paid->refresh();
+        $this->assertSame(RepairJobPayment::PAYOUT_PAID, $paid->payout_status);
+        $this->assertSame('BANK-8841', $paid->payout_reference);
+        $this->actingAs($contractor)->get(route('contractor.jobs.show', $offer))
+            ->assertOk()
+            ->assertSee('BANK-8841', false)
+            ->assertSee('Resisquare sent £150.00', false);
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     /**
@@ -999,6 +1250,77 @@ class ContractorMarketplaceTest extends TestCase
         return $this->actingAs($landlord)->withSession(['current_account_id' => $accountId]);
     }
 
+    public function test_an_invited_contractor_stays_private_until_they_join_the_marketplace(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        [$other, $otherAccount] = $this->createLandlord();
+        $repair = $this->repair($landlord, $accountId);
+        $otherRepair = $this->repair($other, $otherAccount);
+        $private = $this->contractor('Private', marketplace: false);
+        $public = $this->contractor('Public');
+        $hidden = $this->contractor('Hidden', marketplace: false);
+        AccountContractor::create([
+            'account_id' => $accountId,
+            'contractor_user_id' => $private->id,
+            'invited' => true,
+            'email' => $private->email,
+        ]);
+        ContractorSettings::put(['job_commission_percent' => 8]);
+
+        $this->landlord($landlord, $accountId)->get(route('admin.property_repairs.marketplace.find', $repair))
+            ->assertOk()
+            ->assertSee('Your contractors', false)
+            ->assertSee('Private Contractor', false)
+            ->assertSee('Public Contractor', false)
+            ->assertSee('Resisquare marketplace', false);
+
+        $this->landlord($other, $otherAccount)->get(route('admin.property_repairs.marketplace.find', $otherRepair))
+            ->assertOk()
+            ->assertDontSee('Private Contractor', false)
+            ->assertSee('Public Contractor', false);
+
+        $this->landlord($other, $otherAccount)->post(route('admin.property_repairs.job_offers.store', $otherRepair), [
+            'contractor_ids' => [$private->id],
+            'urgency' => 'routine',
+        ])->assertSessionHas('error');
+        $this->assertSame(0, RepairJobOffer::query()->where('repair_issue_id', $otherRepair->id)->count());
+
+        $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.store', $repair), [
+            'contractor_ids' => [$private->id],
+            'urgency' => 'routine',
+        ])->assertSessionHas('success');
+        $this->assertSame(1, RepairJobOffer::query()->where('repair_issue_id', $repair->id)->where('contractor_user_id', $private->id)->count());
+
+        $this->actingAs($private)->get(route('contractor.jobs.index'))
+            ->assertOk()
+            ->assertSee('landlords who invited you', false)
+            ->assertSee('Join the marketplace', false);
+
+        $this->actingAs($private)->post(route('contractor.marketplace.accept'), [])
+            ->assertSessionHasErrors('accept');
+        $this->actingAs($private)->post(route('contractor.marketplace.accept'), ['accept' => '1'])
+            ->assertRedirect(route('contractor.jobs.index'))
+            ->assertSessionHas('success');
+
+        $profile = $private->contractorProfile->fresh();
+        $this->assertNotNull($profile->marketplace_accepted_at);
+        $this->assertSame('2026-10', $profile->marketplace_terms_version);
+        $this->assertSame('8.00', number_format((float) $profile->marketplace_commission_percent, 2, '.', ''));
+
+        $this->landlord($other, $otherAccount)->get(route('admin.property_repairs.marketplace.find', $otherRepair))
+            ->assertOk()
+            ->assertSee('Private Contractor', false);
+
+        $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.store', $repair), [
+            'contractor_ids' => [],
+            'send_all' => 1,
+            'urgency' => 'emergency',
+        ])->assertSessionHas('success');
+        $sent = RepairJobOffer::query()->where('repair_issue_id', $repair->id)->pluck('contractor_user_id')->all();
+        $this->assertContains($public->id, $sent);
+        $this->assertNotContains($hidden->id, $sent);
+    }
+
     private function contractorUser(string $label): User
     {
         $user = User::create([
@@ -1019,7 +1341,7 @@ class ContractorMarketplaceTest extends TestCase
      *
      * @param  array<int, string>  $trades
      */
-    private function contractor(string $label, array $trades = ['plumbing', 'general']): User
+    private function contractor(string $label, array $trades = ['plumbing', 'general'], bool $marketplace = true): User
     {
         $user = $this->contractorUser($label);
         $profile = ContractorProfile::create([
@@ -1041,6 +1363,9 @@ class ContractorMarketplaceTest extends TestCase
             'bank_name' => 'Test Bank',
             'approval_status' => ContractorProfile::APPROVED,
             'terms_accepted_at' => now(),
+            'marketplace_accepted_at' => $marketplace ? now() : null,
+            'marketplace_terms_version' => $marketplace ? config('contractor_marketplace.marketplace_terms_version') : null,
+            'marketplace_commission_percent' => $marketplace ? 0 : null,
         ]);
         foreach ($trades as $trade) {
             ContractorTrade::create(['contractor_profile_id' => $profile->id, 'trade' => $trade, 'status' => ContractorTrade::APPROVED]);
@@ -1158,5 +1483,89 @@ class ContractorMarketplaceTest extends TestCase
         ]);
 
         return [$user, $accountId];
+    }
+
+    private function issuedInvoice(User $contractor, RepairJobOffer $offer, int $accountId, float $gross = 150): RepairJobInvoice
+    {
+        $offer->forceFill([
+            'status' => RepairJobOffer::JOB_ACCEPTED,
+            'job_status' => RepairJobOffer::JOB_INVOICED,
+        ])->save();
+
+        return RepairJobInvoice::create([
+            'repair_job_offer_id' => $offer->id,
+            'account_id' => $accountId,
+            'contractor_user_id' => $contractor->id,
+            'number' => 'RJ-'.str_pad((string) $offer->id, 6, '0', STR_PAD_LEFT),
+            'issued_on' => today(),
+            'due_on' => today()->addDays(14),
+            'lines' => [['description' => 'Repair', 'net' => $gross, 'vat_rate' => 0, 'vat' => 0, 'gross' => $gross]],
+            'net_amount' => $gross,
+            'vat_amount' => 0,
+            'gross_amount' => $gross,
+            'payment' => [
+                'account_name' => 'Ada Plumbing',
+                'sort_code' => '11-22-33',
+                'account_number' => '12345678',
+                'bank_name' => 'Test Bank',
+                'reference' => 'RJ-'.str_pad((string) $offer->id, 6, '0', STR_PAD_LEFT),
+            ],
+            'status' => RepairJobInvoice::ISSUED,
+        ]);
+    }
+
+    /**
+     * @param  array<string, string>  $metadata
+     */
+    private function paidJobSession(RepairJobInvoice $invoice, User $landlord, array $metadata, string $suffix = ''): object
+    {
+        return (object) [
+            'id' => 'cs_job_'.$invoice->id.$suffix,
+            'payment_status' => 'paid',
+            'payment_intent' => 'pi_job_'.$invoice->id.$suffix,
+            'metadata' => [
+                'type' => 'repair_job_payment',
+                'repair_job_invoice_id' => (string) $invoice->id,
+                'account_id' => (string) $invoice->account_id,
+                'landlord_user_id' => (string) $landlord->id,
+            ] + $metadata,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    private function settingsPayload(array $overrides = []): array
+    {
+        return array_replace([
+            'public_liability_minimum' => 1000000,
+            'employers_liability_minimum' => 5000000,
+            'max_contractors_per_send' => 5,
+            'max_contractors_per_emergency_send' => 15,
+            'review_sla_working_days' => 2,
+            'document_retention_days' => 365,
+            'digest_hours' => 3,
+            'reminder_days' => '30, 14, 7',
+            'emergency_sms' => 1,
+            'invoice_due_days' => 14,
+            'invite_hours' => ['emergency' => 2, 'urgent' => 24, 'routine' => 72],
+            'offer_valid_hours' => ['emergency' => 24, 'urgent' => 48, 'routine' => 48],
+            'job_commission_percent' => 0,
+            'job_commission_bearer' => 'contractor',
+            'trade_documents' => ['gas' => ['gas_safe']],
+        ], $overrides);
+    }
+
+    private function postStripe(string $url, string $payload, string $secret): \Illuminate\Testing\TestResponse
+    {
+        $timestamp = time();
+        $signature = 't='.$timestamp.',v1='.hash_hmac('sha256', $timestamp.'.'.$payload, $secret);
+
+        return $this->call('POST', $url, [], [], [], [
+            'HTTP_STRIPE_SIGNATURE' => $signature,
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+        ], $payload);
     }
 }

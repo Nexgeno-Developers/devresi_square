@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
-/** Everything between "job accepted" and "paid": questions, variations, reschedules, completion, ratings and invoices. */
+/** Everything between "job accepted" and the invoice: questions, variations, reschedules, completion, ratings and invoices. Card payment is RepairJobPaymentService. */
 class RepairJobAftercareService
 {
     public const PHOTO_DISK = 'local';
@@ -409,17 +409,6 @@ class RepairJobAftercareService
         );
 
         return $invoice;
-    }
-
-    public function markPaid(RepairJobInvoice $invoice, User $landlord): void
-    {
-        $this->offers->assertLandlord($invoice->offer, $landlord);
-        if ($invoice->status !== RepairJobInvoice::ISSUED) {
-            throw new ContractorMarketplaceException('This invoice is not waiting for payment.');
-        }
-        $invoice->forceFill(['status' => RepairJobInvoice::PAID, 'paid_at' => now(), 'paid_by' => $landlord->id])->save();
-        $this->offers->log($invoice->offer, $invoice->offer->status, $invoice->offer->status, $landlord, 'Invoice '.$invoice->number.' marked paid.');
-        $this->offers->notify(CrmNotificationEvent::RepairJobInvoiced, $invoice->offer, [$invoice->contractor], 'Invoice paid', 'The landlord marked invoice '.$invoice->number.' as paid.', 'invoice-paid-'.$invoice->id, route('contractor.jobs.invoice', $invoice->offer));
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────

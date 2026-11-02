@@ -239,6 +239,11 @@ PHP);
             ->post(route('backend.saas.repair_desk.progress', $desk), ['note' => 'Parts are on the way'])
             ->assertRedirect(route('backend.saas.repair_desk.show', $desk));
 
+        $this->actingAs($landlord)->withSession($session)
+            ->get(route('admin.property_repairs.show', $repair))
+            ->assertOk()
+            ->assertSeeInOrder(['History', 'Parts are on the way'], false);
+
         $this->actingAs($admin)
             ->post(route('backend.saas.repair_desk.complete', $desk), ['note' => 'Heating restored'])
             ->assertRedirect(route('backend.saas.repair_desk.show', $desk));

@@ -1,7 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="container-fluid pt-4 pb-5 lw-page" data-tenancy-show="1">
+<div class="container-fluid pt-4 pb-5 lw-page rs-record-page" data-tenancy-show="1">
     <div class="lw-hero d-flex justify-content-between align-items-center gap-3 flex-wrap">
         <div>
             <h4>Tenancy</h4>
@@ -20,11 +20,7 @@
             <a href="{{ route('admin.tenancies.all') }}" class="btn lw-btn-secondary">All tenancies</a>
         </div>
     </div>
-    <div class="card lw-card">
-        <div class="card-body">
-            @include('backend.tenancies.show')
-        </div>
-    </div>
+    @include('backend.tenancies.show')
 </div>
 @endsection
 

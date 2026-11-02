@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\ComplianceJobOffer;
 use App\Models\ContractorProfile;
 use App\Models\RepairJobMessage;
 use App\Models\RepairJobOffer;
 use App\Models\RepairJobVariation;
 use App\Models\Upload;
+use App\Services\Contractors\ComplianceBookingService;
 use App\Services\Contractors\ContractorMarketplaceException;
 use App\Services\Contractors\RepairJobAftercareService;
 use App\Services\Contractors\RepairJobOfferService;
@@ -32,6 +34,7 @@ class ContractorJobController extends Controller
     public function __construct(
         private readonly RepairJobOfferService $offers,
         private readonly RepairJobAftercareService $aftercare,
+        private readonly ComplianceBookingService $checks,
     ) {
         $this->middleware(function ($request, $next) {
             abort_unless($request->user()?->hasRole('Contractor'), 403);
@@ -66,13 +69,33 @@ class ContractorJobController extends Controller
             ->get();
         $open->pluck('repairIssue')->filter()->unique('id')->each(fn ($repair) => $this->offers->expireStale($repair));
 
+        ComplianceJobOffer::query()
+            ->where('contractor_user_id', $request->user()->id)
+            ->whereIn('status', ComplianceJobOffer::OPEN_STATUSES)
+            ->with('booking')
+            ->get()
+            ->pluck('booking')
+            ->filter()
+            ->unique('id')
+            ->each(fn ($booking) => $this->checks->expire($booking));
+
         $all = RepairJobOffer::query()
             ->with(['repairIssue.property', 'repairIssue.repairCategory', 'request'])
             ->where('contractor_user_id', $request->user()->id)
             ->latest('updated_at')
             ->limit(300)
-            ->get();
-        $grouped = $all->groupBy(fn (RepairJobOffer $offer) => $offer->tab());
+            ->get()
+            ->concat(
+                ComplianceJobOffer::query()
+                    ->with(['booking.property', 'booking.type'])
+                    ->where('contractor_user_id', $request->user()->id)
+                    ->latest('updated_at')
+                    ->limit(300)
+                    ->get()
+            )
+            ->sortByDesc('updated_at')
+            ->values();
+        $grouped = $all->groupBy(fn ($offer) => $offer->tab());
         $counts = collect(self::TABS)->map(fn ($label, $key) => $grouped->get($key, collect())->count());
         $tab = $request->query('tab');
         if (! array_key_exists((string) $tab, self::TABS)) {
@@ -101,7 +124,7 @@ class ContractorJobController extends Controller
         $this->owns($request, $offer);
         $offer->load(['repairIssue.property', 'repairIssue.repairCategory.parentCategory', 'repairIssue.repairPhotos', 'repairIssue.tenant', 'request', 'events']);
         $this->offers->expireStale($offer->repairIssue);
-        $offer->refresh()->load(['messages', 'variations', 'invoice']);
+        $offer->refresh()->load(['messages', 'variations', 'invoice.cardPayment']);
         $this->offers->markViewed($offer);
         $this->aftercare->markRead($offer, RepairJobMessage::CONTRACTOR);
 
@@ -324,6 +347,73 @@ class ContractorJobController extends Controller
         abort_unless(is_file($legacy), 404);
 
         return response()->file($legacy);
+    }
+
+    public function complianceShow(Request $request, ComplianceJobOffer $offer)
+    {
+        $this->ownsCompliance($request, $offer);
+        $offer->load(['booking.property', 'booking.type']);
+        $this->checks->expire($offer->booking);
+        $offer->refresh()->load(['booking.property', 'booking.type']);
+        $this->checks->markViewed($offer);
+        $offer->refresh();
+
+        return view('frontend.contractor.jobs.compliance', ['offer' => $offer]);
+    }
+
+    public function complianceQuote(Request $request, ComplianceJobOffer $offer)
+    {
+        $this->ownsCompliance($request, $offer);
+        $data = $request->validate([
+            'pricing_type' => ['required', 'in:fixed,hourly,callout_hourly'],
+            'amount' => ['nullable', 'numeric', 'min:0'],
+            'hourly_rate' => ['nullable', 'numeric', 'min:0'],
+            'estimated_hours' => ['nullable', 'numeric', 'min:0'],
+            'call_out_fee' => ['nullable', 'numeric', 'min:0'],
+            'materials' => ['nullable', 'in:included,excluded,estimate'],
+            'materials_estimate' => ['nullable', 'numeric', 'min:0'],
+            'offer_note' => ['nullable', 'string', 'max:2000'],
+            'visit_slots' => ['required', 'array', 'min:1'],
+            'visit_slots.*' => ['required', 'date'],
+        ]);
+
+        try {
+            $this->checks->quote($offer, $request->user(), $data);
+        } catch (ContractorMarketplaceException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('contractor.jobs.compliance.show', $offer)->with('success', 'Quote sent.');
+    }
+
+    public function complianceDecline(Request $request, ComplianceJobOffer $offer)
+    {
+        $this->ownsCompliance($request, $offer);
+        $data = $request->validate([
+            'decline_code' => ['nullable', 'string', 'max:24'],
+            'decline_reason' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $this->checks->decline($offer, $request->user(), $data['decline_code'] ?? null, $data['decline_reason'] ?? null);
+        } catch (ContractorMarketplaceException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('contractor.jobs.index')->with('success', 'Invitation declined.');
+    }
+
+    private function ownsCompliance(Request $request, ComplianceJobOffer $offer): void
+    {
+        abort_unless((int) $offer->contractor_user_id === (int) $request->user()->id, 403);
+
+        $profile = $request->user()->contractorProfile;
+        if (! $profile || $profile->approval_status !== ContractorProfile::APPROVED) {
+            $target = $profile?->approval_status === ContractorProfile::SUBMITTED
+                ? route('contractor.jobs.index')
+                : route('contractor.profile.edit');
+            throw new \Illuminate\Http\Exceptions\HttpResponseException(redirect($target));
+        }
     }
 
     private function run(Request $request, RepairJobOffer $offer, callable $action, string $success, string $anchor = '')

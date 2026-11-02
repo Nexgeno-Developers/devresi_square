@@ -12,16 +12,17 @@
 @endphp
 
 @if($needsDeposit)
-<hr>
-<div class="mb-3" data-deposit-protection="1">
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+<section class="rs-section" data-deposit-protection="1">
+    <div class="rs-section-head">
         <div>
-            <strong>Deposit protection</strong>
-            @if($complete)
-                <span class="badge bg-success ms-1">Complete</span>
-            @else
-                <span class="badge bg-warning text-dark ms-1">Needs your attention</span>
-            @endif
+            <h2>
+                Deposit protection
+                @if($complete)
+                    <span class="badge bg-success ms-1">Complete</span>
+                @else
+                    <span class="badge bg-warning text-dark ms-1">Needs your attention</span>
+                @endif
+            </h2>
             @if($deadline)
                 <div class="small text-muted mt-1">
                     30-day deadline:
@@ -37,30 +38,43 @@
         <a href="{{ route('admin.tenancies.edit', $tenancy->id) }}" class="btn btn-sm btn-outline-dark">Edit deposit fields</a>
     </div>
 
-    <ul class="list-unstyled mb-3 small">
-        <li class="mb-1">
-            @if($schemeOk)<i class="bi bi-check-circle text-success"></i>@else<i class="bi bi-circle text-muted"></i>@endif
-            Scheme: {{ $tenancy->deposit_scheme ? strtoupper($tenancy->deposit_scheme) : 'Not set' }}
-        </li>
-        <li class="mb-1">
-            @if($refOk)<i class="bi bi-check-circle text-success"></i>@else<i class="bi bi-circle text-muted"></i>@endif
-            Reference: {{ $tenancy->depositSchemeReference() ?? 'Not set' }}
-        </li>
-        <li class="mb-1">
-            @if($protectedOk)<i class="bi bi-check-circle text-success"></i>@else<i class="bi bi-circle text-muted"></i>@endif
-            Protected:
-            {{ $tenancy->deposit_protected_at?->timezone($tz)->format('d/m/Y H:i') ?? 'Not recorded' }}
-        </li>
-        <li class="mb-1">
-            @if($prescribedSentOk)<i class="bi bi-check-circle text-success"></i>@else<i class="bi bi-circle text-muted"></i>@endif
-            Prescribed information sent:
-            {{ $tenancy->prescribed_information_sent_at?->timezone($tz)->format('d/m/Y H:i') ?? 'Not recorded' }}
-        </li>
-        <li class="mb-1">
-            @if($prescribedDocOk)<i class="bi bi-check-circle text-success"></i>@else<i class="bi bi-circle text-muted"></i>@endif
-            Prescribed information document attached
-        </li>
-    </ul>
+    <div class="rs-facts">
+        <div>
+            <span>Scheme</span>
+            <strong>
+                @if($schemeOk)<i class="bi bi-check-circle text-success"></i>@else<i class="bi bi-circle text-muted"></i>@endif
+                {{ $tenancy->deposit_scheme ? strtoupper($tenancy->deposit_scheme) : 'Not set' }}
+            </strong>
+        </div>
+        <div>
+            <span>Reference</span>
+            <strong>
+                @if($refOk)<i class="bi bi-check-circle text-success"></i>@else<i class="bi bi-circle text-muted"></i>@endif
+                {{ $tenancy->depositSchemeReference() ?? 'Not set' }}
+            </strong>
+        </div>
+        <div>
+            <span>Protected</span>
+            <strong>
+                @if($protectedOk)<i class="bi bi-check-circle text-success"></i>@else<i class="bi bi-circle text-muted"></i>@endif
+                {{ $tenancy->deposit_protected_at?->timezone($tz)->format('d/m/Y H:i') ?? 'Not recorded' }}
+            </strong>
+        </div>
+        <div>
+            <span>Prescribed information sent</span>
+            <strong>
+                @if($prescribedSentOk)<i class="bi bi-check-circle text-success"></i>@else<i class="bi bi-circle text-muted"></i>@endif
+                {{ $tenancy->prescribed_information_sent_at?->timezone($tz)->format('d/m/Y H:i') ?? 'Not recorded' }}
+            </strong>
+        </div>
+        <div class="is-wide">
+            <span>Document</span>
+            <strong>
+                @if($prescribedDocOk)<i class="bi bi-check-circle text-success"></i>@else<i class="bi bi-circle text-muted"></i>@endif
+                Prescribed information document {{ $prescribedDocOk ? 'attached' : 'not attached' }}
+            </strong>
+        </div>
+    </div>
 
     <p class="small text-muted mb-2">Attach the prescribed information PDF (and share with the tenant when ready).</p>
     <x-backend-documents-component
@@ -70,5 +84,5 @@
         :initial-documents="$tenancy->documents"
         :can-upload-documents="true"
     />
-</div>
+</section>
 @endif

@@ -57,6 +57,18 @@
                 </div>
                 <span class="tp-pill">{{ $event->status ?: 'Scheduled' }}</span>
             </div>
+            @php $reply = $event->responses->firstWhere('user_id', auth()->id()); @endphp
+            @if($reply)
+                <form method="post" action="{{ route('tenant.calendar.respond', $event) }}" class="mt-2">
+                    @csrf
+                    <p class="tp-muted mb-2">Your reply: {{ ucfirst($reply->response) }}@if($reply->note) — {{ $reply->note }}@endif</p>
+                    <textarea name="note" class="form-control mb-2" rows="2" placeholder="Note, required if you decline">{{ $reply->note }}</textarea>
+                    <div class="d-flex gap-2">
+                        <button class="tp-btn" type="submit" name="response" value="accepted">Accept</button>
+                        <button class="tp-btn tp-btn-ghost" type="submit" name="response" value="rejected">Decline</button>
+                    </div>
+                </form>
+            @endif
         @empty
             <p class="tp-empty mb-0">Nothing upcoming this period.</p>
         @endforelse

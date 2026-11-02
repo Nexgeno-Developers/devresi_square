@@ -233,15 +233,13 @@ class UkOpenDataPropertyEnricher
 
         $area = $best['total-floor-area'] ?? $best['total_floor_area'] ?? null;
         $rating = $best['current-energy-rating'] ?? $best['current_energy_rating'] ?? $best['epc_rating'] ?? null;
-        $rooms = $best['number-habitable-rooms'] ?? $best['number_habitable_rooms'] ?? null;
 
         return array_filter([
             'specific_property_type' => $mappedType,
             'square_meter' => $area !== null && $area !== '' ? (string) $area : null,
             'epc_rating' => $rating !== null && $rating !== '' ? strtoupper((string) $rating) : null,
             'epc_required' => $rating ? 1 : null,
-            'bedroom' => $rooms !== null && $rooms !== '' ? (string) max(1, (int) $rooms - 1) : null,
-            'floor' => $this->firstFilled($best, ['floor-level', 'floor_level', 'built-form']),
+            'floor' => $this->firstFilled($best, ['floor-level', 'floor_level']),
         ], fn ($value) => ! $this->blank($value));
     }
 
