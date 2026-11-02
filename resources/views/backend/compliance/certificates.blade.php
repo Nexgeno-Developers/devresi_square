@@ -81,11 +81,27 @@
                                         <input type="hidden" name="property_id" value="{{ $row['property']->id }}">
                                         <input type="hidden" name="compliance_type_id" value="{{ $row['type']->id }}">
                                         <input type="file" name="certificate" accept="application/pdf,image/*" required class="form-control form-control-sm"
-                                            oninvalid="this.setCustomValidity('Choose the certificate file before sharing it.')"
+                                            oninvalid="this.setCustomValidity('Choose the certificate file before uploading it.')"
                                             onchange="this.setCustomValidity('')">
-                                        <button type="submit" class="btn btn-sm lw-btn-primary">Upload and share</button>
+                                        <button type="submit" class="btn btn-sm lw-btn-primary">Upload</button>
                                         <span class="small text-muted">Choose the PDF or photo first.</span>
                                     </form>
+                                    @php
+                                        $booking = ($bookings ?? collect())->get($row['property']->id.'-'.$row['type']->id);
+                                    @endphp
+                                    <div class="d-flex flex-column gap-1 mt-2">
+                                    @if($booking)
+                                        <div class="small text-muted">{{ $booking->landlordStatus() }}</div>
+                                        <a href="{{ $booking->landlordUrl() }}" class="btn btn-sm lw-btn-secondary">View booking</a>
+                                    @else
+                                        <form method="POST" action="{{ route('admin.compliance.bookings.store') }}">
+                                            @csrf
+                                            <input type="hidden" name="property_id" value="{{ $row['property']->id }}">
+                                            <input type="hidden" name="compliance_type_id" value="{{ $row['type']->id }}">
+                                            <button type="submit" class="btn btn-sm lw-btn-secondary">Book now</button>
+                                        </form>
+                                    @endif
+                                    </div>
                                 </td>
                             </tr>
                         @endforeach

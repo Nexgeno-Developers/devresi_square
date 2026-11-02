@@ -342,6 +342,9 @@ class ContractorCompliance
         if (in_array('electrical', $approved, true)) {
             $badges[] = ($profile->document(ContractorDocument::ELECTRICAL_SCHEME)?->issuer ?: 'Electrical scheme').' registered';
         }
+        if (in_array('energy', $approved, true)) {
+            $badges[] = ($profile->document('epc_accreditation')?->issuer ?: 'EPC').' accredited';
+        }
         if (in_array('oil', $approved, true)) {
             $badges[] = 'OFTEC registered';
         }

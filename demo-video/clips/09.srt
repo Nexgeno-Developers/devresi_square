@@ -1,3 +1,0 @@
-﻿1
-00:00:00,000 --> 00:00:04,870
-James sets a password from that link and accepts the terms.

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backend;
 
 use Illuminate\Http\Request;
+use App\Models\ComplianceBooking;
 use App\Models\ComplianceType;
 use App\Models\ComplianceRecord;
 use App\Models\ComplianceDetail;
@@ -30,11 +31,18 @@ class ComplianceController
         $rows = ComplianceRecord::certificateGapsForAccount($accountId);
         $propertyCount = Property::query()->forAccount($accountId)->count();
         $typeCount = ComplianceType::query()->whereIn('alias', ['gas', 'epc', 'eicr'])->count();
+        $bookings = ComplianceBooking::query()
+            ->with(['offers', 'awardedOffer.contractor.contractorProfile'])
+            ->where('account_id', $accountId)
+            ->whereIn('status', ComplianceBooking::OPEN)
+            ->get()
+            ->keyBy(fn (ComplianceBooking $booking) => $booking->property_id.'-'.$booking->compliance_type_id);
 
         return view('backend.compliance.certificates', [
             'rows' => $rows,
             'propertyCount' => $propertyCount,
             'typeCount' => $typeCount,
+            'bookings' => $bookings,
         ]);
     }
 

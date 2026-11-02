@@ -1,4 +1,0 @@
-﻿1
-00:00:00,000 --> 00:00:09,680
-His email still hides the full address. It gives the district, London S W 1 A, and a reply
-deadline.

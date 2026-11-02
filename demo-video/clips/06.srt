@@ -1,4 +1,0 @@
-﻿1
-00:00:00,000 --> 00:00:13,110
-Invite household sends the tenancy to James. If he is new, the email asks him to create a
-password. If he already has an account, he just signs in.

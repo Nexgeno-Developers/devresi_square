@@ -328,6 +328,10 @@
     </nav>
 
     @forelse($items as $offer)
+        @if($offer instanceof \App\Models\ComplianceJobOffer)
+            @include('frontend.contractor.jobs.partials.compliance-card', ['offer' => $offer, 'declineReasons' => $declineReasons])
+            @continue
+        @endif
         @php
             $repair = $offer->repairIssue;
             $property = $repair?->property;

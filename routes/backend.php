@@ -34,6 +34,7 @@ use App\Http\Controllers\Backend\DocumentsController;
 use App\Http\Controllers\Backend\EventTypeController;
 use App\Http\Controllers\Backend\WorkOrderController;
 use App\Http\Controllers\Backend\BankDetailController;
+use App\Http\Controllers\Backend\ComplianceBookingController;
 use App\Http\Controllers\Backend\ComplianceController;
 use App\Http\Controllers\Backend\OwnerGroupController;
 use App\Http\Controllers\Backend\DesignationController;
@@ -485,6 +486,12 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::post('/store', 'storeCompliance')->name('store');
             Route::post('/update', 'updateCompliance')->name('update');
             Route::delete('/delete/{complianceRecordId}', 'deleteCompliance')->name('delete');
+            Route::post('/bookings', [ComplianceBookingController::class, 'store'])->name('bookings.store');
+            Route::get('/bookings/{booking}', [ComplianceBookingController::class, 'show'])->name('bookings.show');
+            Route::get('/bookings/{booking}/find', [ComplianceBookingController::class, 'find'])->name('bookings.find');
+            Route::post('/bookings/{booking}/offers', [ComplianceBookingController::class, 'send'])->name('bookings.send');
+            Route::post('/bookings/{booking}/invite', [ComplianceBookingController::class, 'invite'])->name('bookings.invite');
+            Route::post('/bookings/{booking}/offers/{offer}/accept', [ComplianceBookingController::class, 'accept'])->name('bookings.accept');
         });
 
         Route::prefix('bank_details')->name('bank_details.')->controller(BankDetailController::class)->group(function () {

@@ -1,4 +1,0 @@
-﻿1
-00:00:00,000 --> 00:00:10,210
-A progress update is posted on the desk. That note is emailed and shown in the app. No
-contractor quote is involved.

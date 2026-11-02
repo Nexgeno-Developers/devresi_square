@@ -1,4 +1,0 @@
-﻿1
-00:00:00,000 --> 00:00:10,410
-The door job is scheduled for Wednesday at one. From here it follows the same update, confirm,
-and invoice path as case one.

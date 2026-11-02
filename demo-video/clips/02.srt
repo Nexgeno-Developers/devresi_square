@@ -1,4 +1,0 @@
-﻿1
-00:00:00,000 --> 00:00:11,550
-The paywall is Stripe in test mode. A successful demo card starts a seven day trial. The card is
-saved, and nothing is charged today.

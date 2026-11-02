@@ -1,4 +1,0 @@
-﻿1
-00:00:00,000 --> 00:00:11,560
-Priya notification list shows the whole trail. Job accepted, offer received, sent to
-contractors, and the Resisquare completion.

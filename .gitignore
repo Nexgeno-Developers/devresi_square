@@ -15,9 +15,53 @@ Homestead.json
 Homestead.yaml
 auth.json
 npm-debug.log
+npm-debug.log*
+yarn-debug.log*
 yarn-error.log
+yarn-error.log*
+pnpm-debug.log*
 /.fleet
 /.idea
+/.nova
 /.vscode
 /.zed
+/.history
 server.php
+
+# OS junk
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor scratch
+*.swp
+*.swo
+*~
+
+# Local Cursor state. Shared project rules stay tracked.
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
+
+# Laravel runtime that has slipped past the nested storage gitignores
+/storage/framework/*.php
+/storage/framework/*.lock
+/storage/debugbar/*.json
+/bootstrap/cache/*.php
+*.log
+
+# Local databases and full dumps. Small hand-written SQL patches stay tracked.
+*.sqlite
+*.sqlite-journal
+/database/*.sqlite
+/docs/local-db-*.sql
+
+# Local demo production: FFmpeg binaries, clips, and previews
+/demo-video/
+
+# QA screenshots, old page copies, personal notes, generated test reports
+/qa-evidence/
+/backup/
+/sabir/
+/software-testing-report*.html

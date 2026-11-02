@@ -1,4 +1,0 @@
-﻿1
-00:00:00,000 --> 00:00:08,110
-The same job is waiting in her jobs list, with the tenant availability and a decline option if
-she cannot take it.

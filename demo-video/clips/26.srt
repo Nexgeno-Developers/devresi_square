@@ -1,3 +1,0 @@
-﻿1
-00:00:00,000 --> 00:00:08,680
-The request is sent. Aisha has until Monday to reply. Other contractors were left unticked.

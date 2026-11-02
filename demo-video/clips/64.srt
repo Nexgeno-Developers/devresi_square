@@ -1,4 +1,0 @@
-﻿1
-00:00:00,000 --> 00:00:10,010
-When the fitting is replaced, the admin marks it complete. Priya sees the outcome on the repair.
-Work completed.
