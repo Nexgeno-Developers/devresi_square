@@ -1,6 +1,13 @@
 @php
     $calendlyUrl = config('services.calendly.url');
     $navItems = ['Properties', 'Tenancies', 'Rent', 'Repairs', 'Documents', 'Calendar'];
+    $portfolioRows = [
+        ['name' => 'Flat 12, 88 Fulham Road', 'city' => 'London', 'status' => 'Occupied', 'rent' => '£2,450 pcm'],
+        ['name' => 'Apartment 1807, Meridian Tower', 'city' => 'Canary Wharf, London', 'status' => 'Occupied', 'rent' => '£3,200 pcm'],
+        ['name' => 'Apartment 1204, Marina Heights', 'city' => 'Dubai Marina', 'status' => 'Occupied', 'rent' => 'AED 12,500 pcm'],
+        ['name' => 'Apartment 8B, 245 West 72nd Street', 'city' => 'New York', 'status' => 'Occupied', 'rent' => '$4,250 pcm'],
+        ['name' => 'Apartment 4, 28 Rue de Charonne', 'city' => 'Paris', 'status' => 'Occupied', 'rent' => '€2,150 pcm'],
+    ];
     $chapters = [
         [
             'id' => 'portfolio',
@@ -145,10 +152,9 @@
                             </div>
                             <div class="table hero-table">
                                 <div class="tr th"><span>Property</span><span>City</span><span>Status</span><span>Rent</span></div>
-                                <div class="tr is-fresh"><span>14 Elm Row</span><span>Manchester</span><span class="chip">Occupied</span><span>£1,250</span></div>
-                                <div class="tr"><span>8 Chapel Street</span><span>Leeds</span><span class="chip chip-alert">Notice</span><span>£980</span></div>
-                                <div class="tr"><span>22 Quay House</span><span>Bristol</span><span class="chip chip-quiet">Vacant</span><span>—</span></div>
-                                <div class="tr"><span>Unit 4, Harbour Court</span><span>Liverpool</span><span class="chip">Occupied</span><span>£1,450</span></div>
+                                @foreach ($portfolioRows as $row)
+                                    <div class="tr{{ $loop->first ? ' is-fresh' : '' }}"><span>{{ $row['name'] }}</span><span>{{ $row['city'] }}</span><span class="chip">{{ $row['status'] }}</span><span>{{ $row['rent'] }}</span></div>
+                                @endforeach
                             </div>
                         </div>
                     </div>
@@ -240,10 +246,9 @@
                                                 </div>
                                                 <div class="table" role="presentation">
                                                     <div class="tr th"><span>Property</span><span>City</span><span>Status</span><span>Rent</span></div>
-                                                    <div class="tr"><span>14 Elm Row</span><span>Manchester</span><span class="chip">Occupied</span><span>£1,250</span></div>
-                                                    <div class="tr"><span>8 Chapel Street</span><span>Leeds</span><span class="chip chip-alert">Notice</span><span>£980</span></div>
-                                                    <div class="tr"><span>22 Quay House</span><span>Bristol</span><span class="chip chip-quiet">Vacant</span><span>—</span></div>
-                                                    <div class="tr"><span>Unit 4, Harbour Court</span><span>Liverpool</span><span class="chip">Occupied</span><span>£1,450</span></div>
+                                                    @foreach ($portfolioRows as $row)
+                                                        <div class="tr"><span>{{ $row['name'] }}</span><span>{{ $row['city'] }}</span><span class="chip">{{ $row['status'] }}</span><span>{{ $row['rent'] }}</span></div>
+                                                    @endforeach
                                                 </div>
                                             @elseif ($chapter['id'] === 'tenancy')
                                                 <div class="sheet-head">
