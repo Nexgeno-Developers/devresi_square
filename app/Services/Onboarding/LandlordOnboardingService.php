@@ -287,37 +287,65 @@ class LandlordOnboardingService
         }
 
         $payload = $this->propertyAttributesFromRecord($record, $countryId);
-
-        $property = DB::transaction(function () use ($account, $user, $payload) {
-            $existing = $this->currentDraftProperty($account);
-
-            if ($existing) {
-                $property = $this->wizard->updateStep($existing, $payload, 3);
-            } else {
-                if (! $this->limits->canAddProperty($account)) {
-                    throw ValidationException::withMessages([
-                        'postcode' => 'Your current plan has reached the property limit.',
-                    ]);
-                }
-
-                $property = $this->wizard->createDraft($payload);
-                $property = $this->wizard->updateStep($property, $payload, 3);
-            }
-
-            $this->ensureOwnerGroup($property, $user);
-
-            $account->update([
-                'onboarding_property_id' => $property->id,
-                'onboarding_step' => max(2, (int) $account->onboarding_step),
-            ]);
-
-            session([self::DRAFT_SESSION => $property->id]);
-
-            return $property;
-        });
+        $property = $this->persistOnboardingProperty($account, $user, $payload);
 
         return array_merge($this->propertyPayload($property->fresh()), [
             'data_sources' => $record['data_sources'] ?? ['chimnie'],
+        ]);
+    }
+
+    /**
+     * Save a property typed in by the landlord when postcode lookup finds nothing.
+     *
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    public function saveManualProperty(Account $account, User $user, array $input): array
+    {
+        [$squareMeter, $squareFeet] = $this->areaPair(
+            $this->nullableNumber($input['square_meter'] ?? null),
+            $this->nullableNumber($input['square_feet'] ?? null)
+        );
+
+        $line1 = trim((string) $input['line_1']);
+        $payload = array_filter([
+            'line_1' => $line1,
+            'line_2' => $this->nullableText($input['line_2'] ?? null),
+            'city' => trim((string) $input['city']),
+            'county' => $this->nullableText($input['county'] ?? null),
+            'postcode' => strtoupper(trim((string) $input['postcode'])),
+            'country' => (int) $input['country'],
+            'currency' => (string) $input['currency'],
+            'prop_name' => $line1,
+            'specific_property_type' => (string) $input['specific_property_type'],
+            'property_type' => 'lettings',
+            'bedroom' => (string) $input['bedroom'],
+            'bathroom' => (string) $input['bathroom'],
+            'square_meter' => $squareMeter,
+            'square_feet' => $squareFeet,
+            'letting_current_status' => (string) $input['letting_current_status'],
+            'letting_price' => $input['letting_price'],
+            'imp_notes' => $this->nullableText($input['imp_notes'] ?? null),
+        ], fn ($value) => $value !== null && $value !== '');
+
+        $payload['uprn'] = null;
+        $payload['epc_rating'] = null;
+        $payload['epc_required'] = null;
+        $payload['tenure'] = null;
+        $payload['council_tax_band'] = null;
+        $payload['local_authority'] = null;
+        $payload['floor'] = null;
+        $payload['reception'] = null;
+
+        $property = $this->persistOnboardingProperty(
+            $account,
+            $user,
+            $payload,
+            $this->nullableText($input['prop_ref_no'] ?? null)
+        );
+
+        return array_merge($this->propertyPayload($property->fresh()), [
+            'data_sources' => ['manual'],
         ]);
     }
 
@@ -797,6 +825,74 @@ class LandlordOnboardingService
         }
 
         return max(1, min(3, $step));
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function persistOnboardingProperty(Account $account, User $user, array $payload, ?string $reference = null): Property
+    {
+        return DB::transaction(function () use ($account, $user, $payload, $reference) {
+            $existing = $this->currentDraftProperty($account);
+
+            if ($existing) {
+                $property = $this->wizard->updateStep($existing, $payload, 3);
+            } else {
+                if (! $this->limits->canAddProperty($account)) {
+                    throw ValidationException::withMessages([
+                        'postcode' => 'Your current plan has reached the property limit.',
+                    ]);
+                }
+
+                $property = $this->wizard->createDraft($payload);
+                $property = $this->wizard->updateStep($property, $payload, 3);
+            }
+
+            if ($reference !== null) {
+                $property->update(['prop_ref_no' => $reference]);
+            }
+
+            $this->ensureOwnerGroup($property, $user);
+
+            $account->update([
+                'onboarding_property_id' => $property->id,
+                'onboarding_step' => max(2, (int) $account->onboarding_step),
+            ]);
+
+            session([self::DRAFT_SESSION => $property->id]);
+
+            return $property;
+        });
+    }
+
+    private function nullableText(mixed $value): ?string
+    {
+        $text = trim((string) $value);
+
+        return $text === '' ? null : $text;
+    }
+
+    private function nullableNumber(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (float) $value;
+    }
+
+    /**
+     * @return array{0: ?float, 1: ?float}
+     */
+    private function areaPair(?float $squareMeter, ?float $squareFeet): array
+    {
+        if ($squareMeter !== null && $squareFeet === null) {
+            $squareFeet = round($squareMeter * 10.76391041671, 4);
+        } elseif ($squareFeet !== null && $squareMeter === null) {
+            $squareMeter = round($squareFeet / 10.76391041671, 4);
+        }
+
+        return [$squareMeter, $squareFeet];
     }
 
     /**

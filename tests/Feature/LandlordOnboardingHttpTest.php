@@ -55,6 +55,8 @@ class LandlordOnboardingHttpTest extends TestCase
         $response->assertSee('lob-root', false);
         $response->assertSee('Add your first property', false);
         $response->assertSee('Find the property', false);
+        $response->assertSee('Add property manually', false);
+        $response->assertSee('data-lob-screen="manual"', false);
         $response->assertDontSee('Verify identity', false);
         $response->assertSee('Lead tenant', false);
         $response->assertSee('Tenancy terms', false);
@@ -346,6 +348,73 @@ class LandlordOnboardingHttpTest extends TestCase
         $user->refresh();
         $this->assertSame('Confirmed Landlord', $user->name);
         $this->assertSame('07123456789', $user->phone);
+    }
+
+    public function test_manual_property_is_saved_when_postcode_lookup_is_skipped(): void
+    {
+        [$user, $accountId] = $this->createConfirmedLandlord();
+        $countryId = \App\Models\Country::query()->whereIn('code', ['GB', 'UK', 'GBR'])->value('id')
+            ?? \App\Models\Country::query()->value('id');
+
+        if (! $countryId) {
+            $countryId = \App\Models\Country::query()->create([
+                'code' => 'GB',
+                'name' => 'United Kingdom',
+                'status' => 1,
+            ])->id;
+        }
+
+        $response = $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->postJson(route('admin.onboarding.landlord.property.manual'), [
+                'line_1' => '14 Elm Row',
+                'line_2' => 'Flat 2',
+                'city' => 'Edinburgh',
+                'county' => 'Scotland',
+                'postcode' => 'EH7 4AA',
+                'country' => $countryId,
+                'specific_property_type' => 'flat',
+                'bedroom' => 2,
+                'bathroom' => 1,
+                'square_meter' => 68,
+                'letting_current_status' => 'available',
+                'letting_price' => 1250,
+                'currency' => 'GBP',
+                'prop_ref_no' => 'ELM-14',
+                'imp_notes' => 'Garden flat',
+            ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('data.line_1', '14 Elm Row');
+        $response->assertJsonPath('data.postcode', 'EH7 4AA');
+        $response->assertJsonPath('data.data_sources.0', 'manual');
+
+        $property = \App\Models\Property::query()->where('account_id', $accountId)->first();
+        $this->assertNotNull($property);
+        $this->assertSame('14 Elm Row', $property->line_1);
+        $this->assertSame('Flat 2', $property->line_2);
+        $this->assertSame('Edinburgh', $property->city);
+        $this->assertSame('Scotland', $property->county);
+        $this->assertSame('EH7 4AA', $property->postcode);
+        $this->assertSame((int) $countryId, (int) $property->country);
+        $this->assertSame('flat', $property->specific_property_type);
+        $this->assertSame('2', (string) $property->bedroom);
+        $this->assertSame('1', (string) $property->bathroom);
+        $this->assertSame('available', $property->letting_current_status);
+        $this->assertSame('GBP', $property->currency);
+        $this->assertSame('ELM-14', $property->prop_ref_no);
+        $this->assertSame('Garden flat', $property->imp_notes);
+        $this->assertEquals(68.0, (float) $property->square_meter);
+        $this->assertGreaterThan(700, (float) $property->square_feet);
+        $this->assertEquals(1250.0, (float) $property->letting_price);
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->postJson(route('admin.onboarding.landlord.property.manual'), [
+                'city' => 'Edinburgh',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['line_1', 'postcode', 'country']);
     }
 
     public function test_saved_property_includes_schema_fields_from_chimnie(): void

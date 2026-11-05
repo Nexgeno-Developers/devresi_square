@@ -25,11 +25,19 @@
     const busyLabel = root.querySelector('[data-lob-busy-label]');
     const searchBtn = root.querySelector('[data-lob-search-btn]');
     const leadOwnerForm = root.querySelector('[data-lob-lead-owner]');
+    const manualScreen = root.querySelector('[data-lob-screen="manual"]');
+    const manualForm = root.querySelector('[data-lob-manual]');
+    const manualLead = root.querySelector('[data-lob-manual-lead]');
+    const kickerEl = root.querySelector('.lob-kicker');
+    const titleEl = document.getElementById('lob-title');
+    const defaultKicker = kickerEl ? kickerEl.textContent : '';
+    const defaultTitle = titleEl ? titleEl.textContent : '';
 
     let state = bootstrap;
     let lastPostcode = state.property?.postcode || '';
     let busy = false;
     let activeButton = null;
+    let manualOpen = false;
 
     function showAlert(message) {
         if (!message) {
@@ -142,6 +150,19 @@
     }
 
     function goTo(step, persist) {
+        if (manualOpen) {
+            manualOpen = false;
+            stage?.classList.remove('is-manual');
+            if (kickerEl) {
+                kickerEl.textContent = defaultKicker;
+            }
+            if (titleEl) {
+                titleEl.textContent = defaultTitle;
+            }
+            if (manualLead) {
+                manualLead.hidden = true;
+            }
+        }
         const next = Math.max(1, Math.min(4, Number(step) || 1));
         state.step = next;
         root.querySelectorAll('[data-lob-screen]').forEach((screen) => {
@@ -188,7 +209,7 @@
             `<div><dt>${label}</dt><dd>${value}</dd></div>`
         )).join('');
 
-        const sources = property.data_sources || [];
+        const sources = (property.data_sources || []).filter((source) => source && source !== 'manual');
         if (sourcesEl) {
             if (sources.length) {
                 sourcesEl.hidden = false;
@@ -285,7 +306,12 @@
             const rows = payload.data || [];
             resultsEl.hidden = false;
             if (!rows.length) {
-                resultsEl.innerHTML = '<p class="lob-help">No properties came back for that postcode.</p>';
+                resultsEl.innerHTML = `
+                    <div class="lob-miss">
+                        <p class="lob-help">No properties came back for that postcode.</p>
+                        <button type="button" class="lob-btn lob-btn-primary" data-lob-open-manual>Add property manually</button>
+                    </div>
+                `;
                 return;
             }
             resultsEl.innerHTML = rows.map((row) => `
@@ -302,9 +328,14 @@
             `).join('');
             resultsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } catch (error) {
-            resultsEl.innerHTML = '';
-            resultsEl.hidden = true;
-            showAlert(error.message);
+            resultsEl.hidden = false;
+            resultsEl.innerHTML = `
+                <div class="lob-miss">
+                    <p class="lob-help">${escapeHtml(error.message)}</p>
+                    <button type="button" class="lob-btn lob-btn-primary" data-lob-open-manual>Add property manually</button>
+                </div>
+            `;
+            showAlert('');
         } finally {
             setBusy(false);
         }
@@ -502,8 +533,156 @@
         button.addEventListener('click', () => closeModal());
     });
 
+    function escapeHtml(value) {
+        return String(value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function manualValue(name) {
+        const field = manualForm?.querySelector(`[name="${name}"]`);
+        return field ? field.value.trim() : '';
+    }
+
+    function openManual() {
+        if (!manualScreen) {
+            return;
+        }
+        showAlert('');
+        manualOpen = true;
+        stage?.classList.add('is-manual');
+        if (kickerEl) {
+            kickerEl.textContent = 'Add property';
+        }
+        if (titleEl) {
+            titleEl.textContent = 'Add Property Manually';
+        }
+        if (manualLead) {
+            manualLead.hidden = false;
+        }
+        root.querySelectorAll('[data-lob-screen]').forEach((screen) => {
+            screen.hidden = screen.dataset.lobScreen !== 'manual';
+        });
+        root.querySelectorAll('[data-lob-actions]').forEach((row) => {
+            row.hidden = row.dataset.lobActions !== 'manual';
+        });
+        const postcodeField = manualForm?.querySelector('[name="postcode"]');
+        if (postcodeField && postcodeField.value.trim() === '' && postcodeInput?.value.trim()) {
+            postcodeField.value = postcodeInput.value.trim();
+        }
+        manualForm?.querySelector('[name="line_1"]')?.focus();
+    }
+
+    async function saveManual() {
+        const required = [
+            ['line_1', 'Enter address line 1.'],
+            ['city', 'Enter the city or town.'],
+            ['postcode', 'Enter the postcode or ZIP code.'],
+            ['country', 'Select a country.'],
+            ['specific_property_type', 'Select a property type.'],
+            ['bedroom', 'Enter the number of bedrooms.'],
+            ['bathroom', 'Enter the number of bathrooms.'],
+            ['letting_current_status', 'Select an occupancy status.'],
+            ['letting_price', 'Enter the monthly rent.'],
+            ['currency', 'Select a currency.'],
+        ];
+        for (const [name, message] of required) {
+            if (manualValue(name) === '') {
+                showAlert(message);
+                manualForm?.querySelector(`[name="${name}"]`)?.focus();
+                return;
+            }
+        }
+
+        const body = {
+            line_1: manualValue('line_1'),
+            line_2: manualValue('line_2'),
+            city: manualValue('city'),
+            county: manualValue('county'),
+            postcode: manualValue('postcode'),
+            country: Number(manualValue('country')),
+            specific_property_type: manualValue('specific_property_type'),
+            bedroom: Number(manualValue('bedroom')),
+            bathroom: Number(manualValue('bathroom')),
+            letting_current_status: manualValue('letting_current_status'),
+            letting_price: Number(manualValue('letting_price')),
+            currency: manualValue('currency'),
+            prop_ref_no: manualValue('prop_ref_no'),
+            imp_notes: manualValue('imp_notes'),
+        };
+        const areaRaw = manualForm?.querySelector('[data-lob-area]')?.value.trim() || '';
+        if (areaRaw !== '') {
+            const unit = manualForm?.querySelector('[data-lob-unit].is-active')?.dataset.lobUnit || 'sqm';
+            body[unit === 'sqft' ? 'square_feet' : 'square_meter'] = Number(areaRaw);
+        }
+
+        showAlert('');
+        setBusy(true, {
+            label: 'Saving this property…',
+            button: root.querySelector('[data-lob-manual-save]'),
+        });
+        try {
+            const payload = await request(root.dataset.propertyManual, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            state.property = payload.data;
+            renderFacts(state.property);
+            goTo(2);
+        } catch (error) {
+            showAlert(error.message);
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    root.addEventListener('click', (event) => {
+        if (event.target.closest('[data-lob-open-manual]')) {
+            openManual();
+            return;
+        }
+
+        const stepBtn = event.target.closest('[data-lob-step]');
+        if (stepBtn && manualForm?.contains(stepBtn)) {
+            const input = stepBtn.parentElement?.querySelector('input');
+            if (!input) {
+                return;
+            }
+            const next = Math.min(50, Math.max(0, (Number(input.value) || 0) + Number(stepBtn.dataset.lobStep)));
+            input.value = String(next);
+            return;
+        }
+
+        const unitBtn = event.target.closest('[data-lob-unit]');
+        if (unitBtn && manualForm?.contains(unitBtn)) {
+            unitBtn.parentElement?.querySelectorAll('[data-lob-unit]').forEach((btn) => {
+                const active = btn === unitBtn;
+                btn.classList.toggle('is-active', active);
+                btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+            });
+        }
+    });
+
+    manualForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        saveManual();
+    });
+    root.querySelector('[data-lob-manual-save]')?.addEventListener('click', () => saveManual());
+    root.querySelector('[data-lob-manual-cancel]')?.addEventListener('click', () => {
+        showAlert('');
+        goTo(1, false);
+    });
+
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && document.body.contains(root)) {
+            if (manualOpen) {
+                showAlert('');
+                goTo(1, false);
+                return;
+            }
             closeModal();
         }
     });

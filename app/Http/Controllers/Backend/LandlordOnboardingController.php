@@ -59,6 +59,35 @@ class LandlordOnboardingController extends Controller
         ]);
     }
 
+    public function storeManualProperty(Request $request): JsonResponse
+    {
+        [$account, $user] = $this->guard($request);
+
+        $validated = $request->validate([
+            'line_1' => 'required|string|max:255',
+            'line_2' => 'nullable|string|max:255',
+            'city' => 'required|string|max:255',
+            'county' => 'nullable|string|max:155',
+            'postcode' => 'required|string|max:20',
+            'country' => 'required|integer|exists:countries,id',
+            'specific_property_type' => 'required|string|in:house,flat,appartment,bunglow,studio,maisonette,hmo',
+            'bedroom' => 'required|integer|min:0|max:50',
+            'bathroom' => 'required|integer|min:0|max:50',
+            'square_meter' => 'nullable|numeric|min:0|max:999999',
+            'square_feet' => 'nullable|numeric|min:0|max:999999',
+            'letting_current_status' => 'required|in:available,let agreed,notice',
+            'letting_price' => 'required|numeric|min:0.01|max:999999.99',
+            'currency' => 'required|in:GBP,EUR,USD,AED',
+            'prop_ref_no' => 'nullable|string|max:50',
+            'imp_notes' => 'nullable|string|max:5000',
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'data' => $this->onboarding->saveManualProperty($account, $user, $validated),
+        ]);
+    }
+
     public function storeDocument(Request $request): JsonResponse
     {
         [$account, $user] = $this->guard($request);

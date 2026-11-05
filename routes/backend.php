@@ -260,6 +260,7 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::get('/state', 'state')->name('state');
             Route::get('/search', 'search')->middleware('throttle:20,1')->name('search');
             Route::post('/property', 'storeProperty')->name('property');
+            Route::post('/property/manual', 'storeManualProperty')->name('property.manual');
             Route::post('/documents', 'storeDocument')->name('documents');
             Route::post('/owners', 'storeOwners')->name('owners');
             Route::post('/tenancy', 'storeTenancy')->name('tenancy');
