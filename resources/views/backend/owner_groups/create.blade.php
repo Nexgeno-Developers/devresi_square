@@ -13,7 +13,7 @@
             <select name="property_id" id="property_id" class="form-control @error('property_id') is-invalid @enderror" required>
                 <option value="">Select a property</option>
                 @foreach($properties as $property)
-                    <option value="{{ $property->id }}" @selected((string) old('property_id') === (string) $property->id)>
+                    <option value="{{ $property->id }}" @selected((string) old('property_id', $selectedPropertyId ?? null) === (string) $property->id)>
                         {{ $property->full_address ?: ($property->line_1 ?: 'Property #'.$property->id) }}
                     </option>
                 @endforeach

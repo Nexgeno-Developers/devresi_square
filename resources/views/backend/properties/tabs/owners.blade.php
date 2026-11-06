@@ -1,6 +1,17 @@
 {{-- Hidden div for property ID --}}
 <div id="hidden-property-id" class="d-none" data-property-id="{{ $propertyId }}"></div>
 
+@php
+    $canManageOwners = ! auth()->user()->hasRole('Tenant');
+    $canDeleteOwnerGroup = $canManageOwners && $ownerGroups->count() > 1;
+@endphp
+
+@if($canManageOwners)
+    <div class="mb-3">
+        <a href="{{ route('admin.owner-groups.create', ['property_id' => $propertyId]) }}" class="btn pcc-btn-ink">Add owner</a>
+    </div>
+@endif
+
 {{-- Show table only if there is data --}}
 @if($ownerGroups->isNotEmpty())
 
@@ -43,15 +54,17 @@
                 <!-- Action -->
                 <td>
                     <div class="d-flex justify-content-end">
-                        @unless(auth()->user()->hasRole('Tenant'))
+                        @if($canManageOwners)
                         <button class="btn btn-sm btn-outline-warning popup-tab-owner-group-edit me-1" title="Edit Owner Group" data-url="{{ route('admin.owner-groups.edit', $ownerGroup->id) }}">
                             <i class="bi bi-pencil">Edit</i>
                         </button>
+                        @endif
+                        @if($canDeleteOwnerGroup)
                         <button class="btn btn-sm btn-outline-danger me-1" title="Delete Owner Group"
                             onclick="deleteOwnerGroup('{{ route('admin.owner-groups.delete_group', $ownerGroup->id) }}', this)">
                             <i class="bi bi-trash"></i> Delete
                         </button>
-                        @endunless
+                        @endif
                     </div>
                 </td>
             </tr>
@@ -144,7 +157,7 @@
             },
             error: function (xhr) {
                 btn.disabled = false;
-                alert('Failed to delete. Please try again.');
+                alert(xhr.responseJSON?.message || 'Failed to delete. Please try again.');
             }
         });
     }
@@ -187,8 +200,7 @@
         <div class="lw-empty">
             <div class="lw-empty-icon"><i class="bi bi-people"></i></div>
             <div class="lw-empty-title">No owners linked</div>
-            <p class="mb-3">Owner groups from onboarding appear here. Add one if the title is shared.</p>
-            <a href="{{ route('admin.owner-groups.create') }}" class="btn pcc-btn-ink">Add owner group</a>
+            <p class="mb-0">Owner groups from onboarding appear here. Add one if the title is shared.</p>
         </div>
     @else
         <p>No data available</p>

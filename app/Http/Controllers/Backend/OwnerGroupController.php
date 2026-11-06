@@ -42,7 +42,7 @@ class OwnerGroupController
     /**
      * Show the form for creating a new OwnerGroup.
      */
-    public function create()
+    public function create(Request $request)
     {
         if ($redirect = $this->denyTenantPortal()) {
             return $redirect;
@@ -54,8 +54,12 @@ class OwnerGroupController
 
         $users = $this->ownersForForm();
         $properties = $this->propertiesForCurrentAccount()->get();
+        $selectedPropertyId = (int) $request->input('property_id');
+        if (! $properties->contains('id', $selectedPropertyId)) {
+            $selectedPropertyId = null;
+        }
 
-        return view('backend.owner_groups.create', compact('users', 'properties'));
+        return view('backend.owner_groups.create', compact('users', 'properties', 'selectedPropertyId'));
     }
 
     public function createGroup()
@@ -112,7 +116,10 @@ class OwnerGroupController
 
         flash('Owner Group created successfully!')->success();
 
-        return redirect()->route('admin.owner-groups.index');
+        return redirect()->route('admin.properties.index', [
+            'property_id' => $validatedData['property_id'],
+            'tabname' => 'owners',
+        ]);
     }
 
     public function storeGroup(Request $request)
@@ -528,13 +535,27 @@ class OwnerGroupController
     }
 
 
-    public function deleteGroup($id)
+    public function deleteGroup(Request $request, $id)
     {
         // Get the current logged-in user
         $userId = Auth::id();
 
         // Find the OwnerGroup record by ID or fail if not found
         $ownerGroup = $this->ownerGroupsForCurrentAccount()->findOrFail($id);
+
+        $ownersOnProperty = $this->ownerGroupsForCurrentAccount()
+            ->where('property_id', $ownerGroup->property_id)
+            ->count();
+        if ($ownersOnProperty <= 1) {
+            $message = 'A property needs at least one owner.';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['message' => $message], 422);
+            }
+
+            flash($message)->error();
+
+            return back();
+        }
 
         // Soft delete the related OwnerGroupUser records (soft delete instead of permanent delete)
         foreach ($ownerGroup->ownerGroupUsers as $user) {
