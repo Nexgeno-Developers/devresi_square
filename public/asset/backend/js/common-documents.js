@@ -3,6 +3,7 @@
 
   // Load document list via AJAX (used for filter, reset, pagination, after save/delete)
   function load($c, extraParams = {}) {
+    if (!$c || !$c.length) return;
     const type = $c.data('documentable-type');
     const id   = $c.data('documentable-id');
     const $list = $c.find('.documents-list');
@@ -17,12 +18,35 @@
   }
 
   // Open add/edit document form
-  function loadForm(url, title) {
+  function rememberComponent($modal, $comp) {
+    if (!$comp || !$comp.length) return;
+    $modal.data('documentable-type', $comp.data('documentable-type'));
+    $modal.data('documentable-id', $comp.data('documentable-id'));
+  }
+
+  function componentForForm($form) {
+    const $modal = $form.closest('#documentsModal');
+    const type = $modal.data('documentable-type');
+    const id = $modal.data('documentable-id');
+    if (type && id) {
+      const $match = $('.documents-component').filter(function () {
+        return String($(this).data('documentable-type')) === String(type)
+          && String($(this).data('documentable-id')) === String(id);
+      }).first();
+      if ($match.length) return $match;
+    }
+    const $inside = $form.closest('.documents-component');
+    if ($inside.length) return $inside;
+    return $('.documents-component').first();
+  }
+
+  function loadForm(url, title, $comp) {
     $.get(url, function(html){
       var $modal = $('#documentsModal');
       if ($modal.parent()[0] !== document.body) {
         $modal.appendTo('body');
       }
+      rememberComponent($modal, $comp);
       $modal.find('.modal-title').text(title || 'Add document');
       $modal.find('.modal-body').html(html);
       try {
@@ -77,14 +101,15 @@
     const type = encodeURIComponent($comp.data('documentable-type'));
     const id   = $comp.data('documentable-id');
     const url  = `${api}/create?documentable_type=${type}&documentable_id=${id}`;
-    loadForm(url, 'Add Document');
+    loadForm(url, 'Add Document', $comp);
   });
 
   // Edit button
   $(document).on('click', '.documents-edit', function(){
+    const $comp = $(this).closest('.documents-component');
     const documentId = $(this).data('id');
     const url    = `${api}/${documentId}/edit`;
-    loadForm(url, 'Edit Document');
+    loadForm(url, 'Edit Document', $comp);
   });
 
   // View button
@@ -168,8 +193,8 @@
     e.preventDefault();              // stop the normal form submit
 
     const $form = $(this);
-    const $c    = $form.closest('.documents-component');
-    const $modal = $('#documentsModal'); // or $form.closest('.documents-modal')
+    const $modal = $('#documentsModal');
+    const $c    = componentForForm($form);
     const $filt  = $c.find('.documents-filter-form');
 
     // disable the save button to prevent double-click

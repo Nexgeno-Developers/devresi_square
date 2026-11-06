@@ -34,7 +34,7 @@
                                 </button>
                             </form>
                         @endif
-                        <button class="btn btn-sm btn-outline-danger documents-edit me-1" data-id="{{ $document->id }}"
+                        <button type="button" class="btn btn-sm btn-outline-secondary documents-edit me-1" data-id="{{ $document->id }}"
                             title="Edit document">
                             <i class="bi bi-pencil">Edit</i>
                         </button>

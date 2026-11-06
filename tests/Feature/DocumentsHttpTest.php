@@ -295,6 +295,75 @@ class DocumentsHttpTest extends TestCase
             ->assertSee($type->name, false);
     }
 
+    public function test_landlord_can_edit_a_property_document(): void
+    {
+        Storage::fake('public');
+
+        [$landlord, $accountId] = $this->createLandlord();
+        $property = Property::create([
+            'account_id' => $accountId,
+            'created_by' => $landlord->id,
+            'line_1' => '8 Docs Lane',
+            'city' => 'London',
+            'postcode' => 'N1 8AA',
+        ]);
+        $session = ['current_account_id' => $accountId];
+        $type = DocumentType::query()->orderBy('id')->first()
+            ?: DocumentType::create(['name' => 'Inventory', 'status' => 1]);
+        $upload = Upload::create([
+            'account_id' => $accountId,
+            'file_original_name' => 'inventory',
+            'file_name' => 'uploads/all/inventory.pdf',
+            'user_id' => $landlord->id,
+            'extension' => 'pdf',
+            'type' => 'document',
+            'file_size' => 32,
+        ]);
+        Storage::disk('public')->put('uploads/all/inventory.pdf', 'pdf-bytes');
+
+        $document = Document::create([
+            'account_id' => $accountId,
+            'documentable_type' => $property->getMorphClass(),
+            'documentable_id' => $property->id,
+            'upload_ids' => (string) $upload->id,
+            'document_type_id' => $type->id,
+            'title' => 'Inventory before edit',
+            'visibility' => 'private',
+            'created_by' => $landlord->id,
+        ]);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->get(route('admin.properties.index', ['property_id' => $property->id, 'tabname' => 'documents']))
+            ->assertOk()
+            ->assertSee('btn-outline-secondary documents-edit', false)
+            ->assertSee('Inventory before edit', false)
+            ->assertDontSee('btn-outline-danger documents-edit', false);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->get(route('admin.documents.edit', $document))
+            ->assertOk()
+            ->assertSee('value="Inventory before edit"', false);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->postJson(route('admin.documents.save'), [
+                'document_id' => $document->id,
+                'documentable_type' => $property->getMorphClass(),
+                'documentable_id' => $property->id,
+                'upload_ids' => (string) $upload->id,
+                'title' => 'Inventory after edit',
+                'document_type_id' => $type->id,
+                'share_with_tenant' => 0,
+            ])
+            ->assertOk()
+            ->assertJsonPath('message', 'Document updated');
+
+        $this->assertSame('Inventory after edit', $document->fresh()->title);
+
+        $script = file_get_contents(public_path('asset/backend/js/common-documents.js'));
+        $this->assertStringContainsString('function componentForForm', $script);
+        $this->assertStringContainsString('rememberComponent', $script);
+    }
+
     /**
      * @return array{0: User, 1: int}
      */
