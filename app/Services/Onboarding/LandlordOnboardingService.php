@@ -2,6 +2,7 @@
 
 namespace App\Services\Onboarding;
 
+use App\Mail\MailManager;
 use App\Models\Account;
 use App\Models\AccountUser;
 use App\Models\Country;
@@ -31,6 +32,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
@@ -426,7 +428,7 @@ class LandlordOnboardingService
             ]);
         }
 
-        DB::transaction(function () use ($property, $landlord, $owners, $account, $leadName, $leadPhone) {
+        $added = DB::transaction(function () use ($property, $landlord, $owners, $account, $leadName, $leadPhone) {
             $landlord->update([
                 'name' => $leadName,
                 'phone' => $leadPhone !== '' ? $leadPhone : $landlord->phone,
@@ -440,6 +442,7 @@ class LandlordOnboardingService
                 ->map(fn (OwnerGroupUser $row) => strtolower((string) ($row->contact_email ?: $row->user?->email)))
                 ->filter()
                 ->all();
+            $added = [];
 
             foreach ($owners as $index => $owner) {
                 $name = trim((string) ($owner['name'] ?? ''));
@@ -470,10 +473,17 @@ class LandlordOnboardingService
                     'added_by' => $landlord->id,
                 ]);
                 $existingEmails[] = $email;
+                $added[] = ['name' => $name, 'email' => $email];
             }
 
             $account->update(['onboarding_step' => max(3, (int) $account->onboarding_step)]);
+
+            return $added;
         });
+
+        foreach ($added as $coOwner) {
+            $this->notifyCoOwnerListed($landlord, $property, $coOwner['name'], $coOwner['email']);
+        }
 
         return [
             'owner' => [
@@ -1141,6 +1151,34 @@ class LandlordOnboardingService
 
         $event->properties()->sync([$property->id]);
         $event->users()->sync(array_values(array_unique(array_map('intval', $inviteUserIds))));
+    }
+
+    private function notifyCoOwnerListed(User $landlord, Property $property, string $name, string $email): void
+    {
+        $address = trim(implode(', ', array_filter([
+            $property->line_1,
+            $property->city,
+            $property->postcode,
+        ])));
+        $place = $address !== '' ? $address : 'a property';
+        $firstName = trim(strtok($name, ' ')) ?: 'there';
+
+        try {
+            Mail::to($email)->send(new MailManager([
+                'subject' => $place.' is listed on '.config('app.name'),
+                'content' => '<p>Hi '.e($firstName).',</p>'
+                    .'<p>'.e($landlord->name).' has listed <strong>'.e($place).'</strong> on '.e((string) config('app.name')).' and recorded you as a co-owner.</p>'
+                    .'<p>This email is a notice only. It does not create a login.</p>',
+                'reply_to' => $landlord->email,
+                'reply_name' => $landlord->name,
+                'attachments' => [],
+            ]));
+        } catch (\Throwable $exception) {
+            Log::error('Co-owner listing email failed: '.$exception->getMessage(), [
+                'email' => $email,
+                'property_id' => $property->id,
+            ]);
+        }
     }
 
     /**

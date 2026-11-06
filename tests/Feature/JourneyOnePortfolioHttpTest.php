@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\MailManager;
 use App\Models\AccountUser;
 use App\Models\OwnerGroupUser;
 use App\Models\Property;
@@ -10,6 +11,7 @@ use App\Models\TenantMember;
 use App\Models\User;
 use App\Services\Onboarding\LandlordOnboardingService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -154,6 +156,7 @@ class JourneyOnePortfolioHttpTest extends TestCase
         ]);
         $existingRoles = $existing->roles()->pluck('name')->all();
         $freshEmail = 'new-co-owner-'.uniqid().'@resisquare.test';
+        Mail::fake();
 
         $response = $this->actingAs($owner)
             ->withSession([
@@ -188,6 +191,33 @@ class JourneyOnePortfolioHttpTest extends TestCase
         $this->assertTrue(
             OwnerGroupUser::query()->where('contact_email', $existing->email)->whereNull('user_id')->exists()
         );
+
+        Mail::assertSent(MailManager::class, function (MailManager $mail) use ($freshEmail) {
+            return $mail->hasTo($freshEmail)
+                && str_contains((string) $mail->array['subject'], '4 Shared House')
+                && str_contains((string) $mail->array['content'], 'co-owner')
+                && str_contains((string) $mail->array['content'], 'does not create a login');
+        });
+        Mail::assertSent(MailManager::class, fn (MailManager $mail) => $mail->hasTo($existing->email));
+        Mail::assertNotSent(MailManager::class, fn (MailManager $mail) => $mail->hasTo($owner->email));
+
+        $this->actingAs($owner)
+            ->withSession([
+                'current_account_id' => $accountId,
+                LandlordOnboardingService::DRAFT_SESSION => $property->id,
+            ])
+            ->postJson(route('admin.onboarding.landlord.owners'), [
+                'owner' => [
+                    'name' => $owner->name,
+                    'email' => $owner->email,
+                ],
+                'owners' => [
+                    ['name' => 'Brand New', 'email' => $freshEmail],
+                ],
+            ])
+            ->assertOk();
+
+        Mail::assertSentCount(2);
     }
 
     public function test_two_live_properties_cannot_share_an_address(): void
