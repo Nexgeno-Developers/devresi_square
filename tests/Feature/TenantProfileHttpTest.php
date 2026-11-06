@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\NotificationLog;
 use App\Models\NotificationPreference;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -67,6 +68,49 @@ class TenantProfileHttpTest extends TestCase
             ->assertSee('data-tenant-notifications="1"', false)
             ->assertDontSee('Account defaults', false)
             ->assertDontSee('View delivery log', false);
+    }
+
+    public function test_registered_tenant_does_not_see_a_portal_invite_notice(): void
+    {
+        [$tenant, $accountId] = $this->createTenant();
+        $session = ['current_account_id' => $accountId];
+
+        NotificationLog::create([
+            'account_id' => $accountId,
+            'identifier' => 'tenant.portal_invite',
+            'notifiable_type' => $tenant->getMorphClass(),
+            'notifiable_id' => $tenant->id,
+            'notification_uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'idempotency_key' => hash('sha256', uniqid('invite', true)),
+            'channel' => 'system',
+            'subject' => 'Portal invite',
+            'message' => 'You have been invited to the tenant portal.',
+            'payload' => ['action_url' => null],
+            'status' => 'sent',
+            'sent_at' => now(),
+        ]);
+
+        NotificationLog::create([
+            'account_id' => $accountId,
+            'identifier' => 'repair.reported',
+            'notifiable_type' => $tenant->getMorphClass(),
+            'notifiable_id' => $tenant->id,
+            'notification_uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'idempotency_key' => hash('sha256', uniqid('repair', true)),
+            'channel' => 'system',
+            'subject' => 'Repair update',
+            'message' => 'A plumber is booked.',
+            'payload' => ['action_url' => route('tenant.maintenance')],
+            'status' => 'sent',
+            'sent_at' => now(),
+        ]);
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('tenant.notifications'))
+            ->assertOk()
+            ->assertDontSee('Portal invite', false)
+            ->assertSee('Repair update', false)
+            ->assertSee(route('tenant.maintenance'), false);
     }
 
     /**

@@ -683,6 +683,7 @@ class TenantPortalController extends Controller
             ->orderByDesc('id')
             ->limit(80)
             ->get()
+            ->reject(fn ($notice) => $notice->identifier === 'tenant.portal_invite')
             ->filter(fn ($notice) => $this->noticeBelongsToTenant($notice, $tenancyIds, $propertyIds, $repairIds, $invoiceIds))
             ->unique(fn ($notice) => mb_strtolower(trim(rs_notice_text($notice->subject).'|'.rs_notice_text($notice->message))))
             ->take($limit)

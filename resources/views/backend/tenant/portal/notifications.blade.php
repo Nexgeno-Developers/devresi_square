@@ -20,7 +20,12 @@
                     <p class="mb-0">{{ rs_notice_text($notice->subject) }}</p>
                     <div class="tp-muted mb-0">{!! safe_html(rs_notice_html($notice->message)) !!}</div>
                 </div>
-                <a class="tp-btn tp-btn-ghost" href="{{ \App\Support\PortalNoticeLink::forTenant($notice->payload['action_url'] ?? null) }}">Open</a>
+                @php
+                    $noticeUrl = \App\Support\PortalNoticeLink::forTenant($notice->payload['action_url'] ?? null);
+                @endphp
+                @if($noticeUrl !== route('tenant.notifications'))
+                    <a class="tp-btn tp-btn-ghost" href="{{ $noticeUrl }}">Open</a>
+                @endif
             </div>
         @empty
             <p class="tp-empty mb-0">No notices yet.</p>
