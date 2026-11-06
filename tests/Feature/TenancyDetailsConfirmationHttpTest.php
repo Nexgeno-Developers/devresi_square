@@ -100,8 +100,15 @@ class TenancyDetailsConfirmationHttpTest extends TestCase
             ->withSession(['current_account_id' => $accountId])
             ->get(route('backend.home'))
             ->assertOk()
-            ->assertSee('Waiting for your landlord', false)
-            ->assertDontSee('Looks correct', false);
+            ->assertDontSee('Waiting for your landlord', false)
+            ->assertDontSee('Check these tenancy details', false);
+
+        $this->actingAs($tenant)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('tenant.tenancy'))
+            ->assertOk()
+            ->assertSee('Correction sent — waiting for your landlord', false)
+            ->assertDontSee('Check these tenancy details', false);
 
         $this->actingAs($landlord)
             ->withSession(['current_account_id' => $accountId])

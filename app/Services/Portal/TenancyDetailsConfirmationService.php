@@ -285,8 +285,7 @@ class TenancyDetailsConfirmationService
             ->when($accountId, fn ($query) => $query->where('account_id', $accountId))
             ->where(function ($query) {
                 $query->whereNull('details_status')
-                    ->orWhere('details_status', self::STATUS_PENDING)
-                    ->orWhere('details_status', self::STATUS_CORRECTION_REQUESTED);
+                    ->orWhere('details_status', self::STATUS_PENDING);
             })
             ->whereHas('tenancy', fn ($query) => $query->where('status', 'Active'))
             ->with([
