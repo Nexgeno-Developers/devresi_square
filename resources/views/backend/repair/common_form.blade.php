@@ -13,6 +13,14 @@
         <input class="form-control" type="file" id="images" name="images[]" accept="image/*" multiple>
     </div> --}}
 
+    @if(is_landlord_plan_user())
+    <div class="mb-3">
+        <label for="repair_photo" class="form-label">Photo</label>
+        <input class="form-control" type="file" id="repair_photo" name="repair_photo" accept="image/jpeg,image/png,image/webp">
+        <div class="form-text">Optional. The photo is saved with this form.</div>
+        <img id="repair_photo_preview" alt="Selected repair photo" class="d-none mt-2 rounded" style="max-height:160px">
+    </div>
+    @else
     <div class="form-group rs_upload_btn">
         <h5 class="sub_title mt-4">Select images</h5>
         <div class="media_wrapper">
@@ -28,5 +36,6 @@
             </div>
         </div>
     </div>
+    @endif
 
 

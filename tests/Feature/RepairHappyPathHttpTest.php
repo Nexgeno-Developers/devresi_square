@@ -316,6 +316,73 @@ class RepairHappyPathHttpTest extends TestCase
         $this->assertSame(0, RepairPhoto::query()->where('repair_issue_id', $repair->id)->count());
     }
 
+    public function test_landlord_raise_form_saves_the_edit_fields_and_photo(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+
+        [$landlord, $accountId] = $this->createLandlord();
+        [$tenant] = $this->createTenantOnAccount($accountId);
+        [$property] = $this->createLet($accountId, $landlord, $tenant);
+        $session = ['current_account_id' => $accountId];
+        $category = RepairCategory::create([
+            'name' => 'Bathroom',
+            'parent_id' => null,
+            'level' => 1,
+            'description' => 'Bathroom',
+            'status' => 1,
+            'position' => 0,
+        ]);
+        $when = now()->addDay()->setTime(9, 0)->format('Y-m-d\TH:i');
+
+        $this->actingAs($landlord)->withSession($session)
+            ->get(route('admin.property_repairs.create'))
+            ->assertOk()
+            ->assertSee('name="priority"', false)
+            ->assertSee('name="status"', false)
+            ->assertSee('name="sub_status"', false)
+            ->assertSee('name="tenant_id"', false)
+            ->assertSee('name="tenant_availability"', false)
+            ->assertSee('name="access_details"', false)
+            ->assertSee('name="estimated_price"', false)
+            ->assertSee('name="vat_type"', false)
+            ->assertSee('name="repair_photo"', false)
+            ->assertDontSee('data-toggle="aizuploader"', false);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.property_repairs.store'), [
+                'property_id' => $property->id,
+                'repair_category_id' => $category->id,
+                'repair_navigation' => json_encode(['level_1' => (string) $category->id]),
+                'description' => 'Bathroom fan is stuck.',
+                'priority' => 'high',
+                'status' => 'Reported',
+                'sub_status' => 'Quoted',
+                'tenant_id' => $tenant->id,
+                'tenant_availability' => $when,
+                'access_details' => 'Key safe 1948',
+                'estimated_price' => '150.50',
+                'vat_type' => 'exclusive',
+                'repair_photo' => UploadedFile::fake()->image('fan.jpg'),
+            ])
+            ->assertRedirect();
+
+        $repair = RepairIssue::query()
+            ->where('account_id', $accountId)
+            ->where('description', 'Bathroom fan is stuck.')
+            ->latest('id')
+            ->firstOrFail();
+        $this->assertSame('high', $repair->priority);
+        $this->assertSame('Reported', $repair->status);
+        $this->assertSame('Quoted', $repair->sub_status);
+        $this->assertSame($tenant->id, (int) $repair->tenant_id);
+        $this->assertSame($when, $repair->tenant_availability?->format('Y-m-d\TH:i'));
+        $this->assertSame('Key safe 1948', $repair->access_details);
+        $this->assertSame('150.50', number_format((float) $repair->estimated_price, 2, '.', ''));
+        $this->assertSame('exclusive', $repair->vat_type);
+        $this->assertSame(1, $repair->repairPhotos()->count());
+    }
+
     /**
      * @return array{0: User, 1: int}
      */

@@ -7,7 +7,7 @@
         <h4>Report a repair</h4>
         <p>Choose the property, say what is wrong, and add a photo if you have one.</p>
     </div>
-    <form method="POST" action="{{ route('admin.property_repairs.store') }}" class="card lw-card">
+    <form method="POST" action="{{ route('admin.property_repairs.store') }}" class="card lw-card" enctype="multipart/form-data">
         @csrf
         <div class="card-body">
             <div class="mb-3">
@@ -33,7 +33,64 @@
                 <input type="hidden" name="repair_navigation" id="landlord_nav" value="">
             </div>
             @include('backend.repair.common_form')
-            <button type="submit" class="btn lw-btn-primary">Raise repair</button>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label" for="priority">Priority</label>
+                    <select id="priority" name="priority" class="form-select">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Urgent</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="status">Repair status</label>
+                    <select id="status" name="status" class="form-select">
+                        @foreach(['Pending', 'Reported', 'Under Process', 'Work Completed', 'Invoice Received', 'Invoice Paid', 'Closed', 'Cancelled'] as $status)
+                            <option value="{{ $status }}" @selected($status === 'Pending')>{{ $status }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="sub_status">Job status</label>
+                    <select id="sub_status" name="sub_status" class="form-select">
+                        @foreach(['Pending', 'Quoted', 'Awarded', 'Work Completed'] as $subStatus)
+                            <option value="{{ $subStatus }}" @selected($subStatus === 'Pending')>{{ $subStatus }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="tenant_id">Tenant</label>
+                    <select id="tenant_id" name="tenant_id" class="form-select">
+                        <option value="">Select a tenant</option>
+                    </select>
+                    <div class="form-text" id="tenant_hint">Choose the property first.</div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="tenant_availability">When someone can visit</label>
+                    <input type="datetime-local" id="tenant_availability" name="tenant_availability" class="form-control">
+                </div>
+                <div class="col-12">
+                    <label class="form-label" for="access_details">Access details</label>
+                    <textarea id="access_details" name="access_details" class="form-control" rows="2" maxlength="5000" placeholder="Key safe code, or ring the top bell"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" for="estimated_price">Estimated price</label>
+                    <input type="number" step="0.01" min="0" id="estimated_price" name="estimated_price" class="form-control">
+                </div>
+                <div class="col-md-6">
+                    <span class="form-label d-block">VAT</span>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="vat_type" id="vat_type_inclusive" value="inclusive">
+                        <label class="form-check-label" for="vat_type_inclusive">Inclusive</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="vat_type" id="vat_type_exclusive" value="exclusive">
+                        <label class="form-check-label" for="vat_type_exclusive">Exclusive</label>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn lw-btn-primary mt-3">Raise repair</button>
         </div>
     </form>
 </div>
@@ -43,6 +100,47 @@
         if (nav) {
             nav.value = JSON.stringify({ level_1: this.value });
         }
+    });
+
+    var tenantsByProperty = @json($tenantsByProperty ?? []);
+    var propertySelect = document.getElementById('landlord_property_select');
+    var tenantSelect = document.getElementById('tenant_id');
+    var tenantHint = document.getElementById('tenant_hint');
+
+    function fillTenants() {
+        if (!propertySelect || !tenantSelect) return;
+        var rows = tenantsByProperty[propertySelect.value] || [];
+        tenantSelect.innerHTML = '<option value="">Select a tenant</option>';
+        rows.forEach(function (row) {
+            var option = document.createElement('option');
+            option.value = row.id;
+            option.textContent = row.name;
+            tenantSelect.appendChild(option);
+        });
+        if (rows.length === 1) {
+            tenantSelect.value = String(rows[0].id);
+        }
+        if (tenantHint) {
+            tenantHint.textContent = propertySelect.value && rows.length === 0
+                ? 'This property has no active tenant. Add a tenancy before raising a repair.'
+                : '';
+        }
+    }
+
+    propertySelect?.addEventListener('change', fillTenants);
+    fillTenants();
+
+    document.getElementById('repair_photo')?.addEventListener('change', function () {
+        var preview = document.getElementById('repair_photo_preview');
+        var file = this.files && this.files[0];
+        if (!preview) return;
+        if (!file) {
+            preview.classList.add('d-none');
+            preview.removeAttribute('src');
+            return;
+        }
+        preview.src = URL.createObjectURL(file);
+        preview.classList.remove('d-none');
     });
 </script>
 @else

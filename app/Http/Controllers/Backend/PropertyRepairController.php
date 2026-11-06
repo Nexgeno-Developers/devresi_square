@@ -18,10 +18,12 @@ use App\Models\Property;
 use App\Models\TaxRates;
 use App\Models\Tenancy;
 use App\Models\TenantMember;
+use App\Models\Upload;
 use App\Models\UserCategory;
 use App\Models\WorkOrder;
 use App\Enums\CrmNotificationEvent;
 use App\Services\Notifications\CrmNotificationService;
+use App\Services\SecureUploadService;
 use App\Services\Saas\PortalAccessService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -53,6 +55,7 @@ class PropertyRepairController
 
         $tenantProperties = null;
         $landlordProperties = null;
+        $tenantsByProperty = [];
         if (is_tenant_portal_user()) {
             $tenantProperties = \App\Models\TenantMember::where('user_id', auth()->id())
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
@@ -66,9 +69,27 @@ class PropertyRepairController
                 ->forAccount(current_account_id())
                 ->orderBy('line_1')
                 ->get(['id', 'prop_name', 'prop_ref_no', 'line_1', 'line_2', 'city', 'postcode']);
+
+            $tenantsByProperty = TenantMember::query()
+                ->where('account_id', current_account_id())
+                ->whereHas('tenancy', function ($query) {
+                    $query->where('status', 'Active')->whereNotNull('property_id');
+                })
+                ->with(['user:id,name', 'tenancy:id,property_id'])
+                ->get()
+                ->groupBy(fn (TenantMember $member) => (string) $member->tenancy?->property_id)
+                ->map(fn ($members) => $members
+                    ->filter(fn (TenantMember $member) => $member->user)
+                    ->unique('user_id')
+                    ->map(fn (TenantMember $member) => [
+                        'id' => $member->user->id,
+                        'name' => $member->user->name,
+                    ])
+                    ->values())
+                ->all();
         }
 
-        return view('backend.repair.create_raise_issue', compact('categories', 'maxLevel', 'tenantProperties', 'landlordProperties'));
+        return view('backend.repair.create_raise_issue', compact('categories', 'maxLevel', 'tenantProperties', 'landlordProperties', 'tenantsByProperty'));
     }
 
     public function getSubCategories($categoryId)
@@ -1092,11 +1113,19 @@ class PropertyRepairController
     public function raiseIssueStore(Request $request)
     {
         $request->validate([
-            'property_id' => 'required',  // Ensure it's an array with at least one item
+            'property_id' => 'required',
             'repair_category_id' => 'required|integer|exists:repair_categories,id',
             'repair_navigation' => 'required|json',
             'description' => 'required|string',
             'tenant_id' => 'nullable|integer|exists:users,id',
+            'priority' => 'nullable|in:low,medium,high,critical',
+            'status' => 'nullable|in:Pending,Reported,Under Process,Work Completed,Invoice Received,Invoice Paid,Closed,Cancelled',
+            'sub_status' => 'nullable|in:Pending,Quoted,Awarded,Work Completed',
+            'tenant_availability' => 'nullable|date_format:Y-m-d\TH:i',
+            'access_details' => 'nullable|string|max:5000',
+            'estimated_price' => 'nullable|numeric|min:0|max:9999999.99',
+            'vat_type' => 'nullable|in:inclusive,exclusive',
+            'repair_photo' => 'nullable|image|max:10240',
         ]);
 
         // Decode JSON categories
@@ -1130,6 +1159,18 @@ class PropertyRepairController
             $tenantId = Auth::id();
         } elseif ($request->filled('tenant_id')) {
             $tenantId = (int) $request->input('tenant_id');
+            $onThisProperty = TenantMember::query()
+                ->where('user_id', $tenantId)
+                ->where('account_id', $property->account_id ?: current_account_id())
+                ->whereHas('tenancy', function ($query) use ($propertyId) {
+                    $query->where('property_id', $propertyId)->where('status', 'Active');
+                })
+                ->exists();
+            if (! $onThisProperty) {
+                throw ValidationException::withMessages([
+                    'tenant_id' => 'Choose a tenant on an active tenancy for this property.',
+                ]);
+            }
         } else {
             $tenantId = TenantMember::query()
                 ->where('account_id', $property->account_id ?: current_account_id())
@@ -1165,9 +1206,13 @@ class PropertyRepairController
             'repair_category_id' => $request->repair_category_id,
             'description' => $request->description,
             'priority' => $request->input('priority', 'medium'),
-            'sub_status' => 'Pending',
-            'status' => 'Pending',
-            'reference_number' => $repairReference,  // Store the reference number
+            'sub_status' => $request->input('sub_status', 'Pending'),
+            'status' => $request->input('status', 'Pending'),
+            'tenant_availability' => $request->input('tenant_availability'),
+            'access_details' => $request->input('access_details'),
+            'estimated_price' => $request->input('estimated_price'),
+            'vat_type' => $request->input('vat_type'),
+            'reference_number' => $repairReference,
         ]);
 
         $this->syncRepairIssuePropertyManagers(
@@ -1190,8 +1235,23 @@ class PropertyRepairController
             auth()->user(),
         );
 
-        // Store repair photos
-        if ($request->has('repair_photos')) {
+        if ($request->hasFile('repair_photo')) {
+            $stored = app(SecureUploadService::class)->store($request->file('repair_photo'));
+            $upload = new Upload;
+            $upload->account_id = $repair->account_id;
+            $upload->file_original_name = pathinfo($stored['original_name'], PATHINFO_FILENAME) ?: 'repair-photo';
+            $upload->extension = $stored['extension'];
+            $upload->file_name = $stored['path'];
+            $upload->user_id = $request->user()->id;
+            $upload->type = $stored['type'];
+            $upload->file_size = $stored['size'];
+            $upload->save();
+
+            RepairPhoto::create([
+                'photos' => (string) $upload->id,
+                'repair_issue_id' => $repair->id,
+            ]);
+        } elseif ($request->filled('repair_photos')) {
             RepairPhoto::create([
                 'photos' => $request->repair_photos,
                 'repair_issue_id' => $repair->id,
