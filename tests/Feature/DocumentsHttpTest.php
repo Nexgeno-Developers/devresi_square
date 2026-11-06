@@ -253,9 +253,29 @@ class DocumentsHttpTest extends TestCase
         );
 
         $this->actingAs($landlord)->withSession($session)
+            ->get(route('admin.compliance.index'))
+            ->assertOk()
+            ->assertSee('name="issued_date"', false)
+            ->assertSee('name="expiry_date"', false)
+            ->assertSee('Expiry / review date', false);
+
+        $this->actingAs($landlord)->withSession($session)
             ->post(route('admin.compliance.share'), [
                 'property_id' => $property->id,
                 'compliance_type_id' => $type->id,
+                'certificate' => UploadedFile::fake()->image('gas.jpg'),
+            ])
+            ->assertSessionHasErrors(['expiry_date']);
+
+        $issued = now()->subMonth()->toDateString();
+        $expiry = now()->addYear()->toDateString();
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.compliance.share'), [
+                'property_id' => $property->id,
+                'compliance_type_id' => $type->id,
+                'issued_date' => $issued,
+                'expiry_date' => $expiry,
                 'certificate' => UploadedFile::fake()->image('gas.jpg'),
             ])
             ->assertRedirect(route('admin.compliance.index'));
@@ -266,6 +286,8 @@ class DocumentsHttpTest extends TestCase
             ->first();
         $this->assertNotNull($record);
         $this->assertNotNull($record->served_to_tenant_at);
+        $this->assertSame($issued, $record->issued_date?->toDateString());
+        $this->assertSame($expiry, $record->expiry_date?->toDateString());
 
         $this->actingAs($tenant)->withSession($session)
             ->get(route('tenant.documents'))

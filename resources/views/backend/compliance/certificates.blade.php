@@ -80,6 +80,12 @@
                                         @csrf
                                         <input type="hidden" name="property_id" value="{{ $row['property']->id }}">
                                         <input type="hidden" name="compliance_type_id" value="{{ $row['type']->id }}">
+                                        <label class="small mb-0">Issue date
+                                            <input type="date" name="issued_date" class="form-control form-control-sm" value="{{ old('issued_date') }}">
+                                        </label>
+                                        <label class="small mb-0">Expiry / review date
+                                            <input type="date" name="expiry_date" required class="form-control form-control-sm" value="{{ old('expiry_date') }}">
+                                        </label>
                                         <input type="file" name="certificate" accept="application/pdf,image/*" required class="form-control form-control-sm"
                                             oninvalid="this.setCustomValidity('Choose the certificate file before uploading it.')"
                                             onchange="this.setCustomValidity('')">

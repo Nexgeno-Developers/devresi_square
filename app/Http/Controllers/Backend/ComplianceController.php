@@ -60,6 +60,8 @@ class ComplianceController
             'property_id' => 'required|integer',
             'compliance_type_id' => 'required|integer',
             'certificate' => 'required|file|mimes:pdf,jpg,jpeg,png,webp|max:10240',
+            'issued_date' => 'nullable|date',
+            'expiry_date' => 'required|date|after_or_equal:issued_date',
         ]);
 
         $property = Property::query()->forAccount($accountId)->findOrFail($validated['property_id']);
@@ -94,10 +96,16 @@ class ComplianceController
             ->orderByDesc('id')
             ->first();
 
+        $dates = [
+            'issued_date' => $validated['issued_date'] ?? null,
+            'expiry_date' => $validated['expiry_date'],
+        ];
+
         if ($record) {
             $record->forceFill([
                 'served_to_tenant_at' => now(),
                 'photos' => (string) $upload->id,
+                ...$dates,
             ])->save();
         } else {
             ComplianceRecord::create([
@@ -106,6 +114,7 @@ class ComplianceController
                 'photos' => (string) $upload->id,
                 'served_to_tenant_at' => now(),
                 'status' => 'shared',
+                ...$dates,
             ]);
         }
 
