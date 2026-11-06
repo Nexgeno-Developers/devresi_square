@@ -42,7 +42,7 @@
                                 class="btn btn-danger btn-sm documents-delete"
                                 data-id="{{ $document->id }}"
                                 data-url="{{ route('admin.documents.delete', $document->id) }}"
-                                data-message="Are you sure you want to delete document #{{ $document->id }}?">
+                                data-message="Delete this document? This cannot be undone.">
                         <i class="bi bi-trash"></i> Delete
                         </button>
                 </div>

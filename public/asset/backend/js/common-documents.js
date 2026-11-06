@@ -64,7 +64,10 @@
   // Documents are already server-rendered in .documents-list on page load.
   // AJAX load is only triggered by filter, reset, save, delete, or pagination.
   $(function(){
-    // nothing to do on init
+    var $deleteModal = $('#documentDeleteModal');
+    if ($deleteModal.length && $deleteModal.parent()[0] !== document.body) {
+      $deleteModal.appendTo('body');
+    }
   });
 
   // Handle filter form submit
@@ -154,13 +157,17 @@
     $(document).on('click', '.documents-delete', function(){
       pendingDelete = $(this).data('id');
       pendingDeleteURL = $(this).data('url');
-      pendingDeleteMessage = $(this).data('message') || 'Are you sure you want to delete this item?';
-      $('#deleteConfirmModal .modal-body .delete-message').text(pendingDeleteMessage);
-      $('#deleteConfirmModal').modal('show');
+      pendingDeleteMessage = $(this).data('message') || 'Delete this document? This cannot be undone.';
+      const $modal = $('#documentDeleteModal');
+      if ($modal.length && $modal.parent()[0] !== document.body) {
+        $modal.appendTo('body');
+      }
+      $modal.find('.document-delete-message').text(pendingDeleteMessage);
+      $modal.modal('show');
     });
 
     // When user confirms deletion
-    $(document).on('click','#confirmDeleteBtn', function(){
+    $(document).on('click','#confirmDocumentDeleteBtn', function(){
       if (!pendingDelete) return;
       if (!pendingDeleteURL) return;
       // Find the component context
@@ -172,19 +179,19 @@
             _token: $('meta[name="csrf-token"]').attr('content')
       }).done(function (response) {
         // Hide modal
-        $('#deleteConfirmModal').modal('hide');
+        $('#documentDeleteModal').modal('hide');
         // Refresh list
         const params = Object.fromEntries(new URLSearchParams($filt.serialize()));
         load($comp, params);
         pendingDelete = null;
       }).fail(function(){
         alert('Deletion failed. Please try again.');
-        $('#deleteConfirmModal').modal('hide');
+        $('#documentDeleteModal').modal('hide');
       });
     });
 
     // Clear pending if modal closed
-    $('#deleteConfirmModal').on('hidden.bs.modal', function(){
+    $('#documentDeleteModal').on('hidden.bs.modal', function(){
       pendingDelete = null;
     });
   });

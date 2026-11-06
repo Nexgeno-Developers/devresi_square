@@ -364,6 +364,32 @@ class DocumentsHttpTest extends TestCase
         $this->assertStringContainsString('rememberComponent', $script);
     }
 
+    public function test_document_delete_uses_its_own_dialog(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        $property = Property::create([
+            'account_id' => $accountId,
+            'created_by' => $landlord->id,
+            'line_1' => '9 Docs Lane',
+            'city' => 'London',
+            'postcode' => 'N1 9AA',
+        ]);
+
+        $this->actingAs($landlord)->withSession(['current_account_id' => $accountId])
+            ->get(route('admin.properties.index', ['property_id' => $property->id, 'tabname' => 'documents']))
+            ->assertOk()
+            ->assertSee('id="documentDeleteModal"', false)
+            ->assertSee('id="confirmDocumentDeleteBtn"', false)
+            ->assertSee('Delete document', false)
+            ->assertSee('Delete this document? This cannot be undone.', false);
+
+        $script = file_get_contents(public_path('asset/backend/js/common-documents.js'));
+        $this->assertStringContainsString('#documentDeleteModal', $script);
+        $this->assertStringContainsString('#confirmDocumentDeleteBtn', $script);
+        $this->assertStringNotContainsString('#deleteConfirmModal', $script);
+        $this->assertStringNotContainsString('#confirmDeleteBtn', $script);
+    }
+
     /**
      * @return array{0: User, 1: int}
      */
