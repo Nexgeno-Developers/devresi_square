@@ -54,11 +54,27 @@
 </div>
 @endunless
 
+@if(is_landlord_plan_user())
+<div class="mb-3">
+    <label for="certificate" class="form-label">Certificate file</label>
+    <input type="file" id="certificate" name="certificate" class="form-control"
+        accept="application/pdf,image/jpeg,image/png,image/webp"
+        @if(!isset($complianceRecord) || ! $complianceRecord->hasFile()) required @endif>
+    <input type="hidden" name="photos" value="{{ isset($complianceRecord) && $complianceRecord->photos ? $complianceRecord->photos : '' }}">
+    <div class="form-text">
+        @if(isset($complianceRecord) && $complianceRecord->hasFile())
+            A file is already saved. Choose a new file only to replace it.
+        @else
+            PDF or image, up to 10 MB. It is saved with this form.
+        @endif
+    </div>
+</div>
+@else
 <div class="form-group rs_upload_btn">
-    <h6 class="sub_title mt-4">{{ is_landlord_plan_user() ? 'Certificate file' : ($uploadHeading ?? 'Upload Image') }}</h6>
+    <h6 class="sub_title mt-4">{{ $uploadHeading ?? 'Upload Image' }}</h6>
     <div class="media_wrapper2">
         <div class="input-group" data-toggle="aizuploader" data-type="all" data-multiple="true">
-            <label class="col-form-label">{{ is_landlord_plan_user() ? 'File' : ($uploadLabel ?? 'Photos') }}</label>
+            <label class="col-form-label">{{ $uploadLabel ?? 'Photos' }}</label>
             <div class="d-none input-group-prepend">
                 <div class="input-group-text bg-soft-secondary font-weight-medium">Browse</div>
             </div>
@@ -69,3 +85,4 @@
         </div>
     </div>
 </div>
+@endif

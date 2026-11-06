@@ -7,7 +7,9 @@ use App\Models\ComplianceRecord;
 use App\Models\ComplianceType;
 use App\Models\Property;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -67,6 +69,55 @@ class ComplianceHttpTest extends TestCase
             'account_id' => $accountId,
             'identifier' => CrmNotificationEvent::ComplianceExpiring->value,
         ]);
+    }
+
+    public function test_landlord_certificate_form_saves_the_chosen_file(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        [$landlord, $accountId] = $this->createLandlord();
+        $session = ['current_account_id' => $accountId];
+
+        $property = Property::create([
+            'account_id' => $accountId,
+            'created_by' => $landlord->id,
+            'line_1' => '11 Gas Close',
+            'city' => 'London',
+            'postcode' => 'E2 2AB',
+        ]);
+
+        $gasType = ComplianceType::query()->where('alias', 'gas')->first()
+            ?: ComplianceType::create([
+                'name' => 'Gas Safety Certificate',
+                'description' => 'Annual gas safety',
+                'alias' => 'gas',
+            ]);
+
+        $form = $this->actingAs($landlord)->withSession($session)
+            ->get(route('admin.compliance.type.form', $gasType->id))
+            ->assertOk()
+            ->json('content');
+
+        $this->assertStringContainsString('name="certificate"', $form);
+        $this->assertStringContainsString('type="file"', $form);
+        $this->assertStringNotContainsString('aizuploader', $form);
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.compliance.store'), [
+                'compliance_type_id' => $gasType->id,
+                'property_id' => $property->id,
+                'issued_date' => now()->subMonth()->toDateString(),
+                'expiry_date' => now()->addYear()->toDateString(),
+                'certificate' => UploadedFile::fake()->image('gas.jpg'),
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+
+        $record = ComplianceRecord::query()->where('property_id', $property->id)->first();
+        $this->assertNotNull($record);
+        $this->assertTrue($record->hasFile());
+        $this->assertNotNull($record->photos);
     }
 
     /**

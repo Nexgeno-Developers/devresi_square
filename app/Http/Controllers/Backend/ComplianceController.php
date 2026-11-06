@@ -211,7 +211,12 @@ class ComplianceController
             'completed_at' => 'nullable|date',
             'served_to_tenant_at' => 'nullable|date',
             'served_notes' => 'nullable|string|max:1000',
+            'certificate' => 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240',
         ]);
+        $uploadedId = $this->certificateUploadId($request);
+        if ($uploadedId !== null) {
+            $validated['photos'] = $uploadedId;
+        }
         $this->findAccessibleProperty((int) $validated['property_id']);
         $this->ensureUploadsAreAccessible($validated['photos'] ?? null);
 
@@ -244,9 +249,13 @@ class ComplianceController
             'completed_at',
             'served_to_tenant_at',
             'served_notes',
+            'certificate',
         ]);
 
         foreach ($dynamicFields as $key => $value) {
+            if ($value instanceof \Illuminate\Http\UploadedFile) {
+                continue;
+            }
             ComplianceDetail::create([
                 'compliance_record_id' => $complianceRecord->id,
                 'key' => $key,
@@ -276,7 +285,13 @@ class ComplianceController
             'completed_at' => 'nullable|date',
             'served_to_tenant_at' => 'nullable|date',
             'served_notes' => 'nullable|string|max:1000',
+            'certificate' => 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240',
         ]);
+
+        $uploadedId = $this->certificateUploadId($request);
+        if ($uploadedId !== null) {
+            $validated['photos'] = $uploadedId;
+        }
 
         $complianceRecordId = $validated['record_id'];
         $this->findAccessibleProperty((int) $validated['property_id']);
@@ -320,9 +335,13 @@ class ComplianceController
             'completed_at',
             'served_to_tenant_at',
             'served_notes',
+            'certificate',
         ]);
 
         foreach ($dynamicFields as $key => $value) {
+            if ($value instanceof \Illuminate\Http\UploadedFile) {
+                continue;
+            }
             $complianceDetail = ComplianceDetail::where('compliance_record_id', $complianceRecord->id)
                 ->where('key', $key)
                 ->first();
@@ -352,6 +371,27 @@ class ComplianceController
         $complianceRecord->delete();
 
         return response()->json(['success' => true, 'message' => 'Compliance record deleted successfully.']);
+    }
+
+    private function certificateUploadId(Request $request): ?string
+    {
+        if (! $request->hasFile('certificate')) {
+            return null;
+        }
+
+        $accountId = (int) current_account_id();
+        $stored = app(SecureUploadService::class)->store($request->file('certificate'));
+        $upload = Upload::create([
+            'account_id' => $accountId,
+            'file_original_name' => pathinfo($stored['original_name'], PATHINFO_FILENAME) ?: 'certificate',
+            'extension' => $stored['extension'],
+            'file_name' => $stored['path'],
+            'user_id' => $request->user()->id,
+            'type' => $stored['type'],
+            'file_size' => $stored['size'],
+        ]);
+
+        return (string) $upload->id;
     }
 
     private function complianceRecordsForCurrentAccount()
