@@ -27,6 +27,7 @@
     const leadOwnerForm = root.querySelector('[data-lob-lead-owner]');
     const manualScreen = root.querySelector('[data-lob-screen="manual"]');
     const manualForm = root.querySelector('[data-lob-manual]');
+    const roomsForm = root.querySelector('[data-lob-rooms]');
     const manualLead = root.querySelector('[data-lob-manual-lead]');
     const kickerEl = root.querySelector('.lob-kicker');
     const titleEl = document.getElementById('lob-title');
@@ -199,6 +200,7 @@
             ['Type', property.specific_property_type],
             ['Beds', property.bedroom],
             ['Baths', property.bathroom],
+            ['Reception', property.reception],
             ['EPC', property.epc_rating],
             ['Tenure', property.tenure],
             ['Band', property.council_tax_band],
@@ -293,6 +295,9 @@
         event.preventDefault();
         showAlert('');
         lastPostcode = postcodeInput.value.trim();
+        if (roomsForm) {
+            roomsForm.hidden = true;
+        }
         resultsEl.hidden = false;
         resultsEl.innerHTML = `
             <div class="lob-skeleton" aria-hidden="true">
@@ -315,14 +320,15 @@
                 return;
             }
             resultsEl.innerHTML = rows.map((row) => `
-                <button type="button" class="lob-result" data-chimnie-id="${row.id}">
-                    <strong>${row.label}</strong>
+                <button type="button" class="lob-result" data-chimnie-id="${escapeHtml(row.id)}" data-label="${escapeHtml(row.label || '')}" data-bedroom="${escapeHtml(String(row.bedroom || ''))}" data-bathroom="${escapeHtml(String(row.bathroom || ''))}" data-reception="${escapeHtml(String(row.reception || ''))}">
+                    <strong>${escapeHtml(row.label || '')}</strong>
                     <div class="lob-result-meta">
-                        <span>${row.specific_property_type || 'property'}</span>
-                        <span>${row.bedroom || '?'} bed</span>
-                        <span>${row.bathroom || '?'} bath</span>
-                        <span>EPC ${row.epc_rating || '—'}</span>
-                        <span>${row.tenure || ''}</span>
+                        <span>${escapeHtml(row.specific_property_type || 'property')}</span>
+                        <span>${escapeHtml(String(row.bedroom || '?'))} bed</span>
+                        <span>${escapeHtml(String(row.bathroom || '?'))} bath</span>
+                        <span>${escapeHtml(String(row.reception || '?'))} reception</span>
+                        <span>EPC ${escapeHtml(row.epc_rating || '—')}</span>
+                        <span>${escapeHtml(row.tenure || '')}</span>
                     </div>
                 </button>
             `).join('');
@@ -347,22 +353,52 @@
             return;
         }
         showAlert('');
-        button.classList.add('is-picking');
-        setBusy(true, { label: 'Saving this property…' });
+        resultsEl.querySelectorAll('.lob-result').forEach((result) => {
+            result.classList.toggle('is-picking', result === button);
+        });
+        if (!roomsForm) {
+            return;
+        }
+        roomsForm.hidden = false;
+        const address = roomsForm.querySelector('[data-lob-rooms-address]');
+        if (address) {
+            address.textContent = button.dataset.label || 'this property';
+        }
+        roomsForm.querySelector('[name="bedroom"]').value = String(roomCount(button.dataset.bedroom));
+        roomsForm.querySelector('[name="bathroom"]').value = String(roomCount(button.dataset.bathroom));
+        roomsForm.querySelector('[name="reception"]').value = String(roomCount(button.dataset.reception));
+        roomsForm.dataset.chimnieId = button.dataset.chimnieId || '';
+        roomsForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    roomsForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (busy) {
+            return;
+        }
+        const chimnieId = roomsForm.dataset.chimnieId || '';
+        if (!chimnieId) {
+            showAlert('Choose a property from the search results first.');
+            return;
+        }
+        showAlert('');
+        setBusy(true, { label: 'Saving this property…', button: roomsForm.querySelector('[data-lob-rooms-save]') });
         try {
             const payload = await request(root.dataset.property, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    chimnie_id: button.dataset.chimnieId,
+                    chimnie_id: chimnieId,
                     postcode: lastPostcode || postcodeInput.value.trim(),
+                    bedroom: roomCount(roomsForm.querySelector('[name="bedroom"]').value),
+                    bathroom: roomCount(roomsForm.querySelector('[name="bathroom"]').value),
+                    reception: roomCount(roomsForm.querySelector('[name="reception"]').value),
                 }),
             });
             state.property = payload.data;
             renderFacts(state.property);
             goTo(2);
         } catch (error) {
-            button.classList.remove('is-picking');
             showAlert(error.message);
         } finally {
             setBusy(false);
@@ -533,6 +569,14 @@
         button.addEventListener('click', () => closeModal());
     });
 
+    function roomCount(value) {
+        const count = parseInt(value, 10);
+        if (!Number.isFinite(count)) {
+            return 0;
+        }
+        return Math.min(50, Math.max(0, count));
+    }
+
     function escapeHtml(value) {
         return String(value)
             .replace(/&/g, '&amp;')
@@ -584,6 +628,7 @@
             ['specific_property_type', 'Select a property type.'],
             ['bedroom', 'Enter the number of bedrooms.'],
             ['bathroom', 'Enter the number of bathrooms.'],
+            ['reception', 'Enter the number of reception rooms.'],
             ['letting_current_status', 'Select an occupancy status.'],
             ['letting_price', 'Enter the monthly rent.'],
             ['currency', 'Select a currency.'],
@@ -606,6 +651,7 @@
             specific_property_type: manualValue('specific_property_type'),
             bedroom: Number(manualValue('bedroom')),
             bathroom: Number(manualValue('bathroom')),
+            reception: Number(manualValue('reception')),
             letting_current_status: manualValue('letting_current_status'),
             letting_price: Number(manualValue('letting_price')),
             currency: manualValue('currency'),
@@ -646,7 +692,7 @@
         }
 
         const stepBtn = event.target.closest('[data-lob-step]');
-        if (stepBtn && manualForm?.contains(stepBtn)) {
+        if (stepBtn && root.contains(stepBtn)) {
             const input = stepBtn.parentElement?.querySelector('input');
             if (!input) {
                 return;

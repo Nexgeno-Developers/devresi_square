@@ -88,6 +88,35 @@
                 </p>
 
                 <div class="lob-results" data-lob-results hidden></div>
+
+                <form class="lob-rooms" data-lob-rooms hidden>
+                    <h2>How many rooms?</h2>
+                    <p class="lob-help">Confirm the rooms at <strong data-lob-rooms-address></strong>. Change the numbers if the lookup is wrong.</p>
+                    <div class="lob-rooms-grid">
+                        <label>Bedrooms <span class="lob-req" aria-hidden="true">*</span>
+                            <span class="lob-stepper">
+                                <button type="button" data-lob-step="-1" aria-label="Fewer bedrooms">−</button>
+                                <input type="number" name="bedroom" min="0" max="50" value="0" required inputmode="numeric">
+                                <button type="button" data-lob-step="1" aria-label="More bedrooms">+</button>
+                            </span>
+                        </label>
+                        <label>Bathrooms <span class="lob-req" aria-hidden="true">*</span>
+                            <span class="lob-stepper">
+                                <button type="button" data-lob-step="-1" aria-label="Fewer bathrooms">−</button>
+                                <input type="number" name="bathroom" min="0" max="50" value="0" required inputmode="numeric">
+                                <button type="button" data-lob-step="1" aria-label="More bathrooms">+</button>
+                            </span>
+                        </label>
+                        <label>Reception rooms <span class="lob-req" aria-hidden="true">*</span>
+                            <span class="lob-stepper">
+                                <button type="button" data-lob-step="-1" aria-label="Fewer reception rooms">−</button>
+                                <input type="number" name="reception" min="0" max="50" value="0" required inputmode="numeric">
+                                <button type="button" data-lob-step="1" aria-label="More reception rooms">+</button>
+                            </span>
+                        </label>
+                    </div>
+                    <button type="submit" class="lob-btn lob-btn-primary" data-lob-rooms-save>Use this property</button>
+                </form>
             </div>
 
             <div class="lob-screen" data-lob-screen="manual" hidden>
@@ -158,6 +187,13 @@
                                     <button type="button" data-lob-step="-1" aria-label="Fewer bathrooms">−</button>
                                     <input type="number" name="bathroom" min="0" max="50" value="1" required inputmode="numeric">
                                     <button type="button" data-lob-step="1" aria-label="More bathrooms">+</button>
+                                </span>
+                            </label>
+                            <label>Reception rooms <span class="lob-req" aria-hidden="true">*</span>
+                                <span class="lob-stepper">
+                                    <button type="button" data-lob-step="-1" aria-label="Fewer reception rooms">−</button>
+                                    <input type="number" name="reception" min="0" max="50" value="1" required inputmode="numeric">
+                                    <button type="button" data-lob-step="1" aria-label="More reception rooms">+</button>
                                 </span>
                             </label>
                             <label>Floor area

@@ -261,7 +261,7 @@ class LandlordOnboardingService
     /**
      * @return array<string, mixed>
      */
-    public function saveProperty(Account $account, User $user, string $chimnieId, string $postcode): array
+    public function saveProperty(Account $account, User $user, string $chimnieId, string $postcode, array $rooms = []): array
     {
         $record = $this->chimnie->findById($chimnieId, $postcode);
 
@@ -287,6 +287,12 @@ class LandlordOnboardingService
         }
 
         $payload = $this->propertyAttributesFromRecord($record, $countryId);
+        foreach (['bedroom', 'bathroom', 'reception'] as $field) {
+            if (! array_key_exists($field, $rooms) || $rooms[$field] === null || $rooms[$field] === '') {
+                continue;
+            }
+            $payload[$field] = (string) (int) $rooms[$field];
+        }
         $property = $this->persistOnboardingProperty($account, $user, $payload);
 
         return array_merge($this->propertyPayload($property->fresh()), [
@@ -335,7 +341,9 @@ class LandlordOnboardingService
         $payload['council_tax_band'] = null;
         $payload['local_authority'] = null;
         $payload['floor'] = null;
-        $payload['reception'] = null;
+        $payload['reception'] = array_key_exists('reception', $input) && $input['reception'] !== null && $input['reception'] !== ''
+            ? (string) (int) $input['reception']
+            : null;
 
         $property = $this->persistOnboardingProperty(
             $account,

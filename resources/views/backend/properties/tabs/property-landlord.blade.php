@@ -48,7 +48,7 @@
 
 <div class="property-overview-dashboard pcc-overview-landlord">
     <div class="row g-3 mb-4">
-        <div class="col-md-3 col-6">
+        <div class="col-md-2 col-6">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-building"></i></div>
                 <div class="fact-content">
@@ -57,12 +57,12 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-3 col-6">
+        <div class="col-md-2 col-6">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-door-closed"></i></div>
                 <div class="fact-content">
                     <div class="fact-label">Bedrooms</div>
-                    <div class="fact-value">{{ $bedroom ?: '-' }}</div>
+                    <div class="fact-value">{{ $bedroom !== '' ? $bedroom : '-' }}</div>
                 </div>
             </div>
         </div>
@@ -71,7 +71,16 @@
                 <div class="fact-icon"><i class="bi bi-droplet"></i></div>
                 <div class="fact-content">
                     <div class="fact-label">Bathrooms</div>
-                    <div class="fact-value">{{ $bathroom ?: '-' }}</div>
+                    <div class="fact-value">{{ $bathroom !== '' ? $bathroom : '-' }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2 col-6">
+            <div class="fact-card">
+                <div class="fact-icon"><i class="bi bi-grid"></i></div>
+                <div class="fact-content">
+                    <div class="fact-label">Reception rooms</div>
+                    <div class="fact-value">{{ $reception !== '' && $reception !== null ? $reception : '-' }}</div>
                 </div>
             </div>
         </div>

@@ -46,6 +46,9 @@ class LandlordOnboardingController extends Controller
         $validated = $request->validate([
             'chimnie_id' => 'required|string|max:120',
             'postcode' => 'required|string|max:12',
+            'bedroom' => 'nullable|integer|min:0|max:50',
+            'bathroom' => 'nullable|integer|min:0|max:50',
+            'reception' => 'nullable|integer|min:0|max:50',
         ]);
 
         return response()->json([
@@ -54,7 +57,12 @@ class LandlordOnboardingController extends Controller
                 $account,
                 $user,
                 $validated['chimnie_id'],
-                $validated['postcode']
+                $validated['postcode'],
+                [
+                    'bedroom' => $validated['bedroom'] ?? null,
+                    'bathroom' => $validated['bathroom'] ?? null,
+                    'reception' => $validated['reception'] ?? null,
+                ]
             ),
         ]);
     }
@@ -73,6 +81,7 @@ class LandlordOnboardingController extends Controller
             'specific_property_type' => 'required|string|in:house,flat,appartment,bunglow,studio,maisonette,hmo',
             'bedroom' => 'required|integer|min:0|max:50',
             'bathroom' => 'required|integer|min:0|max:50',
+            'reception' => 'nullable|integer|min:0|max:50',
             'square_meter' => 'nullable|numeric|min:0|max:999999',
             'square_feet' => 'nullable|numeric|min:0|max:999999',
             'letting_current_status' => 'required|in:available,let agreed,notice',

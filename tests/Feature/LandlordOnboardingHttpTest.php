@@ -376,6 +376,7 @@ class LandlordOnboardingHttpTest extends TestCase
                 'specific_property_type' => 'flat',
                 'bedroom' => 2,
                 'bathroom' => 1,
+                'reception' => 2,
                 'square_meter' => 68,
                 'letting_current_status' => 'available',
                 'letting_price' => 1250,
@@ -400,6 +401,7 @@ class LandlordOnboardingHttpTest extends TestCase
         $this->assertSame('flat', $property->specific_property_type);
         $this->assertSame('2', (string) $property->bedroom);
         $this->assertSame('1', (string) $property->bathroom);
+        $this->assertSame('2', (string) $property->reception);
         $this->assertSame('available', $property->letting_current_status);
         $this->assertSame('GBP', $property->currency);
         $this->assertSame('ELM-14', $property->prop_ref_no);
@@ -431,6 +433,61 @@ class LandlordOnboardingHttpTest extends TestCase
         $this->assertNotEmpty($property->tenure);
         $this->assertSame('lettings', $property->property_type);
         $this->assertSame('available', $property->letting_current_status);
+    }
+
+    public function test_lookup_room_counts_can_be_chosen_before_the_home_is_saved(): void
+    {
+        [$user, $accountId] = $this->createConfirmedLandlord();
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('backend.dashboard'))
+            ->assertOk()
+            ->assertSee('How many rooms?', false)
+            ->assertSee('Reception rooms', false)
+            ->assertSee('data-lob-rooms', false);
+
+        config(['chimnie.test_mode' => true]);
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->postJson(route('admin.onboarding.landlord.property'), [
+                'chimnie_id' => 'chimnie-test:SW1A1AA:mall',
+                'postcode' => 'SW1A 1AA',
+                'bedroom' => 80,
+                'bathroom' => 2,
+                'reception' => 1,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['bedroom']);
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->postJson(route('admin.onboarding.landlord.property'), [
+                'chimnie_id' => 'chimnie-test:SW1A1AA:mall',
+                'postcode' => 'SW1A 1AA',
+                'bedroom' => 4,
+                'bathroom' => 2,
+                'reception' => 3,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.bedroom', '4')
+            ->assertJsonPath('data.bathroom', '2')
+            ->assertJsonPath('data.reception', '3');
+
+        $property = \App\Models\Property::query()->where('account_id', $accountId)->first();
+        $this->assertNotNull($property);
+        $this->assertSame('4', (string) $property->bedroom);
+        $this->assertSame('2', (string) $property->bathroom);
+        $this->assertSame('3', (string) $property->reception);
+        $this->assertSame('1 The Mall', $property->line_1);
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('admin.properties.tabs-all', $property))
+            ->assertOk()
+            ->assertSee('Reception rooms', false)
+            ->assertSee('>3<', false);
     }
 
     public function test_landlord_compliance_tab_shows_register_status_not_agency_add_buttons(): void

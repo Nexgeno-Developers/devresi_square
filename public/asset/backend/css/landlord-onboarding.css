@@ -714,6 +714,7 @@ body.lob-open {
     .lob-manual-grid-2,
     .lob-manual-grid-4,
     .lob-manual-details,
+    .lob-rooms-grid,
     .lob-manual-split,
     .lob-actions-manual,
     .lob-actions-end,
@@ -821,8 +822,27 @@ body.lob-open {
 }
 
 .lob-manual-details {
-    grid-template-columns: minmax(0, 1.3fr) auto auto minmax(9rem, 1.2fr);
+    grid-template-columns: minmax(0, 1.2fr) auto auto auto minmax(8rem, 1fr);
     align-items: end;
+}
+
+.lob-rooms {
+    display: grid;
+    gap: 0.85rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--lob-line, #e6e9ef);
+}
+
+.lob-rooms h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.lob-rooms-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.85rem;
 }
 
 .lob-req {
