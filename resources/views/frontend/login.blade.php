@@ -8,6 +8,10 @@
     <h2>Sign in</h2>
     <p class="auth-muted">Use the email for your Resisquare account.</p>
 
+    @if (session('status'))
+        <div class="auth-alert auth-alert-success" role="status">{{ session('status') }}</div>
+    @endif
+
     @include('auth.partials.login-errors')
 
     <form method="POST" action="{{ route('login.post') }}">

@@ -130,15 +130,12 @@ class PasswordResetController extends Controller
 
         $user->password = Hash::make($request->password);
         $user->save();
-        // Log::info('Password updated successfully for user', ['user_id' => $user->id]);
 
-        // Delete token
         DB::table('password_reset_tokens')->where('email', $record->email)->delete();
-        // Log::info('Password reset token deleted', ['email' => $record->email]);
 
-        flash('Password reset successful!')->success();
-        // Log::info('Redirecting to login page');
-        return redirect()->route('login');
+        return redirect()
+            ->route('login')
+            ->with('status', 'Your password was updated. Sign in with the new one.');
     }
 
 

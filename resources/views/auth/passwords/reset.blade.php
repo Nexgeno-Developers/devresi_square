@@ -28,11 +28,17 @@
         @endif
         <label class="auth-field">
             <span>New password</span>
-            <input type="password" name="password" required minlength="8" autofocus autocomplete="new-password">
+            <div class="pw-wrap">
+                <input type="password" name="password" required minlength="8" autofocus autocomplete="new-password">
+                @include('auth.partials.password-eye')
+            </div>
         </label>
         <label class="auth-field">
             <span>Confirm password</span>
-            <input type="password" name="password_confirmation" required minlength="8" autocomplete="new-password">
+            <div class="pw-wrap">
+                <input type="password" name="password_confirmation" required minlength="8" autocomplete="new-password">
+                @include('auth.partials.password-eye')
+            </div>
         </label>
         <button type="submit" class="auth-btn">Save password</button>
     </form>
