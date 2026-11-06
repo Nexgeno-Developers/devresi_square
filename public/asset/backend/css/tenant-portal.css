@@ -928,6 +928,31 @@ body.tp-confirm-lock {
     position: relative;
 }
 
+.tp-photo-preview {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+}
+
+.tp-photo-preview[hidden] {
+    display: none;
+}
+
+.tp-photo-preview img {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 8px;
+    background: #f8f9fb;
+}
+
+.tp-photo-preview strong {
+    display: block;
+    font-size: 13px;
+    word-break: break-word;
+}
+
 .tp-chip-row {
     display: flex;
     flex-wrap: wrap;

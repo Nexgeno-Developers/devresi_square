@@ -49,6 +49,13 @@
                     @error('photo')
                         <div class="text-danger small mt-1">{{ $message }}</div>
                     @enderror
+                    <div class="tp-photo-preview" data-photo-preview hidden>
+                        <img alt="Selected repair photo" data-photo-preview-image>
+                        <div>
+                            <strong data-photo-preview-name></strong>
+                            <button type="button" class="tp-btn tp-btn-ghost" data-photo-clear>Remove photo</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -245,6 +252,38 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     });
+
+    var photoInput = document.querySelector('.tp-photo-field input[name="photo"]');
+    var photoPreview = document.querySelector('[data-photo-preview]');
+    var photoImage = document.querySelector('[data-photo-preview-image]');
+    var photoName = document.querySelector('[data-photo-preview-name]');
+    var photoClear = document.querySelector('[data-photo-clear]');
+    if (photoInput && photoPreview && photoImage) {
+        var photoUrl = null;
+        photoInput.addEventListener('change', function () {
+            if (photoUrl) {
+                URL.revokeObjectURL(photoUrl);
+                photoUrl = null;
+            }
+            var file = photoInput.files && photoInput.files[0];
+            if (!file) {
+                photoPreview.hidden = true;
+                photoImage.removeAttribute('src');
+                if (photoName) photoName.textContent = '';
+                return;
+            }
+            photoUrl = URL.createObjectURL(file);
+            photoImage.src = photoUrl;
+            if (photoName) photoName.textContent = file.name;
+            photoPreview.hidden = false;
+        });
+        if (photoClear) {
+            photoClear.addEventListener('click', function () {
+                photoInput.value = '';
+                photoInput.dispatchEvent(new Event('change'));
+            });
+        }
+    }
 
     var availability = document.querySelector('[data-availability]');
     if (!availability) return;

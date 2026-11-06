@@ -304,6 +304,9 @@ class TenantPortalHttpTest extends TestCase
             ->get(route('tenant.maintenance'))
             ->assertOk()
             ->assertSee('Kitchen tap is dripping', false)
+            ->assertSee('data-photo-preview', false)
+            ->assertSee('data-photo-preview-image', false)
+            ->assertSee('URL.createObjectURL', false)
             ->assertSee('No visit booked yet', false)
             ->assertSee('What has happened', false)
             ->assertSee('You reported this', false);
