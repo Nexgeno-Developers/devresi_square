@@ -490,6 +490,60 @@ class LandlordOnboardingHttpTest extends TestCase
             ->assertSee('>3<', false);
     }
 
+    public function test_landlord_can_edit_the_property_after_it_is_added(): void
+    {
+        [$user, $accountId] = $this->createConfirmedLandlord();
+        $this->seedOnboardingProperty($user, $accountId);
+        $property = \App\Models\Property::query()->where('account_id', $accountId)->first();
+        $this->assertNotNull($property);
+        $countryId = $property->country ?: \App\Models\Country::query()->value('id');
+
+        $page = $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('admin.properties.index', ['property_id' => $property->id, 'tabname' => 'property']));
+        $page->assertOk();
+        $page->assertSee('>Edit<', false);
+        $page->assertSee(route('admin.properties.edit', $property->id), false);
+
+        $edit = $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->get(route('admin.properties.edit', $property->id));
+        $edit->assertOk();
+        $edit->assertSee('Edit property', false);
+        $edit->assertSee('name="bedroom"', false);
+        $edit->assertSee('name="bathroom"', false);
+        $edit->assertSee('name="reception"', false);
+        $edit->assertDontSee('Market On', false);
+        $edit->assertDontSee('name="transaction_type"', false);
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $accountId])
+            ->post(route('admin.properties.update', $property->id), [
+                'line_1' => '1 The Mall',
+                'city' => 'London',
+                'postcode' => 'SW1A 1AA',
+                'country' => $countryId,
+                'specific_property_type' => 'flat',
+                'bedroom' => 5,
+                'bathroom' => 2,
+                'reception' => 2,
+                'letting_current_status' => 'available',
+                'letting_price' => 2400,
+                'currency' => 'GBP',
+            ])
+            ->assertRedirect(route('admin.properties.index', [
+                'property_id' => $property->id,
+                'tabname' => 'property',
+            ]))
+            ->assertSessionHas('success', 'Property details saved.');
+
+        $property->refresh();
+        $this->assertSame('5', (string) $property->bedroom);
+        $this->assertSame('2', (string) $property->reception);
+        $this->assertEquals(2400.0, (float) $property->letting_price);
+        $this->assertSame('1 The Mall', $property->prop_name);
+    }
+
     public function test_landlord_compliance_tab_shows_register_status_not_agency_add_buttons(): void
     {
         [$user, $accountId] = $this->createConfirmedLandlord();

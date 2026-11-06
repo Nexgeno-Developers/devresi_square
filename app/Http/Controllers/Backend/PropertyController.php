@@ -1194,6 +1194,12 @@ class PropertyController
         ensureModelBelongsToCurrentAccount($property);
         $this->authorizePortalPropertyEdit($property);
 
+        if (is_landlord_plan_user()) {
+            $countries = Country::query()->orderBy('name')->get(['id', 'name']);
+
+            return view('backend.properties.landlord-edit', compact('property', 'countries'));
+        }
+
         // Check if the request step is 6
         // if ($property->step == 5) {
         // Fetch all station names and school names
@@ -1250,6 +1256,10 @@ class PropertyController
 
     public function update(Request $request, $id)
     {
+        if (is_landlord_plan_user()) {
+            return $this->updateLandlordProperty($request, $id);
+        }
+
         // Validate and update property
         $validatedData = $request->validate([
             'prop_name' => 'required|string|max:255',
@@ -1279,6 +1289,60 @@ class PropertyController
 
         return redirect()->route('admin.properties.index')->with('success', 'Property updated successfully.');
     }
+
+    private function updateLandlordProperty(Request $request, $id)
+    {
+        $property = Property::findOrFail($id);
+        ensureModelBelongsToCurrentAccount($property);
+        $this->authorizePortalPropertyEdit($property);
+
+        $validated = $request->validate([
+            'line_1' => 'required|string|max:255',
+            'line_2' => 'nullable|string|max:255',
+            'city' => 'required|string|max:255',
+            'county' => 'nullable|string|max:155',
+            'postcode' => 'required|string|max:20',
+            'country' => 'required|integer|exists:countries,id',
+            'specific_property_type' => 'required|string|in:house,flat,appartment,bunglow,studio,maisonette,hmo',
+            'bedroom' => 'required|integer|min:0|max:50',
+            'bathroom' => 'required|integer|min:0|max:50',
+            'reception' => 'required|integer|min:0|max:50',
+            'square_meter' => 'nullable|numeric|min:0|max:999999',
+            'letting_current_status' => 'required|in:available,let agreed,notice',
+            'letting_price' => 'required|numeric|min:0.01|max:999999.99',
+            'currency' => 'required|in:GBP,EUR,USD,AED',
+            'prop_ref_no' => 'nullable|string|max:50',
+            'imp_notes' => 'nullable|string|max:5000',
+        ]);
+
+        $property->update([
+            'line_1' => $validated['line_1'],
+            'line_2' => $validated['line_2'] ?? null,
+            'city' => $validated['city'],
+            'county' => $validated['county'] ?? null,
+            'postcode' => strtoupper($validated['postcode']),
+            'country' => $validated['country'],
+            'prop_name' => $validated['line_1'],
+            'specific_property_type' => $validated['specific_property_type'],
+            'bedroom' => (string) $validated['bedroom'],
+            'bathroom' => (string) $validated['bathroom'],
+            'reception' => (string) $validated['reception'],
+            'square_meter' => $validated['square_meter'] ?? null,
+            'letting_current_status' => $validated['letting_current_status'],
+            'letting_price' => $validated['letting_price'],
+            'currency' => $validated['currency'],
+            'prop_ref_no' => $validated['prop_ref_no'] ?? null,
+            'imp_notes' => $validated['imp_notes'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('admin.properties.index', [
+                'property_id' => $property->id,
+                'tabname' => 'property',
+            ])
+            ->with('success', 'Property details saved.');
+    }
+
     public function search(Request $request)
     {
         // Get the search query from the request

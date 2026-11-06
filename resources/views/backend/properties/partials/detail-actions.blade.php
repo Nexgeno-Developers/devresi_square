@@ -25,6 +25,9 @@
             Edit
         </a>
     @endif
+    @if(is_landlord_plan_user() && auth()->user()?->can('edit properties') && $primary !== 'edit')
+        <a href="{{ route('admin.properties.edit', $property->id) }}" class="pcc-btn-ghost">Edit</a>
+    @endif
 
     <div class="dropdown">
         <button class="pcc-icon-ghost" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="More actions">

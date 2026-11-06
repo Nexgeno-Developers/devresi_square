@@ -128,7 +128,10 @@
                             @endforeach
                         </div>
                     @else
-                        <p class="text-muted mb-0">No extra details on file yet. Use Edit in the header to add them.</p>
+                        <p class="text-muted mb-0">No extra details on file yet.</p>
+                        @can('edit properties')
+                            <a href="{{ route('admin.properties.edit', $property->id) }}" class="btn btn-sm pcc-btn-ink mt-2">Edit property</a>
+                        @endcan
                     @endif
                 </div>
             </div>
