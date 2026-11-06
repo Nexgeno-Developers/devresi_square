@@ -87,13 +87,17 @@ class TenancyDetailsConfirmationService
             ->latest('id')
             ->first();
 
-        $rejected = TenancyCorrectionRequest::query()
+        $reviewed = TenancyCorrectionRequest::query()
             ->when($accountId, fn ($query) => $query->forAccount($accountId))
             ->where('tenancy_id', $tenancy->id)
             ->where('requested_by', $user->id)
-            ->where('status', TenancyCorrectionRequest::STATUS_REJECTED)
+            ->whereIn('status', [
+                TenancyCorrectionRequest::STATUS_REJECTED,
+                TenancyCorrectionRequest::STATUS_APPROVED,
+            ])
             ->latest('id')
             ->first();
+        $reviewNote = trim((string) ($reviewed?->landlord_note ?? ''));
 
         return [
             'mode' => $pending ? 'waiting' : 'confirm',
@@ -101,7 +105,7 @@ class TenancyDetailsConfirmationService
             'member' => $member,
             'details' => $this->detailsFor($tenancy),
             'pending_request' => $pending,
-            'review_note' => $pending ? null : $rejected?->landlord_note,
+            'review_note' => $pending || $reviewNote === '' ? null : $reviewNote,
         ];
     }
 

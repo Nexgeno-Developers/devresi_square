@@ -162,7 +162,8 @@ class TenancyDetailsConfirmationHttpTest extends TestCase
             ->get(route('backend.home'))
             ->assertOk()
             ->assertSee('Check these tenancy details', false)
-            ->assertSee('£1,100.00', false);
+            ->assertSee('£1,100.00', false)
+            ->assertSee('Updated to the agreed rent.', false);
     }
 
     public function test_landlord_can_reject_correction_and_tenant_is_asked_again(): void
@@ -199,6 +200,53 @@ class TenancyDetailsConfirmationHttpTest extends TestCase
             ->assertOk()
             ->assertSee('Check these tenancy details', false)
             ->assertSee('Deposit is correct as agreed.', false);
+    }
+
+    public function test_later_landlord_reply_replaces_the_first_note(): void
+    {
+        [$landlord, $accountId, $tenant, $tenancy] = $this->createLet();
+        $session = ['current_account_id' => $accountId];
+
+        $this->actingAs($tenant)->withSession($session)
+            ->post(route('tenant.tenancy.correction'), [
+                'tenancy_id' => $tenancy->id,
+                'message' => 'Deposit looks high.',
+                'fields' => ['deposit'],
+                'suggested' => ['deposit' => '500'],
+            ])
+            ->assertRedirect();
+
+        $first = TenancyCorrectionRequest::query()->where('tenancy_id', $tenancy->id)->latest('id')->firstOrFail();
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.tenancies.correction-requests.reject', [$tenancy, $first]), [
+                'landlord_note' => 'The deposit stays as agreed.',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($tenant)->withSession($session)
+            ->post(route('tenant.tenancy.correction'), [
+                'tenancy_id' => $tenancy->id,
+                'message' => 'Rent should be 1100.',
+                'fields' => ['rent'],
+                'suggested' => ['rent' => '1100'],
+            ])
+            ->assertRedirect();
+
+        $second = TenancyCorrectionRequest::query()->where('tenancy_id', $tenancy->id)->latest('id')->firstOrFail();
+
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.tenancies.correction-requests.approve', [$tenancy, $second]), [
+                'rent' => '1100.00',
+                'landlord_note' => 'Rent is now the amount you asked for.',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('backend.home'))
+            ->assertOk()
+            ->assertSee('Rent is now the amount you asked for.', false)
+            ->assertDontSee('The deposit stays as agreed.', false);
     }
 
     public function test_tenant_cannot_confirm_another_tenants_let(): void
