@@ -262,7 +262,8 @@ class TenantPortalController extends Controller
                 }
 
                 $at = \Carbon\Carbon::createFromFormat('Y-m-d\TH:i', $value);
-                $earliest = now()->startOfDay();
+                // A slot that has already started today is in the past.
+                $earliest = now();
                 $latest = now()->addDays(60)->endOfDay();
                 if ($at->lt($earliest) || $at->gt($latest) || ! in_array($at->format('H:i'), ['09:00', '13:00', '17:00'], true)) {
                     $fail('Choose a morning, afternoon, or evening in the next 60 days.');

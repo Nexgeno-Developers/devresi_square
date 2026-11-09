@@ -195,6 +195,7 @@ class AizUploadController
     {
         $upload = Upload::findOrFail($id);
         ensureModelBelongsToCurrentAccount($upload);
+        abort_unless($this->canAccessUpload($upload, forDelete: true), 403);
 
         $usesSoftDeletes = in_array(
             SoftDeletes::class,
@@ -239,7 +240,7 @@ class AizUploadController
         $ids = explode(',', $request->ids);
         $filesQuery = Upload::whereIn('id', $ids);
         $this->scopeUploadQuery($filesQuery);
-        $files = $filesQuery->get();
+        $files = $filesQuery->get()->filter(fn (Upload $file) => $this->canAccessUpload($file));
         // Reorder the files based on the original IDs array
         $files = $files->sortBy(function($file) use ($ids) {
             return array_search($file->id, $ids); // Find the index of the file id in the original ids array
@@ -286,6 +287,7 @@ class AizUploadController
         $project_attachment = Upload::find($id);
         abort_unless($project_attachment, 404);
         ensureModelBelongsToCurrentAccount($project_attachment);
+        abort_unless($this->canAccessUpload($project_attachment), 404);
 
         $service = app(SecureUploadService::class);
         $stored = (string) $project_attachment->file_name;
@@ -319,6 +321,33 @@ class AizUploadController
         return ($user->user_type == 'seller')
             ? view('seller.uploads.info', compact('file'))
             : view('backend.uploaded_files.info', compact('file'));
+    }
+
+    /**
+     * Being in the same account is not enough: a tenant there may only open
+     * files shared with them or on their repairs, never the landlord's own.
+     */
+    private function canAccessUpload(Upload $upload, bool $forDelete = false): bool
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return false;
+        }
+
+        if (\App\Support\WorkspaceAccess::canManageCurrentWorkspace($user)) {
+            return true;
+        }
+
+        if ((int) $upload->user_id === (int) $user->id) {
+            return true;
+        }
+
+        if ($forDelete) {
+            return false;
+        }
+
+        return app(\App\Services\Portal\TenantPortalService::class)
+            ->uploadVisibleTo($user, current_account_id(), (int) $upload->id);
     }
 
     private function scopeUploadQuery($query)

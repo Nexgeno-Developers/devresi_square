@@ -107,6 +107,7 @@
             <div class="tp-report-side">
                 <fieldset class="tp-availability" data-availability
                     data-today="{{ now()->toDateString() }}"
+                    data-now="{{ now()->format('H:i') }}"
                     data-until="{{ now()->addDays(60)->toDateString() }}"
                     data-selected="{{ old('tenant_availability') }}">
                     <legend class="tp-metric-label">When can someone visit?</legend>
@@ -288,6 +289,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var availability = document.querySelector('[data-availability]');
     if (!availability) return;
     var today = availability.getAttribute('data-today');
+    var nowTime = availability.getAttribute('data-now') || '00:00';
     var until = availability.getAttribute('data-until');
     var hidden = availability.querySelector('input[name="tenant_availability"]');
     var title = availability.querySelector('[data-avail-title]');
@@ -339,6 +341,12 @@ document.addEventListener('DOMContentLoaded', function () {
         availability.querySelector('[data-avail-next]').disabled = monthKey >= until.slice(0, 7);
         slots.hidden = false;
         availability.querySelectorAll('[data-avail-slot]').forEach(function (input) {
+            // Today's slots that have already started cannot be booked.
+            input.disabled = selected === today && input.value <= nowTime;
+            if (input.disabled && input.value === selectedSlot) {
+                selectedSlot = '';
+                hidden.value = '';
+            }
             input.checked = input.value === selectedSlot;
         });
         if (selected && selectedSlot && slotNames[selectedSlot]) {

@@ -397,6 +397,42 @@ class RepairPriorityComplaintHttpTest extends TestCase
             ->assertSessionHasErrors('tenant_availability');
     }
 
+    public function test_a_slot_earlier_today_is_rejected_and_a_later_one_today_is_accepted(): void
+    {
+        Storage::fake('public');
+        [$landlord, $accountId] = $this->createLandlord();
+        [$tenant] = $this->createTenantOnAccount($accountId);
+        [, $tenancy] = $this->createLet($accountId, $landlord, $tenant);
+        $session = ['current_account_id' => $accountId];
+
+        Carbon::setTestNow(now()->setTime(14, 0));
+
+        try {
+            $this->actingAs($tenant)->withSession($session)
+                ->get(route('tenant.maintenance'))
+                ->assertOk()
+                ->assertSee('data-now="14:00"', false);
+
+            $this->actingAs($tenant)->withSession($session)
+                ->post(route('tenant.maintenance.store'), [
+                    'property_id' => $tenancy->property_id,
+                    'description' => 'Morning already gone.',
+                    'tenant_availability' => now()->setTime(9, 0)->format('Y-m-d\TH:i'),
+                ])
+                ->assertSessionHasErrors('tenant_availability');
+
+            $this->actingAs($tenant)->withSession($session)
+                ->post(route('tenant.maintenance.store'), [
+                    'property_id' => $tenancy->property_id,
+                    'description' => 'Evening still works.',
+                    'tenant_availability' => now()->setTime(17, 0)->format('Y-m-d\TH:i'),
+                ])
+                ->assertSessionHasNoErrors();
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
     /**
      * @return array{0: User, 1: int}
      */

@@ -242,6 +242,61 @@ class AccessHandoffHttpTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_tenant_opens_only_uploads_shared_with_them_and_cannot_delete_landlord_files(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        [$landlord, $accountId, $tenant] = $this->createLandlord('uploads');
+        [$property] = $this->attachLet($accountId, $landlord, $tenant, '9 Upload Road', 'U9 9UU');
+        $session = ['current_account_id' => $accountId];
+
+        $file = function (string $name) use ($landlord, $accountId): \App\Models\Upload {
+            $path = 'uploads/private/'.$name.'.pdf';
+            \Illuminate\Support\Facades\Storage::disk('local')->put($path, '%PDF-1.4 test');
+            $upload = new \App\Models\Upload;
+            $upload->forceFill([
+                'account_id' => $accountId,
+                'user_id' => $landlord->id,
+                'file_original_name' => $name,
+                'file_name' => 'private:'.$path,
+                'extension' => 'pdf',
+                'type' => 'document',
+            ])->save();
+
+            return $upload;
+        };
+
+        $shared = $file('shared-'.uniqid());
+        $private = $file('private-'.uniqid());
+        $photo = $file('photo-'.uniqid());
+
+        $document = $this->sharedDocument($accountId, $property, 'Shared gas');
+        $document->forceFill(['upload_ids' => (string) $shared->id])->save();
+        $hidden = $this->sharedDocument($accountId, $property, 'Landlord only');
+        $hidden->forceFill(['upload_ids' => (string) $private->id, 'visibility' => 'private'])->save();
+        $repair = $this->repair($accountId, $property, $tenant, 'Photo leak');
+        \App\Models\RepairPhoto::create(['repair_issue_id' => $repair->id, 'photos' => (string) $photo->id]);
+
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('download_attachment', $shared->id))->assertOk();
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('download_attachment', $photo->id))->assertOk();
+        $this->actingAs($tenant)->withSession($session)
+            ->get(route('download_attachment', $private->id))->assertNotFound();
+
+        $preview = $this->actingAs($tenant)->withSession($session)
+            ->post('/aiz-uploader/get_file_by_ids', ['ids' => $shared->id.','.$private->id])
+            ->assertOk()
+            ->json();
+        $this->assertSame([$shared->id], array_column($preview, 'id'));
+
+        $this->actingAs($tenant)->withSession($session)
+            ->delete(route('aiz_uploader.destroy', $shared->id))->assertForbidden();
+        $this->assertNotNull(\App\Models\Upload::find($shared->id));
+
+        $this->actingAs($landlord)->withSession($session)
+            ->get(route('download_attachment', $private->id))->assertOk();
+    }
+
     private function assertClosed($response): void
     {
         $this->assertContains($response->status(), [403, 404]);

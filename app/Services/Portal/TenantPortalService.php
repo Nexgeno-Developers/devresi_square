@@ -163,6 +163,28 @@ class TenantPortalService
             ->withQueryString();
     }
 
+    /**
+     * A tenant may open an upload only when it belongs to a document shared
+     * with them or to a photo on one of the repairs their portal shows.
+     */
+    public function uploadVisibleTo(User $user, ?int $accountId, int $uploadId): bool
+    {
+        $contains = fn ($ids) => in_array($uploadId, array_map('intval', array_filter(array_map('trim', explode(',', (string) $ids)))), true);
+
+        $tenancies = $this->tenanciesFor($user, $accountId);
+
+        $inDocument = $this->visibleDocumentsQuery($user, $accountId, $tenancies)
+            ->pluck('upload_ids')
+            ->contains($contains);
+        if ($inDocument) {
+            return true;
+        }
+
+        return $this->repairsFor($user, $accountId, $tenancies)
+            ->flatMap(fn ($repair) => $repair->repairPhotos->pluck('photos'))
+            ->contains($contains);
+    }
+
     public function documentVisibleTo(User $user, ?int $accountId, Document $document): bool
     {
         if (! $document->isSharedWithTenant()) {
