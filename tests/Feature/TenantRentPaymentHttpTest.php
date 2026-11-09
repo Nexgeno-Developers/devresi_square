@@ -10,11 +10,16 @@ use App\Models\Tenancy;
 use App\Models\TenantMember;
 use App\Models\User;
 use App\Services\Finance\RentStripeCheckoutService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class TenantRentPaymentHttpTest extends TestCase
 {
+    // These tests fake paid Checkouts. Without a rollback the scheduled
+    // reconcile test marked real open invoices in the local database paid.
+    use DatabaseTransactions;
+
     public function test_tenant_sees_pay_button_and_is_sent_to_stripe(): void
     {
         [$landlord, $accountId] = $this->createLandlord();
@@ -456,6 +461,11 @@ class TenantRentPaymentHttpTest extends TestCase
 
                 public function fulfillCheckoutSessionId(string $sessionId): ?RentPayment
                 {
+                    // Only this test's Checkout is paid; any other open invoice stays as it is.
+                    if (! str_starts_with($sessionId, 'cs_test_scheduled_')) {
+                        return null;
+                    }
+
                     $invoice = RentInvoice::query()->where('stripe_checkout_session_id', $sessionId)->first();
 
                     return $this->fulfillSession((object) [
@@ -484,6 +494,134 @@ class TenantRentPaymentHttpTest extends TestCase
     /**
      * @return array{0: User, 1: int}
      */
+    public function test_new_checkout_expires_the_earlier_open_checkout(): void
+    {
+        [$invoice, $tenant] = $this->invoiceWithEarlierCheckout(300);
+        $checkout = $this->stubbedCheckout((object) ['id' => 'cs_test_earlier_'.$invoice->id, 'status' => 'open', 'payment_status' => 'unpaid']);
+
+        $url = $checkout->createCheckoutUrl($tenant, $invoice);
+
+        $this->assertSame('https://checkout.stripe.test/new', $url);
+        $this->assertSame(['cs_test_earlier_'.$invoice->id], $checkout->expired);
+        $this->assertSame(1, $checkout->created);
+        $this->assertSame($checkout->newId, $invoice->refresh()->stripe_checkout_session_id);
+    }
+
+    public function test_new_checkout_records_an_earlier_paid_checkout_instead_of_charging_again(): void
+    {
+        [$invoice, $tenant] = $this->invoiceWithEarlierCheckout(300);
+        $checkout = $this->stubbedCheckout((object) [
+            'id' => 'cs_test_earlier_'.$invoice->id,
+            'status' => 'complete',
+            'payment_status' => 'paid',
+            'payment_intent' => 'pi_earlier',
+            'metadata' => [
+                'type' => 'rent_payment',
+                'rent_invoice_id' => (string) $invoice->id,
+                'tenant_user_id' => (string) $tenant->id,
+                'rent_amount' => '300.00',
+                'fee_amount' => '0.00',
+            ],
+        ]);
+
+        try {
+            $checkout->createCheckoutUrl($tenant, $invoice);
+            $this->fail('A second Checkout must not start for a paid invoice.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertSame('This invoice is already paid.', $exception->errors()['invoice'][0]);
+        }
+
+        $this->assertSame(0, $checkout->created);
+        $invoice->refresh();
+        $this->assertSame(RentInvoice::STATUS_PAID, $invoice->status);
+        $this->assertSame(1, $invoice->payments()->count());
+    }
+
+    public function test_payment_for_an_already_settled_invoice_is_logged_not_dropped(): void
+    {
+        [$invoice, $tenant] = $this->invoiceWithEarlierCheckout(300);
+        $session = fn (string $id) => (object) [
+            'id' => $id,
+            'payment_status' => 'paid',
+            'payment_intent' => 'pi_'.$id,
+            'metadata' => [
+                'type' => 'rent_payment',
+                'rent_invoice_id' => (string) $invoice->id,
+                'tenant_user_id' => (string) $tenant->id,
+                'rent_amount' => '300.00',
+                'fee_amount' => '0.00',
+            ],
+        ];
+        $checkout = app(RentStripeCheckoutService::class);
+        $this->assertNotNull($checkout->fulfillSession($session('cs_test_first_'.$invoice->id)));
+
+        \Illuminate\Support\Facades\Log::spy();
+        $this->assertNull($checkout->fulfillSession($session('cs_test_second_'.$invoice->id)));
+
+        \Illuminate\Support\Facades\Log::shouldHaveReceived('error')->once()->withArgs(
+            fn (string $message, array $context) => $message === 'Rent card payment received for an invoice that is already settled'
+                && $context['checkout_session_id'] === 'cs_test_second_'.$invoice->id
+                && $context['payment_intent_id'] === 'pi_cs_test_second_'.$invoice->id
+                && $context['amount'] === 300.0
+        );
+        $this->assertSame(1, $invoice->payments()->count());
+    }
+
+    private function invoiceWithEarlierCheckout(float $amount): array
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        [$tenant] = $this->createTenantOnAccount($accountId);
+        [, $tenancy] = $this->createLet($accountId, $landlord, $tenant);
+
+        $invoice = app(\App\Services\Finance\RentFinanceService::class)->createInvoice($accountId, [
+            'tenancy_id' => $tenancy->id,
+            'tenant_user_id' => $tenant->id,
+            'amount' => $amount,
+            'issue_date' => now()->toDateString(),
+            'due_date' => now()->addDays(7)->toDateString(),
+        ]);
+        $invoice->forceFill(['stripe_checkout_session_id' => 'cs_test_earlier_'.$invoice->id])->save();
+
+        return [$invoice, $tenant];
+    }
+
+    private function stubbedCheckout(object $previous): RentStripeCheckoutService
+    {
+        config(['services.stripe.secret' => 'sk_test_stub', 'services.stripe.rent.secret' => null]);
+
+        return new class(app(\App\Services\Finance\RentFinanceService::class), $previous) extends RentStripeCheckoutService
+        {
+            public array $expired = [];
+
+            public int $created = 0;
+
+            public string $newId;
+
+            public function __construct(\App\Services\Finance\RentFinanceService $finance, private object $previous)
+            {
+                parent::__construct($finance);
+                $this->newId = 'cs_test_new_'.uniqid();
+            }
+
+            protected function createSession(array $sessionData): mixed
+            {
+                $this->created++;
+
+                return (object) ['id' => $this->newId, 'url' => 'https://checkout.stripe.test/new'];
+            }
+
+            protected function retrieveSession(string $sessionId): mixed
+            {
+                return $this->previous;
+            }
+
+            protected function expireSession(string $sessionId): void
+            {
+                $this->expired[] = $sessionId;
+            }
+        };
+    }
+
     private function createLandlord(): array
     {
         $role = Role::findOrCreate('Landlord', 'web');

@@ -135,7 +135,11 @@ class RentStripeCheckoutService
 
         $this->configureStripe();
 
-        $session = Session::create($sessionData, $this->requestOptions());
+        // Only one Checkout per invoice may be payable. Otherwise a second tab
+        // or a second click can take the rent twice.
+        $this->closePreviousCheckout($invoice);
+
+        $session = $this->createSession($sessionData);
 
         if (! $session->url) {
             throw new RuntimeException('Stripe did not return a checkout URL.');
@@ -146,6 +150,63 @@ class RentStripeCheckoutService
         ])->save();
 
         return (string) $session->url;
+    }
+
+    /**
+     * Expire the invoice's earlier Checkout, or record it when Stripe already
+     * took the payment, before a new Checkout is created.
+     */
+    private function closePreviousCheckout(RentInvoice $invoice): void
+    {
+        $previousId = trim((string) $invoice->stripe_checkout_session_id);
+        if ($previousId === '') {
+            return;
+        }
+
+        $previous = $this->retrieveSession($previousId);
+
+        if (($previous->status ?? '') === 'open') {
+            try {
+                $this->expireSession($previousId);
+
+                return;
+            } catch (\Throwable $exception) {
+                // Stripe refuses to expire a Checkout that completed meanwhile.
+                report($exception);
+                $previous = $this->retrieveSession($previousId);
+            }
+        }
+
+        if (in_array((string) ($previous->payment_status ?? ''), ['paid', 'no_payment_required'], true)) {
+            $this->fulfillSession($previous);
+        }
+
+        if (! $invoice->refresh()->isOpen()) {
+            throw ValidationException::withMessages([
+                'invoice' => 'This invoice is already paid.',
+            ]);
+        }
+
+        if (($previous->status ?? '') === 'open') {
+            throw ValidationException::withMessages([
+                'invoice' => 'Your last card payment is still being processed. Try again in a minute.',
+            ]);
+        }
+    }
+
+    protected function createSession(array $sessionData): mixed
+    {
+        return Session::create($sessionData, $this->requestOptions());
+    }
+
+    protected function retrieveSession(string $sessionId): mixed
+    {
+        return Session::retrieve($sessionId, [], $this->requestOptions());
+    }
+
+    protected function expireSession(string $sessionId): void
+    {
+        Session::retrieve($sessionId, [], $this->requestOptions())->expire([], $this->requestOptions());
     }
 
     /**
@@ -177,9 +238,8 @@ class RentStripeCheckoutService
     public function fulfillCheckoutSessionId(string $sessionId): ?RentPayment
     {
         $this->configureStripe();
-        $session = Session::retrieve($sessionId, [], $this->requestOptions());
 
-        return $this->fulfillSession($session);
+        return $this->fulfillSession($this->retrieveSession($sessionId));
     }
 
     public function noteFailed(mixed $session): void
@@ -247,25 +307,30 @@ class RentStripeCheckoutService
             return null;
         }
 
-        if (! $invoice->isOpen()) {
-            return null;
-        }
-
-        $rent = round((float) ($metadata['rent_amount'] ?? $invoice->balance), 2);
-        $fee = round((float) ($metadata['fee_amount'] ?? 0), 2);
-        $apply = min($rent, round((float) $invoice->balance, 2));
-
-        if ($apply < 0.01) {
-            return RentPayment::query()
-                ->where('rent_invoice_id', $invoice->id)
-                ->where('stripe_checkout_session_id', $sessionId)
-                ->first();
-        }
-
         $paymentIntent = $session->payment_intent ?? null;
         $paymentIntentId = is_string($paymentIntent)
             ? $paymentIntent
             : (is_object($paymentIntent) ? (string) ($paymentIntent->id ?? '') : '');
+
+        $rent = round((float) ($metadata['rent_amount'] ?? $invoice->balance), 2);
+        $fee = round((float) ($metadata['fee_amount'] ?? 0), 2);
+        $apply = $invoice->isOpen() ? min($rent, round((float) $invoice->balance, 2)) : 0.0;
+
+        if ($apply < 0.01) {
+            // Stripe took this card payment but the invoice is already settled
+            // by another payment. Nothing can be applied, so it must be
+            // refunded by hand; it must not disappear silently.
+            Log::error('Rent card payment received for an invoice that is already settled', [
+                'checkout_session_id' => $sessionId,
+                'payment_intent_id' => $paymentIntentId ?: null,
+                'rent_invoice_id' => $invoice->id,
+                'account_id' => $invoice->account_id,
+                'tenant_user_id' => $tenantUserId,
+                'amount' => round($rent + $fee, 2),
+            ]);
+
+            return null;
+        }
 
         try {
             return $this->finance->recordPayment($invoice, [

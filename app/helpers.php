@@ -880,15 +880,29 @@ if (!function_exists('generateReferenceNumber')) {
     function generateReferenceNumber($modelClass, $column, $prefix)
     {
         return DB::transaction(function () use ($modelClass, $column, $prefix) {
-            $lastEntry = $modelClass::orderBy('id', 'desc')->lockForUpdate()->first();
-
-            if ($lastEntry && preg_match('/' . preg_quote($prefix) . '(\d+)/', $lastEntry->$column, $matches)) {
-                $number = (int) $matches[1] + 1;
-            } else {
-                $number = 1;
+            // Read the highest number already issued under this prefix. The
+            // newest row alone is not enough: when it carries another format
+            // (seeded or imported data) numbering restarted at 1 and repeated.
+            $query = $modelClass::query();
+            if (in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses_recursive($modelClass), true)) {
+                $query->withTrashed();
             }
 
-            return $prefix . str_pad($number, 7, '0', STR_PAD_LEFT);
+            $candidates = $query->where($column, 'like', $prefix . '%')
+                ->orderByRaw('LENGTH(' . $column . ') DESC')
+                ->orderBy($column, 'desc')
+                ->lockForUpdate()
+                ->limit(50)
+                ->pluck($column);
+
+            $highest = 0;
+            foreach ($candidates as $value) {
+                if (preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', (string) $value, $matches)) {
+                    $highest = max($highest, (int) $matches[1]);
+                }
+            }
+
+            return $prefix . str_pad($highest + 1, 7, '0', STR_PAD_LEFT);
         });
     }
 }

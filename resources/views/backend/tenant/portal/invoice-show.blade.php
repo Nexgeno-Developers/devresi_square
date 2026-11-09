@@ -1,6 +1,8 @@
 @extends('backend.layout.app')
 @include('backend.tenant.portal._styles')
 
+@section('title', ($invoice->invoice_no ?: 'Rent invoice').' · Resisquare')
+
 @section('content')
 @php
     $statusClass = match (true) {
@@ -42,6 +44,19 @@
                 <p class="tp-muted mb-1">Tenant</p>
                 <p class="mb-0">{{ $invoice->tenant?->name ?: '—' }}</p>
             </div>
+            @if($invoice->tenancy)
+                <div>
+                    <p class="tp-muted mb-1">Tenancy</p>
+                    <p class="mb-0" data-invoice-tenancy>
+                        {{ $invoice->tenancy->move_in ? rs_date($invoice->tenancy->move_in) : '—' }}
+                        –
+                        {{ $invoice->tenancy->move_out ? rs_date($invoice->tenancy->move_out) : 'ongoing' }}
+                        @if($invoice->tenancy->rent)
+                            · £{{ number_format((float) $invoice->tenancy->rent, 2) }}{{ $invoice->tenancy->frequency ? ' '.strtolower($invoice->tenancy->frequency) : '' }}
+                        @endif
+                    </p>
+                </div>
+            @endif
             <div>
                 <p class="tp-muted mb-1">Issued</p>
                 <p class="mb-0">{{ rs_date($invoice->issue_date) }}</p>
@@ -50,14 +65,16 @@
                 <p class="tp-muted mb-1">Due date</p>
                 <p class="mb-0">{{ rs_date($invoice->due_date) }}</p>
             </div>
-            <div>
-                <p class="tp-muted mb-1">Period</p>
-                <p class="mb-0">
-                    {{ $invoice->period_start ? rs_date($invoice->period_start) : '—' }}
-                    –
-                    {{ $invoice->period_end ? rs_date($invoice->period_end) : '—' }}
-                </p>
-            </div>
+            @if($invoice->period_start || $invoice->period_end)
+                <div>
+                    <p class="tp-muted mb-1">Period</p>
+                    <p class="mb-0">
+                        {{ $invoice->period_start ? rs_date($invoice->period_start) : '—' }}
+                        –
+                        {{ $invoice->period_end ? rs_date($invoice->period_end) : '—' }}
+                    </p>
+                </div>
+            @endif
             <div>
                 <p class="tp-muted mb-1">Amount due</p>
                 <p class="mb-0">£{{ number_format((float) $invoice->amount, 2) }}</p>

@@ -250,6 +250,48 @@ class SaasBillingAndLimitsHttpTest extends TestCase
         $service->handle($event);
     }
 
+    public function test_webhook_that_fails_is_processed_again_on_retry(): void
+    {
+        $eventId = 'evt_retry_'.uniqid();
+        $broken = new class
+        {
+            public function __isset(string $name): bool
+            {
+                return true;
+            }
+
+            public function __get(string $name): mixed
+            {
+                throw new \RuntimeException('Simulated processing failure');
+            }
+        };
+        $event = (object) [
+            'id' => $eventId,
+            'type' => 'checkout.session.completed',
+            'data' => (object) ['object' => $broken],
+        ];
+
+        $service = app(StripeWebhookService::class);
+
+        try {
+            $service->handle($event);
+            $this->fail('The simulated failure should reach the caller.');
+        } catch (\RuntimeException $exception) {
+            $this->assertSame('Simulated processing failure', $exception->getMessage());
+        }
+
+        $this->assertFalse(Cache::has('stripe_webhook_event:'.$eventId));
+
+        $retry = (object) [
+            'id' => $eventId,
+            'type' => 'checkout.session.completed',
+            'data' => (object) ['object' => (object) ['metadata' => ['type' => 'other']]],
+        ];
+        $service->handle($retry);
+
+        $this->assertTrue(Cache::has('stripe_webhook_event:'.$eventId));
+    }
+
     public function test_portal_invite_is_blocked_when_portal_user_limit_is_full(): void
     {
         [$landlord, $accountId] = $this->createLandlord('owner', 1);

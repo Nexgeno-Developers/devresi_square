@@ -24,35 +24,42 @@ class StripeWebhookService
     public function handle(object $event): void
     {
         $eventId = is_string($event->id ?? null) ? (string) $event->id : '';
+        $lockKey = $eventId !== '' ? 'stripe_webhook_event:'.$eventId : null;
 
-        if ($eventId !== '') {
-            $lockKey = 'stripe_webhook_event:'.$eventId;
+        if ($lockKey !== null && ! Cache::add($lockKey, 1, now()->addDays(30))) {
+            Log::info('Stripe webhook ignored: duplicate event', [
+                'event_id' => $eventId,
+                'event_type' => $event->type ?? null,
+            ]);
 
-            if (! Cache::add($lockKey, 1, now()->addDays(30))) {
-                Log::info('Stripe webhook ignored: duplicate event', [
-                    'event_id' => $eventId,
-                    'event_type' => $event->type ?? null,
-                ]);
-
-                return;
-            }
+            return;
         }
 
         $object = $event->data->object ?? null;
 
-        match ($event->type ?? null) {
-            'checkout.session.completed' => $this->handleCheckoutSessionCompleted($object),
-            'checkout.session.expired' => $this->handleCheckoutSessionExpired($object),
-            'customer.subscription.created' => $this->handleSubscriptionCreatedOrUpdated($object),
-            'customer.subscription.updated' => $this->handleSubscriptionCreatedOrUpdated($object),
-            'customer.subscription.deleted' => $this->handleSubscriptionDeleted($object),
-            'invoice.payment_succeeded' => $this->handleInvoicePaymentSucceeded($object),
-            'invoice.payment_failed' => $this->handleInvoicePaymentFailed($object),
-            default => Log::info('Stripe webhook ignored: unhandled event type', [
-                'event_id' => $event->id ?? null,
-                'event_type' => $event->type ?? null,
-            ]),
-        };
+        try {
+            match ($event->type ?? null) {
+                'checkout.session.completed' => $this->handleCheckoutSessionCompleted($object),
+                'checkout.session.expired' => $this->handleCheckoutSessionExpired($object),
+                'customer.subscription.created' => $this->handleSubscriptionCreatedOrUpdated($object),
+                'customer.subscription.updated' => $this->handleSubscriptionCreatedOrUpdated($object),
+                'customer.subscription.deleted' => $this->handleSubscriptionDeleted($object),
+                'invoice.payment_succeeded' => $this->handleInvoicePaymentSucceeded($object),
+                'invoice.payment_failed' => $this->handleInvoicePaymentFailed($object),
+                default => Log::info('Stripe webhook ignored: unhandled event type', [
+                    'event_id' => $event->id ?? null,
+                    'event_type' => $event->type ?? null,
+                ]),
+            };
+        } catch (\Throwable $exception) {
+            // The event was not applied. Release the marker so Stripe's retry
+            // is processed instead of being ignored as a duplicate.
+            if ($lockKey !== null) {
+                Cache::forget($lockKey);
+            }
+
+            throw $exception;
+        }
     }
 
     public function handleCheckoutSessionCompleted(mixed $session): void
