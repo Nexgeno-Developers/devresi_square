@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Frontend;
 
 use App\Http\Controllers\Controller;
+use App\Models\ComplianceJobMessage;
 use App\Models\ComplianceJobOffer;
+use App\Models\ComplianceJobVariation;
 use App\Models\ContractorProfile;
 use App\Models\RepairJobMessage;
 use App\Models\RepairJobOffer;
 use App\Models\RepairJobVariation;
 use App\Models\Upload;
 use App\Services\Contractors\ComplianceBookingService;
+use App\Services\Contractors\ComplianceJobAftercareService;
 use App\Services\Contractors\ContractorMarketplaceException;
 use App\Services\Contractors\RepairJobAftercareService;
 use App\Services\Contractors\RepairJobOfferService;
@@ -35,6 +38,7 @@ class ContractorJobController extends Controller
         private readonly RepairJobOfferService $offers,
         private readonly RepairJobAftercareService $aftercare,
         private readonly ComplianceBookingService $checks,
+        private readonly ComplianceJobAftercareService $complianceAftercare,
     ) {
         $this->middleware(function ($request, $next) {
             abort_unless($request->user()?->hasRole('Contractor'), 403);
@@ -352,11 +356,14 @@ class ContractorJobController extends Controller
     public function complianceShow(Request $request, ComplianceJobOffer $offer)
     {
         $this->ownsCompliance($request, $offer);
-        $offer->load(['booking.property', 'booking.type']);
+        $offer->load(['booking.property', 'booking.type', 'certificate', 'invoice', 'messages', 'variations', 'contractor.contractorProfile']);
         $this->checks->expire($offer->booking);
-        $offer->refresh()->load(['booking.property', 'booking.type']);
+        $offer->refresh()->load(['booking.property', 'booking.type', 'certificate', 'invoice', 'messages', 'variations', 'contractor.contractorProfile']);
         $this->checks->markViewed($offer);
-        $offer->refresh();
+        $offer->refresh()->load(['booking.property', 'booking.type', 'certificate', 'invoice', 'messages', 'variations', 'contractor.contractorProfile']);
+        if ($offer->canMessage()) {
+            $this->complianceAftercare->markRead($offer, ComplianceJobMessage::CONTRACTOR);
+        }
 
         return view('frontend.contractor.jobs.compliance', ['offer' => $offer]);
     }
@@ -401,6 +408,132 @@ class ContractorJobController extends Controller
         }
 
         return redirect()->route('contractor.jobs.index')->with('success', 'Invitation declined.');
+    }
+
+    public function complianceProgress(Request $request, ComplianceJobOffer $offer)
+    {
+        $this->ownsCompliance($request, $offer);
+        $data = $request->validate([
+            'step' => ['required', Rule::in(['schedule', 'start', 'complete'])],
+            'scheduled_for' => ['required_if:step,schedule', 'nullable', 'date'],
+            'completion_note' => ['nullable', 'string', 'max:2000'],
+            'certificate' => ['required_if:step,complete', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            'issued_date' => ['required_if:step,complete', 'nullable', 'date'],
+            'expiry_date' => ['required_if:step,complete', 'nullable', 'date', 'after_or_equal:issued_date'],
+        ], [
+            'certificate.required_if' => 'Attach the certificate before marking the check complete.',
+            'issued_date.required_if' => 'Enter the date on the certificate.',
+            'expiry_date.required_if' => 'Enter the expiry date on the certificate.',
+            'expiry_date.after_or_equal' => 'The expiry date must be on or after the issued date.',
+        ]);
+        if ($data['step'] === 'complete') {
+            $data['certificate'] = $request->file('certificate');
+        }
+        $messages = [
+            'schedule' => 'Visit updated. The landlord has been told.',
+            'start' => 'Marked as in progress.',
+            'complete' => 'Marked complete. The certificate is filed and the landlord will confirm.',
+        ];
+
+        try {
+            $this->checks->progress($offer, $request->user(), $data['step'], $data);
+        } catch (ContractorMarketplaceException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('contractor.jobs.compliance.show', $offer)->with('success', $messages[$data['step']]);
+    }
+
+    public function complianceInvoice(Request $request, ComplianceJobOffer $offer)
+    {
+        $this->ownsCompliance($request, $offer);
+        $offer->load(['invoice.cardPayment', 'booking.type', 'booking.property', 'contractor.contractorProfile']);
+        abort_unless($offer->invoice, 404);
+
+        return view('frontend.contractor.jobs.compliance-invoice', [
+            'offer' => $offer,
+            'invoice' => $offer->invoice,
+            'profile' => $offer->contractor?->contractorProfile,
+            'jobLabel' => $offer->booking?->type?->name ?: 'Compliance check',
+        ]);
+    }
+
+    public function complianceIssueInvoice(Request $request, ComplianceJobOffer $offer)
+    {
+        $this->ownsCompliance($request, $offer);
+        $data = $request->validate([
+            'notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        try {
+            $this->checks->issueInvoice($offer, $request->user(), $data['notes'] ?? null);
+        } catch (ContractorMarketplaceException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('contractor.jobs.compliance.invoice', $offer)->with('success', 'Invoice sent to the landlord.');
+    }
+
+    public function complianceMessage(Request $request, ComplianceJobOffer $offer)
+    {
+        $this->ownsCompliance($request, $offer);
+        $data = $request->validate(['body' => ['required', 'string', 'max:2000']]);
+
+        return $this->complianceBack($request, $offer, fn () => $this->complianceAftercare->postMessage($offer, $request->user(), ComplianceJobMessage::CONTRACTOR, $data['body']), 'Message sent.');
+    }
+
+    public function complianceVariation(Request $request, ComplianceJobOffer $offer)
+    {
+        $this->ownsCompliance($request, $offer);
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'reason' => ['required', 'string', 'max:1000'],
+        ]);
+
+        return $this->complianceBack($request, $offer, fn () => $this->complianceAftercare->requestVariation($offer, $request->user(), (float) $data['amount'], $data['reason']), 'Extra work sent to the landlord.');
+    }
+
+    public function complianceWithdrawVariation(Request $request, ComplianceJobOffer $offer, ComplianceJobVariation $variation)
+    {
+        $this->ownsCompliance($request, $offer);
+        abort_unless((int) $variation->compliance_job_offer_id === (int) $offer->id, 404);
+
+        return $this->complianceBack($request, $offer, fn () => $this->complianceAftercare->withdrawVariation($variation, $request->user()), 'Extra work request withdrawn.');
+    }
+
+    public function complianceReschedule(Request $request, ComplianceJobOffer $offer)
+    {
+        $this->ownsCompliance($request, $offer);
+        $data = $request->validate(['slot' => ['required', 'date']]);
+
+        return $this->complianceBack($request, $offer, fn () => $this->complianceAftercare->acceptReschedule($offer, $request->user(), $data['slot']), 'Visit time accepted. The landlord has been told.');
+    }
+
+    public function complianceCancel(Request $request, ComplianceJobOffer $offer)
+    {
+        $this->ownsCompliance($request, $offer);
+        $data = $request->validate(['reason' => ['nullable', 'string', 'max:500']]);
+
+        return $this->complianceBack($request, $offer, fn () => $this->complianceAftercare->cancel($offer, $request->user(), ComplianceJobMessage::CONTRACTOR, $data['reason'] ?? null), 'Check cancelled. The landlord has been told.');
+    }
+
+    public function complianceDispute(Request $request, ComplianceJobOffer $offer)
+    {
+        $this->ownsCompliance($request, $offer);
+        $data = $request->validate(['reason' => ['required', 'string', 'max:2000']]);
+
+        return $this->complianceBack($request, $offer, fn () => $this->complianceAftercare->dispute($offer, $request->user(), ComplianceJobMessage::CONTRACTOR, $data['reason']), 'Dispute sent. Our team has been told.');
+    }
+
+    private function complianceBack(Request $request, ComplianceJobOffer $offer, callable $action, string $success)
+    {
+        try {
+            $action();
+        } catch (ContractorMarketplaceException $exception) {
+            return back()->withInput()->with('error', $exception->getMessage());
+        }
+
+        return redirect()->route('contractor.jobs.compliance.show', $offer)->with('success', $success);
     }
 
     private function ownsCompliance(Request $request, ComplianceJobOffer $offer): void

@@ -744,6 +744,9 @@ body.lob-open {
 }
 
 .lob-manual-cue {
+    display: grid;
+    justify-items: start;
+    gap: 0.15rem;
     margin: 0.9rem 0 0;
     color: var(--lob-muted);
     font-size: 0.88rem;

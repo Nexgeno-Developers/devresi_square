@@ -103,7 +103,9 @@ class JourneyFiveAccountHttpTest extends TestCase
             return $link !== null;
         });
 
-        $this->get($link)->assertRedirect(route('login'));
+        $this->get($link)
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('status', 'Email confirmed. Sign in with your new address.');
         $tenant->refresh();
         $this->assertSame($next, $tenant->email);
         $this->assertNull($tenant->pending_email);

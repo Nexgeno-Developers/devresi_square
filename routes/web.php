@@ -134,6 +134,15 @@ Route::group(['middleware' => 'web'], function () {
         Route::get('/compliance-jobs/{offer}', [ContractorJobController::class, 'complianceShow'])->name('jobs.compliance.show');
         Route::post('/compliance-jobs/{offer}/quote', [ContractorJobController::class, 'complianceQuote'])->name('jobs.compliance.quote');
         Route::post('/compliance-jobs/{offer}/decline', [ContractorJobController::class, 'complianceDecline'])->name('jobs.compliance.decline');
+        Route::post('/compliance-jobs/{offer}/progress', [ContractorJobController::class, 'complianceProgress'])->name('jobs.compliance.progress');
+        Route::post('/compliance-jobs/{offer}/messages', [ContractorJobController::class, 'complianceMessage'])->middleware('throttle:30,1')->name('jobs.compliance.message');
+        Route::post('/compliance-jobs/{offer}/variations', [ContractorJobController::class, 'complianceVariation'])->name('jobs.compliance.variation');
+        Route::post('/compliance-jobs/{offer}/variations/{variation}/withdraw', [ContractorJobController::class, 'complianceWithdrawVariation'])->name('jobs.compliance.variation.withdraw');
+        Route::post('/compliance-jobs/{offer}/reschedule', [ContractorJobController::class, 'complianceReschedule'])->name('jobs.compliance.reschedule');
+        Route::post('/compliance-jobs/{offer}/cancel', [ContractorJobController::class, 'complianceCancel'])->name('jobs.compliance.cancel');
+        Route::post('/compliance-jobs/{offer}/dispute', [ContractorJobController::class, 'complianceDispute'])->name('jobs.compliance.dispute');
+        Route::get('/compliance-jobs/{offer}/invoice', [ContractorJobController::class, 'complianceInvoice'])->name('jobs.compliance.invoice');
+        Route::post('/compliance-jobs/{offer}/invoice', [ContractorJobController::class, 'complianceIssueInvoice'])->name('jobs.compliance.invoice.store');
         Route::post('/jobs/{offer}/withdraw', [ContractorJobController::class, 'withdraw'])->name('jobs.withdraw');
         Route::post('/jobs/{offer}/cancel', [ContractorJobController::class, 'cancel'])->name('jobs.cancel');
         Route::post('/jobs/{offer}/reconfirm', [ContractorJobController::class, 'reconfirm'])->name('jobs.reconfirm');

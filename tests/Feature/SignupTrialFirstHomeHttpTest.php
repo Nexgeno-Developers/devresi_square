@@ -81,7 +81,7 @@ class SignupTrialFirstHomeHttpTest extends TestCase
         $dashboard->assertDontSee('Test mode:', false);
     }
 
-    public function test_otp_verify_with_stripe_checkout_suspends_until_webhook(): void
+    public function test_otp_verify_with_stripe_checkout_stays_on_trial_and_opens_checkout(): void
     {
         Mail::fake();
         Role::findOrCreate('Landlord', 'web');
@@ -120,7 +120,98 @@ class SignupTrialFirstHomeHttpTest extends TestCase
 
         $user = User::query()->where('email', $email)->firstOrFail();
         $account = Account::query()->where('owner_user_id', $user->id)->latest('id')->firstOrFail();
-        $this->assertSame('suspended', $account->status);
+        $this->assertSame('trialing', $account->status);
+
+        $this->actingAs($user)
+            ->withSession(['current_account_id' => $account->id])
+            ->get(route('backend.dashboard'))
+            ->assertOk();
+    }
+
+    public function test_wrong_otp_stays_on_the_code_step_and_shows_the_error(): void
+    {
+        Mail::fake();
+        Role::findOrCreate('Landlord', 'web');
+
+        $planId = $this->landlordPlanId();
+        $email = 'signup.badotp.'.uniqid().'@gmail.com';
+
+        $this->postJson(route('register.post'), $this->landlordRegistrationPayload($email, $planId))
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $registration = Registration::query()->where('email', $email)->latest('id')->firstOrFail();
+
+        $this->from(route('register', [
+            'plan_id' => $planId,
+            'billing_cycle' => 'monthly',
+            'account_type' => 'landlord',
+        ]))
+            ->withSession(['reg_id' => $registration->id])
+            ->followingRedirects()
+            ->post(route('register.verify.otp.post'), [
+                'otp' => '000000',
+            ])
+            ->assertOk()
+            ->assertSee('Invalid OTP. Please try again.', false)
+            ->assertSee('data-otp-restored="1"', false)
+            ->assertSee('id="step-1" style="display:none;"', false)
+            ->assertSee('Enter OTP', false);
+
+        $this->assertNull(User::query()->where('email', $email)->first());
+        $registration->refresh();
+        $this->assertSame('pending', $registration->status);
+        $this->assertNotEmpty($registration->otp_code);
+    }
+
+    public function test_expired_otp_stays_on_the_code_step_and_asks_for_a_new_code(): void
+    {
+        Mail::fake();
+        Role::findOrCreate('Landlord', 'web');
+
+        $planId = $this->landlordPlanId();
+        $email = 'signup.expiredotp.'.uniqid().'@gmail.com';
+
+        $this->postJson(route('register.post'), $this->landlordRegistrationPayload($email, $planId))
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $registration = Registration::query()->where('email', $email)->latest('id')->firstOrFail();
+        $registration->update(['otp_expires_at' => now()->subMinute()]);
+
+        $this->from(route('register', [
+            'plan_id' => $planId,
+            'billing_cycle' => 'monthly',
+            'account_type' => 'landlord',
+        ]))
+            ->withSession(['reg_id' => $registration->id])
+            ->followingRedirects()
+            ->post(route('register.verify.otp.post'), [
+                'otp' => $registration->otp_code,
+            ])
+            ->assertOk()
+            ->assertSee('OTP has expired. Please request a new one.', false)
+            ->assertSee('data-otp-restored="1"', false)
+            ->assertSee('id="step-1" style="display:none;"', false);
+
+        $this->assertNull(User::query()->where('email', $email)->first());
+    }
+
+    private function landlordRegistrationPayload(string $email, int $planId): array
+    {
+        return [
+            'first_name' => 'QA',
+            'last_name' => 'Inventory',
+            'email' => $email,
+            'phone' => '',
+            'type' => 'landlord',
+            'verify_via' => 'email',
+            'password' => 'Password123!',
+            'password_confirmation' => 'Password123!',
+            'plan_id' => $planId,
+            'billing_cycle' => 'monthly',
+            'account_type' => 'landlord',
+        ];
     }
 
     private function landlordPlanId(): int

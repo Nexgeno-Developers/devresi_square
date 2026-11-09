@@ -83,8 +83,8 @@
                 @endif
 
                 <p class="lob-manual-cue">
-                    <button type="button" data-lob-open-manual>Add property manually</button>
-                    if the postcode search doesn't find it.
+                    Can’t find the property?
+                    <button type="button" data-lob-open-manual>Add Manually</button>
                 </p>
 
                 <div class="lob-results" data-lob-results hidden></div>

@@ -115,7 +115,7 @@ class User extends Authenticatable
 
     public function accountUsers(): HasMany
     {
-        return $this->hasMany(AccountUser::class);
+        return $this->hasMany(AccountUser::class, 'user_id');
     }
 
     public function contractorProfile()

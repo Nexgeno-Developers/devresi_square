@@ -26,6 +26,30 @@
 
     <div class="card lw-card mb-3">
         <div class="card-body">
+            <div class="lw-section-title mt-0">Disputed compliance checks ({{ $complianceDisputes->count() }})</div>
+            @forelse($complianceDisputes as $offer)
+                <div class="border rounded p-2 mb-2">
+                    <div class="d-flex justify-content-between flex-wrap gap-2">
+                        <span>
+                            <strong>{{ $offer->booking?->type?->name ?: 'Compliance check' }}</strong>
+                            · {{ $offer->contractor?->contractorProfile?->displayName() }} · {{ $offer->statusLabel() }}
+                            <div class="small text-danger">{{ $offer->dispute_reason }} · {{ $offer->disputed_at?->diffForHumans() }}</div>
+                        </span>
+                        <form method="POST" action="{{ route('admin.registrations.contractors.jobs.compliance.resolve', $offer) }}" class="d-flex gap-1 flex-wrap align-items-center">
+                            @csrf
+                            <input name="note" required maxlength="1000" class="form-control form-control-sm" style="width:200px" placeholder="Note for both sides">
+                            <button class="btn btn-sm btn-outline-primary" type="submit">Mark resolved</button>
+                        </form>
+                    </div>
+                </div>
+            @empty
+                <p class="small text-muted mb-0">None.</p>
+            @endforelse
+        </div>
+    </div>
+
+    <div class="card lw-card mb-3">
+        <div class="card-body">
             <div class="lw-section-title mt-0">Awarded but not finished after 7 days ({{ $overdue->count() }})</div>
             @forelse($overdue as $offer)
                 <div class="border rounded p-2 mb-2 d-flex justify-content-between flex-wrap gap-2">

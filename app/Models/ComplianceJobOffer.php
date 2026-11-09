@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ComplianceJobOffer extends Model
 {
@@ -23,7 +25,21 @@ class ComplianceJobOffer extends Model
 
     public const NOT_SELECTED = 'not_selected';
 
+    public const CANCELLED = 'cancelled';
+
     public const JOB_ACCEPTED = 'job_accepted';
+
+    public const JOB_ACCEPTED_STATE = 'accepted';
+
+    public const JOB_SCHEDULED = 'scheduled';
+
+    public const JOB_IN_PROGRESS = 'in_progress';
+
+    public const JOB_COMPLETED = 'completed';
+
+    public const JOB_CONFIRMED = 'confirmed';
+
+    public const JOB_INVOICED = 'invoiced';
 
     public const AWAITING = [self::INVITED, self::VIEWED];
 
@@ -39,6 +55,7 @@ class ComplianceJobOffer extends Model
         'contractor_user_id',
         'invited_by',
         'status',
+        'job_status',
         'pricing_type',
         'vat_treatment',
         'vat_rate',
@@ -67,6 +84,21 @@ class ComplianceJobOffer extends Model
         'offer_expires_at',
         'decided_at',
         'scheduled_for',
+        'started_at',
+        'completed_at',
+        'confirmed_at',
+        'completion_note',
+        'compliance_record_id',
+        'reschedule_requested_at',
+        'reschedule_requested_by',
+        'reschedule_slots',
+        'reschedule_note',
+        'disputed_at',
+        'dispute_reason',
+        'cancel_reason',
+        'rating',
+        'rating_comment',
+        'rated_at',
     ];
 
     protected $casts = [
@@ -91,6 +123,14 @@ class ComplianceJobOffer extends Model
         'offer_expires_at' => 'datetime',
         'decided_at' => 'datetime',
         'scheduled_for' => 'datetime',
+        'started_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'confirmed_at' => 'datetime',
+        'reschedule_requested_at' => 'datetime',
+        'reschedule_slots' => 'array',
+        'disputed_at' => 'datetime',
+        'rating' => 'integer',
+        'rated_at' => 'datetime',
     ];
 
     public function booking(): BelongsTo
@@ -101,6 +141,39 @@ class ComplianceJobOffer extends Model
     public function contractor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'contractor_user_id');
+    }
+
+    public function certificate(): BelongsTo
+    {
+        return $this->belongsTo(ComplianceRecord::class, 'compliance_record_id');
+    }
+
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(ComplianceJobInvoice::class);
+    }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(ComplianceJobMessage::class);
+    }
+
+    public function variations(): HasMany
+    {
+        return $this->hasMany(ComplianceJobVariation::class);
+    }
+
+    /** Agreed price plus every extra the landlord approved. */
+    public function finalGross(): float
+    {
+        $extras = $this->relationLoaded('variations') ? $this->variations : $this->variations()->get();
+
+        return round((float) $this->gross_amount + (float) $extras->where('status', ComplianceJobVariation::APPROVED)->sum('gross_amount'), 2);
+    }
+
+    public function canMessage(): bool
+    {
+        return in_array($this->status, [...self::OPEN_STATUSES, self::JOB_ACCEPTED], true);
     }
 
     public function isAwaitingResponse(): bool
@@ -118,6 +191,11 @@ class ComplianceJobOffer extends Model
         return $this->status === self::JOB_ACCEPTED;
     }
 
+    public function isFinished(): bool
+    {
+        return in_array($this->job_status, [self::JOB_COMPLETED, self::JOB_CONFIRMED, self::JOB_INVOICED], true);
+    }
+
     public function tab(): string
     {
         if ($this->isAwaitingResponse()) {
@@ -127,7 +205,7 @@ class ComplianceJobOffer extends Model
             return 'offer_sent';
         }
         if ($this->status === self::JOB_ACCEPTED) {
-            return 'awarded';
+            return $this->isFinished() ? 'completed' : 'awarded';
         }
 
         return 'closed';
@@ -135,6 +213,17 @@ class ComplianceJobOffer extends Model
 
     public function statusLabel(): string
     {
+        if ($this->status === self::JOB_ACCEPTED && $this->job_status && $this->job_status !== self::JOB_ACCEPTED_STATE) {
+            return match ($this->job_status) {
+                self::JOB_SCHEDULED => 'Scheduled',
+                self::JOB_IN_PROGRESS => 'In progress',
+                self::JOB_COMPLETED => 'Completed',
+                self::JOB_CONFIRMED => 'Confirmed',
+                self::JOB_INVOICED => 'Invoiced',
+                default => 'Booked',
+            };
+        }
+
         return match ($this->status) {
             self::INVITED => 'Invited',
             self::VIEWED => 'Viewed',
@@ -144,6 +233,7 @@ class ComplianceJobOffer extends Model
             self::OFFER_SENT => 'Offer sent',
             self::OFFER_EXPIRED => 'Offer expired',
             self::NOT_SELECTED => 'Not selected',
+            self::CANCELLED => 'Cancelled',
             self::JOB_ACCEPTED => 'Booked',
             default => ucfirst(str_replace('_', ' ', (string) $this->status)),
         };

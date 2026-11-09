@@ -60,14 +60,12 @@ class PasswordResetController extends Controller
      */
     public function showResetForm($token, Request $request)
     {
-        $record = DB::table('password_reset_tokens')->get()->first(function ($row) use ($token) {
-            return Hash::check($token, $row->token);
-        });
+        $record = $this->resetRecordForToken($token);
 
         if (! $record) {
             abort(403, 'Invalid or expired reset link.');
         }
-        
+
         return view('auth.passwords.reset', [
             'token' => $token,
             'email' => $request->email,
@@ -113,14 +111,9 @@ class PasswordResetController extends Controller
         ]);
         // Log::info('Validation passed');
 
-        $record = DB::table('password_reset_tokens')->get()->first(function ($row) use ($request) {
-            $match = Hash::check($request->token, $row->token);
-            // Log::info("Checking token for email {$row->email}: " . ($match ? 'MATCH' : 'NO MATCH'));
-            return $match;
-        });
+        $record = $this->resetRecordForToken($request->token);
 
         if (! $record) {
-            // Log::warning('No matching password reset record found for token', ['token' => $request->token]);
             return back()->withErrors(['token' => 'Invalid or expired reset link.']);
         }
         // Log::info('Found matching password reset record', ['email' => $record->email]);
@@ -138,5 +131,24 @@ class PasswordResetController extends Controller
             ->with('status', 'Your password was updated. Sign in with the new one.');
     }
 
+    private function resetRecordForToken(string $token): ?object
+    {
+        $record = DB::table('password_reset_tokens')->get()->first(function ($row) use ($token) {
+            return Hash::check($token, $row->token);
+        });
 
+        if (! $record) {
+            return null;
+        }
+
+        $expiresAfterMinutes = (int) config('auth.passwords.users.expire');
+        $createdAt = $record->created_at ? Carbon::parse($record->created_at) : null;
+        if (! $createdAt || $createdAt->lt(now()->subMinutes($expiresAfterMinutes))) {
+            DB::table('password_reset_tokens')->where('email', $record->email)->delete();
+
+            return null;
+        }
+
+        return $record;
+    }
 }

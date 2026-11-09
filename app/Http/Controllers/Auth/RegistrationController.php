@@ -94,12 +94,18 @@ class RegistrationController extends Controller
 
         $smsOtpAvailable = $this->smsOtpProviderIsReady();
 
+        $otpChallenge = null;
+        if (session('reg_id') && $request->session()->has('errors')) {
+            $otpChallenge = Registration::query()->find(session('reg_id'));
+        }
+
         return view('frontend.register', compact(
             'selectedPlan',
             'selectedBillingCycle',
             'selectedAccountType',
             'suggestedRegistrationType',
-            'smsOtpAvailable'
+            'smsOtpAvailable',
+            'otpChallenge'
         ));
     }
 
@@ -371,9 +377,9 @@ class RegistrationController extends Controller
                 $account->currentSubscription()->with('plan')->firstOrFail()
             );
 
-            // Restrict workspace until Stripe confirms the subscription (webhook).
-            $account->forceFill(['status' => 'suspended'])->save();
-
+            // A checkout link is not a failed payment. The account stays on its
+            // trial so closing Stripe does not lock the landlord out of the
+            // workspace while billing still describes them as trialing.
             return redirect()->away($checkoutUrl);
         } catch (\Throwable $exception) {
             Log::error('Self-service Stripe checkout creation failed', [

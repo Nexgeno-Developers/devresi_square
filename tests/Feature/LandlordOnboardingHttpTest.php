@@ -55,7 +55,8 @@ class LandlordOnboardingHttpTest extends TestCase
         $response->assertSee('lob-root', false);
         $response->assertSee('Add your first property', false);
         $response->assertSee('Find the property', false);
-        $response->assertSee('Add property manually', false);
+        $response->assertSee('Can’t find the property?', false);
+        $response->assertSee('Add Manually', false);
         $response->assertSee('data-lob-screen="manual"', false);
         $response->assertDontSee('Verify identity', false);
         $response->assertSee('Lead tenant', false);

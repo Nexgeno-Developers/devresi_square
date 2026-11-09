@@ -314,7 +314,7 @@
                 resultsEl.innerHTML = `
                     <div class="lob-miss">
                         <p class="lob-help">No properties came back for that postcode.</p>
-                        <button type="button" class="lob-btn lob-btn-primary" data-lob-open-manual>Add property manually</button>
+                        <button type="button" class="lob-btn lob-btn-primary" data-lob-open-manual>Add Manually</button>
                     </div>
                 `;
                 return;
@@ -338,7 +338,7 @@
             resultsEl.innerHTML = `
                 <div class="lob-miss">
                     <p class="lob-help">${escapeHtml(error.message)}</p>
-                    <button type="button" class="lob-btn lob-btn-primary" data-lob-open-manual>Add property manually</button>
+                    <button type="button" class="lob-btn lob-btn-primary" data-lob-open-manual>Add Manually</button>
                 </div>
             `;
             showAlert('');

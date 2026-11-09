@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Webhook;
 
 use App\Http\Controllers\Controller;
+use App\Services\Contractors\ComplianceJobPaymentService;
 use App\Services\Contractors\RepairJobPaymentService;
 use App\Services\Finance\RentStripeCheckoutService;
 use App\Services\Saas\StripeWebhookService;
@@ -14,7 +15,7 @@ use UnexpectedValueException;
 
 class StripeWebhookController extends Controller
 {
-    public function handle(Request $request, StripeWebhookService $service, RentStripeCheckoutService $rentCheckout, RepairJobPaymentService $jobPayments)
+    public function handle(Request $request, StripeWebhookService $service, RentStripeCheckoutService $rentCheckout, RepairJobPaymentService $jobPayments, ComplianceJobPaymentService $compliancePayments)
     {
         $webhookSecret = config('services.stripe.webhook_secret');
         if (! $webhookSecret) {
@@ -42,6 +43,8 @@ class StripeWebhookController extends Controller
                 $rentCheckout->fulfillSession($event->data->object ?? null);
             } elseif ($metadataType === 'repair_job_payment') {
                 $jobPayments->fulfillSession($event->data->object ?? null);
+            } elseif ($metadataType === 'compliance_job_payment') {
+                $compliancePayments->fulfillSession($event->data->object ?? null);
             } else {
                 $service->handle($event);
             }

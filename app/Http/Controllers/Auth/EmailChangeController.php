@@ -11,6 +11,6 @@ class EmailChangeController extends Controller
     {
         $changes->confirm($token);
 
-        return redirect()->route('login')->with('success', 'Email confirmed. Sign in with your new address.');
+        return redirect()->route('login')->with('status', 'Email confirmed. Sign in with your new address.');
     }
 }

@@ -14,6 +14,8 @@ class ComplianceBooking extends Model
 
     public const BOOKED = 'booked';
 
+    public const COMPLETED = 'completed';
+
     public const CANCELLED = 'cancelled';
 
     public const OPEN = [self::DRAFT, self::SENT, self::BOOKED];
@@ -82,10 +84,32 @@ class ComplianceBooking extends Model
             return 'Choose a contractor';
         }
 
-        if ($this->status === self::BOOKED) {
-            $offer = $this->relationLoaded('awardedOffer') ? $this->awardedOffer : $this->awardedOffer()->with('contractor.contractorProfile')->first();
+        if ($this->status === self::COMPLETED) {
+            $offer = $this->awardedContractorOffer();
             $name = $offer?->contractorName() ?: 'a contractor';
+            if ($offer?->disputed_at) {
+                return 'Disputed with '.$name;
+            }
+            if ($offer?->job_status === ComplianceJobOffer::JOB_INVOICED) {
+                return 'Invoiced by '.$name;
+            }
+
+            return 'Completed with '.$name;
+        }
+
+        if ($this->status === self::BOOKED) {
+            $offer = $this->awardedContractorOffer();
+            $name = $offer?->contractorName() ?: 'a contractor';
+            if ($offer?->disputed_at) {
+                return 'Disputed with '.$name;
+            }
             $when = $offer?->scheduled_for;
+            if ($offer?->job_status === ComplianceJobOffer::JOB_COMPLETED) {
+                return 'Completed by '.$name.'. Confirm the check';
+            }
+            if ($offer?->job_status === ComplianceJobOffer::JOB_IN_PROGRESS) {
+                return 'In progress with '.$name;
+            }
 
             return 'Booked with '.$name.($when ? ' on '.$when->format('j M, H:i') : '');
         }
@@ -96,6 +120,11 @@ class ComplianceBooking extends Model
         }
 
         return 'Waiting for quotes';
+    }
+
+    public function awardedContractorOffer(): ?ComplianceJobOffer
+    {
+        return $this->relationLoaded('awardedOffer') ? $this->awardedOffer : $this->awardedOffer()->with('contractor.contractorProfile')->first();
     }
 
     public function landlordUrl(): string

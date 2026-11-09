@@ -1,6 +1,16 @@
 @extends('frontend.layout.app')
 
 @section('content')
+@php
+    $otpErrorMessage = $errors->first('otp');
+    $restoreOtpStep = $otpErrorMessage !== '';
+    $pendingOtp = isset($otpChallenge) ? $otpChallenge : null;
+    $otpVia = ($pendingOtp->verify_via ?? 'email') === 'phone' ? 'phone' : 'email';
+    $otpExpiresAt = $pendingOtp->otp_expires_at ?? null;
+    $otpSecondsLeft = ($restoreOtpStep && $otpExpiresAt)
+        ? max(0, $otpExpiresAt->getTimestamp() - now()->getTimestamp())
+        : 0;
+@endphp
 <section class="vh-80 gradient-custom">
     <div class="container py-5 h-100">
         <div class="row d-flex justify-content-center align-items-center h-100">
@@ -26,19 +36,19 @@
 
                         {{-- Step indicator --}}
                         <div class="d-flex justify-content-center align-items-center gap-2 mb-4">
-                            <div class="step-dot active" id="dot-1">
+                            <div class="step-dot {{ $restoreOtpStep ? 'done' : 'active' }}" id="dot-1">
                                 <span class="step-num">1</span>
                                 <span class="step-label">Details</span>
                             </div>
                             <div class="step-line" id="step-line"></div>
-                            <div class="step-dot" id="dot-2">
+                            <div class="step-dot {{ $restoreOtpStep ? 'active' : '' }}" id="dot-2">
                                 <span class="step-num">2</span>
                                 <span class="step-label">Verify</span>
                             </div>
                         </div>
 
                         {{-- ══ STEP 1 ══ --}}
-                        <div id="step-1">
+                        <div id="step-1"@if($restoreOtpStep) style="display:none;"@endif>
                             <h2 class="fw-bold mb-1 text-uppercase">Create Account</h2>
                             <p class="mb-4 text-muted small">Fill in your details to get started</p>
 
@@ -141,16 +151,16 @@
                         </div>
 
                         {{-- ══ STEP 2 ══ --}}
-                        <div id="step-2" style="display:none;">
+                        <div id="step-2" data-otp-restored="{{ $restoreOtpStep ? '1' : '0' }}" data-otp-seconds="{{ $restoreOtpStep ? $otpSecondsLeft : 0 }}" style="display:{{ $restoreOtpStep ? 'block' : 'none' }};">
                             <h2 class="fw-bold mb-1 text-uppercase">Enter OTP</h2>
-                            <p class="mb-1 text-muted small" id="otp-sent-msg"></p>
+                            <p class="mb-1 text-muted small" id="otp-sent-msg">@if($restoreOtpStep){{ $otpVia === 'phone' ? "We've sent a 6-digit code to your phone number." : "We've sent a 6-digit code to your email address." }}@endif</p>
 
                             {{-- 2-minute countdown --}}
                             <p class="mb-3" id="timer-wrap">
-                                Code expires in <span id="countdown" class="fw-bold text-danger">2:00</span>
+                                Code expires in <span id="countdown" class="fw-bold text-danger">@if($restoreOtpStep){{ intdiv($otpSecondsLeft, 60) }}:{{ str_pad((string) ($otpSecondsLeft % 60), 2, '0', STR_PAD_LEFT) }}@else 2:00 @endif</span>
                             </p>
 
-                            <div id="otp-error" class="alert alert-danger d-none text-start"></div>
+                            <div id="otp-error" class="alert alert-danger text-start {{ $restoreOtpStep ? '' : 'd-none' }}">{{ $otpErrorMessage }}</div>
                             <div id="otp-success" class="alert alert-success d-none text-start"></div>
 
                             <form id="otp-form" action="{{ route('register.verify.otp.post') }}" method="POST">
@@ -175,7 +185,7 @@
 
                             <div class="mt-3 d-flex justify-content-center gap-3 flex-wrap">
                                 <button type="button" id="resend-btn"
-                                        class="btn btn-link btn-sm p-0 text-muted" disabled>
+                                        class="btn btn-link btn-sm p-0 text-muted" @if(! $restoreOtpStep || $otpSecondsLeft > 0) disabled @endif>
                                     Didn't receive it? Resend OTP
                                 </button>
                                 <span class="text-muted">|</span>
@@ -186,7 +196,7 @@
                             </div>
                         </div>
 
-                        <div class="mt-3" id="login-link">
+                        <div class="mt-3" id="login-link" @if($restoreOtpStep) style="display:none;" @endif>
                             <p class="mb-0 small">Already have an account?
                                 <a href="{{ route('login') }}" class="fw-bold">Login</a>
                             </p>
@@ -428,6 +438,17 @@
 
     // ── Change details button ──────────────────────────────────────────────
     changeBtn.addEventListener('click', goBackToStep1);
+
+    if (step2 && step2.dataset.otpRestored === '1') {
+        const secondsLeft = Number(step2.dataset.otpSeconds || 0);
+        if (secondsLeft > 0) {
+            startCountdown(secondsLeft);
+        } else if (resendBtn) {
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend OTP';
+        }
+        setTimeout(() => otpInput?.focus(), 100);
+    }
 
     // ── Phone field hint based on verify_via ──────────────────────────────
     document.querySelectorAll('[name="verify_via"]').forEach(radio => {

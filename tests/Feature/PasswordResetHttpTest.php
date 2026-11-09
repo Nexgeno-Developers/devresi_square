@@ -88,4 +88,49 @@ class PasswordResetHttpTest extends TestCase
         $user->delete();
         DB::table('password_reset_tokens')->where('email', $email)->delete();
     }
+
+    public function test_expired_reset_link_is_rejected_and_does_not_change_the_password(): void
+    {
+        $email = 'reset-expired-'.uniqid().'@resisquare.test';
+        $user = User::create([
+            'name' => 'Reset Expired',
+            'email' => $email,
+            'password' => Hash::make('old-password-1'),
+            'status' => 1,
+            'can_login' => 1,
+        ]);
+        $original = $user->password;
+
+        $plainToken = 'reset-expired-'.uniqid();
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $email],
+            ['token' => Hash::make($plainToken), 'created_at' => now()->subMinutes(((int) config('auth.passwords.users.expire')) + 1)]
+        );
+
+        $this->get(route('password.reset.form', ['token' => $plainToken, 'email' => $email]))
+            ->assertForbidden()
+            ->assertSee('Invalid or expired reset link.', false);
+
+        $this->assertSame($original, $user->fresh()->password);
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => $email]);
+
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $email],
+            ['token' => Hash::make($plainToken), 'created_at' => now()->subMinutes(((int) config('auth.passwords.users.expire')) + 1)]
+        );
+
+        $this->from(route('password.reset.form', ['token' => $plainToken, 'email' => $email]))
+            ->post(route('password.reset'), [
+                'token' => $plainToken,
+                'password' => 'new-password-1',
+                'password_confirmation' => 'new-password-1',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasErrors('token');
+
+        $this->assertSame($original, $user->fresh()->password);
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => $email]);
+
+        $user->delete();
+    }
 }

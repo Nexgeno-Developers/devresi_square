@@ -12,7 +12,7 @@
             <p>{{ $address ?: 'Property' }} · {{ $booking->landlordStatus() }}</p>
         </div>
         <div class="d-flex gap-2">
-            @if($booking->status !== \App\Models\ComplianceBooking::BOOKED)
+            @if(in_array($booking->status, [\App\Models\ComplianceBooking::DRAFT, \App\Models\ComplianceBooking::SENT], true))
                 <a href="{{ route('admin.compliance.bookings.find', $booking) }}" class="btn lw-btn-secondary">Add contractors</a>
             @endif
             <a href="{{ route('admin.compliance.index') }}" class="btn lw-btn-secondary">Compliance</a>
@@ -24,6 +24,9 @@
             <div class="alert alert-{{ $tone }}">{{ session($flash) }}</div>
         @endif
     @endforeach
+    @if($errors->any())
+        <div class="alert alert-danger">{{ $errors->first() }}</div>
+    @endif
 
     <div class="row g-3">
         @forelse($quotes as $offer)
@@ -46,6 +49,25 @@
                         @endif
                         @if($offer->offer_note)
                             <div class="small">{{ $offer->offer_note }}</div>
+                        @endif
+                        @if($offer->completion_note)
+                            <div class="small">{{ $offer->completion_note }}</div>
+                        @endif
+                        @if($offer->certificate)
+                            <div class="small">
+                                Issued {{ $offer->certificate->issued_date?->format('j M Y') }}, expires {{ $offer->certificate->expiry_date?->format('j M Y') }}.
+                                <a href="{{ uploaded_asset($offer->certificate->photos) }}">View certificate</a>
+                            </div>
+                        @endif
+                        @if($offer->invoice)
+                            <a href="{{ route('admin.compliance.bookings.invoice', [$booking, $offer]) }}">View invoice {{ $offer->invoice->number }}</a>
+                        @endif
+                        @include('backend.compliance.bookings._actions')
+                        @if($offer->status === \App\Models\ComplianceJobOffer::JOB_ACCEPTED && $offer->job_status === \App\Models\ComplianceJobOffer::JOB_COMPLETED)
+                            <form method="POST" action="{{ route('admin.compliance.bookings.confirm', [$booking, $offer]) }}" class="mt-auto">
+                                @csrf
+                                <button class="btn btn-sm btn-success" type="submit">Confirm complete</button>
+                            </form>
                         @endif
                         @if($offer->status === \App\Models\ComplianceJobOffer::OFFER_SENT)
                             <form method="POST" action="{{ route('admin.compliance.bookings.accept', [$booking, $offer]) }}" class="mt-auto">
@@ -72,7 +94,10 @@
                 <h5>Waiting for a quote</h5>
                 <ul class="mb-0">
                     @foreach($waiting as $offer)
-                        <li>{{ $offer->contractorName() }} · reply by {{ optional($offer->invite_expires_at)->format('D j M, H:i') ?: 'the deadline' }}</li>
+                        <li>
+                            {{ $offer->contractorName() }} · reply by {{ optional($offer->invite_expires_at)->format('D j M, H:i') ?: 'the deadline' }}
+                            @include('backend.compliance.bookings._actions')
+                        </li>
                     @endforeach
                 </ul>
             </div>

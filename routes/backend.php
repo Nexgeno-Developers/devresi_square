@@ -493,6 +493,16 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::post('/bookings/{booking}/offers', [ComplianceBookingController::class, 'send'])->name('bookings.send');
             Route::post('/bookings/{booking}/invite', [ComplianceBookingController::class, 'invite'])->name('bookings.invite');
             Route::post('/bookings/{booking}/offers/{offer}/accept', [ComplianceBookingController::class, 'accept'])->name('bookings.accept');
+            Route::post('/bookings/{booking}/offers/{offer}/confirm', [ComplianceBookingController::class, 'confirm'])->name('bookings.confirm');
+            Route::post('/bookings/{booking}/offers/{offer}/messages', [ComplianceBookingController::class, 'message'])->middleware('throttle:30,1')->name('bookings.message');
+            Route::post('/bookings/{booking}/offers/{offer}/variations/{variation}', [ComplianceBookingController::class, 'decideVariation'])->name('bookings.variation');
+            Route::post('/bookings/{booking}/offers/{offer}/reschedule', [ComplianceBookingController::class, 'reschedule'])->name('bookings.reschedule');
+            Route::post('/bookings/{booking}/offers/{offer}/cancel', [ComplianceBookingController::class, 'cancel'])->name('bookings.cancel');
+            Route::post('/bookings/{booking}/offers/{offer}/dispute', [ComplianceBookingController::class, 'dispute'])->name('bookings.dispute');
+            Route::post('/bookings/{booking}/offers/{offer}/rate', [ComplianceBookingController::class, 'rate'])->name('bookings.rate');
+            Route::get('/bookings/{booking}/offers/{offer}/invoice', [ComplianceBookingController::class, 'invoice'])->name('bookings.invoice');
+            Route::post('/bookings/{booking}/offers/{offer}/invoice/pay', [ComplianceBookingController::class, 'invoicePay'])->name('bookings.invoice.pay');
+            Route::get('/bookings/{booking}/offers/{offer}/invoice/paid', [ComplianceBookingController::class, 'invoiceReturn'])->name('bookings.invoice.return');
         });
 
         Route::prefix('bank_details')->name('bank_details.')->controller(BankDetailController::class)->group(function () {
@@ -923,9 +933,11 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::post('/settings', 'saveSettings')->name('settings.save');
             Route::get('/coverage', 'coverage')->name('coverage');
             Route::get('/jobs', 'jobs')->name('jobs');
+            Route::post('/jobs/compliance/{offer}/resolve', 'resolveComplianceDispute')->whereNumber('offer')->name('jobs.compliance.resolve');
             Route::post('/jobs/{offer}/override', 'override')->name('jobs.override');
             Route::get('/payouts', 'payouts')->name('payouts');
             Route::post('/payouts/{payment}', 'markPayout')->whereNumber('payment')->name('payouts.sent');
+            Route::post('/payouts/compliance/{payment}', 'markCompliancePayout')->whereNumber('payment')->name('payouts.compliance');
             Route::post('/legacy-invitations', 'inviteLegacy')->name('legacy');
             Route::get('/{profile}', 'show')->whereNumber('profile')->name('show');
             Route::get('/{profile}/documents/{document}', 'document')->whereNumber('profile')->name('document');

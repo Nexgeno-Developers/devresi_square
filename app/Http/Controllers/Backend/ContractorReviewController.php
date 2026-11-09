@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Backend;
 
 use App\Http\Controllers\Controller;
+use App\Models\ComplianceJobOffer;
+use App\Models\ComplianceJobPayment;
 use App\Models\ContractorCoverageGap;
 use App\Models\ContractorDocument;
 use App\Models\ContractorProfile;
@@ -12,6 +14,8 @@ use App\Models\RepairJobOffer;
 use App\Models\RepairJobPayment;
 use App\Models\Registration;
 use App\Models\User;
+use App\Services\Contractors\ComplianceJobAftercareService;
+use App\Services\Contractors\ComplianceJobPaymentService;
 use App\Services\Contractors\ContractorDirectory;
 use App\Services\Contractors\ContractorDocumentStore;
 use App\Services\Contractors\ContractorMail;
@@ -579,7 +583,27 @@ class ContractorReviewController extends Controller
             ->limit(100)
             ->get();
 
-        return view('backend.contractors.jobs', compact('disputed', 'overdue', 'noReplies'));
+        $complianceDisputes = ComplianceJobOffer::query()
+            ->with(['contractor.contractorProfile', 'booking.type', 'booking.property'])
+            ->whereNotNull('disputed_at')
+            ->latest('disputed_at')
+            ->get();
+
+        return view('backend.contractors.jobs', compact('disputed', 'overdue', 'noReplies', 'complianceDisputes'));
+    }
+
+    public function resolveComplianceDispute(Request $request, ComplianceJobOffer $offer, ComplianceJobAftercareService $aftercare)
+    {
+        $data = $request->validate([
+            'note' => ['required', 'string', 'max:1000'],
+        ]);
+        try {
+            $aftercare->resolveDispute($offer, $request->user(), $data['note']);
+        } catch (ContractorMarketplaceException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', 'Dispute resolved. Both sides have been told.');
     }
 
     public function override(Request $request, RepairJobOffer $offer)
@@ -614,7 +638,36 @@ class ContractorReviewController extends Controller
             ->limit(30)
             ->get();
 
-        return view('backend.contractors.payouts', compact('waiting', 'sent'));
+        $complianceWith = ['invoice.offer.contractor.contractorProfile', 'invoice.offer.booking.type'];
+        $complianceWaiting = ComplianceJobPayment::query()
+            ->with($complianceWith)
+            ->where('status', ComplianceJobPayment::PAID)
+            ->where('payout_status', ComplianceJobPayment::PAYOUT_UNPAID)
+            ->orderBy('paid_at')
+            ->get();
+        $complianceSent = ComplianceJobPayment::query()
+            ->with($complianceWith)
+            ->where('status', ComplianceJobPayment::PAID)
+            ->where('payout_status', ComplianceJobPayment::PAYOUT_PAID)
+            ->latest('payout_paid_at')
+            ->limit(30)
+            ->get();
+
+        return view('backend.contractors.payouts', compact('waiting', 'sent', 'complianceWaiting', 'complianceSent'));
+    }
+
+    public function markCompliancePayout(Request $request, ComplianceJobPayment $payment, ComplianceJobPaymentService $payments)
+    {
+        $data = $request->validate([
+            'payout_reference' => ['required', 'string', 'max:64'],
+        ]);
+        try {
+            $payments->markPayoutSent($payment, $request->user(), $data['payout_reference']);
+        } catch (ContractorMarketplaceException $exception) {
+            return back()->with('error', $exception->getMessage());
+        }
+
+        return back()->with('success', 'Transfer recorded. The contractor has been told.');
     }
 
     public function markPayout(Request $request, RepairJobPayment $payment, RepairJobPaymentService $payments)

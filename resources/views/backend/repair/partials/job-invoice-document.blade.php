@@ -12,7 +12,7 @@
     $billContact = $billTo['contact'] ?? null;
     $showContact = filled($billContact) && $billContact !== $billName;
     $showContractorBank = (bool) ($showContractorBank ?? false);
-    $cardPayment = $invoice->cardPayment;
+    $cardPayment = method_exists($invoice, 'cardPayment') ? $invoice->cardPayment : null;
     $platformFee = (! $showContractorBank && isset($charge) && ($charge['bearer'] ?? '') === 'landlord' && (float) ($charge['commission'] ?? 0) >= 0.01)
         ? $charge
         : null;
@@ -109,7 +109,7 @@
                 <div><span>Date of supply</span><span>{{ rs_date($invoice->supplied_on) }}</span></div>
             @endif
             <div><span>Due</span><span>{{ rs_date($invoice->due_on) }}</span></div>
-            <div><span>Job</span><span>{{ $offer->repairIssue?->reference_number ?: 'Repair #'.$offer->repair_issue_id }}</span></div>
+            <div><span>Job</span><span>{{ $jobLabel ?? ($offer->repairIssue?->reference_number ?: 'Repair #'.$offer->repair_issue_id) }}</span></div>
         </div>
     </div>
 
