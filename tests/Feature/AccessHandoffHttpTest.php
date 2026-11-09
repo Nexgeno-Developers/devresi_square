@@ -204,6 +204,19 @@ class AccessHandoffHttpTest extends TestCase
             'status' => 'disabled',
             'can_login' => 0,
         ]);
+
+        \Illuminate\Support\Facades\Auth::logout();
+        $this->from(route('login'))
+            ->post(route('login'), ['email' => $tenant->email, 'password' => 'password'])
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('error', 'Your access to this portal has been removed. Ask your landlord to invite you again.');
+        $this->assertGuest();
+
+        $this->from(route('backend.login'))
+            ->post(route('backend.login.post'), ['email' => $tenant->email, 'password' => 'password'])
+            ->assertRedirect(route('backend.login'))
+            ->assertSessionHas('error', 'Your access to this portal has been removed. Ask your landlord to invite you again.');
+        $this->assertGuest();
     }
 
     public function test_landlord_without_a_role_can_open_the_workspace_and_an_estate_agent_cannot_open_agency_books(): void
@@ -240,6 +253,20 @@ class AccessHandoffHttpTest extends TestCase
         $this->actingAs($agent)->withSession($session)
             ->get(route('admin.offers.index'))
             ->assertForbidden();
+    }
+
+    public function test_tenant_cannot_open_the_compliance_board_or_change_certificates(): void
+    {
+        [$landlord, $accountId, $tenant] = $this->createLandlord('compliance');
+        $this->attachLet($accountId, $landlord, $tenant, '7 Certificate Road', 'C7 7CC');
+        $session = ['current_account_id' => $accountId];
+
+        $this->actingAs($tenant)->withSession($session)->get(route('admin.compliance.index'))->assertForbidden();
+        $this->actingAs($tenant)->withSession($session)->postJson(route('admin.compliance.share'), [])->assertForbidden();
+        $this->actingAs($tenant)->withSession($session)->postJson(route('admin.compliance.store'), [])->assertForbidden();
+        $this->actingAs($tenant)->withSession($session)->deleteJson(route('admin.compliance.delete', 1))->assertForbidden();
+
+        $this->actingAs($landlord)->withSession($session)->get(route('admin.compliance.index'))->assertOk();
     }
 
     public function test_tenant_opens_only_uploads_shared_with_them_and_cannot_delete_landlord_files(): void

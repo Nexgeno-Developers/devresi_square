@@ -480,7 +480,9 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::delete('/delete/{tenancyType}', 'destroy')->name('destroy');  // Delete tenancy type
         });
 
-        Route::prefix('compliance')->name('compliance.')->controller(ComplianceController::class)->group(function () {
+        // Tenants and other portal users see certificates through shared documents,
+        // never the landlord's compliance board or its upload and delete actions.
+        Route::prefix('compliance')->name('compliance.')->middleware('not.portal')->controller(ComplianceController::class)->group(function () {
             Route::get('/', 'certificates')->name('index');
             Route::post('/share-certificate', 'shareCertificate')->name('share');
             Route::get('/type/form/{complianceTypeId}/{complianceRecordId?}', 'getComplianceForm')->name('type.form');

@@ -29,7 +29,19 @@ class AuthenticateController
         ]);
 
         if (Auth::attempt($request->only('email','password'), $request->boolean('remember'))) {
-            return PostLoginRedirect::to(User::find(Auth::id()));
+            $user = User::find(Auth::id());
+
+            if (PostLoginRedirect::accessRemoved($user)) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+
+                return back()
+                    ->with('error', PostLoginRedirect::ACCESS_REMOVED)
+                    ->withInput($request->only('email'));
+            }
+
+            return PostLoginRedirect::to($user);
         }
 
         return back()

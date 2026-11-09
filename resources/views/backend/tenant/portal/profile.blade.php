@@ -9,7 +9,12 @@
             <h1>{{ $user->first_name ?: $user->name }}</h1>
             <p class="tp-muted mb-0">{{ $user->email }}</p>
         </div>
-        <a class="tp-btn tp-btn-ghost" href="{{ route('tenant.notifications') }}" data-profile-prefs="1">Notification prefs</a>
+        {{-- On a phone the Me tab is the only way to these pages. --}}
+        <div class="d-flex flex-wrap gap-2" data-profile-links="1">
+            <a class="tp-btn tp-btn-ghost" href="{{ route('tenant.tenancy') }}">My tenancy</a>
+            <a class="tp-btn tp-btn-ghost" href="{{ route('tenant.calendar') }}">Calendar</a>
+            <a class="tp-btn tp-btn-ghost" href="{{ route('tenant.notifications') }}" data-profile-prefs="1">Notification prefs</a>
+        </div>
     </div>
 
     <div class="tp-card mb-3" data-tenant-notices="profile">

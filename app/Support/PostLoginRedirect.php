@@ -37,4 +37,24 @@ final class PostLoginRedirect
     {
         return redirect()->route(self::routeName($user));
     }
+
+    public const ACCESS_REMOVED = 'Your access to this portal has been removed. Ask your landlord to invite you again.';
+
+    /**
+     * A portal user whose every account membership was revoked has nowhere to
+     * go, so sign-in is refused instead of opening a session on a 403 page.
+     * Contractors work without an account membership and are left alone.
+     */
+    public static function accessRemoved(User $user): bool
+    {
+        if ($user->isSuperAdmin() || $user->hasRole('Contractor')) {
+            return false;
+        }
+
+        if (! $user->accountUsers()->exists()) {
+            return false;
+        }
+
+        return ! $user->accountUsers()->where('status', 'active')->where('can_login', true)->exists();
+    }
 }
