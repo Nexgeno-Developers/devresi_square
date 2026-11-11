@@ -15,7 +15,13 @@
             <p>Your tenancy, rent and repairs in one place.</p>
         </div>
         @if($activeTenancy)
-            <a class="tp-btn" href="{{ route('tenant.tenancy') }}" data-home-tenancy="1">View my tenancy</a>
+            <div class="d-flex flex-wrap gap-2">
+                <a class="tp-btn" href="{{ route('tenant.tenancy') }}" data-home-tenancy="1">View my tenancy</a>
+                @if($activeTenancy->status === 'Active' && \App\Support\Messaging\MessagingBadge::area() === 'portal')
+                    @php $managerLabel = \App\Support\Messaging\Party::account((int) $activeTenancy->account_id)->roleLabel() === 'Letting agent' ? 'agent' : 'landlord'; @endphp
+                    @include('messaging.partials.start-button', ['area' => 'portal', 'context' => 'tenancy', 'id' => $activeTenancy->id, 'label' => 'Message your '.$managerLabel, 'class' => 'tp-btn tp-btn-ghost'])
+                @endif
+            </div>
         @endif
     </div>
 

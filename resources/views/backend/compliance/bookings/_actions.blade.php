@@ -69,6 +69,11 @@
             <button class="btn btn-sm btn-outline-primary" type="submit">Save rating</button>
         </form>
     @endif
+    @if(in_array($offer->status, \App\Services\Messaging\RelationshipChecker::COMPLIANCE_LIVE, true) && \App\Support\Messaging\MessagingBadge::area() === 'admin')
+        <div>
+            @include('messaging.partials.start-button', ['area' => 'admin', 'context' => 'compliance-job', 'id' => $offer->id, 'label' => 'Message the contractor directly'])
+        </div>
+    @endif
     @if($offer->canMessage())
         <div>
             @foreach($offer->messages as $message)

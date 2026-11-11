@@ -1529,6 +1529,33 @@ body.tp-confirm-lock {
         color: #ff5c1d;
     }
 
+    /* Unread messages dot on the Messages tab. */
+    .tp-bottom-nav__dot {
+        position: absolute;
+        top: -2px;
+        right: -6px;
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #ff5c1d;
+        border: 2px solid #0b1220;
+    }
+
+    /* Six tabs (with Messages) on a 375px phone: a little less padding and type. */
+    .tp-bottom-nav--six .tp-bottom-nav__item {
+        padding-left: 0;
+        padding-right: 0;
+        font-size: 0.63rem;
+        letter-spacing: -0.01em;
+    }
+
+    .tp-bottom-nav__item > span:last-child {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     .tenant-portal {
         padding: 8px 10px 24px;
     }

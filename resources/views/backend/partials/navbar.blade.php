@@ -113,7 +113,42 @@
                         ->when(! $notificationShowsEveryAccount && ! $notificationAccountId, fn ($query) => $query->whereRaw('1 = 0'));
                     $appointmentNotificationCount = (clone $appointmentNotificationQuery)->count();
                     $appointmentNotifications = $appointmentNotificationQuery->latest()->take(5)->get();
+                    $navMessaging = \App\Support\Messaging\MessagingBadge::current();
                 @endphp
+                @if($navMessaging)
+                    @php $navMessagingTotal = \App\Support\Messaging\MessagingBadge::total(); @endphp
+                    {{-- Phones already reach Messages from the menu or the bottom tab; dropping the icon keeps the bar on one row. --}}
+                    <style>@media (max-width: 575.98px) { #header .rs-notify-messages { display: none !important; } }</style>
+                    <a class="rs-notify rs-notify-messages position-relative" href="{{ \App\Support\Messaging\MessagingBadge::url() }}"
+                        aria-label="Messages{{ $navMessagingTotal ? ', '.$navMessagingTotal.' unread' : '' }}"
+                        data-msg-unread-url="{{ \App\Support\Messaging\MessagingArea::route($navMessaging['area'], 'unread') }}">
+                        <i class="bi bi-envelope"></i>
+                        <span class="rs-notify-count" data-msg-nav-count @if(! $navMessagingTotal) hidden @endif>{{ $navMessagingTotal > 99 ? '99+' : $navMessagingTotal }}</span>
+                    </a>
+                    <script>
+                    (function () {
+                        var link = document.currentScript.previousElementSibling;
+                        var url = link && link.getAttribute('data-msg-unread-url');
+                        if (!url) { return; }
+                        var every = {{ (int) config('messaging.poll.badge_seconds') }} * 1000;
+                        function refresh() {
+                            if (document.hidden) { return; }
+                            fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+                                .then(function (r) { return r.ok ? r.json() : null; })
+                                .then(function (d) {
+                                    if (!d) { return; }
+                                    var total = (d.unread || 0) + (d.requests || 0);
+                                    document.querySelectorAll('[data-msg-nav-count], [data-msg-badge], [data-msg-bottom-dot]').forEach(function (el) {
+                                        if (el.hasAttribute('data-msg-bottom-dot')) { el.hidden = total === 0; return; }
+                                        el.textContent = total > 99 ? '99+' : total;
+                                        el.hidden = total === 0;
+                                    });
+                                }).catch(function () {});
+                        }
+                        setInterval(refresh, every);
+                    })();
+                    </script>
+                @endif
                 <div class="dropdown">
                     <button class="rs-notify position-relative" type="button" data-bs-toggle="dropdown"
                         aria-expanded="false" aria-label="Notifications">

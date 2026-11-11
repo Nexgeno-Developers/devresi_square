@@ -26,6 +26,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('contractors:sweep')->hourly()->withoutOverlapping();
         $schedule->command('accounts:trial-expiry-warning')->dailyAt('08:00');
         $schedule->command('accounts:monthly-summary')->monthlyOn(1, '08:00');
+        $schedule->command('messaging:maintain')->dailyAt('02:30')->withoutOverlapping();
+        // cPanel has no long-running worker: drain queued jobs from the minute cron.
+        $schedule->command('queue:work --stop-when-empty --max-time=55')->everyMinute()->withoutOverlapping();
     })
     ->withMiddleware(function (Middleware $middleware) {
         // Append global middleware
@@ -69,6 +72,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenancy.manage' => \App\Http\Middleware\RestrictTenancyManagement::class,
             'portal.tenant' => \App\Http\Middleware\EnsureTenantPortal::class,
             'legacy.contractors' => \App\Http\Middleware\LegacyContractorModule::class,
+            'messaging.as' => \App\Http\Middleware\EnsureMessagingIdentity::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

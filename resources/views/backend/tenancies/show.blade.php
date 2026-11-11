@@ -203,6 +203,9 @@
                                     @endif
                                 </small>
                             </p>
+                            @if($tenancy->status === 'Active' && $member->user_id && \App\Support\Messaging\MessagingBadge::area() === \App\Support\Messaging\MessagingArea::ADMIN)
+                                @include('messaging.partials.start-button', ['area' => 'admin', 'context' => 'tenant', 'id' => $member->id, 'label' => 'Message'])
+                            @endif
                         </div>
                     @empty
                         <p class="text-muted mb-0">No tenants linked yet.</p>

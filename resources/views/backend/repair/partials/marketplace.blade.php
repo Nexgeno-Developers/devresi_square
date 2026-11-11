@@ -181,6 +181,11 @@
                 'action' => route('admin.property_repairs.job_offers.message', $awarded),
                 'class' => 'mt-3 pt-2 border-top',
             ])
+            @if(in_array($awarded->status, \App\Services\Messaging\RelationshipChecker::REPAIR_LIVE, true) && \App\Support\Messaging\MessagingBadge::area() === 'admin')
+                <div class="mt-2">
+                    @include('messaging.partials.start-button', ['area' => 'admin', 'context' => 'repair-job', 'id' => $awarded->id, 'label' => 'Message the contractor directly'])
+                </div>
+            @endif
         @elseif($closed)
             <p class="mb-0 text-muted">This repair is closed.</p>
         @else

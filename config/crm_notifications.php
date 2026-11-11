@@ -323,6 +323,22 @@ $events = [
             'subject' => 'Your property statement is ready',
             'message' => 'A new statement for [[property_address]] is ready to view.',
         ],
+        // Messaging: in-app for every message, email only for new requests.
+        CrmNotificationEvent::MessageRequestReceived->value => [
+            'category' => 'messages', 'priority' => 'normal', 'channels' => $both,
+            'subject' => 'New message request',
+            'message' => 'Someone would like to message you. Open your message requests to reply.',
+        ],
+        CrmNotificationEvent::MessageRequestAccepted->value => [
+            'category' => 'messages', 'priority' => 'normal', 'channels' => ['system'],
+            'subject' => 'Message request accepted',
+            'message' => 'Your message request was accepted. You can chat now.',
+        ],
+        CrmNotificationEvent::MessageReceived->value => [
+            'category' => 'messages', 'priority' => 'normal', 'channels' => ['system'],
+            'subject' => 'New message',
+            'message' => 'You have a new message.',
+        ],
         CrmNotificationEvent::DeliveryFailed->value => [
             'category' => 'system', 'priority' => 'critical', 'channels' => ['system'], 'locked_channels' => ['system'],
             'subject' => 'Notification delivery failed',
@@ -362,6 +378,7 @@ return [
         'tenancy' => env('CRM_NOTIFICATIONS_TENANCIES_ENABLED', true),
         'compliance' => env('CRM_NOTIFICATIONS_COMPLIANCE_ENABLED', true),
         'finance' => env('CRM_NOTIFICATIONS_FINANCE_ENABLED', true),
+        'message' => env('CRM_NOTIFICATIONS_MESSAGES_ENABLED', true),
         'system' => true,
     ],
     'legacy_aliases' => [

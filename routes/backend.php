@@ -218,6 +218,18 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         Route::post('subscriptions/{subscription}/extend-trial', [\App\Http\Controllers\Backend\Saas\SubscriptionController::class, 'extendTrial'])->name('subscriptions.extend-trial');
         Route::get('billing', [\App\Http\Controllers\Backend\Saas\PlatformBillingController::class, 'index'])->name('billing.index');
         Route::post('accounts/{account}/status', [\App\Http\Controllers\Backend\Saas\AccountController::class, 'updateStatus'])->name('accounts.status');
+        Route::get('message-reports', [\App\Http\Controllers\Backend\Saas\MessageReportController::class, 'index'])->name('message-reports.index');
+        Route::get('message-reports/{report}', [\App\Http\Controllers\Backend\Saas\MessageReportController::class, 'show'])->name('message-reports.show');
+        Route::post('message-reports/{report}', [\App\Http\Controllers\Backend\Saas\MessageReportController::class, 'resolve'])->name('message-reports.resolve');
+    });
+
+    // Messaging: workspace inbox (owner, admin, staff) and the portal inbox
+    // (tenants and other portal contacts). The acting party comes from the group.
+    Route::middleware(['current.account', 'account.status'])->group(function () {
+        \App\Support\Messaging\MessagingRoutes::register(\App\Support\Messaging\MessagingArea::ADMIN);
+        Route::prefix('portal')->group(function () {
+            \App\Support\Messaging\MessagingRoutes::register(\App\Support\Messaging\MessagingArea::PORTAL);
+        });
     });
 
     Route::middleware(['current.account', 'account.status'])->group(function () {

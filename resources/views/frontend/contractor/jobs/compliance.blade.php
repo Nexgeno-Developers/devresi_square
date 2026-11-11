@@ -188,6 +188,11 @@
         @endif
     @endif
 
+    @if(in_array($offer->status, \App\Services\Messaging\RelationshipChecker::COMPLIANCE_LIVE, true))
+        <div class="mt-3">
+            @include('messaging.partials.start-button', ['area' => 'contractor', 'context' => 'compliance-job', 'id' => $offer->id, 'label' => 'Message the landlord directly'])
+        </div>
+    @endif
     @if($offer->canMessage())
         <div class="card mt-3" id="messages">
             <div class="card-body d-flex flex-column gap-2">

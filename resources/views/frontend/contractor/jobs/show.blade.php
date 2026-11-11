@@ -400,6 +400,11 @@
         </div>
     @endif
 
+    @if(in_array($offer->status, \App\Services\Messaging\RelationshipChecker::REPAIR_LIVE, true))
+        <div class="mb-3">
+            @include('messaging.partials.start-button', ['area' => 'contractor', 'context' => 'repair-job', 'id' => $offer->id, 'label' => 'Message the landlord directly'])
+        </div>
+    @endif
     @if($offer->messages->isNotEmpty() || ($offer->canMessage() && ! $offer->isFinished()))
         <section class="contractor-panel" id="messages">
             @include('backend.repair.partials.job-thread', [

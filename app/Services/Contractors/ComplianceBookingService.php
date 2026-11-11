@@ -366,7 +366,9 @@ class ComplianceBookingService
         $this->mail->toUser(
             $offer->contractor,
             'You are booked for '.$check,
-            '<p>The landlord accepted your quote for '.e($check).'.</p><p>'.e($address).'</p><p><a href="'.e($url).'">Open the job</a></p>'
+            '<p>The landlord accepted your quote for '.e($check).'.</p><p>'.e($address).'</p><p><a href="'.e($url).'">Open the job</a>'
+            .(config('messaging.enabled', true) ? ' · <a href="'.e(route('contractor.messages.start', ['context' => 'compliance-job', 'id' => $offer->id])).'">Message the landlord</a>' : '')
+            .'</p>'
         );
         $this->mail->bell($offer->contractor, 'Booked: '.$check, 'The landlord accepted your quote. The address is on the job.', $url, (int) $booking->account_id, 'compliance.booking');
     }

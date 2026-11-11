@@ -27,6 +27,11 @@
                     </div>
                     <span class="tp-pill {{ $tenancy->status === 'Active' ? 'is-active' : '' }}">{{ $tenancy->status }}</span>
                 </div>
+                @if($tenancy->status === 'Active' && \App\Support\Messaging\MessagingBadge::area() === 'portal')
+                    <div class="mb-3">
+                        @include('messaging.partials.start-button', ['area' => 'portal', 'context' => 'tenancy', 'id' => $tenancy->id, 'label' => 'Message about this home', 'class' => 'tp-btn tp-btn-ghost'])
+                    </div>
+                @endif
                 <dl class="tp-dl" data-let-facts="tenant">
                     <dt>Move in</dt>
                     <dd data-let-move-in>{{ rs_date($tenancy->move_in) }}</dd>
