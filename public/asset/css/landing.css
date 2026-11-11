@@ -247,6 +247,8 @@ h2 {
     margin-top: 28px;
 }
 
+.close .hero-actions { margin-top: 28px; flex-wrap: wrap; }
+
 .hero-stage {
     position: relative;
     z-index: 1;
@@ -971,17 +973,41 @@ h2 {
 
     .spec li + li { padding-left: 0; }
 
-    .spec ol { gap: 0; }
+    /* Five short labels: let them flow across the row instead of stacking. */
+    .spec ol {
+        display: flex;
+        flex-wrap: wrap;
+        column-gap: 28px;
+    }
 
-    .nav-links, .btn-ghost, .rail, .steps { display: none; }
+    .spec li { padding: 14px 0; }
 
-    .screen-caption { display: block; margin-bottom: 14px; }
+    /* Keep Pricing and Login reachable once there is no room for the demo button. */
+    .nav-inner { gap: 20px; }
 
-    .screen + .screen { margin-top: 56px; }
+    .btn-ghost, .rail, .steps { display: none; }
 
-    .stage { min-height: 0; padding: 72px 0; }
+    .screen-caption {
+        display: block;
+        padding: 22px 20px 16px;
+        background: var(--paper);
+    }
+
+    .screen-caption h3 { margin: 8px 0 6px; }
+
+    .screen-caption p { margin: 0; }
+
+    .screen + .screen { border-top: 1px solid var(--line); }
+
+    .stage { min-height: 0; padding: 72px 0; gap: 20px; }
+
+    .stage-copy { padding-left: 0; }
+
+    .stage-copy .eyebrow { margin: 0; }
 
     .stage-screens { min-height: 0; }
+
+    .stage-screens .app { min-height: 0; }
 
     .app { grid-template-columns: 1fr; }
 
@@ -1005,6 +1031,16 @@ h2 {
 }
 
 @media (max-width: 640px) {
+    .nav-inner { gap: 14px; }
+
+    .nav-links { gap: 14px; }
+
+    .nav-links a[href="#product"], .nav-links a[href$="/pricing"] { display: none; }
+
+    .spec ol { column-gap: 20px; }
+
+    .spec li { padding: 12px 0; font-size: 13px; }
+
     .table:not(.roles) .tr { grid-template-columns: minmax(0, 1.45fr) auto minmax(7.4rem, 0.85fr); }
 
     .table:not(.roles) .tr span:nth-child(2) { display: none; }

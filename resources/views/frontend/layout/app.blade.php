@@ -59,9 +59,9 @@
     <div class="container mt-4">
         @yield('content')
     </div>
-    <script src="asset/js/jquery.min.js"></script>
-    <script src="asset/js/bootstrap.bundle.min.js"></script>
-    <script src="asset/js/toastr.min.js"></script>
+    <script src="{{ asset('asset/js/jquery.min.js') }}"></script>
+    <script src="{{ asset('asset/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ asset('asset/js/toastr.min.js') }}"></script>
     @yield('page.scripts') 
     <script>
         @foreach (session('flash_notification', collect())->toArray() as $message)

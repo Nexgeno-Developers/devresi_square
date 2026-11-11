@@ -11,7 +11,7 @@
     <title>{{ $code }} · Resisquare</title>
     <style>
         :root { --ink:#1c181c; --muted:#5b6573; --wash:#f4f6f8; --accent:#ff5c1d; --line:#e6e9ef; }
-        body { margin:0; min-height:100vh; display:grid; place-items:center; background:var(--wash); color:var(--ink); font-family:"Segoe UI",system-ui,sans-serif; }
+        body { margin:0; min-height:100vh; box-sizing:border-box; padding:1rem; display:grid; place-items:center; background:var(--wash); color:var(--ink); font-family:"Segoe UI",system-ui,sans-serif; }
         .box { text-align:center; max-width:28rem; padding:2rem 1.5rem; background:#fff; border:1px solid var(--line); border-radius:16px; }
         .code { letter-spacing:.14em; color:#0f173a; font-size:.78rem; font-weight:700; text-transform:uppercase; margin-bottom:.75rem; }
         h1 { font-size:1.35rem; font-weight:650; margin:0 0 .65rem; }

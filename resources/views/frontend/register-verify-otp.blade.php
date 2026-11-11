@@ -2,11 +2,11 @@
 
 @section('content')
 <section class="vh-80 gradient-custom">
-    <div class="container py-5 h-100">
-        <div class="row d-flex justify-content-center align-items-center h-100">
-            <div class="col-12 col-md-7 col-lg-5">
+    <div class="container py-4 py-md-5 px-0 px-sm-3 h-100">
+        <div class="row d-flex justify-content-center align-items-center h-100 mx-0">
+            <div class="col-12 col-md-9 col-lg-6 col-xl-5 px-0 px-sm-2">
                 <div class="card bg-light text-center" style="border-radius: 1rem;">
-                    <div class="card-body p-md-5 p-4">
+                    <div class="card-body p-3 p-sm-4 p-md-5">
 
                         <div class="mb-4">
                             @if($registration->verify_via === 'email')
@@ -51,16 +51,17 @@
                                 <input type="text"
                                        class="form-control form-control-lg text-center fw-bold"
                                        name="otp"
-                                       placeholder="_ _ _ _ _ _"
+                                       placeholder="••••••"
                                        maxlength="6"
                                        autocomplete="one-time-code"
                                        inputmode="numeric"
                                        pattern="[0-9]{6}"
-                                       style="font-size:2rem; letter-spacing:10px;"
+                                       aria-label="6-digit code"
+                                       style="font-size:clamp(1.5rem, 6vw, 2rem); letter-spacing:0.4em; text-indent:0.4em;"
                                        required autofocus />
                             </div>
 
-                            <button class="btn btn_outline_secondary btn-lg w-100" type="submit">
+                            <button class="btn btn_secondary btn-lg w-100 justify-content-center" type="submit">
                                 Verify &amp; Continue
                             </button>
                         </form>

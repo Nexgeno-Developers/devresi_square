@@ -143,7 +143,10 @@
         padding: 0.3rem;
         margin-bottom: 0.85rem;
         overflow-x: auto;
+        /* Still swipeable on narrow screens, without the heavy scrollbar under the tabs. */
+        scrollbar-width: none;
     }
+    .contractor-tabs::-webkit-scrollbar { display: none; }
     .contractor-tabs a {
         flex: 1 0 auto;
         text-align: center;
@@ -188,7 +191,11 @@
     @media (max-width: 700px) {
         .contractor-home-head, .contractor-alert { flex-direction: column; align-items: stretch; }
         .contractor-home-actions { align-items: flex-start; }
-        .contractor-stats { grid-template-columns: 1fr; }
+        /* Three short counts still fit side by side on a phone. */
+        .contractor-stats { gap: 0.5rem; }
+        .contractor-stat { padding: 0.7rem 0.75rem; }
+        .contractor-stat strong { font-size: 1.3rem; }
+        .contractor-stat span { font-size: 0.78rem; }
     }
 </style>
 @endpush

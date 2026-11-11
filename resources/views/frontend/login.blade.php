@@ -14,7 +14,7 @@
 
     @include('auth.partials.login-errors')
 
-    <form method="POST" action="{{ route('login.post') }}">
+    <form method="POST" action="{{ route('login.post') }}" class="auth-stack">
         @csrf
         <label class="auth-field">
             <span>Email</span>

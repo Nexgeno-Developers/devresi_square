@@ -9,6 +9,10 @@ class FormController
 {
     public function show($type)
     {
+        // No standalone form pages exist (forms are embedded, e.g. the book-a-demo modal),
+        // so an unknown type is a missing page, not a server error.
+        abort_unless(is_string($type) && preg_match('/^[a-z0-9_-]+$/i', $type) && view()->exists("forms.$type"), 404);
+
         return view("forms.$type", ['formType' => $type]);
     }
 

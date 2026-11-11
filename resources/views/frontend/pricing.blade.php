@@ -188,7 +188,7 @@
                             <h3>Assisted Import / Setup</h3>
                         </div>
                         <div class="price_table_content">
-                            <p class="price addon-price">Custom Pricing</p>
+                            <p class="price addon-price addon-price-custom">Custom Pricing</p>
                             <p class="desc">Dedicated data migration and workspace onboarding.</p>
                         </div>
                         <button type="button" class="btn btn_secondary pricing_btn" data-bs-toggle="modal" data-bs-target="#bookDemoModal">Contact Sales</button>
@@ -316,11 +316,6 @@
         </div>
     </section>
 
-    <section class="trusted_by_section">
-        <h4 class="my-5">Trusted by landlords and agencies alike</h4>
-        <div class="trusted_by_wrapper"></div>
-    </section>
-
     <div class="modal fade" id="bookDemoModal" tabindex="-1" aria-labelledby="bookDemoModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg rounded-4">
@@ -399,6 +394,10 @@
         .pricing_portfolio h3 {
             margin: 0 0 8px;
         }
+        .pricing_portfolio .btn {
+            display: inline-flex;
+            margin-top: 16px;
+        }
         .pricing_faq {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -465,8 +464,30 @@
         .pricing_plan_cards {
             grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 360px));
         }
-        .pricing_addon_cards {
-            grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+        /* Five add-ons: one row on desktop, centred rows on tablet, so no card is left stranded. */
+        .pricing_section .pricing_addon_cards {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 16px;
+        }
+        .pricing_section .pricing_addon_cards > .price_table {
+            flex: 1 1 200px;
+            max-width: 260px;
+            min-height: 0;
+        }
+        .pricing_section .pricing_tables.pricing_addon_cards .price_table .price_table_content {
+            padding: 20px 12px;
+        }
+        .pricing_section .pricing_tables .price_table .price_table_content .addon-price-custom {
+            white-space: normal;
+        }
+        .pricing_section .pricing_tables .price_table .price_table_content .addon-price {
+            white-space: nowrap;
+            font-size: 22px;
+        }
+        .pricing_section .pricing_tables .price_table .price_table_content .addon-price span {
+            font-size: 22px;
         }
         .why_us_cards {
             grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
@@ -599,6 +620,10 @@
         .pricing_section .addon-price {
             padding-top: 0;
         }
+        /* Matches main-style.css's nested .price rule so "Custom Pricing" sits at the same size as £5.00. */
+        .pricing_section .pricing_tables .price_table .price_table_content .addon-price {
+            font-size: 24px;
+        }
         .why_us_section {
             background: var(--white, #fff);
         }
@@ -640,6 +665,10 @@
             }
             .pricing_section .pricing_cards .price_table .price_table_content {
                 padding: 20px;
+            }
+            .pricing_section .pricing_addon_cards > .price_table {
+                flex-basis: 100%;
+                max-width: none;
             }
         }
     </style>
