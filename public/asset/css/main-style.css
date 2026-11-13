@@ -270,6 +270,9 @@ a.btn, button.btn{
     padding: 8px 10px;
     display: flex;
     align-items: center;
+    /* Keep labels centred like Bootstrap's own buttons; without this,
+       any full-width button (w-100, block) showed its label at the left. */
+    justify-content: center;
 }
 .btn:hover {
     background-color: var(--primary-bg-dark);
@@ -1069,5 +1072,17 @@ Responsive
                 margin-top: 16px;
             }
         }
+    }
+}
+/* Phones: keep the public header on one row. Book a demo stays on each page's own call to action. */
+@media (max-width: 575px) {
+    .frontend_top_header {
+        flex-wrap: nowrap;
+        align-items: center;
+        padding: 10px 12px;
+        .rs_logo img { height: 26px; width: auto; }
+        .navbar-nav { flex-wrap: nowrap; gap: 12px; }
+        .navbar-nav .pricing_btn { display: none; }
+        .nav-link { padding: 0; font-size: 14px; }
     }
 }

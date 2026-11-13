@@ -20,7 +20,7 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('password.reset') }}">
+    <form method="POST" action="{{ route('password.reset') }}" class="auth-stack">
         @csrf
         <input type="hidden" name="token" value="{{ $token }}">
         @if(! empty($email))

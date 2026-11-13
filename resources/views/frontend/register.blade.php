@@ -12,11 +12,11 @@
         : 0;
 @endphp
 <section class="vh-80 gradient-custom">
-    <div class="container py-5 h-100">
-        <div class="row d-flex justify-content-center align-items-center h-100">
-            <div class="col-12 col-md-8 col-lg-6 col-xl-5">
+    <div class="container py-4 py-md-5 px-0 px-sm-3 h-100">
+        <div class="row d-flex justify-content-center align-items-center h-100 mx-0">
+            <div class="col-12 col-md-10 col-lg-7 col-xl-5 px-0 px-sm-2">
                 <div class="card bg-light" style="border-radius: 1rem;">
-                    <div class="card-body p-md-4 p-4 text-center">
+                    <div class="card-body p-3 p-sm-4 text-center">
 
                         @if($selectedPlan ?? null)
                             <div class="alert alert-info text-start mb-4">
@@ -87,11 +87,14 @@
                                     <div class="col-12">
                                         <input type="tel" class="form-control form-control-lg"
                                                id="phone" name="phone"
-                                               placeholder="Phone Number (required for Phone OTP)" />
+                                               placeholder="Phone number" />
                                         <div class="invalid-feedback"></div>
+                                        @if($smsOtpAvailable ?? false)
+                                            <div class="form-text">Needed if you verify by phone.</div>
+                                        @endif
                                     </div>
 
-                                    <div class="col-md-6">
+                                    <div class="col-12">
                                         <div class="pw-wrap">
                                             <input type="password" class="form-control form-control-lg"
                                                    id="password" name="password"
@@ -101,7 +104,7 @@
                                         <div class="invalid-feedback"></div>
                                     </div>
 
-                                    <div class="col-md-6">
+                                    <div class="col-12">
                                         <div class="pw-wrap">
                                             <input type="password" class="form-control form-control-lg"
                                                    id="password_confirmation" name="password_confirmation"
@@ -144,7 +147,7 @@
                                 </div>
 
                                 <button type="submit" id="reg-submit-btn"
-                                        class="btn btn_outline_secondary btn-lg w-100 mt-4">
+                                        class="btn btn_secondary btn-lg w-100 mt-4 justify-content-center">
                                     Send Verification Code
                                 </button>
                             </form>
@@ -169,16 +172,17 @@
                                     <input type="text"
                                            class="form-control form-control-lg text-center fw-bold"
                                            id="otp-input" name="otp"
-                                           placeholder="_ _ _ _ _ _"
+                                           placeholder="••••••"
                                            maxlength="6"
                                            autocomplete="one-time-code"
                                            inputmode="numeric"
                                            pattern="[0-9]{6}"
-                                           style="font-size:2rem; letter-spacing:10px;"
+                                           aria-label="6-digit code"
+                                           style="font-size:clamp(1.5rem, 6vw, 2rem); letter-spacing:0.4em; text-indent:0.4em;"
                                            required />
                                 </div>
 
-                                <button type="submit" class="btn btn_outline_secondary btn-lg w-100">
+                                <button type="submit" class="btn btn_secondary btn-lg w-100 justify-content-center">
                                     Verify &amp; Continue
                                 </button>
                             </form>

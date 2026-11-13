@@ -31,9 +31,9 @@
         @yield('content')
     </div>
     <x-frontend.footer/>
-    <script src="asset/js/jquery.min.js"></script>
-    <script src="asset/js/bootstrap.bundle.min.js"></script>
-    <script src="asset/js/carousel.js"></script>
+    <script src="{{ asset('asset/js/jquery.min.js') }}"></script>
+    <script src="{{ asset('asset/js/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ asset('asset/js/carousel.js') }}"></script>
     <script src="//cdn.jsdelivr.net/gh/kenwheeler/slick@1.8.0/slick/slick.min.js"></script>
     
     @yield('page.scripts') 

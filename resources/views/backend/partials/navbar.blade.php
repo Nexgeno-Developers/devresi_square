@@ -28,11 +28,14 @@
             <div class="rs_logo">
                 <img src="{{ site_header_logo_url() }}" alt="Resisquare logo">
             </div>
+            @auth
+            {{-- Signed-out pages that reuse this bar (register) have no side menu to toggle. --}}
             <div class="toggle_icon_wrapper rs_tooltip hide-menu" data-label="Toggle Side Menu">
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-text-left toggle_icon" viewBox="0 0 16 16" alt="Toggle Menu">
                     <path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5m0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5"/>
                 </svg>
             </div>
+            @endauth
             @auth
                 @if(session()->has('impersonator_user_id'))
                     <span class="small text-muted text-nowrap">Viewing {{ current_account()?->account_name ?: 'customer account' }}</span>

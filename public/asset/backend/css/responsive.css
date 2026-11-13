@@ -88,8 +88,10 @@
         padding-bottom: 90px;
     }
 
-    .alert {
-        bottom: 50px;
+    /* Lift the floating notice stack above the fixed bottom button bar.
+       Scoped to the wrapper: on a bare .alert it shifted every inline alert 50px up. */
+    .alert_wrapper {
+        bottom: 62px;
     }
 
     .top_button {

@@ -65,6 +65,17 @@
     .job-invoice .pay p, .job-invoice .note p { margin: 0; }
     .job-invoice .status { margin-top: 18px; }
     .job-invoice .foot { margin: 28px 0 0; font-size: 12px; color: #666; }
+    /* Phones: stack the header, parties and dates so nothing runs past the page edge. */
+    @media (max-width: 600px) {
+        .job-invoice { padding: 22px 16px 18px; font-size: 13px; }
+        .job-invoice h1 { font-size: 22px; white-space: nowrap; }
+        .job-invoice .who, .job-invoice .parties { flex-direction: column; gap: 14px; }
+        .job-invoice .supplier { text-align: left; }
+        .job-invoice .supplier, .job-invoice .parties { overflow-wrap: anywhere; }
+        .job-invoice .parties { margin-top: 18px; }
+        .job-invoice .dates { margin-left: 0; min-width: 0; width: 100%; }
+        .job-invoice th, .job-invoice td { padding: 6px 4px; }
+    }
     @media print {
         body * { visibility: hidden; }
         .job-invoice, .job-invoice * { visibility: visible; }

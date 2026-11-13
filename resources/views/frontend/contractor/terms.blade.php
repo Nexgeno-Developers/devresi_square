@@ -1,7 +1,27 @@
 @extends('layouts.auth')
 
 @section('title', 'Contractor terms and privacy · Resisquare')
-@section('shell_class', 'auth-onboard')
+@section('shell_class', 'auth-onboard auth-doc')
+
+@push('styles')
+    <style>
+        /* A reading page: paragraph margins add to the card's grid gap, so drop them and space by section. */
+        .auth-doc .auth-form { gap: 0.7rem; }
+        .auth-doc .auth-form p { margin: 0; line-height: 1.55; }
+        .auth-doc .auth-form .auth-muted { line-height: 1.45; }
+        .auth-doc .auth-h3 { margin-top: 0.9rem; }
+        .auth-doc .auth-link { justify-self: start; margin-top: 0.4rem; }
+
+        @media (min-width: 801px) {
+            .auth-doc { width: min(680px, 100%); }
+            .auth-doc .auth-form { padding: 2rem 2.25rem 1.75rem; }
+        }
+
+        @media (max-width: 480px) {
+            .auth-shell:has(.auth-doc) { padding: 0.75rem; }
+        }
+    </style>
+@endpush
 
 @section('content')
     <p class="auth-mark">{{ get_setting('website_name') ?: 'Resisquare' }} for contractors</p>
