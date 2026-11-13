@@ -8,11 +8,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ConversationParticipant extends Model
 {
-    protected $fillable = ['conversation_id', 'party_type', 'party_id', 'archived_at', 'muted_until'];
+    public const LANDLORD = 'landlord';
+
+    public const TENANT = 'tenant';
+
+    public const CONTRACTOR = 'contractor';
+
+    protected $fillable = ['conversation_id', 'party_type', 'party_id', 'role', 'left_at'];
 
     protected $casts = [
-        'archived_at' => 'datetime',
-        'muted_until' => 'datetime',
+        'left_at' => 'datetime',
     ];
 
     public function conversation(): BelongsTo
@@ -23,5 +28,14 @@ class ConversationParticipant extends Model
     public function party(): Party
     {
         return Party::make($this->party_type, (int) $this->party_id);
+    }
+
+    public function roleLabel(): string
+    {
+        return match ($this->role) {
+            self::LANDLORD => $this->party()->roleLabel(),
+            self::CONTRACTOR => 'Contractor',
+            default => 'Tenant',
+        };
     }
 }

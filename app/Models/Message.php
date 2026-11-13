@@ -7,24 +7,17 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Message extends Model
 {
     use HasUlids;
-    use SoftDeletes;
 
     public const TEXT = 'text';
 
     public const SYSTEM = 'system';
 
     protected $fillable = [
-        'conversation_id', 'sender_party_type', 'sender_party_id', 'user_id', 'body', 'masked', 'kind', 'removed_at', 'removed_by',
-    ];
-
-    protected $casts = [
-        'masked' => 'boolean',
-        'removed_at' => 'datetime',
+        'conversation_id', 'sender_party_type', 'sender_party_id', 'user_id', 'body', 'kind',
     ];
 
     public function uniqueIds(): array
@@ -52,18 +45,18 @@ class Message extends Model
         return $this->hasMany(MessageAttachment::class);
     }
 
-    public function senderParty(): Party
+    public function isSystem(): bool
     {
-        return Party::make($this->sender_party_type, (int) $this->sender_party_id);
+        return $this->kind === self::SYSTEM;
+    }
+
+    public function senderParty(): ?Party
+    {
+        return $this->sender_party_type ? Party::make($this->sender_party_type, (int) $this->sender_party_id) : null;
     }
 
     public function sentBy(Party $party): bool
     {
-        return $this->senderParty()->is($party);
-    }
-
-    public function isRemoved(): bool
-    {
-        return $this->removed_at !== null;
+        return $this->senderParty()?->is($party) ?? false;
     }
 }

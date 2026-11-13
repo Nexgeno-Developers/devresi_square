@@ -137,7 +137,7 @@
                                 .then(function (r) { return r.ok ? r.json() : null; })
                                 .then(function (d) {
                                     if (!d) { return; }
-                                    var total = (d.unread || 0) + (d.requests || 0);
+                                    var total = d.unread || 0;
                                     document.querySelectorAll('[data-msg-nav-count], [data-msg-badge], [data-msg-bottom-dot]').forEach(function (el) {
                                         if (el.hasAttribute('data-msg-bottom-dot')) { el.hidden = total === 0; return; }
                                         el.textContent = total > 99 ? '99+' : total;

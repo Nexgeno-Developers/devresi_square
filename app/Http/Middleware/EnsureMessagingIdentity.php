@@ -24,7 +24,6 @@ class EnsureMessagingIdentity
         $user = $request->user();
         abort_unless($user && ! $user->isSuperAdmin(), 403);
         // Super Admin "log in as account" must not open private conversations.
-        // Super Admin only ever sees reported messages, in the moderation queue.
         abort_if($request->hasSession() && $request->session()->has('impersonator_user_id'), 403, 'Messages are private, so they are hidden while you are logged in as this account.');
 
         $party = match ($area) {

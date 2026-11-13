@@ -86,6 +86,10 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->stabiliseSmtpTransport();
         Event::observe(EventObserver::class);
+        // Messaging: chats open and archive with tenancies and assigned jobs.
+        foreach ([\App\Models\Tenancy::class, \App\Models\TenantMember::class, \App\Models\RepairJobOffer::class, \App\Models\ComplianceJobOffer::class] as $messagingModel) {
+            $messagingModel::observe(\App\Observers\MessagingLifecycleObserver::class);
+        }
         Blade::component('components.frontend.form', 'form-component');
         Blade::component('components.backend.notes.notes', 'backend-notes-component');
         Blade::component('components.backend.documents.documents', 'backend-documents-component');

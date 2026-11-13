@@ -26,20 +26,19 @@
     .msg-bubble { max-width: min(560px, 85%); padding: 8px 12px; border-radius: 14px; background: var(--msg-theirs); align-self: flex-start; word-wrap: break-word; overflow-wrap: anywhere; }
     .msg-bubble.is-mine { align-self: flex-end; background: var(--msg-mine); color: var(--msg-mine-text); }
     .msg-bubble.is-mine .msg-muted, .msg-bubble.is-mine a { color: rgba(255,255,255,.85); }
-    .msg-bubble.is-gone { background: transparent; border: 1px dashed var(--msg-border); color: var(--msg-muted); font-style: italic; }
     .msg-meta { font-size: .72rem; margin-top: 4px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .msg-files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
     .msg-files img { max-width: 160px; max-height: 120px; border-radius: 8px; display: block; }
     .msg-file { display: inline-flex; gap: 4px; align-items: center; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.06); font-size: .8rem; }
+    .msg-system { align-self: center; max-width: 90%; text-align: center; font-size: .8rem; color: var(--msg-muted); background: var(--msg-soft); border-radius: 10px; padding: 6px 12px; }
+    .msg-people { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: .8rem; color: var(--msg-muted); }
+    .msg-people span strong { color: #374151; font-weight: 600; }
     .msg-divider { text-align: center; font-size: .75rem; color: var(--msg-accent); margin: 4px 0; }
     .msg-composer { border-top: 1px solid var(--msg-border); padding: 12px 16px; }
     .msg-composer textarea { width: 100%; resize: vertical; min-height: 64px; border: 1px solid var(--msg-border); border-radius: 10px; padding: 8px 10px; }
     .msg-composer-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
     .msg-note { padding: 10px 16px; background: #fff8e6; border-bottom: 1px solid #f3e2b3; font-size: .85rem; }
     .msg-readonly { padding: 14px 16px; border-top: 1px solid var(--msg-border); color: var(--msg-muted); text-align: center; }
-    .msg-card { border: 1px solid var(--msg-border); border-radius: 12px; padding: 14px 16px; background: var(--msg-bg); margin-bottom: 12px; }
-    .msg-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-    .msg-actions form { margin: 0; }
     .msg-btn-link { background: none; border: 0; padding: 0; color: inherit; text-decoration: underline; font-size: inherit; cursor: pointer; }
     details.msg-menu summary { cursor: pointer; list-style: none; }
     details.msg-menu summary::-webkit-details-marker { display: none; }

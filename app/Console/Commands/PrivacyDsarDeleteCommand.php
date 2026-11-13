@@ -39,7 +39,7 @@ class PrivacyDsarDeleteCommand extends Command
             'Disable tenant_members.can_login for this user'.($accountId ? " (account {$accountId})" : ''),
             'Disable account_users.can_login for this user'.($accountId ? " (account {$accountId})" : ''),
             'Retain rent invoices / payments (no hard delete)',
-            'Messaging: delete files this user sent and clear notes on their message requests (their messages then show "Deleted User")',
+            'Messaging: delete files this user sent (their messages then show "Deleted User")',
         ];
 
         $this->info($dryRun ? 'DRY RUN — no changes will be written.' : 'LIVE DSAR anonymisation');
@@ -93,13 +93,12 @@ class PrivacyDsarDeleteCommand extends Command
             if (Schema::hasTable('message_attachments')) {
                 $conversations = app(\App\Services\Messaging\ConversationService::class);
                 \App\Models\MessageAttachment::query()
-                    ->whereIn('message_id', \App\Models\Message::withTrashed()->where('user_id', $userId)->select('id'))
+                    ->whereIn('message_id', \App\Models\Message::query()->where('user_id', $userId)->select('id'))
                     ->get()
                     ->each(function ($attachment) use ($conversations) {
                         $conversations->deleteFile($attachment);
                         $attachment->delete();
                     });
-                \App\Models\MessageRequest::query()->where('sent_by_user_id', $userId)->update(['intro' => null]);
             }
         });
 

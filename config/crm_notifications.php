@@ -323,17 +323,7 @@ $events = [
             'subject' => 'Your property statement is ready',
             'message' => 'A new statement for [[property_address]] is ready to view.',
         ],
-        // Messaging: in-app for every message, email only for new requests.
-        CrmNotificationEvent::MessageRequestReceived->value => [
-            'category' => 'messages', 'priority' => 'normal', 'channels' => $both,
-            'subject' => 'New message request',
-            'message' => 'Someone would like to message you. Open your message requests to reply.',
-        ],
-        CrmNotificationEvent::MessageRequestAccepted->value => [
-            'category' => 'messages', 'priority' => 'normal', 'channels' => ['system'],
-            'subject' => 'Message request accepted',
-            'message' => 'Your message request was accepted. You can chat now.',
-        ],
+        // Messaging: in-app only, never an email per message.
         CrmNotificationEvent::MessageReceived->value => [
             'category' => 'messages', 'priority' => 'normal', 'channels' => ['system'],
             'subject' => 'New message',

@@ -218,9 +218,6 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         Route::post('subscriptions/{subscription}/extend-trial', [\App\Http\Controllers\Backend\Saas\SubscriptionController::class, 'extendTrial'])->name('subscriptions.extend-trial');
         Route::get('billing', [\App\Http\Controllers\Backend\Saas\PlatformBillingController::class, 'index'])->name('billing.index');
         Route::post('accounts/{account}/status', [\App\Http\Controllers\Backend\Saas\AccountController::class, 'updateStatus'])->name('accounts.status');
-        Route::get('message-reports', [\App\Http\Controllers\Backend\Saas\MessageReportController::class, 'index'])->name('message-reports.index');
-        Route::get('message-reports/{report}', [\App\Http\Controllers\Backend\Saas\MessageReportController::class, 'show'])->name('message-reports.show');
-        Route::post('message-reports/{report}', [\App\Http\Controllers\Backend\Saas\MessageReportController::class, 'resolve'])->name('message-reports.resolve');
     });
 
     // Messaging: workspace inbox (owner, admin, staff) and the portal inbox

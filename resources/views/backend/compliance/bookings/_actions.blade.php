@@ -69,21 +69,24 @@
             <button class="btn btn-sm btn-outline-primary" type="submit">Save rating</button>
         </form>
     @endif
-    @if(in_array($offer->status, \App\Services\Messaging\RelationshipChecker::COMPLIANCE_LIVE, true) && \App\Support\Messaging\MessagingBadge::area() === 'admin')
+    @if($chatUrl = \App\Support\Messaging\ChatLink::to(\App\Models\Conversation::KIND_COMPLIANCE_JOB, $offer->id, 'admin'))
         <div>
-            @include('messaging.partials.start-button', ['area' => 'admin', 'context' => 'compliance-job', 'id' => $offer->id, 'label' => 'Message the contractor directly'])
+            @include('messaging.partials.chat-link', ['url' => $chatUrl, 'label' => $offer->status === \App\Models\ComplianceJobOffer::JOB_ACCEPTED ? 'Open the job chat (you, contractor, tenants)' : 'View the archived job chat'])
         </div>
     @endif
-    @if($offer->canMessage())
+    @if($offer->canMessage() || $offer->messages->isNotEmpty())
         <div>
+            <div class="small text-muted">Questions before the job is awarded</div>
             @foreach($offer->messages as $message)
                 <div class="small"><strong>{{ $message->side === 'landlord' ? 'You' : $offer->contractorName() }}:</strong> {{ $message->body }}</div>
             @endforeach
-            <form method="POST" action="{{ route('admin.compliance.bookings.message', [$booking, $offer]) }}" class="d-flex flex-column gap-1 mt-1">
-                @csrf
-                <textarea class="form-control form-control-sm" name="body" rows="2" maxlength="2000" required placeholder="Message the contractor"></textarea>
-                <div><button class="btn btn-sm btn-outline-secondary" type="submit">Send message</button></div>
-            </form>
+            @if($offer->canMessage())
+                <form method="POST" action="{{ route('admin.compliance.bookings.message', [$booking, $offer]) }}" class="d-flex flex-column gap-1 mt-1">
+                    @csrf
+                    <textarea class="form-control form-control-sm" name="body" rows="2" maxlength="2000" required placeholder="Reply to the contractor's question"></textarea>
+                    <div><button class="btn btn-sm btn-outline-secondary" type="submit">Send reply</button></div>
+                </form>
+            @endif
         </div>
     @endif
 </div>

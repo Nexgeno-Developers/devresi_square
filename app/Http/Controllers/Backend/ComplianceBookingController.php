@@ -112,7 +112,7 @@ class ComplianceBookingController extends Controller
         $this->bookings->expire($booking);
         $booking->load(['property', 'type', 'offers.contractor.contractorProfile', 'offers.certificate', 'offers.invoice', 'offers.messages', 'offers.variations', 'awardedOffer.contractor.contractorProfile', 'awardedOffer.certificate', 'awardedOffer.invoice', 'awardedOffer.messages', 'awardedOffer.variations']);
         $booking->offers->each(function (ComplianceJobOffer $offer) {
-            if ($offer->canMessage()) {
+            if ($offer->messages->isNotEmpty()) {
                 $this->aftercare->markRead($offer, ComplianceJobMessage::LANDLORD);
             }
         });

@@ -400,12 +400,12 @@
         </div>
     @endif
 
-    @if(in_array($offer->status, \App\Services\Messaging\RelationshipChecker::REPAIR_LIVE, true))
+    @if($chatUrl = \App\Support\Messaging\ChatLink::to(\App\Models\Conversation::KIND_REPAIR_JOB, $offer->id, 'contractor'))
         <div class="mb-3">
-            @include('messaging.partials.start-button', ['area' => 'contractor', 'context' => 'repair-job', 'id' => $offer->id, 'label' => 'Message the landlord directly'])
+            @include('messaging.partials.chat-link', ['url' => $chatUrl, 'label' => $offer->status === \App\Models\RepairJobOffer::JOB_ACCEPTED ? 'Open the job chat (landlord and tenants)' : 'View the archived job chat'])
         </div>
     @endif
-    @if($offer->messages->isNotEmpty() || ($offer->canMessage() && ! $offer->isFinished()))
+    @if($offer->messages->isNotEmpty() || $offer->canMessage())
         <section class="contractor-panel" id="messages">
             @include('backend.repair.partials.job-thread', [
                 'offer' => $offer,

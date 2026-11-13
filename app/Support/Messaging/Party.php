@@ -19,9 +19,6 @@ final class Party
 
     public const USER = 'user';
 
-    /** Placeholder target for "message by email" requests that matched nobody. */
-    public const EMAIL = 'email';
-
     private ?string $cachedName = null;
 
     public function __construct(
@@ -63,20 +60,6 @@ final class Party
         return $this->type === self::ACCOUNT;
     }
 
-    public static function pairKey(self $a, self $b): string
-    {
-        $keys = [$a->key(), $b->key()];
-        sort($keys);
-
-        return implode('|', $keys);
-    }
-
-    /** Pair key for a request sent to an email address that matched nobody. */
-    public static function emailPairKey(self $from, string $email): string
-    {
-        return $from->key().'|email:'.substr(hash('sha256', mb_strtolower(trim($email))), 0, 40);
-    }
-
     /** User ids allowed to read and write for this party right now. */
     public function userIds(): array
     {
@@ -100,34 +83,6 @@ final class Party
         }
 
         return in_array((int) $user->id, $this->userIds(), true);
-    }
-
-    /** Whether this party can currently log in and take part. */
-    public function isActive(): bool
-    {
-        if ($this->type === self::ACCOUNT) {
-            $account = Account::query()->find($this->id);
-
-            return $account !== null && ! in_array($account->status, ['suspended', 'cancelled'], true);
-        }
-
-        $user = User::query()->find($this->id);
-        if (! $user || $user->isSuperAdmin() || (isset($user->status) && (string) $user->status === '0')) {
-            return false;
-        }
-
-        if ($user->hasRole('Contractor')) {
-            return true;
-        }
-
-        return AccountUser::query()
-            ->where('user_id', $user->id)
-            ->where('status', 'active')
-            ->where(function ($query) {
-                $query->where('can_login', true)
-                    ->orWhereIn('member_type', AccountMembership::WORKSPACE_OPERATOR_TYPES);
-            })
-            ->exists();
     }
 
     public function displayName(): string

@@ -3,9 +3,7 @@
 namespace App\Support\Messaging;
 
 use App\Models\AccountUser;
-use App\Models\MessageRequest;
 use App\Services\Messaging\ConversationService;
-use App\Services\Messaging\InboxFeed;
 use App\Support\AccountMembership;
 
 /**
@@ -16,7 +14,7 @@ final class MessagingBadge
 {
     private static ?array $resolved = null;
 
-    /** @return array{area: string, party: Party, unread: int, requests: int}|null */
+    /** @return array{area: string, party: Party, unread: int}|null */
     public static function current(): ?array
     {
         if (self::$resolved !== null) {
@@ -51,14 +49,13 @@ final class MessagingBadge
         }
 
         try {
-            $unread = app(InboxFeed::class)->unreadTotal($party, $user, $area, app(ConversationService::class));
-            $requests = MessageRequest::query()->where('to_type', $party->type)->where('to_id', $party->id)->where('status', MessageRequest::PENDING)->count();
+            $unread = app(ConversationService::class)->unreadCount($party, $user);
         } catch (\Throwable) {
             // Never break a page because the badge failed (e.g. before migrations run).
             return null;
         }
 
-        return self::$resolved = ['area' => $area, 'party' => $party, 'unread' => $unread, 'requests' => $requests];
+        return self::$resolved = ['area' => $area, 'party' => $party, 'unread' => $unread];
     }
 
     public static function area(): ?string
@@ -77,7 +74,7 @@ final class MessagingBadge
     {
         $badge = self::current();
 
-        return $badge ? $badge['unread'] + $badge['requests'] : 0;
+        return $badge ? $badge['unread'] : 0;
     }
 
     /** For tests: forget the per-request cache. */

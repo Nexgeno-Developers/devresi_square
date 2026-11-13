@@ -4,13 +4,9 @@
 <div class="msg-head">
     <h1>Messages</h1>
     <nav class="msg-tabs" aria-label="Message folders">
-        <a href="{{ $r('index') }}" class="{{ request()->routeIs($area.'.messages.index', $area.'.messages.show', $area.'.messages.jobs.*') ? 'is-active' : '' }}">Inbox</a>
-        <a href="{{ $r('requests') }}" class="{{ request()->routeIs($area.'.messages.requests') ? 'is-active' : '' }}">
-            Requests @if($pendingRequests)<span class="msg-pill" data-msg-requests>{{ $pendingRequests }}</span>@endif
-        </a>
-        <a href="{{ $r('archived') }}" class="{{ request()->routeIs($area.'.messages.archived') ? 'is-active' : '' }}">Archived</a>
+        <a href="{{ $r('index') }}" class="{{ request()->routeIs($area.'.messages.index') || (request()->routeIs($area.'.messages.show') && ($conversation ?? null)?->isActive()) ? 'is-active' : '' }}">Chats</a>
+        <a href="{{ $r('archived') }}" class="{{ request()->routeIs($area.'.messages.archived') || (request()->routeIs($area.'.messages.show') && ! (($conversation ?? null)?->isActive() ?? true)) ? 'is-active' : '' }}">Archived</a>
     </nav>
-    <a class="btn btn-sm lw-btn-primary" href="{{ $r('create') }}"><i class="bi bi-pencil-square" aria-hidden="true"></i> <span>New message</span></a>
 </div>
 @if(session('messaging_status'))
     <div class="alert alert-success py-2" role="status">{{ session('messaging_status') }}</div>

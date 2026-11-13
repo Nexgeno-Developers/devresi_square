@@ -1026,7 +1026,7 @@ class RepairJobOfferService
             .'<strong>Tenant:</strong> '.e(trim(($tenant?->name ?: '').' '.($tenant?->phone ?: '').' '.($tenant?->email ?: '')) ?: 'Not listed').'<br>'
             .'<strong>Visit:</strong> '.e($when ? $when->format('D j M Y, H:i') : 'Book a time from the job page').'</p>'
             .'<p><a href="'.e(route('contractor.jobs.show', $winner)).'">Open the job</a>'
-            .(config('messaging.enabled', true) ? ' · <a href="'.e(route('contractor.messages.start', ['context' => 'repair-job', 'id' => $winner->id])).'">Message the landlord</a>' : '')
+            .(config('messaging.enabled', true) ? ' · <a href="'.e(route('contractor.messages.index')).'">Open the job chat</a>' : '')
             .'</p>';
         $this->mail->toUser($winner->contractor, 'Job accepted: '.($repair?->reference_number ?: 'repair'), $details, $when ? [$this->ics($winner, $when, $address)] : []);
         $this->notify(CrmNotificationEvent::RepairJobAccepted, $winner, [$winner->contractor], 'Your offer was accepted', 'The landlord accepted your offer. '.$summary.'. The full address and tenant contact are now on the job.', 'accepted-winner-'.$winner->id, route('contractor.jobs.show', $winner), ['system']);

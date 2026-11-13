@@ -225,7 +225,8 @@ class RepairJobOffer extends Model
 
     public function canMessage(): bool
     {
-        return in_array($this->status, [...self::OPEN_STATUSES, self::JOB_ACCEPTED], true);
+        // Questions before award only. After award the job chat (landlord, contractor, tenants) takes over.
+        return in_array($this->status, self::OPEN_STATUSES, true);
     }
 
     public function isAwaitingResponse(): bool

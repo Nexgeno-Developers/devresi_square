@@ -188,25 +188,29 @@
         @endif
     @endif
 
-    @if(in_array($offer->status, \App\Services\Messaging\RelationshipChecker::COMPLIANCE_LIVE, true))
+    @if($chatUrl = \App\Support\Messaging\ChatLink::to(\App\Models\Conversation::KIND_COMPLIANCE_JOB, $offer->id, 'contractor'))
         <div class="mt-3">
-            @include('messaging.partials.start-button', ['area' => 'contractor', 'context' => 'compliance-job', 'id' => $offer->id, 'label' => 'Message the landlord directly'])
+            @include('messaging.partials.chat-link', ['url' => $chatUrl, 'label' => $offer->status === \App\Models\ComplianceJobOffer::JOB_ACCEPTED ? 'Open the job chat (landlord and tenants)' : 'View the archived job chat'])
         </div>
     @endif
-    @if($offer->canMessage())
+    @if($offer->canMessage() || $offer->messages->isNotEmpty())
         <div class="card mt-3" id="messages">
             <div class="card-body d-flex flex-column gap-2">
-                <strong>Messages</strong>
+                <strong>Questions before the job is awarded</strong>
                 @forelse($offer->messages as $message)
                     <div class="small"><strong>{{ $message->side === 'contractor' ? 'You' : 'Landlord' }}:</strong> {{ $message->body }}</div>
                 @empty
-                    <p class="small text-muted mb-0">No messages yet.</p>
+                    <p class="small text-muted mb-0">No questions yet.</p>
                 @endforelse
-                <form method="POST" action="{{ route('contractor.jobs.compliance.message', $offer) }}" class="d-flex flex-column gap-2">
-                    @csrf
-                    <textarea class="form-control form-control-sm" name="body" rows="2" maxlength="2000" required placeholder="Message the landlord">{{ old('body') }}</textarea>
-                    <div><button class="btn btn-outline-secondary btn-sm" type="submit">Send message</button></div>
-                </form>
+                @if($offer->canMessage())
+                    <form method="POST" action="{{ route('contractor.jobs.compliance.message', $offer) }}" class="d-flex flex-column gap-2">
+                        @csrf
+                        <textarea class="form-control form-control-sm" name="body" rows="2" maxlength="2000" required placeholder="Ask the landlord a question about this job">{{ old('body') }}</textarea>
+                        <div><button class="btn btn-outline-secondary btn-sm" type="submit">Send question</button></div>
+                    </form>
+                @else
+                    <p class="small text-muted mb-0">Questions are closed. Once you are assigned, use the job chat.</p>
+                @endif
             </div>
         </div>
     @endif

@@ -181,9 +181,9 @@
                 'action' => route('admin.property_repairs.job_offers.message', $awarded),
                 'class' => 'mt-3 pt-2 border-top',
             ])
-            @if(in_array($awarded->status, \App\Services\Messaging\RelationshipChecker::REPAIR_LIVE, true) && \App\Support\Messaging\MessagingBadge::area() === 'admin')
+            @if($chatUrl = \App\Support\Messaging\ChatLink::to(\App\Models\Conversation::KIND_REPAIR_JOB, $awarded->id, 'admin'))
                 <div class="mt-2">
-                    @include('messaging.partials.start-button', ['area' => 'admin', 'context' => 'repair-job', 'id' => $awarded->id, 'label' => 'Message the contractor directly'])
+                    @include('messaging.partials.chat-link', ['url' => $chatUrl, 'label' => $awarded->status === \App\Models\RepairJobOffer::JOB_ACCEPTED ? 'Open the job chat (you, contractor, tenants)' : 'View the archived job chat'])
                 </div>
             @endif
         @elseif($closed)

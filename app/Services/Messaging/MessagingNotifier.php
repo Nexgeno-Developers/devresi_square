@@ -5,8 +5,8 @@ namespace App\Services\Messaging;
 use App\Enums\CrmNotificationEvent;
 use App\Models\AccountUser;
 use App\Models\Conversation;
+use App\Models\ConversationParticipant;
 use App\Models\Message;
-use App\Models\MessageRequest;
 use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Services\Contractors\ContractorMail;
@@ -17,76 +17,60 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * The only place messaging talks to people outside the chat.
- * In-app (bell) for everything; email only for new message requests.
- * Message text never goes into an email.
+ * The only place messaging talks to people outside the chat: an in-app bell
+ * for new messages (no email per message, no message text in notices) and
+ * an email to ResiSquare support when someone reports a chat.
  */
 class MessagingNotifier
 {
     public function __construct(private readonly ContractorMail $mail) {}
 
-    public function requestReceived(MessageRequest $request): void
+    /** One unread bell per chat per person; later messages refresh it. */
+    public function messageReceived(Conversation $conversation, Message $message): void
     {
-        $to = $request->toParty();
-        if (! $to) {
-            return;
-        }
-        $from = $request->fromParty();
-        $area = MessagingArea::forParty($to);
-        $url = MessagingArea::route($area, 'requests');
-        $title = 'Message request from '.$from->displayName();
-        $event = CrmNotificationEvent::MessageRequestReceived->value;
-
-        foreach ($this->users($to) as $user) {
-            $accountId = $this->bellAccountFor($user, $to, $from);
-            if ($this->wants($user, $event, 'in_app', $accountId)) {
-                $this->bell($user, $event, $title, $from->displayName().' ('.$from->roleLabel().') would like to message you.', $url, $accountId);
-            }
-            if ($this->wants($user, $event, 'email', $accountId)) {
-                $this->mail->toUser($user, $title, '<p>'.e($from->displayName()).' ('.e($from->roleLabel()).') would like to message you on ResiSquare.</p>'
-                    .'<p><a href="'.e($url).'">Open your message requests</a></p>'
-                    .'<p style="color:#666">You can accept, decline or block. You can turn these emails off in your notification settings.</p>');
-            }
-        }
-    }
-
-    public function requestAccepted(MessageRequest $request, Conversation $conversation): void
-    {
-        $from = $request->fromParty();
-        $to = $request->toParty();
-        if (! $to) {
-            return;
-        }
-        $event = CrmNotificationEvent::MessageRequestAccepted->value;
-        $url = MessagingArea::route(MessagingArea::forParty($from), 'show', $conversation);
-
-        foreach ($this->users($from) as $user) {
-            $accountId = $this->bellAccountFor($user, $from, $to);
-            if ($this->wants($user, $event, 'in_app', $accountId)) {
-                $this->bell($user, $event, $to->displayName().' accepted your message request', 'You can chat now.', $url, $accountId);
-            }
-        }
-    }
-
-    /** One unread bell per conversation per person; later messages refresh it. */
-    public function messageReceived(Conversation $conversation, Message $message, Party $recipient): void
-    {
-        $participant = $conversation->participantFor($recipient);
-        if ($participant?->muted_until?->isFuture()) {
-            return;
-        }
         $sender = $message->senderParty();
-        $event = CrmNotificationEvent::MessageReceived->value;
-        $url = MessagingArea::route(MessagingArea::forParty($recipient), 'show', $conversation);
-        $title = 'New message from '.$sender->displayName();
-        $text = $message->attachments()->exists() && blank($message->body) ? 'Sent you a file.' : 'You have a new message.';
+        $title = 'New message from '.($sender?->displayName() ?? 'ResiSquare');
+        $text = $message->attachments()->exists() && blank($message->body) ? 'Sent a file.' : 'You have a new message.';
 
-        foreach ($this->users($recipient) as $user) {
-            if ((int) $user->id === (int) $message->user_id) {
+        foreach ($conversation->currentParticipants() as $participant) {
+            if ($sender && $participant->party()->is($sender)) {
                 continue;
             }
-            $accountId = $this->bellAccountFor($user, $recipient, $sender);
-            if (! $this->wants($user, $event, 'in_app', $accountId)) {
+            $this->notifyParticipant($conversation, $participant, $title, $text, (int) $message->user_id);
+        }
+    }
+
+    public function chatOpened(Conversation $conversation, Message $message): void
+    {
+        foreach ($conversation->currentParticipants() as $participant) {
+            $this->notifyParticipant($conversation, $participant, 'New job chat', Str::limit((string) $message->body, 140), 0);
+        }
+    }
+
+    public function chatReported(Conversation $conversation, User $reporter, Party $as, string $note): void
+    {
+        $text = 'Chat '.$conversation->public_id.' ('.$conversation->kind.', account '.$conversation->account_id.') was reported by user '.$reporter->id
+            .' acting as '.$as->displayName().' ('.$as->roleLabel().').';
+        try {
+            $this->mail->toAdmins('A chat was reported', '<p>'.e($text).'</p><p><strong>Their note:</strong><br>'.nl2br(e($note)).'</p>', 'chat-report-'.$conversation->id.'-'.$reporter->id);
+        } catch (\Throwable $exception) {
+            Log::warning('Chat report email failed', ['conversation' => $conversation->id, 'error' => $exception->getMessage()]);
+        }
+        Log::channel('single')->info('messaging.chat_reported', ['conversation' => $conversation->public_id, 'reporter' => $reporter->id]);
+    }
+
+    private function notifyParticipant(Conversation $conversation, ConversationParticipant $participant, string $title, string $text, int $skipUserId): void
+    {
+        $party = $participant->party();
+        $event = CrmNotificationEvent::MessageReceived->value;
+        $url = MessagingArea::route(MessagingArea::forParticipant($participant), 'show', $conversation);
+
+        foreach (User::query()->whereIn('id', $party->userIds())->get() as $user) {
+            if ((int) $user->id === $skipUserId) {
+                continue;
+            }
+            $accountId = $this->bellAccountFor($user, $party, (int) $conversation->account_id);
+            if (! $this->wants($user, $event, $accountId)) {
                 continue;
             }
             $existing = DB::table('notifications')
@@ -105,36 +89,11 @@ class MessagingNotifier
         }
     }
 
-    public function warned(Party $party, string $note): void
-    {
-        foreach ($this->users($party) as $user) {
-            $this->bell($user, 'message.moderation', 'A message you sent was reported', $note ?: 'Please keep messages respectful and on topic. Repeated reports switch messaging off.', null, $this->bellAccountFor($user, $party, null));
-        }
-    }
-
-    public function alertAdmins(string $subject, string $text, ?string $url = null, ?string $throttleKey = null): void
-    {
-        try {
-            $this->mail->toAdmins($subject, '<p>'.e($text).'</p>'.($url ? '<p><a href="'.e($url).'">Open</a></p>' : ''), $throttleKey);
-        } catch (\Throwable $exception) {
-            Log::warning('Messaging admin alert failed', ['error' => $exception->getMessage()]);
-        }
-        foreach (User::role('Super Admin')->get() as $admin) {
-            $this->bell($admin, 'message.moderation', $subject, $text, $url, null);
-        }
-    }
-
-    /** @return \Illuminate\Support\Collection<int, User> */
-    private function users(Party $party)
-    {
-        return User::query()->whereIn('id', $party->userIds())->get();
-    }
-
     /**
      * The bell only shows notices for the account the person is looking at
      * (contractors see every notice), so pick the account they will see it in.
      */
-    private function bellAccountFor(User $user, Party $recipient, ?Party $other): ?int
+    private function bellAccountFor(User $user, Party $recipient, int $chatAccountId): ?int
     {
         if ($recipient->isAccount()) {
             return $recipient->id;
@@ -143,36 +102,29 @@ class MessagingNotifier
             return null;
         }
         $memberships = AccountUser::query()->where('user_id', $user->id)->where('status', 'active')->pluck('account_id')->map(fn ($id) => (int) $id);
-        if ($other?->isAccount() && $memberships->contains($other->id)) {
-            return $other->id;
-        }
-        if ($user->last_active_account_id && $memberships->contains((int) $user->last_active_account_id)) {
-            return (int) $user->last_active_account_id;
+        if ($memberships->contains($chatAccountId)) {
+            return $chatAccountId;
         }
 
         return $memberships->first();
     }
 
-    private function wants(User $user, string $event, string $channel, ?int $accountId): bool
+    private function wants(User $user, string $event, ?int $accountId): bool
     {
         if (! config('crm_notifications.enabled', true) || ! config('crm_notifications.groups.message', true)) {
             return false;
         }
-        // Event keys contain dots, so read the array rather than use config() dot paths.
-        $definition = config('crm_notifications.events', [])[$event] ?? [];
-        $default = in_array($channel === 'in_app' ? 'system' : 'email', $definition['channels'] ?? ['system'], true);
-        $field = $channel === 'in_app' ? 'in_app_enabled' : 'email_enabled';
         $pref = NotificationPreference::query()
             ->where('user_id', $user->id)
             ->where('event_key', $event)
             ->when($accountId, fn ($q) => $q->where('account_id', $accountId))
             ->latest('updated_at')
             ->first();
-        if ($pref && $pref->{$field} !== null) {
-            return (bool) $pref->{$field};
+        if ($pref && $pref->in_app_enabled !== null) {
+            return (bool) $pref->in_app_enabled;
         }
 
-        return $default && ($channel !== 'email' || filled($user->email));
+        return true;
     }
 
     private function bell(User $user, string $event, string $title, string $text, ?string $url, ?int $accountId): void

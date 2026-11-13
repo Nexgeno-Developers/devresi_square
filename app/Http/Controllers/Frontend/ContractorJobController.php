@@ -361,7 +361,7 @@ class ContractorJobController extends Controller
         $offer->refresh()->load(['booking.property', 'booking.type', 'certificate', 'invoice', 'messages', 'variations', 'contractor.contractorProfile']);
         $this->checks->markViewed($offer);
         $offer->refresh()->load(['booking.property', 'booking.type', 'certificate', 'invoice', 'messages', 'variations', 'contractor.contractorProfile']);
-        if ($offer->canMessage()) {
+        if ($offer->messages->isNotEmpty()) {
             $this->complianceAftercare->markRead($offer, ComplianceJobMessage::CONTRACTOR);
         }
 

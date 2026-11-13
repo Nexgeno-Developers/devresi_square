@@ -69,8 +69,6 @@ enum CrmNotificationEvent: string
     case FinanceInvoiceVoided = 'finance.invoice_voided';
     case FinanceStatementReady = 'finance.statement_ready';
 
-    case MessageRequestReceived = 'message.request_received';
-    case MessageRequestAccepted = 'message.request_accepted';
     case MessageReceived = 'message.received';
 
     case DeliveryFailed = 'system.delivery_failed';

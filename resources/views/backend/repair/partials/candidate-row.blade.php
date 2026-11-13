@@ -15,11 +15,6 @@
             @if(! $row->can_take && $row->reason) · {{ $row->reason }} @endif
         </span>
     </span>
-    @if($row->mine && config('messaging.enabled', true) && \App\Support\Messaging\MessagingBadge::area() === 'admin')
-        <a class="btn btn-link btn-sm p-0 text-decoration-none" href="{{ route('admin.messages.create', ['contractor' => $row->user_id]) }}" title="Message {{ $row->name }}">
-            <i class="bi bi-chat-dots" aria-hidden="true"></i><span class="visually-hidden">Message</span>
-        </a>
-    @endif
     <button type="submit" class="btn btn-link btn-sm p-0 text-decoration-none" title="{{ $row->favourite ? 'Remove favourite' : 'Add favourite' }}"
         formaction="{{ route('admin.property_repairs.marketplace.favourite', $row->user_id) }}" formnovalidate>{{ $row->favourite ? '★' : '☆' }}</button>
 </div>

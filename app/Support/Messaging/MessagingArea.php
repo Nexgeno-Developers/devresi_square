@@ -2,7 +2,7 @@
 
 namespace App\Support\Messaging;
 
-use App\Models\User;
+use App\Models\ConversationParticipant;
 
 /**
  * The three places messaging lives. The area comes from the route group,
@@ -25,14 +25,14 @@ final class MessagingArea
         return route($area.'.messages.'.$name, $parameters);
     }
 
-    /** Where a party reads its messages, used for notification links. */
-    public static function forParty(Party $party): string
+    /** Where a participant reads the chat, used for notification links. */
+    public static function forParticipant(ConversationParticipant $participant): string
     {
-        if ($party->isAccount()) {
-            return self::ADMIN;
-        }
-
-        return User::query()->find($party->id)?->hasRole('Contractor') ? self::CONTRACTOR : self::PORTAL;
+        return match ($participant->role) {
+            ConversationParticipant::LANDLORD => self::ADMIN,
+            ConversationParticipant::CONTRACTOR => self::CONTRACTOR,
+            default => self::PORTAL,
+        };
     }
 
     public static function layoutFlags(string $area): array
