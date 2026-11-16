@@ -1,7 +1,9 @@
 <style>
 .rs-record-page { max-width: none; }
 .rs-workspace { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr); gap: 20px; align-items: start; }
-.rs-rail { position: sticky; top: 84px; }
+.rs-rail { position: sticky; top: 84px; min-width: 0; }
+/* Tenant-typed values can be one long string; let them wrap inside their cell. */
+.rs-rail td, .rs-rail th, .rs-facts strong { overflow-wrap: anywhere; }
 .rs-rail .rs-facts { grid-template-columns: 1fr 1fr; }
 .rs-rail .rs-section:first-child { padding-top: 0; }
 .rs-rail-title { margin: 0; font-size: 15px; font-weight: 650; }
@@ -43,11 +45,12 @@
 .rs-lead > span { font-size: 13px; font-weight: 600; }
 .rs-lead .form-check { display: flex; gap: 6px; align-items: center; margin: 0; }
 @media (max-width: 1100px) {
-    .rs-workspace { grid-template-columns: 1fr; }
+    /* minmax(0, 1fr): a long unbroken value (e.g. a tenant suggestion) must not widen the page. */
+    .rs-workspace { grid-template-columns: minmax(0, 1fr); }
     .rs-rail { position: static; }
 }
 @media (max-width: 800px) {
-    .rs-grid, .rs-facts { grid-template-columns: 1fr; }
+    .rs-grid, .rs-facts { grid-template-columns: minmax(0, 1fr); }
     .rs-span-2, .rs-span-3, .rs-span-4, .rs-span-6 { grid-column: auto; }
 }
 </style>

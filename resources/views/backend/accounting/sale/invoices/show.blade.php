@@ -46,7 +46,7 @@
 @endpush
 
 @section('content')
-<div class="mt-md-4 me-md-4 me-3 mt-3">
+<div class="container-fluid py-3">
     @if(($customer->available_credit ?? 0) > 0)
         <div class="alert alert-info d-flex justify-content-between align-items-center" style="max-width:900px;margin:0 auto 12px auto;">
             <span>Customer available credit: {{ number_format($customer->available_credit ?? 0, 2) }}</span>

@@ -3,6 +3,8 @@
 
 @section('content')
 
-    @include('backend.users.user_form.form')
+    <div class="container-fluid py-3">
+        @include('backend.users.user_form.form')
+    </div>
 
 @endsection

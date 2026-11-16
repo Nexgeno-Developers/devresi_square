@@ -56,10 +56,10 @@ class DocumentTypeController
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(?string $id = null)
     {
-        $documentType = DocumentType::findOrFail($id);
-        return view('backend.document_types.show', compact('documentType'));
+        // The /show route takes no id and there is no detail view; the list shows every document type.
+        return redirect()->route('admin.document-types.index');
     }
 
     /**

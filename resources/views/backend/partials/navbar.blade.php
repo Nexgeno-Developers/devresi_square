@@ -95,7 +95,7 @@
             @auth
                 @if(is_landlord_plan_user())
                     <div class="dropdown">
-                        <button class="btn btn-sm lw-btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">+ Add New</button>
+                        <button class="btn btn-sm lw-btn-primary dropdown-toggle rs-add-new" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Add new">+ <span class="rs-add-new-label">Add New</span></button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ property_create_url() }}">Property</a></li>
                             <li><a class="dropdown-item" href="{{ route('admin.tenancies.create') }}">Tenancy</a></li>

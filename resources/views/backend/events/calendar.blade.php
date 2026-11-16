@@ -351,6 +351,28 @@ body #wrapper .staff-calendar-add:focus {
     .staff-calendar-legend {
         display: none;
     }
+    /* Title on its own row; arrows + Today on the left, view switch on the right. */
+    #calendar .fc-toolbar.fc-header-toolbar {
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 0.5rem;
+    }
+    #calendar .fc-toolbar-chunk:nth-child(2) {
+        order: -1;
+        flex: 0 0 100%;
+    }
+    #calendar .fc-toolbar-title {
+        font-size: 1.15rem;
+    }
+    #calendar .fc-toolbar-chunk {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    #calendar .fc-button {
+        padding: 0.3rem 0.6rem;
+        font-size: 0.8rem;
+    }
 }
 </style>
 @include('backend.partials._calendar_modals')

@@ -20,7 +20,7 @@
         <span class="pcc-kbd">Ctrl+K</span>
     </button>
     @can('create properties')
-        <a href="{{ property_create_url() }}" class="pcc-btn-ink">
+        <a href="{{ property_create_url() }}" class="pcc-btn-ink" aria-label="Add property">
             <i class="bi bi-plus"></i>
             <span>Add property</span>
         </a>

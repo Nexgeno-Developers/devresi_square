@@ -2,7 +2,7 @@
 
 @section('content')
 
-<section class="smtp-settings mt-3 ">
+<section class="smtp-settings container-fluid mt-3 ">
     <div class="row">
         <div class="col-md-6">
             <div class="card shadow-sm">

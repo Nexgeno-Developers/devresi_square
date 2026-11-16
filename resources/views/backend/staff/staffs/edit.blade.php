@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
 <div class="row">
     <div class="col-lg-10 mt-3 mx-auto">
         <div class="card mb-3 mb-md-5 pb-3">
@@ -225,6 +226,7 @@
             </form>
         </div>
     </div>
+</div>
 </div>
 @endsection
 

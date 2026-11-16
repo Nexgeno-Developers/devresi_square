@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
 <div class="aiz-titlebar text-left mt-2 mb-3">
     <div class="row align-items-center">
         <div class="col-md-6">
@@ -120,5 +121,6 @@
             </form>
         </div>
     </div>
+</div>
 </div>
 @endsection

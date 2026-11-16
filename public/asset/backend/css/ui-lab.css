@@ -76,7 +76,11 @@ a:hover { text-decoration: underline; }
     display: flex;
     gap: 0.4rem;
     align-items: center;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    /* Wrap long groups so phones keep a 375px layout instead of zooming out to ~1000px. */
+    flex-wrap: wrap;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .lab-switcher-group > span {

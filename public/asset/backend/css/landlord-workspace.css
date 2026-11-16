@@ -1800,9 +1800,12 @@ body.landlord-workspace .pcc-toolbar-search {
     border-radius: 8px;
 }
 
+/* Icon buttons stay square. :has(> i:only-child) also matches "icon + text" buttons
+   (CSS cannot see text nodes), so use a minimum width rather than a fixed one,
+   otherwise labels like "Edit Profile" were crushed to 36px. */
 body.landlord-workspace #wrapper .btn:has(> i:only-child) {
-    width: var(--lw-control);
-    padding: 0;
+    min-width: var(--lw-control);
+    padding: 0 0.6rem;
 }
 
 body.landlord-workspace #wrapper .lw-chip-filters a,
@@ -1960,6 +1963,33 @@ body.landlord-workspace #menu > ul.nav > .nav-item[data-crm="settings"] { order:
     background: #fff;
     border-radius: 999px;
     padding: 0.35rem 0.8rem;
+    /* One line; long account names truncate instead of wrapping the header. */
+    max-width: 240px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Below the docked-sidebar width: the keyboard shortcut button is no use on touch,
+   and the workspace name is already shown in the account menu. */
+@media (max-width: 991px) {
+    #crmCommandOpen { display: none; }
+
+    /* The account menu already names the workspace; the chip only crowded the bar. */
+    .rs-topbar-left .dropdown:has(> .rs-workspace-chip) { display: none; }
+}
+
+@media (max-width: 575px) {
+
+    /* "+ Add New" becomes a compact "+" so the bell and account menu stay on screen. */
+    .rs-add-new-label { display: none; }
+    .rs-add-new { padding-inline: 0.7rem; font-size: 1.05rem; line-height: 1; }
+
+    body.landlord-workspace .rs-topbar,
+    body.landlord-workspace .rs-topbar-right { gap: 6px; }
+    body.landlord-workspace .rs-topbar-right { flex-shrink: 1; min-width: 0; }
+    body.landlord-workspace .rs-notify,
+    body.landlord-workspace .rs-account-chip { padding: 4px; min-width: 0; }
 }
 .crm-trial-banner {
     display: flex;

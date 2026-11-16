@@ -13,7 +13,16 @@
     </div>
 
     <div class="card lw-card">
-        <div class="card-body table-responsive">
+        <div class="card-body">
+            @if($documents->isEmpty())
+                <div class="lw-empty">
+                                    <div class="lw-empty-icon"><i class="bi bi-folder2-open"></i></div>
+                                    <div class="lw-empty-title">No Documents Yet</div>
+                                    <p class="mb-3">Upload a document and connect it to the relevant property, tenancy or record.</p>
+                                    <a href="{{ route('admin.properties.index') }}" class="btn lw-btn-primary">Upload Document</a>
+                                </div>
+            @else
+            <div class="table-responsive">
             <table class="table lw-table align-middle">
                 <thead>
                     <tr>
@@ -26,7 +35,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse($documents as $document)
+                    @foreach($documents as $document)
                         <tr>
                             <td>{{ rs_document_title($document->displayName(), $document->documentType?->name) }}</td>
                             <td>{{ $document->documentType?->name ?? '—' }}</td>
@@ -54,20 +63,11 @@
                                 </form>
                             </td>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6">
-                                <div class="lw-empty">
-                                    <div class="lw-empty-icon"><i class="bi bi-folder2-open"></i></div>
-                                    <div class="lw-empty-title">No Documents Yet</div>
-                                    <p class="mb-3">Upload a document and connect it to the relevant property, tenancy or record.</p>
-                                    <a href="{{ route('admin.properties.index') }}" class="btn lw-btn-primary">Upload Document</a>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
+                    @endforeach
                 </tbody>
             </table>
+            </div>
+            @endif
 
             {{ $documents->links() }}
         </div>

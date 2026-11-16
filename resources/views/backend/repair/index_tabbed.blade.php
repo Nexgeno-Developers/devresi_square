@@ -90,7 +90,7 @@
             <div class="property_list_wrapper pt-lg-4 pt-2">
                 <div class="pv_wrapper">
                     <div class="pv_header">
-                        <div class="row">
+                        <div>
                             <div class="col-12">
                                 <div class="pv_title">Repair Issues</div>
                             </div>
@@ -130,6 +130,10 @@
 
         <div class="col-lg-7 col-12 property_detail_wrapper hide_this pt-lg-4 pt-0">
             <div class="pv_detail_wrapper">
+                {{-- Phones show the list and the detail one at a time. --}}
+                <button type="button" class="btn btn-sm btn-outline-secondary d-md-none mt-2 mb-2 repair-back-to-list">
+                    <i class="bi bi-chevron-left"></i> Back to repairs
+                </button>
                 <div class="pv_tabs repair_tabs">
                     <ul class="nav">
                         @foreach ($tabs as $tab)
@@ -828,6 +832,19 @@
             $(document).on('click', '.repair-row', function (e) {
                 if ($(e.target).closest('.dropdown, a, button, form').length) return;
                 loadTabContent($(this).data('repair-id'), currentTab);
+
+                // On phones the detail pane is hidden; swap the list for it.
+                if (window.matchMedia('(max-width: 766px)').matches) {
+                    $('.property_list_wrapper').addClass('hide_this');
+                    $('.property_detail_wrapper').removeClass('hide_this');
+                    window.scrollTo(0, 0);
+                }
+            });
+
+            $(document).on('click', '.repair-back-to-list', function () {
+                $('.property_detail_wrapper').addClass('hide_this');
+                $('.property_list_wrapper').removeClass('hide_this');
+                window.scrollTo(0, 0);
             });
 
             $(document).on('click', '.tab-link', function (e) {

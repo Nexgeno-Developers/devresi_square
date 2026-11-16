@@ -1,9 +1,12 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
     <h2>Note Types</h2>
 
     <a href="{{ route('admin.note-types.create') }}" class="btn btn-primary mb-3">Add New</a>
+
+    <div class="table-responsive">
 
     <table class="table table-bordered table-striped">
         <thead>
@@ -37,7 +40,9 @@
             @endforelse
         </tbody>
     </table>
+    </div>
     <div class="d-flex justify-content-end mt-3">
     {{ $noteTypes->links() }}
+</div>
 </div>
 @endsection

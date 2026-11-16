@@ -26,14 +26,14 @@
     }
 </style>
 
-<div class="container py-5">
+<div class="container py-4 py-md-5">
     <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
         <div>
             <h2 class="fw-bold mb-1">{{ is_tenant_portal_user() ? 'My profile' : 'User Profile' }}</h2>
             <p class="text-muted mb-0">{{ is_tenant_portal_user() ? 'Your contact details and password' : 'View and manage user information' }}</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
             @if(is_tenant_portal_user())
             <a href="{{ route('backend.home') }}" class="btn btn-outline-primary">
                 <i class="bi bi-arrow-left me-2"></i>Back to home

@@ -125,15 +125,25 @@ body.hide-sidebar{
     #header .rs-account-copy {
         display: none;
     }
+
+    /* The dropdown wrappers carry 8px 16px padding around each button;
+       on phones that alone pushed the account menu off-screen. */
+    #header .rs-topbar-right > .dropdown {
+        padding: 0;
+    }
 }
 
 
 .rs_row {
     display: flex;
-    gap: 16px;
+    flex-wrap: wrap;
+    gap: 4px 16px;
 
     .rs_col {
         width: fit-content;
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
     }
 }
 
@@ -1253,6 +1263,7 @@ input[type="radio"]:checked+label::before {
 
         .left_content_wrapper .left_title {
             font-size: 46px;
+            line-height: 1.15;
             text-align: right;
         }
 
@@ -1667,4 +1678,10 @@ input[type="radio"]:checked+label::before {
             }
         }
     }
+}
+/* List/detail screens: the header row sits in an unpadded box, so its negative
+   gutters pushed it a few pixels past the screen edge on tablets and phones. */
+.pv_header > .row {
+    margin-left: 0;
+    margin-right: 0;
 }

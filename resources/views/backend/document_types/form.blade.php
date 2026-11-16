@@ -1,7 +1,8 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="mt-5">
+<div class="container-fluid py-3">
+<div>
     <h2 class="mb-4">{{ $documentType->exists ? 'Edit' : 'Create' }} Document Type</h2>
 
     <form method="POST" action="{{ $documentType->exists ? route('admin.document-types.update', $documentType) : route('admin.document-types.store') }}">
@@ -43,5 +44,6 @@
         </div>
         
     </form>
+</div>
 </div>
 @endsection

@@ -469,9 +469,24 @@ class UserController
         $tabName = $request->query('tabname', 'Contact');
         $role    = $request->query('role', '');
 
+        // Landlords may only open contacts they created. Default to the first of
+        // those; redirecting to a contact they can't open looped forever.
+        $isLandlord = auth()->user()->hasRole('Landlord');
+        $firstUser = $isLandlord
+            ? $users->first(fn ($candidate) => (int) $candidate->created_by === (int) auth()->id())
+            : $users->first();
+
+        if (! $firstUser) {
+            $tabs = client_facing_contact_tabs();
+            $userId = null;
+            $user = null;
+            $content = '<p class="text-muted mb-0">Select a contact to see their details.</p>';
+
+            return view('backend.users.index', compact('users', 'roles', 'tabs', 'tabName', 'userId', 'user', 'content'));
+        }
+
         // If no user_id in URL, redirect to first user (preserving role filter)
         if (!$userId) {
-            $firstUser = $users->first();
             return redirect()->route('admin.users.index', array_filter([
                 'user_id' => $firstUser->id,
                 'tabname' => $tabName,
@@ -491,7 +506,6 @@ class UserController
 
         if (!$user) {
             // Invalid/deleted user_id — redirect to first user (preserving role filter)
-            $firstUser = $users->first();
             return redirect()->route('admin.users.index', array_filter([
                 'user_id' => $firstUser->id,
                 'tabname' => $tabName,
@@ -499,9 +513,7 @@ class UserController
             ]));
         }
 
-        if (auth()->user()->hasRole('Landlord') && (int) $user->created_by !== (int) auth()->id()) {
-            $firstUser = $users->first();
-
+        if ($isLandlord && (int) $user->created_by !== (int) auth()->id()) {
             return redirect()->route('admin.users.index', array_filter([
                 'user_id' => $firstUser->id,
                 'tabname' => $tabName,

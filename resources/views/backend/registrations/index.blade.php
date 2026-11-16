@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
 <div class="aiz-titlebar text-left mt-2 mb-3">
     <div class="row align-items-center">
         <div class="col-md-6">
@@ -50,7 +51,7 @@
             </span>
         @endif
     </div>
-    <div class="card-body p-0">
+    <div class="card-body p-0 table-responsive">
         <table class="table aiz-table mb-0">
             <thead>
                 <tr>
@@ -156,5 +157,6 @@
     <div class="card-footer">
         {{ $registrations->appends(request()->input())->links() }}
     </div>
+</div>
 </div>
 @endsection

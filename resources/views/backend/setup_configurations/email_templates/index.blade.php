@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
 
     <div class="text-left mt-2 mb-3">
         <div class="align-items-center">
@@ -74,6 +75,7 @@
 
         </div>
     </div>
+</div>
 @endsection
 
 

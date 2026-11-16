@@ -50,12 +50,12 @@ class TenancyController
 
         Gate::authorize('viewAny', Tenancy::class);
 
-        $tenancies = Tenancy::where('property_id', $propertyId)
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
-            ->where('status', 'Active')
-            ->get();
-
-        return view('backend.properties.tabs.tenancy', compact('tenancies', 'propertyId'));
+        // The property "Tenancies" pill links here. Open the property's Tenancy tab
+        // in the properties screen rather than returning a bare tab fragment.
+        return redirect()->route('admin.properties.index', [
+            'property_id' => $property->id,
+            'tabname' => 'tenancy',
+        ]);
     }
 
     // Global tenancies listing

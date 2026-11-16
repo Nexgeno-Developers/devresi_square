@@ -2,7 +2,7 @@
 
 @section('content')
     @include('backend.partials.assets.select2')
-    <div class="mt-md-4 me-md-4 me-3 mt-3">
+    <div class="container-fluid py-3">
         <h2 class="mb-1">Edit Receipt</h2>
         <p class="text-muted mb-4">Update receipt details and push channels.</p>
 

@@ -359,7 +359,7 @@
 </script>
 @endsection
 
-@include('backend.partials.assets.select2');
+@include('backend.partials.assets.select2')
 @section('page.scripts')
 <script>
     initSelect2('.select2');

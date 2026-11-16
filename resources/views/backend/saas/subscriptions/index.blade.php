@@ -1,7 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="mt-md-4 me-md-4 me-3 mt-3">
+<div class="container-fluid py-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h2 class="mb-0">SaaS Subscriptions</h2>
     </div>
@@ -55,7 +55,7 @@
             <input type="text" name="search" class="form-control" value="{{ $filters['search'] ?? '' }}" placeholder="Search account or Stripe ID">
         </div>
 
-        <div class="col-md-1 d-flex gap-2">
+        <div class="col-12 col-md-auto d-flex gap-2">
             <button type="submit" class="btn btn-primary">Filter</button>
             <a href="{{ route('backend.saas.subscriptions.index') }}" class="btn btn-secondary">Reset</a>
         </div>

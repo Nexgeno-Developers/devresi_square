@@ -1,12 +1,15 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="mt-5">
+<div class="container-fluid py-3">
+<div>
     <h2 class="mb-4">Document Types</h2>
 
     <a href="{{ route('admin.document-types.create') }}" class="btn btn-primary mb-3">
         <i class="fas fa-plus-circle"></i> Add New
     </a>
+
+    <div class="table-responsive">
 
     <table class="table table-bordered table-striped">
         <thead>
@@ -47,9 +50,11 @@
             @endforelse
         </tbody>
     </table>
+    </div>
 
     <div class="d-flex justify-content-end mt-3">
         {{ $documentTypes->links() }}
     </div>
+</div>
 </div>
 @endsection

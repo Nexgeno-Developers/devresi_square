@@ -23,6 +23,7 @@
                     $filteredTenancies = $tenancies->where('status', $status);
                 @endphp
                 @if($filteredTenancies->isNotEmpty())
+                    <div class="table-responsive">
                     <table class="table table-bordered">
                         <thead>
                             <tr>
@@ -73,6 +74,7 @@
                             @endforeach
                         </tbody>
                     </table>
+                    </div>
                 @else
                     <p>No {{ $status }} tenancies found.</p>
                     {{-- <p>No tenancies found for {{ $status }} status.</p> --}}

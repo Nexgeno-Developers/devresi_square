@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
 <h2>{{ $noteType->exists ? 'Edit' : 'Create' }} Note Type</h2>
 
 <form method="POST" action="{{ $noteType->exists ? route('admin.note-types.update', $noteType) : route('admin.note-types.store') }}">
@@ -17,4 +18,5 @@
     <button type="submit">{{ $noteType->exists ? 'Update' : 'Create' }}</button>
     <a href="{{ route('admin.note-types.index') }}">Back</a>
 </form>
+</div>
 @endsection

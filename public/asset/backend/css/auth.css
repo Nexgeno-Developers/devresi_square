@@ -200,6 +200,16 @@ body.auth-body {
     color: #166534;
 }
 
+/* Shared login error partial: Bootstrap's dismiss button has no styles or script here. */
+.auth-login .login-errors .btn-close {
+    display: none;
+}
+
+.auth-login .login-errors ul {
+    margin: 0.25rem 0 0;
+    padding-left: 1.1rem;
+}
+
 .auth-compact {
     width: min(400px, 100%);
     min-height: 0;

@@ -78,7 +78,7 @@
             </div>
         </div>
         @endunless
-        <div class="col-md-2 col-6">
+        <div class="col-6 col-sm-4">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-door-closed"></i></div>
                 <div class="fact-content">
@@ -87,7 +87,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-2 col-6">
+        <div class="col-6 col-sm-4">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-droplet"></i></div>
                 <div class="fact-content">
@@ -96,7 +96,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-2 col-6">
+        <div class="col-6 col-sm-4">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-sofa"></i></div>
                 <div class="fact-content">

@@ -177,12 +177,12 @@
     font-size: 12px;
     font-weight: 650;
     color: var(--tp-muted);
-    padding: 0 0 10px;
+    padding: 0 12px 10px 0;
     border-bottom: 1px solid var(--tp-line);
 }
 
 .tp-table td {
-    padding: 14px 0;
+    padding: 14px 12px 14px 0;
     border-bottom: 1px solid var(--tp-line);
     vertical-align: top;
 }
@@ -1450,7 +1450,8 @@ body.tp-confirm-lock {
     display: none;
 }
 
-@media (max-width: 767.98px) {
+/* Phones and tablets: bottom tab bar and card layouts, matching the app sidebar breakpoint (992px). */
+@media (max-width: 991.98px) {
     body.tenant-portal-shell #menu,
     body.tenant-portal-shell .sidebar {
         display: none !important;
@@ -1625,7 +1626,7 @@ body.tp-confirm-lock {
     }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 992px) {
     .tp-rent-mobile {
         display: none !important;
     }

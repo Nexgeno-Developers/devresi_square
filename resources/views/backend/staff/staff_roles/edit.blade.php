@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
 <div class="aiz-titlebar text-left mt-2 mb-3">
     <h5 class="mb-0 h6">Role Information</h5>
 </div>
@@ -91,6 +92,7 @@
     </div>
 </div>
 
+</div>
 @endsection
 @section('page.scripts')
 <script>

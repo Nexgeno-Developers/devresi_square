@@ -1,30 +1,52 @@
 @extends('backend.layout.app')
 
 @section('content')
-    <h1>Edit Offer</h1>
-    <form action="{{ route('admin.offers.update', $offer->id) }}" method="POST">
-        @csrf
-        @method('PUT')
+@php
+    $terms = ['6 months', '12 months', '18 months', '24 months'];
+@endphp
+<div class="container-fluid py-3" style="max-width: 720px;">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="mb-0">Edit offer</h2>
+        <a href="{{ route('admin.offers.index') }}" class="btn btn-outline-secondary">Back to offers</a>
+    </div>
 
-        <input type="hidden" name="property_id" value="{{ $offer->property_id }}">
+    <div class="card">
+        <div class="card-body">
+            <form action="{{ route('admin.offers.update', $offer->id) }}" method="POST" class="row g-3">
+                @csrf
+                @method('PUT')
 
-        <label for="price">Price:</label>
-        <input type="text" name="price" id="price" value="{{ $offer->price }}" required>
+                <input type="hidden" name="property_id" value="{{ $offer->property_id }}">
 
-        <label for="deposit">Deposit:</label>
-        <input type="text" name="deposit" id="deposit" value="{{ $offer->deposit }}" required>
+                <div class="col-12 col-sm-6">
+                    <label for="price" class="form-label">Price</label>
+                    <input type="text" name="price" id="price" class="form-control" value="{{ old('price', $offer->price) }}" required>
+                </div>
 
-        <label for="term">Term:</label>
-        <select name="term" id="term" required>
-            <option value="6 months" {{ $offer->term == '6 months' ? 'selected' : '' }}>6 months</option>
-            <option value="12 months" {{ $offer->term == '12 months' ? 'selected' : '' }}>12 months</option>
-            <option value="18 months" {{ $offer->term == '18 months' ? 'selected' : '' }}>18 months</option>
-            <option value="24 months" {{ $offer->term == '24 months' ? 'selected' : '' }}>24 months</option>
-        </select>
+                <div class="col-12 col-sm-6">
+                    <label for="deposit" class="form-label">Deposit</label>
+                    <input type="text" name="deposit" id="deposit" class="form-control" value="{{ old('deposit', $offer->deposit) }}" required>
+                </div>
 
-        <label for="move_in_date">Move In Date:</label>
-        <input type="date" name="move_in_date" id="move_in_date" value="{{ $offer->move_in_date }}" required>
+                <div class="col-12 col-sm-6">
+                    <label for="term" class="form-label">Term</label>
+                    <select name="term" id="term" class="form-select" required>
+                        @foreach($terms as $term)
+                            <option value="{{ $term }}" @selected(old('term', $offer->term) === $term)>{{ $term }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-        <button type="submit">Update Offer</button>
-    </form>
+                <div class="col-12 col-sm-6">
+                    <label for="move_in_date" class="form-label">Move in date</label>
+                    <input type="date" name="move_in_date" id="move_in_date" class="form-control" value="{{ old('move_in_date', $offer->move_in_date) }}" required>
+                </div>
+
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">Update offer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection

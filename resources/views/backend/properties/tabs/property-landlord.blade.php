@@ -48,7 +48,7 @@
 
 <div class="property-overview-dashboard pcc-overview-landlord">
     <div class="row g-3 mb-4">
-        <div class="col-md-2 col-6">
+        <div class="col-6 col-sm-4">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-building"></i></div>
                 <div class="fact-content">
@@ -57,7 +57,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-2 col-6">
+        <div class="col-6 col-sm-4">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-door-closed"></i></div>
                 <div class="fact-content">
@@ -66,7 +66,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-2 col-6">
+        <div class="col-6 col-sm-4">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-droplet"></i></div>
                 <div class="fact-content">
@@ -75,7 +75,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-2 col-6">
+        <div class="col-6 col-sm-4">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-grid"></i></div>
                 <div class="fact-content">
@@ -84,7 +84,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-2 col-6">
+        <div class="col-6 col-sm-4">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-currency-pound"></i></div>
                 <div class="fact-content">
@@ -93,7 +93,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-2 col-6">
+        <div class="col-6 col-sm-4">
             <div class="fact-card">
                 <div class="fact-icon"><i class="bi bi-house-door"></i></div>
                 <div class="fact-content">

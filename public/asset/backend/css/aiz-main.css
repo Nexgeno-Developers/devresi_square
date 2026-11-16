@@ -275,6 +275,9 @@ body {
 body {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
+    /* One column capped at the viewport: without this, a wide table or row
+       stretched the whole app (header and all) past the screen edge. */
+    grid-template-columns: minmax(0, 1fr);
     min-height: 100%;
     overflow: hidden;
 }
@@ -344,7 +347,9 @@ body.show-sidebar #menu {
     display: none;
 }
 
-@media (max-width: 766px) {
+/* Phones and tablets: the sidebar is an overlay opened from the menu button,
+   so content keeps the full width (style.js hides it on load up to 991px too). */
+@media (max-width: 991px) {
     :root {
         --backend-sidebar-width: min(86vw, 320px);
     }
