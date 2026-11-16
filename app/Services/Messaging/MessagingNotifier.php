@@ -18,25 +18,32 @@ use Illuminate\Support\Str;
 
 /**
  * The only place messaging talks to people outside the chat: an in-app bell
- * for new messages (no email per message, no message text in notices) and
- * an email to ResiSquare support when someone reports a chat.
+ * for every new message (with a short preview; no email per message) and an
+ * email to ResiSquare support when someone reports a chat.
  */
 class MessagingNotifier
 {
+    /** Longest preview of a message shown in a bell. */
+    private const PREVIEW_LENGTH = 120;
+
     public function __construct(private readonly ContractorMail $mail) {}
 
-    /** One unread bell per chat per person; later messages refresh it. */
+    /** One bell per message for everyone else in the chat. Opening the chat clears them. */
     public function messageReceived(Conversation $conversation, Message $message): void
     {
         $sender = $message->senderParty();
-        $title = 'New message from '.($sender?->displayName() ?? 'ResiSquare');
-        $text = $message->attachments()->exists() && blank($message->body) ? 'Sent a file.' : 'You have a new message.';
+        $from = $sender?->displayName() ?? 'ResiSquare';
+        if ($sender?->isAccount() && $message->author) {
+            $from = $message->author->name.' ('.$from.')';
+        }
+        $title = 'New message from '.$from;
+        $text = $this->preview($message);
 
         foreach ($conversation->currentParticipants() as $participant) {
             if ($sender && $participant->party()->is($sender)) {
                 continue;
             }
-            $this->notifyParticipant($conversation, $participant, $title, $text, (int) $message->user_id);
+            $this->notifyParticipant($conversation, $participant, $title, $text, (int) $message->user_id, '#m-'.$message->public_id);
         }
     }
 
@@ -45,6 +52,33 @@ class MessagingNotifier
         foreach ($conversation->currentParticipants() as $participant) {
             $this->notifyParticipant($conversation, $participant, 'New job chat', Str::limit((string) $message->body, 140), 0);
         }
+    }
+
+    /** Mark this person's unread message bells for a chat as read (they are looking at it). */
+    public function clearFor(Conversation $conversation, User $user): void
+    {
+        try {
+            DB::table('notifications')
+                ->where('notifiable_type', $user->getMorphClass())
+                ->where('notifiable_id', $user->getKey())
+                ->where('event_key', CrmNotificationEvent::MessageReceived->value)
+                ->whereNull('read_at')
+                ->where('action_url', 'like', '%/messages/c/'.$conversation->public_id.'%')
+                ->update(['read_at' => now(), 'updated_at' => now()]);
+        } catch (\Throwable $exception) {
+            Log::warning('Clearing message bells failed', ['conversation' => $conversation->id, 'user_id' => $user->id, 'error' => $exception->getMessage()]);
+        }
+    }
+
+    private function preview(Message $message): string
+    {
+        $body = trim((string) preg_replace('/\s+/u', ' ', (string) $message->body));
+        $files = $message->attachments()->count();
+        if ($body === '') {
+            return $files > 1 ? 'Sent '.$files.' files.' : 'Sent a file.';
+        }
+
+        return Str::limit($body, self::PREVIEW_LENGTH).($files ? ' (+'.$files.' '.Str::plural('file', $files).')' : '');
     }
 
     public function chatReported(Conversation $conversation, User $reporter, Party $as, string $note): void
@@ -59,11 +93,12 @@ class MessagingNotifier
         Log::channel('single')->info('messaging.chat_reported', ['conversation' => $conversation->public_id, 'reporter' => $reporter->id]);
     }
 
-    private function notifyParticipant(Conversation $conversation, ConversationParticipant $participant, string $title, string $text, int $skipUserId): void
+    private function notifyParticipant(Conversation $conversation, ConversationParticipant $participant, string $title, string $text, int $skipUserId, ?string $anchor = null): void
     {
         $party = $participant->party();
         $event = CrmNotificationEvent::MessageReceived->value;
-        $url = MessagingArea::route(MessagingArea::forParticipant($participant), 'show', $conversation);
+        $url = MessagingArea::route(MessagingArea::forParticipant($participant), 'show', $conversation).($anchor ?? '');
+        $perMessage = $anchor !== null;
 
         foreach (User::query()->whereIn('id', $party->userIds())->get() as $user) {
             if ((int) $user->id === $skipUserId) {
@@ -73,7 +108,8 @@ class MessagingNotifier
             if (! $this->wants($user, $event, $accountId)) {
                 continue;
             }
-            $existing = DB::table('notifications')
+            // A message bell is always new; only the one-off "chat opened" notice is de-duplicated.
+            $existing = $perMessage ? null : DB::table('notifications')
                 ->where('notifiable_type', $user->getMorphClass())
                 ->where('notifiable_id', $user->getKey())
                 ->where('event_key', $event)

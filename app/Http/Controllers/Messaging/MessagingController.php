@@ -58,6 +58,7 @@ class MessagingController extends Controller
         $lastRead = $this->conversations->lastReadBy($conversation, $party, $request->user());
         $messages = $conversation->messages()->with(['attachments', 'author'])->orderByDesc('id')->limit(200)->get()->reverse()->values();
         $this->conversations->markRead($conversation, $party, $request->user());
+        $this->notifier->clearFor($conversation, $request->user());
 
         return view('messaging.show', $this->shared($request, $conversation->isActive()) + [
             'conversation' => $conversation,
@@ -75,6 +76,7 @@ class MessagingController extends Controller
         $messages = $this->conversations->messagesAfter($conversation, $after);
         if ($messages->isNotEmpty()) {
             $this->conversations->markRead($conversation, $party, $request->user());
+            $this->notifier->clearFor($conversation, $request->user());
         }
 
         return response()->json([

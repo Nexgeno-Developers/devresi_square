@@ -73,6 +73,40 @@ class MessagingHttpTest extends TestCase
         $this->asAccount($tenant, $accountId)->get(route('portal.messages.show', $chat))->assertSee('An engineer is on the way.');
     }
 
+    public function test_every_message_sends_its_own_bell_with_a_preview_and_opening_the_chat_clears_them(): void
+    {
+        [$owner, $accountId] = $this->landlord();
+        [$tenant, $tenancy] = $this->tenant($accountId);
+        $chat = $this->chatFor(Conversation::KIND_TENANCY, $tenancy->id);
+
+        $this->asAccount($tenant, $accountId)->post(route('portal.messages.send', $chat), ['body' => 'The boiler is off again.'])->assertRedirect();
+        $this->asAccount($tenant, $accountId)->post(route('portal.messages.send', $chat), ['body' => 'Also the shower is cold.'])->assertRedirect();
+
+        $bells = DB::table('notifications')
+            ->where('notifiable_id', $owner->id)
+            ->where('event_key', 'message.received')
+            ->whereNull('read_at')
+            ->where('action_url', 'like', '%'.$chat->public_id.'%')
+            ->orderBy('created_at')->orderBy('id')
+            ->get();
+        $this->assertCount(2, $bells, 'One bell per message, not one per chat.');
+        $texts = $bells->map(fn ($b) => json_decode($b->data, true)['message'])->all();
+        $this->assertContains('The boiler is off again.', $texts);
+        $this->assertContains('Also the shower is cold.', $texts);
+        $this->assertStringContainsString('New message from', json_decode($bells[0]->data, true)['title']);
+        $this->assertStringContainsString('#m-', $bells[0]->action_url, 'The bell links to the message itself.');
+        // The sender gets no bell for their own messages.
+        $this->assertDatabaseMissing('notifications', ['notifiable_id' => $tenant->id, 'event_key' => 'message.received', 'read_at' => null]);
+
+        $this->asAccount($owner, $accountId)->get(route('admin.messages.show', $chat))->assertOk();
+        $this->assertSame(0, DB::table('notifications')
+            ->where('notifiable_id', $owner->id)
+            ->where('event_key', 'message.received')
+            ->whereNull('read_at')
+            ->where('action_url', 'like', '%'.$chat->public_id.'%')
+            ->count(), 'Opening the chat marks its bells read.');
+    }
+
     public function test_joint_tenants_share_one_household_chat_and_a_tenant_who_leaves_loses_access(): void
     {
         [$owner, $accountId] = $this->landlord();
