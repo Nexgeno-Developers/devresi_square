@@ -18,7 +18,12 @@ class AuthenticateController
             return PostLoginRedirect::to(User::find(Auth::id()));
         }
 
-        return view('backend.login');
+        // One sign-in page for everyone: the redesigned /login uses the same
+        // credential check and post-login redirect. Keep any error or old
+        // input flashed by a failed POST to this route for the next hop.
+        session()->reflash();
+
+        return redirect()->route('login');
     }
 
     public function login(Request $request)

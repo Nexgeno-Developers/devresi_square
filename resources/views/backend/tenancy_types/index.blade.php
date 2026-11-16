@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
     <h1>All Tenancy Types</h1>
 
     <a href="{{ route('admin.tenancy_types.create') }}" class="btn btn-primary mb-3">Create New Tenancy Type</a>
@@ -34,4 +35,5 @@
             @endforeach
         </tbody>
     </table>
+</div>
 @endsection

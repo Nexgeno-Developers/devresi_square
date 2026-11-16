@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
 
 <div class="aiz-titlebar mt-2 mb-3">
     <div class="row align-items-center">
@@ -66,6 +67,7 @@
     </div>
 </div>
 
+</div>
 @endsection
 
 @section('modal')

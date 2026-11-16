@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
 
     <div class="aiz-titlebar text-left mt-2 mb-3">
         <h5 class="mb-0 h6">Edit Email Template</h5>
@@ -59,6 +60,7 @@
         </div>
     </div>
 
+</div>
 @endsection
 @push('styles')
 <link href="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-bs5.min.css" rel="stylesheet">

@@ -1,13 +1,15 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="mt-md-4 me-md-4 me-3 mt-3">
+<div class="container-fluid py-3">
     <h2>Account Headers List</h2>
     <a href="{{ route('backend.account_headers.create') }}" class="btn btn-primary mb-3">Create Account Header</a>
 
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
+
+    <div class="table-responsive">
 
     <table class="table table-bordered table-striped">
         <thead>
@@ -60,6 +62,7 @@
         </tbody>
 
     </table>
+    </div>
 
     {{ $accountHeaders->links() }}
 </div>

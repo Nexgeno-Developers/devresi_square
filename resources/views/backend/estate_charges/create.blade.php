@@ -4,7 +4,7 @@
 <div class="container">
     <h2>Add New Estate Charge</h2>
 
-    <form action="{{ route('backend.estate_charges.store') }}" method="POST">
+    <form action="{{ route('admin.estate-charges.store') }}" method="POST">
         @csrf
         <div class="form-group">
             <label>Reference No</label>

@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
 <div class="aiz-titlebar text-left mt-2 mb-3">
     <div class="row align-items-center">
         <div class="col-md-6"><h1 class="h3">Edit SMS Template</h1></div>
@@ -57,5 +58,6 @@
             </button>
         </div>
     </form>
+</div>
 </div>
 @endsection

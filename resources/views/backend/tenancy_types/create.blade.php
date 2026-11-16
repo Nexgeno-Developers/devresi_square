@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
     <h1>Create Tenancy Type</h1>
 
     <form action="{{ route('admin.tenancy_types.store') }}" method="POST">
@@ -12,4 +13,5 @@
         <button type="submit" class="btn btn-primary mt-3">Save</button>
         <a href="{{ route('admin.tenancy_types.index') }}" class="btn btn-secondary mt-3">Back to List</a>
     </form>
+</div>
 @endsection

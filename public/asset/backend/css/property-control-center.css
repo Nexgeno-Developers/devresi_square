@@ -1080,6 +1080,11 @@ body:has(.pcc-root) #wrapper.main_content {
 @media (max-width: 575.98px) {
     .pcc-search-label,
     .pcc-kbd { display: none; }
+    /* "+ Add property" becomes "+" so the toolbar fits a phone. */
+    .pcc-toolbar .pcc-btn-ink > span { display: none; }
+    .pcc-toolbar .pcc-btn-ink { padding-inline: 0.6rem; }
+    .pcc-tab-nav { scrollbar-width: none; }
+    .pcc-tab-nav::-webkit-scrollbar { display: none; }
     .pcc-search-btn {
         width: 32px;
         padding: 0;

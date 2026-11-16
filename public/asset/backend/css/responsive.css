@@ -566,9 +566,9 @@
 
     /* ============  Breadcrumb ===========  */
     .qap_breadcrumb {
-        overflow: hidden;
-        overflow-x: auto;
-        width: 92vw;
+        flex-wrap: wrap;
+        row-gap: 2px;
+        max-width: 100%;
 
         label {
             width: max-content;

@@ -2,18 +2,18 @@
 
 @section('content')
 <div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h2 class="mb-0">Notifications</h2>
-        <div><button type="button" class="btn btn-outline-primary" id="notification-page-read-all">Mark all read</button> <a class="btn btn-outline-secondary" href="{{ route('backend.notifications.preferences') }}">Preferences</a></div>
+        <div class="d-flex gap-2"><button type="button" class="btn btn-outline-primary" id="notification-page-read-all">Mark all read</button><a class="btn btn-outline-secondary" href="{{ route('backend.notifications.preferences') }}">Preferences</a></div>
     </div>
 
     <form method="GET" class="row g-2 mb-3">
-        <div class="col-md-2"><select name="state" class="form-select"><option value="">All states</option><option value="unread" @selected(request('state')==='unread')>Unread</option><option value="read" @selected(request('state')==='read')>Read</option></select></div>
-        <div class="col-md-2"><select name="category" class="form-select"><option value="">All categories</option>@foreach($categories as $category)<option value="{{ $category }}" @selected(request('category')===$category)>{{ ucfirst($category) }}</option>@endforeach</select></div>
-        <div class="col-md-2"><select name="priority" class="form-select"><option value="">All priorities</option>@foreach(['normal','high','critical'] as $priority)<option value="{{ $priority }}" @selected(request('priority')===$priority)>{{ ucfirst($priority) }}</option>@endforeach</select></div>
-        <div class="col-md-2"><input type="date" name="date_from" value="{{ request('date_from') }}" class="form-control"></div>
-        <div class="col-md-2"><input type="date" name="date_to" value="{{ request('date_to') }}" class="form-control"></div>
-        <div class="col-md-2"><button class="btn btn-primary">Filter</button> <a href="{{ route('backend.notifications.index') }}" class="btn btn-light">Clear</a></div>
+        <div class="col-6 col-md-4 col-xl-2"><select name="state" class="form-select"><option value="">All states</option><option value="unread" @selected(request('state')==='unread')>Unread</option><option value="read" @selected(request('state')==='read')>Read</option></select></div>
+        <div class="col-6 col-md-4 col-xl-2"><select name="category" class="form-select"><option value="">All categories</option>@foreach($categories as $category)<option value="{{ $category }}" @selected(request('category')===$category)>{{ ucfirst($category) }}</option>@endforeach</select></div>
+        <div class="col-6 col-md-4 col-xl-2"><select name="priority" class="form-select"><option value="">All priorities</option>@foreach(['normal','high','critical'] as $priority)<option value="{{ $priority }}" @selected(request('priority')===$priority)>{{ ucfirst($priority) }}</option>@endforeach</select></div>
+        <div class="col-6 col-md-4 col-xl-2"><input type="date" name="date_from" value="{{ request('date_from') }}" class="form-control"></div>
+        <div class="col-6 col-md-4 col-xl-2"><input type="date" name="date_to" value="{{ request('date_to') }}" class="form-control"></div>
+        <div class="col-12 col-md-4 col-xl-2 d-flex gap-2"><button class="btn btn-primary flex-fill">Filter</button><a href="{{ route('backend.notifications.index') }}" class="btn btn-light flex-fill">Clear</a></div>
     </form>
 
     <div class="card">

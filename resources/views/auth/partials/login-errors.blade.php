@@ -1,5 +1,6 @@
 @if(session('error') || $errors->any())
-    <div class="alert alert-danger alert-dismissible fade show text-start" role="alert" aria-live="assertive">
+    {{-- alert-* for Bootstrap pages, auth-alert-* for the sign-in layout (no Bootstrap there). --}}
+    <div class="alert alert-danger alert-dismissible fade show text-start auth-alert auth-alert-danger login-errors" role="alert" aria-live="assertive">
         <div class="d-flex align-items-start gap-2">
             <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
             <div>

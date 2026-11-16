@@ -13,13 +13,14 @@ class PurchaseInvoiceController extends Controller
 {
     public function index()
     {
-        $invoices = PurchaseInvoice::orderBy('invoice_date','desc')->paginate(25);
-        return view('backend.purchase_invoices.index', compact('invoices'));
+        // This legacy module never had views; purchase invoices live under Accounting.
+        return redirect()->route('backend.accounting.purchase.invoices.index');
     }
 
     public function create()
     {
-        return view('backend.purchase_invoices.create');
+        // This legacy module never had views; purchase invoices live under Accounting.
+        return redirect()->route('backend.accounting.purchase.invoices.create');
     }
 
     public function store(Request $request)
@@ -76,12 +77,14 @@ class PurchaseInvoiceController extends Controller
 
     public function show(PurchaseInvoice $purchaseInvoice)
     {
-        return view('backend.purchase_invoices.show', ['invoice' => $purchaseInvoice]);
+        // This legacy module never had views; purchase invoices live under Accounting.
+        return redirect()->route('backend.accounting.purchase.invoices.index');
     }
 
     public function edit(PurchaseInvoice $purchaseInvoice)
     {
-        return view('backend.purchase_invoices.edit', ['invoice' => $purchaseInvoice]);
+        // This legacy module never had views; purchase invoices live under Accounting.
+        return redirect()->route('backend.accounting.purchase.invoices.index');
     }
 
     public function update(Request $request, PurchaseInvoice $purchaseInvoice)

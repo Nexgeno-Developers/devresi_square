@@ -2,11 +2,12 @@ $(document).ready(function () {
     // Function to check if the device is mobile
     function is_mobile() {
         return (
-            /Mobi|Android/i.test(navigator.userAgent) || $(window).width() < 768
+            /Mobi|Android/i.test(navigator.userAgent) || $(window).width() < 992
         );
     }
 
-    if (window.matchMedia("(max-width: 480px)").matches) {
+    // Match the overlay breakpoint in aiz-main.css; below it the sidebar starts closed.
+    if (window.matchMedia("(max-width: 991px)").matches) {
         $("body").removeClass("show-sidebar").addClass("hide-sidebar");
     }
     // Define content_wrapper
@@ -145,3 +146,45 @@ $(".alert").click(function showAlert() {
 });
 
 
+
+// Wide data tables on phones: wrap any .table that isn't already inside a
+// horizontal scroll container, so it scrolls within its card instead of being
+// clipped by the page. Also catches tables injected later (tabs, modals, AJAX).
+(function () {
+    function wrapTables(root) {
+        if (!root || !root.querySelectorAll) return;
+        var tables = root.matches && root.matches("table.table") ? [root] : root.querySelectorAll("table.table");
+        Array.prototype.forEach.call(tables, function (table) {
+            if (table.closest(".table-responsive, .dataTables_wrapper, .rs-table-scroll")) return;
+            for (var p = table.parentElement; p && p !== document.body; p = p.parentElement) {
+                var ox = getComputedStyle(p).overflowX;
+                if (ox === "auto" || ox === "scroll") return;
+                if (p.id === "wrapper") break;
+            }
+            var wrap = document.createElement("div");
+            wrap.className = "table-responsive rs-table-scroll";
+            table.parentNode.insertBefore(wrap, table);
+            wrap.appendChild(table);
+        });
+    }
+
+    function start() {
+        var scope = document.getElementById("wrapper") || document.body;
+        wrapTables(scope);
+        if (window.MutationObserver) {
+            new MutationObserver(function (mutations) {
+                mutations.forEach(function (m) {
+                    Array.prototype.forEach.call(m.addedNodes, function (n) {
+                        if (n.nodeType === 1) wrapTables(n);
+                    });
+                });
+            }).observe(scope, { childList: true, subtree: true });
+        }
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", start);
+    } else {
+        start();
+    }
+})();

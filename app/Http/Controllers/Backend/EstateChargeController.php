@@ -41,7 +41,7 @@ class EstateChargeController
 
         EstateCharge::create($validatedData);
 
-        return redirect()->route('backend.estate_charges.index')
+        return redirect()->route('admin.estate-charges.index')
             ->with('success', 'Estate charge created successfully.');
     }
 
@@ -70,7 +70,7 @@ class EstateChargeController
 
         $estateCharge->update($validatedData);
 
-        return redirect()->route('backend.estate_charges.index')
+        return redirect()->route('admin.estate-charges.index')
             ->with('success', 'Estate charge updated successfully.');
     }
 
@@ -81,7 +81,7 @@ class EstateChargeController
     {
         $estateCharge->delete();
 
-        return redirect()->route('backend.estate_charges.index')
+        return redirect()->route('admin.estate-charges.index')
             ->with('success', 'Estate charge deleted successfully.');
     }
 }

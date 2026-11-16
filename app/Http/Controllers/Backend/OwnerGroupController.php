@@ -68,6 +68,11 @@ class OwnerGroupController
             return $redirect;
         }
 
+        // This form is a modal fragment for the properties screen; a direct visit gets the full page.
+        if (! request()->ajax()) {
+            return redirect()->route('admin.owner-groups.create');
+        }
+
         // $users = User::all();
         // Fetch users where category_id is 1
         // $users = User::where('category_id', 1)->get();
@@ -237,7 +242,11 @@ class OwnerGroupController
 
         \Illuminate\Support\Facades\Gate::authorize('view', $ownerGroup);
 
-        return view('backend.owner_groups.show', compact('ownerGroup'));
+        // There is no standalone show view; owner groups are viewed on their property's Owners tab.
+        return redirect()->route('admin.properties.index', [
+            'property_id' => $ownerGroup->property_id,
+            'tabname' => 'owners',
+        ]);
     }
 
     /**

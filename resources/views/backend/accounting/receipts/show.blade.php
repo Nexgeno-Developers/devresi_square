@@ -1,7 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
-<div class="mt-md-4 me-md-4 me-3 mt-3">
+<div class="container-fluid py-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="mb-0">Payment for Invoice {{ $receipt->receiptable_type === 'sale_invoice' && $receipt->receiptable ? ($receipt->receiptable->invoice_no ?? $receipt->receiptable_id) : $receipt->receiptable_id }}</h4>
         <div class="d-flex gap-2">

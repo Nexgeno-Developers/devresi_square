@@ -4,7 +4,7 @@
 <div class="container">
     <h2>Edit Estate Charge</h2>
 
-    <form action="{{ route('backend.estate_charges.update', $estateCharge) }}" method="POST">
+    <form action="{{ route('admin.estate-charges.update', $estateCharge) }}" method="POST">
         @csrf
         @method('PUT')
 

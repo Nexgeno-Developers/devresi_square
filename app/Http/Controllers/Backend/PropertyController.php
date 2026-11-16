@@ -738,6 +738,12 @@ class PropertyController
             return $response;
         }
 
+        // Landlords add homes through the guided "Add property" flow on the properties
+        // screen; the welcome email still links here, so send them to it.
+        if (is_landlord_plan_user()) {
+            return redirect(property_create_url());
+        }
+
         return view('backend.properties.create'); // Return the create property view
     }
 
@@ -1251,7 +1257,13 @@ class PropertyController
     {
         $property = Property::findOrFail($id); // Fetch property by ID
         ensureModelBelongsToCurrentAccount($property);
-        return view('backend.properties.view', compact('property'));
+
+        // Old links (compliance reminders) still point here; open the property in the
+        // current properties screen instead of the legacy bare detail view.
+        return redirect()->route('admin.properties.index', [
+            'property_id' => $property->id,
+            'tabname' => 'property',
+        ]);
     }
 
     public function update(Request $request, $id)

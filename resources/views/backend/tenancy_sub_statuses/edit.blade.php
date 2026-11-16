@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
     <h1>Edit Tenancy Sub Status</h1>
 
     <form action="{{ route('admin.tenancy_sub_statuses.update', $tenancySubStatus->id) }}" method="POST">
@@ -13,4 +14,5 @@
         <button type="submit" class="btn btn-primary mt-3">Update</button>
         <a href="{{ route('admin.tenancy_sub_statuses.index') }}" class="btn btn-secondary mt-3">Back to List</a>
     </form>
+</div>
 @endsection

@@ -170,7 +170,7 @@
                         $daysListed = $property->created_at ? now()->diffInDays($property->created_at) : 0;
                     @endphp
                     <div class="row g-2 mb-3 property-stats-bar">
-                        <div class="col-md-2 col-6">
+                        <div class="col-6 col-sm-4">
                             <a href="{{ route('admin.tenancies.index', ['propertyId' => $property->id]) }}" class="stat-pill text-decoration-none">
                                 <div class="stat-icon"><i class="bi bi-house-door"></i></div>
                                 <div class="stat-content">
@@ -179,7 +179,7 @@
                                 </div>
                             </a>
                         </div>
-                        <div class="col-md-2 col-6">
+                        <div class="col-6 col-sm-4">
                             <div class="stat-pill">
                                 <div class="stat-icon"><i class="bi bi-currency-pound"></i></div>
                                 <div class="stat-content">
@@ -188,7 +188,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-2 col-6">
+                        <div class="col-6 col-sm-4">
                             <a href="{{ route('admin.properties.index', ['property_id' => $property->id, 'tabname' => 'Compliance']) }}" class="stat-pill text-decoration-none">
                                 <div class="stat-icon"><i class="bi bi-shield-check"></i></div>
                                 <div class="stat-content">
@@ -199,7 +199,7 @@
                                 </div>
                             </a>
                         </div>
-                        <div class="col-md-2 col-6">
+                        <div class="col-6 col-sm-4">
                             <a href="{{ route('admin.property_repairs.index', ['property_id' => $property->id]) }}" class="stat-pill text-decoration-none">
                                 <div class="stat-icon"><i class="bi bi-wrench"></i></div>
                                 <div class="stat-content">
@@ -208,7 +208,7 @@
                                 </div>
                             </a>
                         </div>
-                        <div class="col-md-2 col-6">
+                        <div class="col-6 col-sm-4">
                             <div class="stat-pill">
                                 <div class="stat-icon"><i class="bi bi-calendar"></i></div>
                                 <div class="stat-content">
@@ -217,7 +217,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-2 col-6">
+                        <div class="col-6 col-sm-4">
                             <div class="stat-pill">
                                 <div class="stat-icon"><i class="bi bi-clock"></i></div>
                                 <div class="stat-content">

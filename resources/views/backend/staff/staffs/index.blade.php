@@ -1,6 +1,7 @@
 @extends('backend.layout.app')
 
 @section('content')
+<div class="container-fluid py-3">
 @php
     $visibleStaffs = $staffs->getCollection()->filter(fn($staff) => $staff->user !== null)->values();
     $designationCount = $visibleStaffs
@@ -138,6 +139,7 @@
     </div>
 </div>
 
+</div>
 @endsection
 
 @section('modal')

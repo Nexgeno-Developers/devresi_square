@@ -39,10 +39,10 @@ class NoteTypeController
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(?string $id = null)
     {
-        $noteType = NoteType::findOrFail($id);
-        return view('backend.note-types.show', compact('noteType'));
+        // The /show route takes no id and there is no detail view; the list shows every note type.
+        return redirect()->route('admin.note-types.index');
     }
 
 

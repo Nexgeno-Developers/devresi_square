@@ -35,7 +35,8 @@ class EmailTemplateController extends Controller
 
     public function create()
     {
-        return view('backend.setup_configurations.email_templates.create');
+        // Templates are system-defined and only edited; there is no create screen.
+        return redirect()->route('email-templates.index', 'all');
     }
 
     public function store(Request $request)
@@ -52,8 +53,8 @@ class EmailTemplateController extends Controller
 
     public function show($id)
     {
-        $emailTemplate = EmailTemplate::findOrFail($id);
-        return view('backend.setup_configurations.email_templates.show', compact('emailTemplate'));
+        // No detail view exists; the edit screen shows the template (and checks access).
+        return redirect()->route('email-templates.edit', $id);
     }
 
     public function edit($id)

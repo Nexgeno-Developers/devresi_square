@@ -71,7 +71,7 @@
     }
 </style>
 
-<div class="py-4">
+<div class="container-fluid py-4">
     <div class="row justify-content-center">
         <div class="col-10">
 
