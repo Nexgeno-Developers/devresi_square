@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 
 /**
  * The only place messaging talks to people outside the chat: an in-app bell
- * for every new message (with a short preview; no email per message) and an
+ * and an email for every new message (each with a short preview), and an
  * email to ResiSquare support when someone reports a chat.
  */
 class MessagingNotifier
@@ -43,7 +43,7 @@ class MessagingNotifier
             if ($sender && $participant->party()->is($sender)) {
                 continue;
             }
-            $this->notifyParticipant($conversation, $participant, $title, $text, (int) $message->user_id, '#m-'.$message->public_id);
+            $this->notifyParticipant($conversation, $participant, $title, $text, (int) $message->user_id, '#m-'.$message->public_id, $from);
         }
     }
 
@@ -93,7 +93,7 @@ class MessagingNotifier
         Log::channel('single')->info('messaging.chat_reported', ['conversation' => $conversation->public_id, 'reporter' => $reporter->id]);
     }
 
-    private function notifyParticipant(Conversation $conversation, ConversationParticipant $participant, string $title, string $text, int $skipUserId, ?string $anchor = null): void
+    private function notifyParticipant(Conversation $conversation, ConversationParticipant $participant, string $title, string $text, int $skipUserId, ?string $anchor = null, ?string $from = null): void
     {
         $party = $participant->party();
         $event = CrmNotificationEvent::MessageReceived->value;
@@ -105,6 +105,9 @@ class MessagingNotifier
                 continue;
             }
             $accountId = $this->bellAccountFor($user, $party, (int) $conversation->account_id);
+            if ($perMessage && $this->wants($user, $event, $accountId, 'email')) {
+                $this->email($user, $title, $text, $url, (string) $from);
+            }
             if (! $this->wants($user, $event, $accountId)) {
                 continue;
             }
@@ -145,8 +148,10 @@ class MessagingNotifier
         return $memberships->first();
     }
 
-    private function wants(User $user, string $event, ?int $accountId): bool
+    /** $channel is 'system' (the bell) or 'email'. Both are on unless the person turned them off. */
+    private function wants(User $user, string $event, ?int $accountId, string $channel = 'system'): bool
     {
+        $field = $channel === 'email' ? 'email_enabled' : 'in_app_enabled';
         if (! config('crm_notifications.enabled', true) || ! config('crm_notifications.groups.message', true)) {
             return false;
         }
@@ -156,11 +161,24 @@ class MessagingNotifier
             ->when($accountId, fn ($q) => $q->where('account_id', $accountId))
             ->latest('updated_at')
             ->first();
-        if ($pref && $pref->in_app_enabled !== null) {
-            return (bool) $pref->in_app_enabled;
+        if ($pref && $pref->{$field} !== null) {
+            return (bool) $pref->{$field};
         }
 
         return true;
+    }
+
+    private function email(User $user, string $title, string $text, string $url, string $from): void
+    {
+        if (! $user->email) {
+            return;
+        }
+        $html = '<p>Hi '.e($user->name).',</p>'
+            .'<p><strong>'.e($from).'</strong> sent you a message on '.e(config('app.name')).':</p>'
+            .'<blockquote style="margin:16px 0;padding:12px 16px;border-left:4px solid #2a7ae2;background:#f4f6f9;color:#333;">'.nl2br(e($text)).'</blockquote>'
+            .'<p><a href="'.e($url).'" style="display:inline-block;padding:10px 18px;background:#2a7ae2;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Open the chat to reply</a></p>'
+            .'<p style="font-size:13px;color:#777;">Please reply in the chat, not to this email. You can turn these emails off in your notification settings.</p>';
+        $this->mail->toUser($user, $title, $html);
     }
 
     private function bell(User $user, string $event, string $title, string $text, ?string $url, ?int $accountId): void

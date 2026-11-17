@@ -31,7 +31,7 @@ Tables dropped: `message_requests`, `message_blocks`, `message_reports`, `messag
 - Party model: a landlord is the **account** (shared inbox for its staff, each message shows who wrote it); tenants and contractors are **users**. Acting party is set by route group (`messaging.as:{area}`), never by input.
 - Three inbox areas: `/admin/messages` (landlord staff), `/admin/portal/messages` (tenant), `/contractor/messages` (contractor). Sidebar item, navbar envelope badge, tenant 6th bottom tab, contractor nav link.
 - Text messages, attachments (5 × 10 MB, private disk, streamed after a participant check). Photos matter for repairs.
-- Per-user unread counts, polling (cPanel, no websockets), in-app bell for new messages, no email per message.
+- Per-user unread counts, polling (cPanel, no websockets), an in-app bell and an email for every new message (each can be turned off in notification settings).
 - Non-participant gets 404. IDOR test matrix.
 
 ## 4. Data model (one new migration replacing `2026_11_11_100000`)
