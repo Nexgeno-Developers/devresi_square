@@ -18,6 +18,13 @@
             ['label' => 'Repairs', 'route' => 'tenant.maintenance', 'match' => ['tenant.maintenance', 'admin.property_repairs.create'], 'icon' => 'bi-tools'],
             ['label' => 'Docs', 'route' => 'tenant.documents', 'match' => ['tenant.documents'], 'icon' => 'bi-folder'],
         ];
+        // Tenants have no top-bar shortcut habit: keep Messages (with its unread dot) on the bar.
+        if (\App\Support\Messaging\MessagingBadge::current()) {
+            array_splice($bnTabs, 3, 0, [[
+                'label' => 'Messages', 'route' => 'portal.messages.index', 'match' => ['portal.messages.*'],
+                'icon' => 'bi-chat-dots', 'badge' => true,
+            ]]);
+        }
     } elseif ($bnLandlord) {
         $bnLabel = 'Phone navigation';
         $bnTabs = [
@@ -68,8 +75,17 @@
 @endphp
 <nav class="tp-bottom-nav rs-bottom-nav" aria-label="{{ $bnLabel }}">
     @foreach($bnTabs as $tab)
-        <a href="{{ route($tab['route']) }}" class="tp-bottom-nav__item{{ $tab['active'] ? ' is-active' : '' }}"@if($tab['active']) aria-current="page"@endif>
-            <i class="bi {{ $tab['icon'] }}" aria-hidden="true"></i>
+        @php $bnUnread = ! empty($tab['badge']) ? \App\Support\Messaging\MessagingBadge::total() : 0; @endphp
+        <a href="{{ route($tab['route']) }}" class="tp-bottom-nav__item{{ $tab['active'] ? ' is-active' : '' }}"@if($tab['active']) aria-current="page"@endif
+            @if(! empty($tab['badge'])) aria-label="Messages{{ $bnUnread ? ', '.$bnUnread.' unread' : '' }}" @endif>
+            @if(! empty($tab['badge']))
+                <span class="position-relative d-inline-block">
+                    <i class="bi {{ $tab['icon'] }}" aria-hidden="true"></i>
+                    <span class="tp-bottom-nav__dot" data-msg-bottom-dot @if(! $bnUnread) hidden @endif></span>
+                </span>
+            @else
+                <i class="bi {{ $tab['icon'] }}" aria-hidden="true"></i>
+            @endif
             <span>{{ $tab['label'] }}</span>
         </a>
     @endforeach

@@ -58,10 +58,13 @@
                 <!-- Action -->
                 <td class="pcc-owner-actions-cell">
                     <div class="pcc-owner-actions">
-                        @unless(auth()->user()->hasRole('Tenant'))
+                        @if($canManageOwners)
                         <button type="button" class="btn btn-sm btn-outline-warning popup-tab-owner-group-edit" title="Edit Owner Group" data-url="{{ route('admin.owner-groups.edit', $ownerGroup->id) }}">
                             <i class="bi bi-pencil" aria-hidden="true"></i><span>Edit</span>
                         </button>
+                        @endif
+                        {{-- The last owner group cannot be removed (the server refuses it too). --}}
+                        @if($canDeleteOwnerGroup)
                         <button type="button" class="btn btn-sm btn-outline-danger pcc-owner-group-delete" title="Delete Owner Group"
                             data-url="{{ route('admin.owner-groups.delete_group', $ownerGroup->id) }}">
                             <i class="bi bi-trash" aria-hidden="true"></i><span>Delete</span>
