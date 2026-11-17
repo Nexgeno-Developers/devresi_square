@@ -220,6 +220,15 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         Route::post('accounts/{account}/status', [\App\Http\Controllers\Backend\Saas\AccountController::class, 'updateStatus'])->name('accounts.status');
     });
 
+    // Messaging: workspace inbox (owner, admin, staff) and the portal inbox
+    // (tenants and other portal contacts). The acting party comes from the group.
+    Route::middleware(['current.account', 'account.status'])->group(function () {
+        \App\Support\Messaging\MessagingRoutes::register(\App\Support\Messaging\MessagingArea::ADMIN);
+        Route::prefix('portal')->group(function () {
+            \App\Support\Messaging\MessagingRoutes::register(\App\Support\Messaging\MessagingArea::PORTAL);
+        });
+    });
+
     Route::middleware(['current.account', 'account.status'])->group(function () {
         Route::get('/billing', [BillingController::class, 'index'])->name('backend.billing.index');
         Route::get('/billing/success', [BillingController::class, 'success'])->name('backend.billing.success');

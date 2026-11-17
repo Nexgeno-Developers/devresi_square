@@ -93,8 +93,12 @@ class ContractorMarketplaceTest extends TestCase
         $this->actingAs($contractor)->get(route('contractor.jobs.show', $offer))->assertOk()->assertSee('Yes, under the sink.', false);
 
         $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.accept', $offer), ['revision' => 0])->assertSessionHas('success');
+        // After award, questions close and the landlord + contractor + tenants job chat takes over, unmasked.
         $this->actingAs($contractor)->post(route('contractor.jobs.message', $offer), ['body' => 'Running late, my number is 07123 456789']);
-        $this->assertStringContainsString('07123 456789', RepairJobMessage::query()->where('repair_job_offer_id', $offer->id)->latest('id')->value('body'));
+        $this->assertSame('Yes, under the sink.', RepairJobMessage::query()->where('repair_job_offer_id', $offer->id)->latest('id')->value('body'));
+        $chat = \App\Models\Conversation::query()->where('kind', \App\Models\Conversation::KIND_REPAIR_JOB)->where('context_id', $offer->id)->firstOrFail();
+        $this->actingAs($contractor)->post(route('contractor.messages.send', $chat), ['body' => 'Running late, my number is 07123 456789'])->assertRedirect();
+        $this->assertStringContainsString('07123 456789', \App\Models\Message::query()->where('conversation_id', $chat->id)->latest('id')->value('body'));
 
         $stranger = $this->contractor('stranger');
         $this->actingAs($stranger)->post(route('contractor.jobs.message', $offer), ['body' => 'Hello'])->assertForbidden();

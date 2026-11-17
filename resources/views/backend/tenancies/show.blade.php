@@ -176,6 +176,8 @@
                         <h2>Household</h2>
                         <p>The home and the people on this let.</p>
                     </div>
+                    @php $chatUrl = \App\Support\Messaging\ChatLink::to(\App\Models\Conversation::KIND_TENANCY, $tenancy->id, 'admin'); @endphp
+                    @include('messaging.partials.chat-link', ['url' => $chatUrl, 'label' => $tenancy->status === 'Active' ? 'Chat with tenants' : 'Archived chat'])
                 </div>
                 <div class="rs-facts">
                     <div class="is-wide">

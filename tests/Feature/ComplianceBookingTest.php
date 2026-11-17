@@ -566,16 +566,18 @@ class ComplianceBookingTest extends TestCase
             ->post(route('admin.compliance.bookings.accept', [$booking, $offer]), ['revision' => 0])
             ->assertSessionHas('success');
 
-        $this->actingAs($engineer)->post(route('contractor.jobs.compliance.message', $offer), [
+        // After award, questions close and the job chat (landlord, contractor, tenants) takes over.
+        $chat = \App\Models\Conversation::query()->where('kind', \App\Models\Conversation::KIND_COMPLIANCE_JOB)->where('context_id', $offer->id)->firstOrFail();
+        $this->actingAs($engineer)->post(route('contractor.messages.send', $chat), [
             'body' => 'Reach me at later@example.com',
         ])->assertRedirect();
-        $this->landlord($landlord, $accountId)->get(route('admin.compliance.bookings.show', $booking))
+        $this->landlord($landlord, $accountId)->get(route('admin.messages.show', $chat))
             ->assertOk()
             ->assertSee('later@example.com', false);
-        $this->landlord($landlord, $accountId)->post(route('admin.compliance.bookings.message', [$booking, $offer]), [
+        $this->landlord($landlord, $accountId)->post(route('admin.messages.send', $chat), [
             'body' => 'See you at the property',
-        ])->assertSessionHas('success');
-        $this->actingAs($engineer)->get(route('contractor.jobs.compliance.show', $offer))
+        ])->assertRedirect();
+        $this->actingAs($engineer)->get(route('contractor.messages.show', $chat))
             ->assertOk()
             ->assertSee('See you at the property', false);
 

@@ -17,6 +17,12 @@ final class DatabaseCleanupTablePolicy
      * rows belonging to a Super Admin are protected by the cleanup command.
      */
     private const CLEAR_TABLES = [
+        // Messaging (customer conversations).
+        'conversation_participants',
+        'conversation_reads',
+        'conversations',
+        'message_attachments',
+        'messages',
         'accounts',
         'account_subscriptions',
         'account_subscription_addons',

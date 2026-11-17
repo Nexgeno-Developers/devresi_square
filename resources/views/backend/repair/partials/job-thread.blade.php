@@ -3,13 +3,13 @@
     $mySide = $side;
     $otherLabel = $mySide === \App\Models\RepairJobMessage::CONTRACTOR ? 'Landlord' : ($offer->contractor?->contractorProfile?->displayName() ?: 'Contractor');
     $messages = $offer->messages;
-    $canWrite = $offer->canMessage() && ! $offer->isFinished();
+    $canWrite = $offer->canMessage();
     $unread = $messages->where('side', '!=', $mySide)->whereNull('read_at')->count();
 @endphp
 @if($canWrite || $messages->isNotEmpty())
 <details class="job-thread {{ $class ?? '' }}" @if($open ?? false) open @endif>
     <summary class="small {{ $unread ? 'fw-semibold text-primary' : 'text-muted' }}">
-        {{ $messages->isEmpty() ? 'Ask a question' : 'Messages ('.$messages->count().')' }}
+        {{ $messages->isEmpty() ? 'Ask a question' : 'Questions before award ('.$messages->count().')' }}
         @if($unread)<span class="badge text-bg-primary ms-1">{{ $unread }} new</span>@endif
     </summary>
     <div class="mt-2">
@@ -39,7 +39,7 @@
                 <div class="small text-muted mt-1">Phone numbers, emails and links are hidden until the job is accepted.</div>
             @endunless
         @else
-            <div class="small text-muted">Messages are closed for this job.</div>
+            <div class="small text-muted">Questions are closed. Once a contractor is assigned, use the job chat with the landlord, contractor and tenants.</div>
         @endif
     </div>
 </details>

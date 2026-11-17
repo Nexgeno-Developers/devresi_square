@@ -166,6 +166,11 @@ Route::group(['middleware' => 'web'], function () {
         Route::post('/profile/reapply', [ContractorProfileController::class, 'reapply'])->name('profile.reapply');
     });
 
+    // Contractor messages (contractors have no workspace membership).
+    Route::middleware(['auth'])->prefix('contractor')->group(function () {
+        \App\Support\Messaging\MessagingRoutes::register(\App\Support\Messaging\MessagingArea::CONTRACTOR);
+    });
+
     Route::view('/contractor-terms', 'frontend.contractor.terms')->name('contractor.terms');
     Route::get('/contractor/claim/{user}', [ContractorClaimController::class, 'show'])
         ->middleware('throttle:20,1')

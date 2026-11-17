@@ -47,6 +47,8 @@ return [
         'backend.home',
         'backend.logout',
         'backend.notifications.',
+        'admin.messages.',
+        'portal.messages.',
         'backend.accounts.',
         'backend.billing.',
         'backend.events.',

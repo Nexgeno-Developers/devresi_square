@@ -181,6 +181,11 @@
                 'action' => route('admin.property_repairs.job_offers.message', $awarded),
                 'class' => 'mt-3 pt-2 border-top',
             ])
+            @if($chatUrl = \App\Support\Messaging\ChatLink::to(\App\Models\Conversation::KIND_REPAIR_JOB, $awarded->id, 'admin'))
+                <div class="mt-2">
+                    @include('messaging.partials.chat-link', ['url' => $chatUrl, 'label' => $awarded->status === \App\Models\RepairJobOffer::JOB_ACCEPTED ? 'Open the job chat (you, contractor, tenants)' : 'View the archived job chat'])
+                </div>
+            @endif
         @elseif($closed)
             <p class="mb-0 text-muted">This repair is closed.</p>
         @else

@@ -47,6 +47,19 @@
         </li>
         @endunless
 
+        @php $messagingBadge = \App\Support\Messaging\MessagingBadge::current(); @endphp
+        @if($messagingBadge)
+         <li class="nav-item" data-crm="messages">
+            <a class="nav-link {{ request()->routeIs('*.messages.*') ? ' active' : '' }}"
+                href="{{ \App\Support\Messaging\MessagingBadge::url() }}">
+                <span class="icon_wrapper"><i class="bi bi-chat-dots"></i>Messages</span>
+                @if(\App\Support\Messaging\MessagingBadge::total() > 0)
+                    <span class="badge rounded-pill bg-danger ms-auto" data-msg-badge>{{ min(99, \App\Support\Messaging\MessagingBadge::total()) }}</span>
+                @endif
+            </a>
+        </li>
+        @endif
+
         @if(is_tenant_portal_user())
          <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('backend.home') ? ' active' : '' }}"

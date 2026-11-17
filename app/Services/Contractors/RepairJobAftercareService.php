@@ -10,6 +10,7 @@ use App\Models\RepairJobMessage;
 use App\Models\RepairJobOffer;
 use App\Models\RepairJobVariation;
 use App\Models\User;
+use App\Support\ContactMasker;
 use App\Support\ContractorSettings;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
@@ -75,20 +76,7 @@ class RepairJobAftercareService
      */
     public static function mask(string $body): array
     {
-        $hidden = '[hidden until the job is accepted]';
-        $count = 0;
-        $body = preg_replace('/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i', $hidden, $body, -1, $emails);
-        $body = preg_replace('/\b(?:https?:\/\/|www\.)\S+/i', $hidden, $body, -1, $links);
-        $body = preg_replace_callback('/\+?\d[\d\s().-]{7,}\d/', function ($match) use ($hidden, &$count) {
-            if (strlen(preg_replace('/\D/', '', $match[0])) < 10) {
-                return $match[0];
-            }
-            $count++;
-
-            return $hidden;
-        }, $body);
-
-        return [$body, ($emails + $links + $count) > 0];
+        return ContactMasker::mask($body, '[hidden until the job is accepted]');
     }
 
     // ── Variations ──────────────────────────────────────────────────────────

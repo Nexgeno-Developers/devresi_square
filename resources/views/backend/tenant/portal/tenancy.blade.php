@@ -27,6 +27,11 @@
                     </div>
                     <span class="tp-pill {{ $tenancy->status === 'Active' ? 'is-active' : '' }}">{{ $tenancy->status }}</span>
                 </div>
+                @if($chatUrl = \App\Support\Messaging\ChatLink::to(\App\Models\Conversation::KIND_TENANCY, $tenancy->id, 'portal'))
+                    <div class="mb-3">
+                        @include('messaging.partials.chat-link', ['url' => $chatUrl, 'label' => $tenancy->status === 'Active' ? 'Message about this home' : 'Archived chat', 'class' => 'tp-btn tp-btn-ghost'])
+                    </div>
+                @endif
                 <dl class="tp-dl" data-let-facts="tenant">
                     <dt>Move in</dt>
                     <dd data-let-move-in>{{ rs_date($tenancy->move_in) }}</dd>
