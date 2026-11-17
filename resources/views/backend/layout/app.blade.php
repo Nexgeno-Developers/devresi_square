@@ -46,7 +46,14 @@
     {{-- <link href="{{ asset('asset/backend/css/vendors.css') }}" rel="stylesheet"> --}}
 </head>
 
-<body class="show-sidebar{{ auth()->check() && is_landlord_plan_user() ? ' landlord-workspace' : '' }}{{ auth()->check() && is_tenant_portal_user() ? ' tenant-portal-shell' : '' }}">
+<body class="show-sidebar{{ auth()->check() ? ' has-bottom-nav' : '' }}{{ auth()->check() && is_landlord_plan_user() ? ' landlord-workspace' : '' }}{{ auth()->check() && is_tenant_portal_user() ? ' tenant-portal-shell' : '' }}">
+    <script>
+        // Phones and tablets start with the More sheet closed. Do it before first paint so it never flashes open.
+        if (window.matchMedia('(max-width: 991px)').matches) {
+            document.body.classList.remove('show-sidebar');
+            document.body.classList.add('hide-sidebar');
+        }
+    </script>
     <a class="skip-to-content sr-only-focusable" href="#wrapper">Skip to content</a>
     <header id="header" class="">
         <div class="container-fluid">
@@ -90,9 +97,9 @@
                 </div> --}}
 
                 @yield('content')
-                @if(auth()->check() && is_tenant_portal_user())
-                    @include('backend.tenant.portal._bottom-nav')
-                @endif
+                @auth
+                    @include('backend.partials.bottom-nav')
+                @endauth
             </div>
         </div>
     </main>

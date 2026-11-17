@@ -1025,3 +1025,115 @@ body #wrapper .page-link:hover {
     border-color: #ff5c1d;
     color: #0f173a;
 }
+
+/* ==========================================================================
+   Bottom tab bar (phones and tablets, below 992px)
+   One bar for every role: partials/bottom-nav.blade.php. The side menu is
+   not shown here; "More" opens the full menu as a sheet (aiz-main.css).
+   ========================================================================== */
+.tp-bottom-nav {
+    display: none;
+}
+
+@media (max-width: 991px) {
+    html body .tp-bottom-nav {
+        display: flex;
+        align-items: stretch;
+        justify-content: space-around;
+        gap: 2px;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1040;
+        box-sizing: border-box;
+        min-height: var(--rs-bottom-nav-h);
+        padding: 6px 6px env(safe-area-inset-bottom, 0px);
+        background: #0b1220;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 -4px 18px rgba(8, 12, 32, 0.18);
+    }
+
+    html body .tp-bottom-nav .tp-bottom-nav__item {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        margin: 0;
+        padding: 6px 2px;
+        border: 0;
+        border-radius: 12px;
+        background: transparent;
+        color: rgba(255, 255, 255, 0.64);
+        font: inherit;
+        font-size: 0.68rem;
+        font-weight: 650;
+        line-height: 1.1;
+        text-decoration: none;
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    html body .tp-bottom-nav .tp-bottom-nav__item span {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    html body .tp-bottom-nav .tp-bottom-nav__item i {
+        font-size: 1.3rem;
+        line-height: 1;
+    }
+
+    html body .tp-bottom-nav .tp-bottom-nav__item:active {
+        background: rgba(255, 255, 255, 0.08);
+    }
+
+    html body .tp-bottom-nav .tp-bottom-nav__item.is-active {
+        color: #fff;
+        background: rgba(255, 92, 29, 0.22);
+    }
+
+    html body .tp-bottom-nav .tp-bottom-nav__item.is-active i {
+        color: #ff5c1d;
+    }
+
+    html body .tp-bottom-nav .tp-bottom-nav__item:focus-visible {
+        outline: 2px solid #ff5c1d;
+        outline-offset: -2px;
+    }
+
+    /* While the More sheet is open, only More reads as the active tab. */
+    html body.show-sidebar .tp-bottom-nav .tp-bottom-nav__item:not(.tp-bottom-nav__more).is-active {
+        color: rgba(255, 255, 255, 0.64);
+        background: transparent;
+    }
+
+    html body.show-sidebar .tp-bottom-nav .tp-bottom-nav__item:not(.tp-bottom-nav__more).is-active i {
+        color: inherit;
+    }
+
+    html body.show-sidebar .tp-bottom-nav .tp-bottom-nav__more {
+        color: #fff;
+        background: rgba(255, 92, 29, 0.22);
+    }
+
+    html body.show-sidebar .tp-bottom-nav .tp-bottom-nav__more i {
+        color: #ff5c1d;
+    }
+
+    /* Keep page content clear of the bar. */
+    html body.has-bottom-nav #wrapper.main_content {
+        padding-bottom: calc(var(--rs-bottom-nav-h) + 12px);
+        overflow-x: hidden;
+    }
+
+    /* The sheet's account card sits at the bottom of the list; give it breathing room. */
+    html body #menu.sidebar > .footer_user_profile_menu {
+        margin-bottom: 4px;
+    }
+}

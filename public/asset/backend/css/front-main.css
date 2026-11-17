@@ -877,6 +877,19 @@ Header
     border-radius: 6px;
 }
 
+/* A tap leaves :hover stuck on touch screens, so the hint would cover the page. */
+@media (hover: none), (max-width: 991px) {
+    .navbar .toggle_icon_wrapper:hover::after {
+        content: none;
+    }
+}
+
+.navbar .toggle_icon_wrapper:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
 .navbar .rs_logo {
     margin-right: 40px;
 }

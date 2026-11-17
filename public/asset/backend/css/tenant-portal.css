@@ -1452,11 +1452,7 @@ body.tp-confirm-lock {
 
 /* Phones and tablets: bottom tab bar and card layouts, matching the app sidebar breakpoint (992px). */
 @media (max-width: 991.98px) {
-    body.tenant-portal-shell #menu,
-    body.tenant-portal-shell .sidebar {
-        display: none !important;
-    }
-
+    /* The side menu is replaced by the bottom bar here (aiz-main.css, resi-shell.css). */
     body.tenant-portal-shell.show-sidebar #wrapper.main_content,
     body.tenant-portal-shell #wrapper.main_content {
         margin-left: 0 !important;
@@ -1486,49 +1482,7 @@ body.tp-confirm-lock {
         display: none !important;
     }
 
-    .tp-bottom-nav {
-        display: flex;
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 1040;
-        background: #0b1220;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        padding: 0.35rem 0.25rem calc(0.35rem + env(safe-area-inset-bottom));
-        justify-content: space-around;
-        gap: 0.15rem;
-    }
-
-    .tp-bottom-nav__item {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 0.15rem;
-        padding: 0.4rem 0.2rem;
-        color: rgba(255, 255, 255, 0.62);
-        text-decoration: none;
-        font-size: 0.68rem;
-        font-weight: 650;
-        border-radius: 10px;
-        min-width: 0;
-    }
-
-    .tp-bottom-nav__item i {
-        font-size: 1.15rem;
-        line-height: 1;
-    }
-
-    .tp-bottom-nav__item.is-active {
-        color: #fff;
-        background: rgba(255, 92, 29, 0.22);
-    }
-
-    .tp-bottom-nav__item.is-active i {
-        color: #ff5c1d;
-    }
+    /* The bottom bar itself is styled once for every role in resi-shell.css. */
 
     .tenant-portal {
         padding: 8px 10px 24px;

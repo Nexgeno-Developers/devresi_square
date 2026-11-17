@@ -6,27 +6,85 @@ $(document).ready(function () {
         );
     }
 
-    // Match the overlay breakpoint in aiz-main.css; below it the sidebar starts closed.
-    if (window.matchMedia("(max-width: 991px)").matches) {
-        $("body").removeClass("show-sidebar").addClass("hide-sidebar");
+    var $body = $("body");
+    // The header hamburger (desktop) and the bottom bar's "More" tab (phone and tablet).
+    var $headerToggle = $(".hide-menu");
+    var $toggle = $headerToggle.add(".js-more-toggle");
+    // Match the overlay breakpoint in aiz-main.css; below it the sidebar is a drawer.
+    var overlayQuery = window.matchMedia("(max-width: 991px)");
+
+    function setSidebar(open) {
+        $body
+            .toggleClass("show-sidebar", open)
+            .toggleClass("hide-sidebar", !open);
+        $toggle.attr("aria-expanded", open ? "true" : "false");
     }
+
+    function sidebarOpen() {
+        return $body.hasClass("show-sidebar");
+    }
+
+    // Phones and tablets start with the drawer closed, desktop with the rail open.
+    setSidebar(!overlayQuery.matches);
+
+    // Rotating a tablet or resizing the window crosses the breakpoint: reset to its default.
+    var onBreakpointChange = function (e) {
+        setSidebar(!e.matches);
+    };
+    if (overlayQuery.addEventListener) {
+        overlayQuery.addEventListener("change", onBreakpointChange);
+    } else if (overlayQuery.addListener) {
+        overlayQuery.addListener(onBreakpointChange);
+    }
+
+    // The header button is a div, so it needs button semantics. "More" is a real button.
+    $headerToggle.attr({
+        role: "button",
+        tabindex: "0",
+        "aria-controls": "menu",
+    });
+
+    $toggle.click(function (e) {
+        e.preventDefault();
+        setSidebar(!sidebarOpen());
+    });
+
+    // Space and Enter work on the header button like a real button.
+    $headerToggle.on("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setSidebar(!sidebarOpen());
+        }
+    });
+
+    // Tapping the dimmed area closes the drawer.
+    $(".backdrop").click(function (e) {
+        e.preventDefault();
+        if (overlayQuery.matches) {
+            setSidebar(false);
+        }
+    });
+
+    // Escape closes the drawer, and a tap on a real link closes it before the next page loads.
+    $(document).on("keydown", function (e) {
+        if (e.key === "Escape" && overlayQuery.matches && sidebarOpen()) {
+            setSidebar(false);
+            $toggle.filter(":visible").first().trigger("focus");
+        }
+    });
+    $("#menu").on("click", "a[href]", function () {
+        var href = $(this).attr("href") || "";
+        var opensSubmenu = $(this).is('[data-bs-toggle="collapse"]');
+        if (overlayQuery.matches && !opensSubmenu && href.charAt(0) !== "#") {
+            setSidebar(false);
+        }
+    });
+
     // Define content_wrapper
     var content_wrapper = $(".content-wrapper");
-
-    $(".hide-menu")
-        .add(".backdrop")
-        .click(function (e) {
-            e.preventDefault();
-            $("body").hasClass("hide-sidebar")
-                ? $("body").removeClass("hide-sidebar").addClass("show-sidebar")
-                : $("body")
-                      .removeClass("show-sidebar")
-                      .addClass("hide-sidebar");
-        });
-
     if (is_mobile()) {
         content_wrapper.on("click", function () {
-            $("body").hasClass("show-sidebar") && $(".hide-menu").click();
+            sidebarOpen() && setSidebar(false);
         });
     }
 });

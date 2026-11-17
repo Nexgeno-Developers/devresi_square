@@ -347,26 +347,52 @@ body.show-sidebar #menu {
     display: none;
 }
 
-/* Phones and tablets: the sidebar is an overlay opened from the menu button,
-   so content keeps the full width (style.js hides it on load up to 991px too). */
+/* Phones and tablets: there is no side menu. Navigation is the bottom tab bar
+   (partials/bottom-nav.blade.php, styled in resi-shell.css) and its "More" tab
+   opens this same #menu list as a bottom sheet above the bar.
+   Stacking, low to high: backdrop 1020, sheet 1030, bottom bar 1040. The rules use
+   `html body` so responsive.css and the per-role stylesheets cannot reorder them. */
 @media (max-width: 991px) {
     :root {
-        --backend-sidebar-width: min(86vw, 320px);
+        --rs-bottom-nav-h: calc(64px + env(safe-area-inset-bottom, 0px));
     }
 
-    #menu.sidebar {
-        position: absolute !important;
-        inset: 0 auto 0 0;
-        z-index: 1000;
-        width: var(--backend-sidebar-width);
-        max-width: var(--backend-sidebar-width);
-        margin-left: 0 !important;
-        transform: translateX(0);
-        transition: transform 0.3s ease;
+    html body #menu.sidebar,
+    html body.show-sidebar #menu.sidebar {
+        position: fixed !important;
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: var(--rs-bottom-nav-h);
+        width: auto;
+        max-width: none;
+        flex: none;
+        height: auto;
+        max-height: min(72vh, calc(100dvh - var(--rs-bottom-nav-h) - 72px));
+        margin: 0 !important;
+        z-index: 1030;
+        border-radius: 18px 18px 0 0;
+        box-shadow: 0 -12px 32px rgba(8, 12, 32, 0.35);
+        transform: translateY(0);
+        transition: transform 0.28s ease, visibility 0s linear 0s;
     }
 
-    body.hide-sidebar:not(.show-sidebar) #menu {
-        transform: translateX(-100%);
+    /* A little grab handle so it reads as a sheet. */
+    html body #menu.sidebar::before {
+        content: "";
+        flex: 0 0 auto;
+        width: 44px;
+        height: 4px;
+        margin: 10px auto 2px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.28);
+    }
+
+    /* Closed: slid away and not focusable, so keyboard and screen readers skip it. */
+    html body.hide-sidebar:not(.show-sidebar) #menu.sidebar {
+        transform: translateY(calc(100% + var(--rs-bottom-nav-h)));
+        visibility: hidden;
+        transition: transform 0.28s ease, visibility 0s linear 0.28s;
     }
 
     #wrapper.main_content {
@@ -375,12 +401,18 @@ body.show-sidebar #menu {
         padding-right: 0;
     }
 
-    body.show-sidebar .main_wrapper > .backdrop {
-        position: absolute;
-        inset: 0;
-        z-index: 999;
+    /* Dims the page, but stops above the tab bar so "More" can still close the sheet. */
+    html body.show-sidebar .main_wrapper > .backdrop {
+        position: fixed;
+        inset: 0 0 var(--rs-bottom-nav-h) 0;
+        z-index: 1020;
         display: block;
         background: var(--backdrop);
+    }
+
+    /* No hamburger: the bottom bar replaces it. */
+    html body .navbar .toggle_icon_wrapper.hide-menu {
+        display: none !important;
     }
 }
 

@@ -1173,7 +1173,11 @@
             <div class="flex-grow-1 text-start user-info">
                 <h6 class="mb-0 text-truncate" title="{{ $authUser->name }}">{{ $authUser->name }}</h6>
                 <small title="{{ $authUser->email }}" class="d-block text-truncate">{{ $authUser->email }}</small>
-                <small title="{{ $authUser->access_label }}" class="role-text">{{ $authUser->access_label }}</small>
+                @php
+                    // Portal tenants have no Spatie role, so access_label would read "N/A".
+                    $sideRoleLabel = is_tenant_portal_user() ? 'Tenant' : $authUser->access_label;
+                @endphp
+                <small title="{{ $sideRoleLabel }}" class="role-text">{{ $sideRoleLabel }}</small>
             </div>
         </div>
 
