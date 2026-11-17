@@ -299,7 +299,8 @@ class CalendarIntegrationHttpTest extends TestCase
             ->assertOk()
             ->assertSee('data-upcoming-event="'.$event->id.'"', false);
 
-        $moved = $start->copy()->addMonth()->startOfMonth()->addDays(4)->setTime(10, 0);
+        // Mid-month, so the old month grid (which shows the next month's first days) cannot include it.
+        $moved = $start->copy()->addMonthNoOverflow()->startOfMonth()->addDays(14)->setTime(10, 0);
         $this->actingAs($landlord)->withSession($session)
             ->postJson(route('backend.events.updateInstance', $event->id), [
                 'start_datetime' => $moved->format('Y-m-d H:i:s'),

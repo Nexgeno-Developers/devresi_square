@@ -219,7 +219,7 @@ class JourneyTwoTenancyHttpTest extends TestCase
         $this->actingAs($landlord)->withSession(['current_account_id' => $accountId])
             ->get(route('admin.people.index'))
             ->assertOk()
-            ->assertSee('Adding a contact does not grant a login.', false);
+            ->assertSee('Everyone connected to your portfolio.', false);
     }
 
     /**

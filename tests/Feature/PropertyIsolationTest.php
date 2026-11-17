@@ -70,7 +70,8 @@ class PropertyIsolationTest extends TestCase
                 'account_id' => $firstSubscription['account_id'],
                 'created_by' => $firstSubscription['user_id'],
             ]);
-        } catch (QueryException) {
+        } catch (QueryException|\Illuminate\Validation\ValidationException) {
+            // The model now refuses it with a friendly message before the DB constraint fires.
             $duplicateWasRejected = true;
         }
 

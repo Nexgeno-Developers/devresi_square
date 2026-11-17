@@ -248,7 +248,8 @@ class LandlordFinanceHttpTest extends TestCase
         $this->actingAs($landlord)->withSession($session)
             ->get(route('admin.finance.index', ['status' => 'overdue']))
             ->assertOk()
-            ->assertSee($invoice->invoice_no, false);
+            // Rows are titled by address (no invoice number); the row links to the invoice.
+            ->assertSee(route('admin.finance.show', $invoice), false);
 
         $this->actingAs($landlord)->withSession($session)
             ->get(route('backend.dashboard'))

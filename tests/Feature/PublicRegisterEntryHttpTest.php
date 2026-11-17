@@ -39,7 +39,7 @@ class PublicRegisterEntryHttpTest extends TestCase
                 'plan_id' => $planId,
                 'billing_cycle' => 'monthly',
                 'account_type' => 'landlord',
-            ]), false);
+            ])); // escaped, as the page writes the link (&amp; between parameters)
     }
 
     private function entryPlanId(): int

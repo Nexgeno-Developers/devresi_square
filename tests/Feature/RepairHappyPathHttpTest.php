@@ -65,11 +65,12 @@ class RepairHappyPathHttpTest extends TestCase
             ->assertOk()
             ->assertSee('Kitchen tap leaking', false);
 
+        // The tenant's report stays as they wrote it: the landlord cannot edit it.
         $this->actingAs($landlord)->withSession($session)
             ->post(route('admin.property_repairs.saveForm'), [
                 'repair_id' => $repair->id,
                 'form_type' => 'property_issue_details',
-                'description' => $repair->description,
+                'description' => 'Rewritten by the landlord',
                 'priority' => 'high',
                 'status' => 'Under Process',
                 'sub_status' => 'Under Process',
@@ -78,30 +79,37 @@ class RepairHappyPathHttpTest extends TestCase
                 'repair_category_id' => $repair->repair_category_id,
                 'property_id' => $repair->property_id,
             ])
-            ->assertOk();
+            ->assertForbidden();
 
         $repair->refresh();
-        $this->assertSame('Under Process', $repair->status);
-        $this->assertEquals(85.5, (float) $repair->estimated_price);
+        $this->assertSame('Pending', $repair->status);
+        $this->assertSame('Kitchen tap leaking onto the floor.', $repair->description);
+
+        // The landlord moves it on instead (here: closes it), and the tenant hears about it.
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.property_repairs.close', $repair))
+            ->assertRedirect(route('admin.property_repairs.index'));
+
+        $repair->refresh();
+        $this->assertSame('Closed', $repair->status);
 
         $this->assertDatabaseHas('notification_logs', [
             'account_id' => $accountId,
-            'identifier' => CrmNotificationEvent::RepairStatusChanged->value,
+            'identifier' => CrmNotificationEvent::RepairJobCancelled->value,
             'notifiable_id' => $tenant->id,
         ]);
 
         $this->actingAs($tenant)->withSession($session)
             ->get(route('tenant.maintenance'))
             ->assertOk()
-            ->assertSee('In progress', false)
-            ->assertDontSee('Under Process', false)
+            ->assertSee('data-repair-history="'.$repair->id.'"', false)
             ->assertSee('data-tenant-maintenance="1"', false)
             ->assertSee('Take or choose a photo', false);
 
         Queue::assertPushed(SendNotificationJob::class);
 
         $tenantNotice = NotificationLog::query()
-            ->where('identifier', CrmNotificationEvent::RepairStatusChanged->value)
+            ->where('identifier', CrmNotificationEvent::RepairJobCancelled->value)
             ->where('notifiable_id', $tenant->id)
             ->where('subject_id', $repair->id)
             ->first();
@@ -235,28 +243,16 @@ class RepairHappyPathHttpTest extends TestCase
             ->assertOk()
             ->assertSee('repairs/overflow-'.$accountId.'.jpg', false);
 
+        // Tenant-reported jobs are moved on, not edited: closing one moves it to history.
         $this->actingAs($landlord)->withSession($session)
-            ->post(route('admin.property_repairs.saveForm'), [
-                'repair_id' => $repair->id,
-                'form_type' => 'property_issue_details',
-                'description' => $repair->description,
-                'priority' => 'high',
-                'status' => 'Closed',
-                'sub_status' => 'Pending',
-                'estimated_price' => '0',
-                'repair_navigation' => $repair->repair_navigation,
-                'repair_category_id' => $repair->repair_category_id,
-                'property_id' => $repair->property_id,
-                'landlord_note' => 'Plumber booked for Friday.',
-            ])
-            ->assertOk();
+            ->post(route('admin.property_repairs.close', $repair))
+            ->assertRedirect(route('admin.property_repairs.index'));
 
         $this->actingAs($tenant)->withSession($session)
             ->get(route('tenant.maintenance'))
             ->assertOk()
             ->assertSee('data-repair-history="'.$repair->id.'"', false)
-            ->assertDontSee('data-repair-open="'.$repair->id.'"', false)
-            ->assertSee('Plumber booked for Friday.', false);
+            ->assertDontSee('data-repair-open="'.$repair->id.'"', false);
 
         $this->actingAs($landlord)->withSession($session)
             ->get(route('backend.dashboard'))

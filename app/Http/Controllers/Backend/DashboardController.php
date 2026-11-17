@@ -130,7 +130,11 @@ class DashboardController extends Controller
         }
 
         $crmDashboard = is_landlord_plan_user($user)
-            ? $this->landlordCrmDashboard($user, $accountId, $propertiesCount, $openRepairsCount, $complianceAttentionCount)
+            ? $this->landlordCrmDashboard($user, $accountId, $propertiesCount, $openRepairsCount, $complianceAttentionCount, [
+                'corrections' => [$pendingCorrectionCount, $pendingCorrectionTenancyId],
+                'arrears' => $overdueRentCount,
+                'deposits' => [$depositAttentionCount, $depositAttentionTenancyId],
+            ])
             : null;
 
         return view('backend.dashboard', [
@@ -163,15 +167,35 @@ class DashboardController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function landlordCrmDashboard($user, ?int $accountId, int $propertiesCount, int $openRepairsCount, int $complianceAttentionCount): array
+    /**
+     * @param  array{corrections: array{0:int,1:?int}, arrears: int, deposits: array{0:int,1:?int}}  $attention
+     */
+    private function landlordCrmDashboard($user, ?int $accountId, int $propertiesCount, int $openRepairsCount, int $complianceAttentionCount, array $attention = []): array
     {
         $occupied = 0;
         $notice = 0;
         $received = 0.0;
         $outstanding = 0.0;
         $actions = [];
+        $tenanciesCount = 0;
+
+        // A tenant asked the landlord to fix the tenancy details before confirming the let.
+        [$correctionCount, $correctionTenancyId] = $attention['corrections'] ?? [0, null];
+        if ($correctionCount > 0) {
+            $actions[] = [
+                'kind' => 'Tenancy',
+                'tone' => 'alert',
+                'alert' => 'corrections',
+                'count' => $correctionCount,
+                'place' => $correctionCount.' tenancy correction '.\Illuminate\Support\Str::plural('request', $correctionCount).' '.($correctionCount === 1 ? 'needs' : 'need').' your attention',
+                'detail' => 'A tenant asked you to check rent, dates or deposit before they confirm the let.',
+                'url' => $correctionTenancyId ? route('admin.tenancies.show', $correctionTenancyId) : route('admin.tenancies.all'),
+                'cta' => 'Review',
+            ];
+        }
 
         if ($accountId) {
+            $tenanciesCount = (int) Tenancy::forAccount($accountId)->count();
             $occupied = (int) Tenancy::forAccount($accountId)
                 ->where('status', 'Active')
                 ->whereNotNull('property_id')
@@ -205,10 +229,14 @@ class DashboardController extends Controller
                 if ($overdue) {
                     $days = $overdue->due_date ? (int) $overdue->due_date->startOfDay()->diffInDays(now()->startOfDay()) : 0;
                     $address = $overdue->property?->line_1 ?: 'A property';
-                    $detail = rs_money($overdue->balance).' outstanding · '.$days.' '.($days === 1 ? 'day' : 'days').' overdue';
+                    $arrears = max(1, (int) ($attention['arrears'] ?? 1));
+                    $detail = $arrears.' overdue rent '.\Illuminate\Support\Str::plural('invoice', $arrears).' · '
+                        .rs_money($overdue->balance).' outstanding · '.$days.' '.($days === 1 ? 'day' : 'days').' overdue';
                     $actions[] = [
                         'kind' => 'Rent',
                         'tone' => 'alert',
+                        'alert' => 'arrears',
+                        'count' => $arrears,
                         'place' => $address,
                         'detail' => $detail,
                         'text' => $address.' — '.$detail,
@@ -235,6 +263,8 @@ class DashboardController extends Controller
                     $actions[] = [
                         'kind' => 'Compliance',
                         'tone' => 'alert',
+                        'alert' => 'certificates',
+                        'count' => $complianceAttentionCount,
                         'place' => $address,
                         'detail' => $detail,
                         'text' => $text,
@@ -242,6 +272,21 @@ class DashboardController extends Controller
                         'cta' => 'Book Inspection',
                     ];
                 }
+            }
+
+            // Deposit protection is a legal deadline, so it sits with the other alerts.
+            [$depositCount, $depositTenancyId] = $attention['deposits'] ?? [0, null];
+            if ($depositCount > 0) {
+                $actions[] = [
+                    'kind' => 'Deposit',
+                    'tone' => 'alert',
+                    'alert' => 'deposits',
+                    'count' => $depositCount,
+                    'place' => $depositCount.' '.\Illuminate\Support\Str::plural('deposit', $depositCount).' '.($depositCount === 1 ? 'needs' : 'need').' your attention',
+                    'detail' => 'Protection scheme, dates or prescribed information incomplete.',
+                    'url' => $depositTenancyId ? route('admin.tenancies.show', $depositTenancyId) : route('admin.tenancies.all'),
+                    'cta' => 'Review deposit',
+                ];
             }
 
             $repair = RepairIssue::forAccount($accountId)->with('property')->open()->latest('id')->first();
@@ -267,6 +312,7 @@ class DashboardController extends Controller
         return [
             'greeting' => CrmLanguage::greeting($user->name),
             'properties' => $propertiesCount,
+            'tenancies' => $tenanciesCount,
             'occupied' => $occupied,
             'notice' => $notice,
             'vacant' => $vacant,
