@@ -13,7 +13,10 @@
             </p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
-            <a href="{{ route('admin.tenancies.edit', $tenancy->id) }}" class="btn lw-btn-primary">Edit tenancy</a>
+            @if($returnToProperty ?? false)
+                <a href="{{ route('admin.properties.index', ['property_id' => $tenancy->property_id, 'tabname' => 'tenancy']) }}" class="btn lw-btn-secondary">Back to property</a>
+            @endif
+            <a href="{{ route('admin.tenancies.edit', array_filter(['id' => $tenancy->id, 'from_property' => ($returnToProperty ?? false) ? 1 : null])) }}" class="btn lw-btn-primary">Edit tenancy</a>
             <a href="{{ route('admin.tenancies.all') }}" class="btn lw-btn-secondary">All tenancies</a>
         </div>
     </div>

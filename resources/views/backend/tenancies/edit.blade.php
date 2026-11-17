@@ -34,6 +34,9 @@
 <div id="mainForm" class="rs-sheet">
     <form id="editTenancyForm" class="rs-form" action="{{ route('admin.tenancies.update', $tenancy->id) }}" method="POST" enctype="multipart/form-data">
         @csrf
+        @if($returnToProperty ?? false)
+            <input type="hidden" name="from_property" value="1">
+        @endif
         @if ($errors->any())
             <div class="alert alert-danger">
                 <div class="fw-semibold mb-1">Please fix the highlighted problems</div>

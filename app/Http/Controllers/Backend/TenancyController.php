@@ -50,8 +50,9 @@ class TenancyController
 
         Gate::authorize('viewAny', Tenancy::class);
 
-        // The property "Tenancies" pill links here. Open the property's Tenancy tab
-        // in the properties screen rather than returning a bare tab fragment.
+        // Keep the legacy property-tenancies URL, but render it through the
+        // property control centre. The old standalone tab was a partial view
+        // (and therefore omitted the application layout and its interactions).
         return redirect()->route('admin.properties.index', [
             'property_id' => $property->id,
             'tabname' => 'tenancy',
@@ -270,7 +271,7 @@ class TenancyController
     }
 
     // Display the specified tenancy
-    public function show($id)
+    public function show(Request $request, $id)
     {
         // $tenancy = Tenancy::findOrFail($id);
         // Find the tenancy with all needed relationships
@@ -301,8 +302,16 @@ class TenancyController
         if ($documentTypes->where('name', 'Prescribed Information')->isEmpty()) {
             $documentTypes = \App\Models\DocumentType::query()->orderBy('name')->get();
         }
+        $returnToProperty = $request->boolean('from_property') && (bool) $tenancy->property_id;
 
-        return view('backend.tenancies.show-page', compact('tenancy', 'documentTypes'));
+        // The property control centre loads this endpoint into a modal. Return
+        // only the tenancy detail component for that request; otherwise the
+        // full page layout (including a second sidebar/header) is injected.
+        if ($request->ajax()) {
+            return view('backend.tenancies.show', compact('tenancy', 'documentTypes', 'returnToProperty'));
+        }
+
+        return view('backend.tenancies.show-page', compact('tenancy', 'documentTypes', 'returnToProperty'));
     }
 
     public function rentLedger($id)
@@ -389,7 +398,7 @@ class TenancyController
     }
 
     // Show the form for editing the specified tenancy
-    public function edit($id)
+    public function edit(Request $request, $id)
     {
         // Find the tenancy by its ID
         $tenancy = Tenancy::findOrFail($id);
@@ -434,8 +443,9 @@ class TenancyController
             ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
             ->orderBy('line_1')
             ->get();
+        $returnToProperty = $request->boolean('from_property') && (bool) $tenancy->property_id;
 
-        if (request()->ajax()) {
+        if ($request->ajax()) {
             return view('backend.tenancies.edit', compact(
                 'tenancy',
                 'tenants',
@@ -445,7 +455,8 @@ class TenancyController
                 'currentPropertyManagers',
                 'tenantMembers',
                 'mainPersonId',
-                'properties'
+                'properties',
+                'returnToProperty'
             ));
         }
 
@@ -458,7 +469,8 @@ class TenancyController
             'currentPropertyManagers',
             'tenantMembers',
             'mainPersonId',
-            'properties'
+            'properties',
+            'returnToProperty'
         ));
     }
 
@@ -575,7 +587,12 @@ class TenancyController
 
         flash("Tenancy updated successfully!")->success();
 
-        return redirect()->route('admin.tenancies.show', $tenancy->id);
+        $destination = ['id' => $tenancy->id];
+        if ($request->boolean('from_property')) {
+            $destination['from_property'] = 1;
+        }
+
+        return redirect()->route('admin.tenancies.show', $destination);
     }
 
 
@@ -722,11 +739,18 @@ class TenancyController
 
     private function usersWithRoleForCurrentAccount(string $role)
     {
+        $memberType = match ($role) {
+            'Tenant' => 'tenant',
+            'Property Manager' => 'property_manager',
+            default => null,
+        };
+
         return User::role($role)
-            ->when(
-                ! auth()->user()?->hasRole('Super Admin'),
-                fn ($query) => $query->forAccount(current_account_id())
-            )
+            ->whereHas('accountUsers', function ($query) use ($memberType) {
+                $query->where('account_id', current_account_id())
+                    ->where('status', 'active')
+                    ->when($memberType, fn ($membership) => $membership->where('member_type', $memberType));
+            })
             ->orderBy('name');
     }
 

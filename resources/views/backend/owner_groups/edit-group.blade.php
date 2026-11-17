@@ -1,11 +1,11 @@
 <div id="mainForm">
-    <form id="owner-group-form" action="{{ route('admin.owner-groups.update_group', $ownerGroup->id) }}" method="POST">
+    <form id="owner-group-form" action="{{ route('admin.owner-groups.update_group', $ownerGroup->id) }}" method="POST" data-return-url="{{ $returnUrl ?? '' }}">
         @csrf
         <input type="hidden" name="property_id" class="form-control" value="{{ old('property_id', $ownerGroup->property_id) }}">
 
-        <button type="button" class="d-flex float-end btn btn-outline-primary btn-sm" id="addUserBtn">Add New User</button>
+        <button type="button" class="btn btn-outline-primary btn-sm mb-3" id="addUserBtn">Add New User</button>
 
-        <div class="form-group">
+        <div class="form-group mb-3">
             <label for="user_id">Users</label>
             <select name="user_id[]" id="user_id" class="form-control select2" multiple="multiple" required>
                 @foreach($users as $user)
@@ -53,7 +53,7 @@
             </div>
         </div>
 
-        <button type="submit" class="float-end mt-3 btn btn-secondary">Save</button>
+        <button type="submit" class="float-end mt-3 btn lw-btn-primary">Save changes</button>
     </form>
 </div>
 
@@ -80,7 +80,24 @@
 </div>
 
 <script>
-    initSelect2('.select2');
+    (function initialiseOwnerGroupEditor() {
+        if (typeof window.$ === 'undefined') {
+            window.setTimeout(initialiseOwnerGroupEditor, 25);
+            return;
+        }
+
+        const initialiseOwnerSelect = function () {
+            if (typeof $.fn.select2 !== 'function') {
+                window.setTimeout(initialiseOwnerSelect, 25);
+                return;
+            }
+
+            const $select = $('#user_id');
+            if (!$select.hasClass('select2-hidden-accessible')) {
+                $select.select2({ width: '100%' });
+            }
+        };
+        initialiseOwnerSelect();
 
     // Re-render main owner radio buttons when user selection changes
     function renderMainOwnerOptions() {
@@ -123,6 +140,49 @@
     // Run once on load to sync with pre-selected users
     renderMainOwnerOptions();
 
+    $('#addUserBtn').off('click.ownerGroupQuickAdd').on('click.ownerGroupQuickAdd', function () {
+        $('#mainForm').hide();
+        $('#addUserFormContainer').show();
+    });
+
+    $('#backToMainForm').off('click.ownerGroupQuickAdd').on('click.ownerGroupQuickAdd', function () {
+        $('#addUserFormContainer').hide();
+        $('#mainForm').show();
+    });
+
+    $('#addUserForm').off('submit.ownerGroupQuickAdd').on('submit.ownerGroupQuickAdd', function (event) {
+        event.preventDefault();
+        const $form = $(this);
+        const $button = $form.find('button[type="submit"]');
+        $button.prop('disabled', true).text('Saving...');
+
+        $.ajax({
+            url: @json(route('admin.users.quick_user_store')),
+            method: 'POST',
+            data: $form.serialize(),
+            success: function (response) {
+                if (!response.success || !response.user) {
+                    $button.prop('disabled', false).text('Save User');
+                    alert(response.message || 'Unable to add the owner.');
+                    return;
+                }
+
+                const option = new Option(response.user.name, response.user.id, true, true);
+                $('#user_id').append(option).trigger('change');
+                $form[0].reset();
+                $('#addUserFormContainer').hide();
+                $('#mainForm').show();
+            },
+            error: function (xhr) {
+                $button.prop('disabled', false).text('Save User');
+                const messages = xhr.responseJSON?.errors
+                    ? Object.values(xhr.responseJSON.errors).flat().join('\n')
+                    : 'Unable to add the owner.';
+                alert(messages);
+            },
+        });
+    });
+
     // Form submission — validate then submit via AJAX
     $('#owner-group-form').on('submit', function (e) {
         e.preventDefault();
@@ -151,6 +211,11 @@
             contentType: false,
             success: function (response) {
                 if (response.status) {
+                    const returnUrl = $form.data('return-url');
+                    if (returnUrl) {
+                        window.location.assign(returnUrl);
+                        return;
+                    }
                     $('#smallModal').modal('hide');
                     location.reload();
                 } else {
@@ -195,4 +260,5 @@
         }
         return true;
     }
+    })();
 </script>

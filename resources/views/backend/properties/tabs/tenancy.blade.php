@@ -1,6 +1,7 @@
 
 {{-- Hidden div for property ID --}}
-<div id="hidden-property-id" class="d-none" data-property-id="{{ $propertyId }}"></div>
+<div id="hidden-property-id" class="d-none" data-property-id="{{ $propertyId }}">
+</div>
 <div class="tab-content">
     @if($tenancies)
     <table class="table table-bordered">

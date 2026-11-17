@@ -28,6 +28,7 @@ pnpm-debug.log*
 /.history
 server.php
 
+CODEBASE_HANDOFF.md
 # OS junk
 .DS_Store
 Thumbs.db

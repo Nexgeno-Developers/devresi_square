@@ -507,10 +507,16 @@ class PropertyController
                         $ownerUserQuery
                             ->when(
                                 ! auth()->user()?->hasRole('Super Admin'),
-                                fn ($query) => $query->whereHas(
-                                    'user',
-                                    fn ($userQuery) => $userQuery->forAccount(current_account_id())
-                                )
+                                fn ($query) => $query->where(function ($membershipQuery) {
+                                    // Landlord onboarding stores co-owners as contact-only
+                                    // rows. They have no user/login by design, so retain them
+                                    // alongside account-scoped linked-owner rows.
+                                    $membershipQuery->whereNull('user_id')
+                                        ->orWhereHas(
+                                            'user',
+                                            fn ($userQuery) => $userQuery->forAccount(current_account_id())
+                                        );
+                                })
                             )
                             ->with('user');
                     },

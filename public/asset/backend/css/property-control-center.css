@@ -1031,6 +1031,29 @@ body:has(.pcc-root) #wrapper.main_content {
 }
 .property-overview-dashboard .property-media-thumb:hover { opacity: 0.8; }
 
+/* Owner-tab row actions need stable space when the table is narrowed. */
+.pcc-owner-actions-cell {
+    width: 190px;
+    min-width: 190px;
+}
+.pcc-owner-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+.pcc-owner-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 32px;
+}
+.pcc-owner-actions .btn i {
+    line-height: 1;
+}
+
 /* ── Responsive ──────────────────────────── */
 @media (max-width: 991.98px) {
     .pcc-toolbar {
