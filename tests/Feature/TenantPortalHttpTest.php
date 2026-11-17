@@ -34,7 +34,10 @@ class TenantPortalHttpTest extends TestCase
             ->assertSee('>Rent</span>', false)
             ->assertSee('>Repairs</span>', false)
             ->assertSee('>Docs</span>', false)
-            ->assertSee('>Me</span>', false);
+            ->assertSee('>Messages</span>', false)
+            ->assertSee('data-msg-bottom-dot', false)
+            // "Me" lives in the More sheet now (the full menu), not on the bar.
+            ->assertSee('>More</span>', false);
 
         $noticeId = (string) Str::uuid();
         DB::table('notifications')->insert([
