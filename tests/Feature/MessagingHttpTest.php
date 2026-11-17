@@ -59,12 +59,14 @@ class MessagingHttpTest extends TestCase
         $message = Message::query()->where('conversation_id', $chat->id)->where('kind', Message::TEXT)->firstOrFail();
         $this->assertStringContainsString('07123 456 789', $message->body, 'Nothing is masked.');
 
-        // Landlord: unread badge, bell, no email.
+        // Landlord: unread badge, bell and an email.
         $this->asAccount($owner, $accountId)->getJson(route('admin.messages.unread'))->assertJson(['unread' => 1]);
         $this->asAccount($owner, $accountId)->get(route('admin.messages.show', $chat))->assertOk()->assertSee('The boiler is off')->assertSee($tenant->name);
         $this->asAccount($owner, $accountId)->getJson(route('admin.messages.unread'))->assertJson(['unread' => 0]);
         $this->assertDatabaseHas('notifications', ['notifiable_id' => $owner->id, 'event_key' => 'message.received', 'account_id' => $accountId]);
-        Mail::assertNothingSent();
+        Mail::assertSent(\App\Mail\MailManager::class, fn ($mail) => $mail->hasTo($owner->email)
+            && str_contains($mail->array['subject'], 'New message from')
+            && str_contains($mail->array['content'], 'The boiler is off'));
 
         // Staff share the account inbox with their own read state, and can reply.
         $staff = $this->staff($accountId);
@@ -90,6 +92,9 @@ class MessagingHttpTest extends TestCase
             ->orderBy('created_at')->orderBy('id')
             ->get();
         $this->assertCount(2, $bells, 'One bell per message, not one per chat.');
+        Mail::assertSent(\App\Mail\MailManager::class, fn ($mail) => $mail->hasTo($owner->email) && str_contains($mail->array['content'], 'The boiler is off again.'));
+        Mail::assertSent(\App\Mail\MailManager::class, fn ($mail) => $mail->hasTo($owner->email) && str_contains($mail->array['content'], 'Also the shower is cold.'));
+        Mail::assertNotSent(\App\Mail\MailManager::class, fn ($mail) => $mail->hasTo($tenant->email));
         $texts = $bells->map(fn ($b) => json_decode($b->data, true)['message'])->all();
         $this->assertContains('The boiler is off again.', $texts);
         $this->assertContains('Also the shower is cold.', $texts);
@@ -105,6 +110,19 @@ class MessagingHttpTest extends TestCase
             ->whereNull('read_at')
             ->where('action_url', 'like', '%'.$chat->public_id.'%')
             ->count(), 'Opening the chat marks its bells read.');
+    }
+
+    public function test_turning_off_message_emails_keeps_the_bell(): void
+    {
+        [$owner, $accountId] = $this->landlord();
+        [$tenant, $tenancy] = $this->tenant($accountId);
+        $chat = $this->chatFor(Conversation::KIND_TENANCY, $tenancy->id);
+        \App\Models\NotificationPreference::query()->create(['account_id' => $accountId, 'user_id' => $owner->id, 'event_key' => 'message.received', 'email_enabled' => false, 'in_app_enabled' => true]);
+
+        $this->asAccount($tenant, $accountId)->post(route('portal.messages.send', $chat), ['body' => 'Hello'])->assertRedirect();
+
+        $this->assertDatabaseHas('notifications', ['notifiable_id' => $owner->id, 'event_key' => 'message.received']);
+        Mail::assertNotSent(\App\Mail\MailManager::class, fn ($mail) => $mail->hasTo($owner->email));
     }
 
     public function test_joint_tenants_share_one_household_chat_and_a_tenant_who_leaves_loses_access(): void

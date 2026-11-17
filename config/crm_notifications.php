@@ -323,9 +323,9 @@ $events = [
             'subject' => 'Your property statement is ready',
             'message' => 'A new statement for [[property_address]] is ready to view.',
         ],
-        // Messaging: in-app only, never an email per message.
+        // Messaging: a bell and an email for every message.
         CrmNotificationEvent::MessageReceived->value => [
-            'category' => 'messages', 'priority' => 'normal', 'channels' => ['system'],
+            'category' => 'messages', 'priority' => 'normal', 'channels' => $both,
             'subject' => 'New message',
             'message' => 'You have a new message.',
         ],
