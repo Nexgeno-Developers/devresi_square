@@ -516,8 +516,49 @@ body.tp-confirm-lock {
         flex-direction: column;
     }
 
+    /* Label and value stay side by side with a rule between rows, instead of one
+       long unbroken column of label, value, label, value. */
     .tp-dl {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(110px, 38%) minmax(0, 1fr);
+        gap: 0 16px;
+    }
+
+    .tp-dl dt,
+    .tp-dl dd {
+        padding: 10px 0;
+        border-top: 1px solid var(--tp-line);
+    }
+
+    .tp-dl dt:first-of-type,
+    .tp-dl dt:first-of-type + dd {
+        padding-top: 0;
+        border-top: 0;
+    }
+
+    .tp-dl dd {
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+}
+
+/* Narrow phones: no room for two columns, so each label sits above its value. */
+@media (max-width: 420px) {
+    .tp-dl {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .tp-dl dt {
+        padding-bottom: 0;
+        font-size: 12px;
+    }
+
+    .tp-dl dd {
+        padding-top: 2px;
+        border-top: 0;
+    }
+
+    .tp-dl dt:first-of-type {
+        padding-top: 0;
     }
 }
 
@@ -732,7 +773,11 @@ body.tp-confirm-lock {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    height: 100%;
+    box-sizing: border-box;
+    width: 100%;
+    /* Never height: 100%. Inside the stretched grid it made the box taller than its
+       content and pushed the photo preview down over the fields below. */
+    height: auto;
     min-height: 108px;
     border: 1px dashed var(--tp-line);
     border-radius: 12px;
@@ -794,10 +839,20 @@ body.tp-confirm-lock {
     gap: 6px;
 }
 
+.tp-avail-nav-buttons {
+    flex: 0 0 auto;
+}
+
 .tp-avail-nav-buttons .tp-btn {
-    width: 32px;
-    height: 32px;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
     padding: 0;
+}
+
+/* The month name and arrows get their own line when the hint leaves no room. */
+.tp-avail-nav {
+    flex-wrap: wrap;
 }
 
 .tp-avail-hint,
@@ -876,9 +931,16 @@ body.tp-confirm-lock {
 }
 
 @media (min-width: 720px) {
-    .tp-report-top {
-        grid-template-columns: 168px minmax(0, 1fr);
-        align-items: stretch;
+    /* Wide screens: the photo box becomes a slim bar instead of a tall tile. */
+    .tp-photo-capture {
+        min-height: 84px;
+    }
+
+    .tp-photo-capture .tp-photo-capture-label {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
     }
 
     .tp-complaint-grid {
@@ -926,13 +988,21 @@ body.tp-confirm-lock {
 
 .tp-photo-field {
     position: relative;
+    display: grid;
+    gap: 10px;
+    min-width: 0;
 }
 
 .tp-photo-preview {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-top: 10px;
+    min-width: 0;
+    margin: 0;
+    padding: 10px;
+    border: 1px solid var(--tp-line);
+    border-radius: 12px;
+    background: #fff;
 }
 
 .tp-photo-preview[hidden] {
@@ -940,6 +1010,7 @@ body.tp-confirm-lock {
 }
 
 .tp-photo-preview img {
+    flex: 0 0 auto;
     width: 72px;
     height: 72px;
     object-fit: cover;
@@ -947,10 +1018,27 @@ body.tp-confirm-lock {
     background: #f8f9fb;
 }
 
+/* The name and the Remove button stack, so a long file name wraps instead of
+   running under the button. */
+.tp-photo-preview > div {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: grid;
+    gap: 8px;
+    justify-items: start;
+}
+
 .tp-photo-preview strong {
     display: block;
+    max-width: 100%;
     font-size: 13px;
-    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.tp-photo-preview .tp-btn {
+    width: auto;
+    min-height: 36px;
+    padding: 6px 12px;
 }
 
 .tp-chip-row {
@@ -1027,11 +1115,23 @@ body.tp-confirm-lock {
     color: var(--tp-muted);
 }
 
+@media (max-width: 420px) {
+    /* More room for the seven day columns on a small phone. */
+    .tp-availability {
+        padding: 10px;
+    }
+
+    .tp-avail-weekdays,
+    .tp-avail-grid {
+        gap: 3px;
+    }
+}
+
 .tp-avail-day {
     border: 1px solid var(--tp-line);
     background: #fff;
     border-radius: 8px;
-    min-height: 2.05rem;
+    min-height: 2.4rem;
     padding: 0;
     font-size: 13px;
     line-height: 1;
@@ -1417,8 +1517,26 @@ body.tp-confirm-lock {
 
 .tp-pref-toggles {
     display: flex;
+    flex: 0 0 auto;
     flex-wrap: wrap;
     gap: 0.75rem;
+}
+
+.tp-pref-row > div:first-child {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Phones: Email and In-app always stack in the same column, so the tick boxes line
+   up down the list instead of shifting row by row. */
+@media (max-width: 560px) {
+    .tp-pref-toggles {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        align-items: flex-start;
+        gap: 0.4rem;
+        min-width: 5.5rem;
+    }
 }
 
 .tp-check {
@@ -1496,13 +1614,7 @@ body.tp-confirm-lock {
         border: 2px solid #0b1220;
     }
 
-    /* Six tabs (with Messages) on a 375px phone: a little less padding and type. */
-    .tp-bottom-nav--six .tp-bottom-nav__item {
-        padding-left: 0;
-        padding-right: 0;
-        font-size: 0.63rem;
-        letter-spacing: -0.01em;
-    }
+    /* Six-tab sizing lives with the rest of the bar in resi-shell.css. */
 
     .tp-bottom-nav__item > span:last-child {
         max-width: 100%;

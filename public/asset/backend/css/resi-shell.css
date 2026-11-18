@@ -1107,6 +1107,18 @@ body #wrapper .page-link:hover {
         outline-offset: -2px;
     }
 
+    /* Six tabs (tenant with Messages): tighter padding and type so "Messages" is not cut off. */
+    html body .tp-bottom-nav.tp-bottom-nav--six .tp-bottom-nav__item {
+        padding-left: 0;
+        padding-right: 0;
+        font-size: 0.62rem;
+        letter-spacing: -0.01em;
+    }
+
+    html body .tp-bottom-nav.tp-bottom-nav--six .tp-bottom-nav__item i {
+        font-size: 1.2rem;
+    }
+
     /* While the More sheet is open, only More reads as the active tab. */
     html body.show-sidebar .tp-bottom-nav .tp-bottom-nav__item:not(.tp-bottom-nav__more).is-active {
         color: rgba(255, 255, 255, 0.64);
@@ -1135,5 +1147,15 @@ body #wrapper .page-link:hover {
     /* The sheet's account card sits at the bottom of the list; give it breathing room. */
     html body #menu.sidebar > .footer_user_profile_menu {
         margin-bottom: 4px;
+    }
+}
+
+/* Very narrow phones (320px): five tabs still need long labels such as "Properties" to fit. */
+@media (max-width: 360px) {
+    html body .tp-bottom-nav .tp-bottom-nav__item {
+        padding-left: 0;
+        padding-right: 0;
+        font-size: 0.62rem;
+        letter-spacing: -0.01em;
     }
 }

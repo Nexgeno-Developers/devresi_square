@@ -43,7 +43,8 @@
     onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); loadRepairDetailByUrl(event, this); }"
 >
     @if($photoUrl)
-        <img src="{{ $photoUrl }}" alt="" class="lw-repair-thumb">
+        <img src="{{ $photoUrl }}" alt="" class="lw-repair-thumb"
+            onerror="this.onerror=null;this.outerHTML='&lt;div class=&quot;lw-repair-thumb lw-repair-thumb-empty&quot; aria-hidden=&quot;true&quot;&gt;&lt;/div&gt;'">
     @else
         <div class="lw-repair-thumb lw-repair-thumb-empty" aria-hidden="true"></div>
     @endif

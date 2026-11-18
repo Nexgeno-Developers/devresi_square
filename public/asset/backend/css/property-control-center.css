@@ -1055,6 +1055,25 @@ body:has(.pcc-root) #wrapper.main_content {
 }
 
 /* ── Responsive ──────────────────────────── */
+/* Tablet landscape / small laptop (992-1199px): the side menu and the list leave the
+   property detail only about 330-540px, but Bootstrap's col-lg-* still split it into two
+   columns because it looks at the screen, not the pane. Their buttons ran off the pane
+   edge, so the columns stack here. */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+    .pcc-right-pane .row > [class*="col-lg-"] {
+        flex: 0 0 auto;
+        width: 100%;
+    }
+
+    /* Same for the property facts: three across left each label only ~100px, so
+       "Bathrooms" and "Reception rooms" were cut. Two across fits. */
+    .pcc-right-pane .row > .col-sm-4,
+    .pcc-right-pane .row > .col-sm-3 {
+        flex: 0 0 auto;
+        width: 50%;
+    }
+}
+
 @media (max-width: 991.98px) {
     .pcc-toolbar {
         flex-wrap: nowrap;
@@ -1101,6 +1120,25 @@ body:has(.pcc-root) #wrapper.main_content {
 }
 
 @media (max-width: 575.98px) {
+    /* Toolbar: back, title, search and "+" must fit 320px. The shortcut button and the
+       tagline are keyboard / desktop things, and the search takes the space left over. */
+    .pcc-toolbar,
+    body.landlord-workspace .pcc-toolbar {
+        padding: 0.5rem 0.75rem;
+        gap: 0.5rem;
+    }
+    .pcc-toolbar .pcc-icon-ghost,
+    .pcc-toolbar-spacer,
+    .pcc-toolbar-kicker { display: none; }
+    .pcc-toolbar-brand { flex-shrink: 1; min-width: 0; }
+    .pcc-toolbar-title { overflow: hidden; text-overflow: ellipsis; }
+    .pcc-toolbar-search {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: none;
+    }
+    .pcc-toolbar-search input { min-width: 0; }
+    .pcc-toolbar .pcc-btn-ink { flex: 0 0 auto; }
     .pcc-search-label,
     .pcc-kbd { display: none; }
     /* "+ Add property" becomes "+" so the toolbar fits a phone. */

@@ -372,6 +372,29 @@ body #wrapper .staff-calendar-add:focus {
     #calendar .fc-button {
         padding: 0.3rem 0.6rem;
         font-size: 0.8rem;
+        min-height: 36px;
+        min-width: 36px;
+    }
+    #calendar .fc-button-group {
+        gap: 2px;
+    }
+    /* Month view: a day cell is too narrow for "10:00 Title", which was cut to "10:0".
+       Show each event as a small coloured bar. The title is in the day / week view
+       and when the event is tapped. */
+    #calendar .fc-dayGridMonth-view .fc-event-chip {
+        min-height: 8px;
+        padding: 0;
+        font-size: 0;
+        line-height: 0;
+    }
+    #calendar .fc-dayGridMonth-view .fc-event-time,
+    #calendar .fc-dayGridMonth-view .fc-event-name,
+    #calendar .fc-dayGridMonth-view .fc-event-bell {
+        display: none;
+    }
+    #calendar .fc-dayGridMonth-view .fc-daygrid-event {
+        min-height: 8px;
+        margin: 2px 3px 0;
     }
 }
 </style>

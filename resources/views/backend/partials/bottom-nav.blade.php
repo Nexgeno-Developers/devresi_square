@@ -73,7 +73,7 @@
         return $tab;
     })->all();
 @endphp
-<nav class="tp-bottom-nav rs-bottom-nav" aria-label="{{ $bnLabel }}">
+<nav class="tp-bottom-nav rs-bottom-nav{{ count($bnTabs) >= 5 ? ' tp-bottom-nav--six' : '' }}" aria-label="{{ $bnLabel }}">
     @foreach($bnTabs as $tab)
         @php $bnUnread = ! empty($tab['badge']) ? \App\Support\Messaging\MessagingBadge::total() : 0; @endphp
         <a href="{{ route($tab['route']) }}" class="tp-bottom-nav__item{{ $tab['active'] ? ' is-active' : '' }}"@if($tab['active']) aria-current="page"@endif
