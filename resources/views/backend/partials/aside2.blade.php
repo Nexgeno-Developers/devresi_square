@@ -29,7 +29,7 @@
     
 
     <div class="menu-search">
-        @unless(is_tenant_portal_user() || is_landlord_plan_user())
+        @unless(is_tenant_portal_user() || is_landlord_plan_user() || auth()->user()->hasRole('Contractor'))
         <div class="input-group mb-2">
             <input type="text" id="menu-search" placeholder="Search menu..." class="form-control">
             <button id="reset-search" class="btn btn-outline-secondary" type="button">&times;</button>

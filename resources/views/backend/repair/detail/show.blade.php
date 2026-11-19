@@ -52,7 +52,7 @@
         @foreach($repairIssue->repairPhotos as $photo)
             @foreach(explode(',', (string) $photo->photos) as $photoId)
                 @if(trim($photoId) !== '')
-                    <img src="{{ uploaded_asset(trim($photoId)) }}" alt="Repair photo" width="96" height="96" style="object-fit:cover" class="rounded border">
+                    <img src="{{ uploaded_asset(trim($photoId)) }}" alt="Repair photo" width="96" height="96" style="object-fit:cover" class="rounded border" onerror="this.onerror=null;this.outerHTML='<span class=&quot;small text-muted&quot;>Photo unavailable</span>'">
                 @endif
             @endforeach
         @endforeach

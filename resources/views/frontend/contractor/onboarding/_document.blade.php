@@ -17,13 +17,16 @@
     $needsFile = (bool) ($spec['file'] ?? true);
     $checks = in_array($state, ['todo', 'bad'], true);
     $counts = $checks && ! $optional && $editable;
+    // A required document already saved (in review or approved) still counts as ready,
+    // otherwise the meter reads "0 of 8" after "Save and finish later".
+    $savedCounts = ! $checks && ! $optional && $editable;
     $need = fn (bool $condition) => $checks && $condition ? 'data-need' : '';
     $field = fn (string $name) => 'docs['.$type.']['.$name.']';
     $old = fn (string $name, $fallback = null) => old('docs.'.$type.'.'.$name, $fallback);
     $expiry = $old('expires_at', $expired ? null : optional($current?->expires_at)->format('Y-m-d'));
 @endphp
 <article class="doc-card is-{{ $state }} {{ $locked && ! $renewal ? 'is-locked' : '' }}"
-    data-doc @if($checks) data-track @endif @if($counts) data-required @endif style="--i: {{ $i ?? 0 }}">
+    data-doc @if($checks) data-track @endif @if($counts) data-required @endif @if($savedCounts) data-saved @endif style="--i: {{ $i ?? 0 }}">
     <header class="doc-head">
         <span class="doc-icon" aria-hidden="true">
             <svg class="doc-icon-check" viewBox="0 0 24 24"><path d="M5 12.5l4.2 4.2L19 7"/></svg>

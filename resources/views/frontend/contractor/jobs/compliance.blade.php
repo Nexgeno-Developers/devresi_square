@@ -1,11 +1,28 @@
 @extends('backend.layout.app')
 
+@push('styles')
+<style>
+    /* Buttons and the back link are real tap targets on phones and tablets. */
+    @media (max-width: 991px) {
+        body #wrapper .contractor-compliance-page .btn-sm,
+        body #wrapper .contractor-compliance-page > a,
+        body #wrapper .contractor-compliance-page > p > a,
+        body #wrapper .contractor-compliance-page > div > a:only-child {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+        }
+    }
+</style>
+@endpush
+
 @section('content')
 @php
     $booking = $offer->booking;
     $check = $booking?->type?->name ?: 'Compliance check';
 @endphp
-<div class="container-fluid py-3" style="max-width: 760px;">
+<div class="container-fluid py-3 contractor-compliance-page" style="max-width: 760px;">
     @if(session('success')) <div class="alert alert-success">{{ session('success') }}</div> @endif
     @if(session('error')) <div class="alert alert-danger">{{ session('error') }}</div> @endif
     @if($errors->any()) <div class="alert alert-danger">{{ $errors->first() }}</div> @endif
@@ -153,6 +170,12 @@
             </div>
         </div>
     @elseif($offer->canQuote())
+        @php
+            // Once a quote has been sent, the form shows it so it can be checked and updated.
+            $sent = $offer->status === \App\Models\ComplianceJobOffer::OFFER_SENT;
+            $sentSlot = $sent ? ((array) ($offer->visit_slots ?? []))[0] ?? null : null;
+            $sentSlot = $sentSlot ? \Illuminate\Support\Carbon::parse($sentSlot)->format('Y-m-d\TH:i') : '';
+        @endphp
         <form method="POST" action="{{ route('contractor.jobs.compliance.quote', $offer) }}" class="card">
             @csrf
             <div class="card-body d-flex flex-column gap-3">
@@ -160,17 +183,17 @@
                 <input type="hidden" name="materials" value="included">
                 <div>
                     <label class="form-label" for="amount">Your price</label>
-                    <input class="form-control" id="amount" type="number" step="0.01" min="0.01" name="amount" value="{{ old('amount') }}" required>
+                    <input class="form-control" id="amount" type="number" step="0.01" min="0.01" name="amount" value="{{ old('amount', $sent ? (float) $offer->net_amount : '') }}" required>
                 </div>
                 <div>
                     <label class="form-label" for="visit_at">Visit time</label>
-                    <input class="form-control" id="visit_at" type="datetime-local" name="visit_slots[]" value="{{ old('visit_slots.0') }}" required>
+                    <input class="form-control" id="visit_at" type="datetime-local" name="visit_slots[]" value="{{ old('visit_slots.0', $sentSlot) }}" required>
                 </div>
                 <div>
                     <label class="form-label" for="offer_note">Note</label>
-                    <textarea class="form-control" id="offer_note" name="offer_note" rows="3" maxlength="2000">{{ old('offer_note') }}</textarea>
+                    <textarea class="form-control" id="offer_note" name="offer_note" rows="3" maxlength="2000">{{ old('offer_note', $sent ? $offer->offer_note : '') }}</textarea>
                 </div>
-                <button class="btn btn-primary" type="submit">Send quote</button>
+                <button class="btn btn-primary" type="submit">{{ $sent ? 'Update quote' : 'Send quote' }}</button>
             </div>
         </form>
         <form method="POST" action="{{ route('contractor.jobs.compliance.decline', $offer) }}" class="mt-3 d-flex flex-wrap gap-2 align-items-center">

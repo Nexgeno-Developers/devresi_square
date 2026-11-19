@@ -18,6 +18,17 @@
         </li>
     @endforeach
 </ul>
+<script>
+    // On a phone the tab row scrolls sideways: bring the current tab into view.
+    (function () {
+        var active = document.querySelector('.nav-pills .nav-link.active');
+        var row = active && active.closest('.nav-pills');
+        if (row) {
+            // Move only the tab row sideways, never the page.
+            row.scrollLeft = active.offsetLeft - (row.clientWidth - active.offsetWidth) / 2;
+        }
+    })();
+</script>
 @foreach(['success', 'error'] as $flash)
     @if(session($flash))
         <div class="alert alert-{{ $flash === 'success' ? 'success' : 'danger' }}">{{ session($flash) }}</div>

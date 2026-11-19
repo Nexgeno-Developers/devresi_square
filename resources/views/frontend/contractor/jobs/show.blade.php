@@ -4,7 +4,9 @@
 <style>
     .contractor-job-page { max-width: 1080px; }
     .contractor-job-back {
-        display: inline-block;
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
         margin-bottom: 0.7rem;
         font-size: 0.85rem;
         font-weight: 650;
@@ -74,7 +76,30 @@
         padding: 0.85rem 1rem;
         margin-bottom: 0.9rem;
     }
-    .job-total strong { font-size: 1.55rem; letter-spacing: -0.03em; }
+    .job-total strong { font-size: 1.55rem; letter-spacing: -0.03em; white-space: nowrap; }
+    .job-total { flex-wrap: wrap; }
+    /* Materials choices: each option is a comfortable tap target and wraps as a group. */
+    .job-materials { display: flex; flex-wrap: wrap; align-items: center; gap: 0.15rem 0.9rem; }
+    .job-materials label { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 36px; margin: 0; cursor: pointer; }
+    .job-materials input[type="radio"] { width: 18px; height: 18px; margin: 0; }
+    /* Buttons in the job panels are real tap targets on phones and tablets. */
+    @media (max-width: 991px) {
+        body #wrapper .contractor-job-page .btn-sm,
+        body #wrapper .contractor-job-page a.btn,
+        body #wrapper .contractor-job-page summary.btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+        }
+        body #wrapper .contractor-job-page .contractor-panel p.small a { display: inline-flex; align-items: center; min-height: 32px; }
+        body #wrapper .contractor-job-page a[href*="/invoice"]:not(.btn) { display: inline-flex; align-items: center; min-height: 36px; }
+        body #wrapper .contractor-job-page summary.btn-link { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+    }
+    @media (max-width: 575px) {
+        .job-total { flex-direction: column; align-items: flex-start; gap: 0.35rem; }
+        .job-total strong { font-size: 1.35rem; }
+    }
     .job-offer-foot {
         display: grid;
         grid-template-columns: 160px minmax(0, 1fr);
@@ -200,7 +225,7 @@
             <div class="d-flex flex-wrap gap-2 mt-3">
                 @foreach($photoIds as $photoId)
                     <a href="{{ route('contractor.jobs.photo', [$offer, $photoId]) }}" target="_blank" rel="noopener">
-                        <img src="{{ route('contractor.jobs.photo', [$offer, $photoId]) }}" alt="Photo {{ $loop->iteration }}" style="width:96px;height:96px;object-fit:cover" class="rounded border">
+                        <img src="{{ route('contractor.jobs.photo', [$offer, $photoId]) }}" alt="Photo {{ $loop->iteration }}" style="width:96px;height:96px;object-fit:cover" class="rounded border" onerror="this.onerror=null;this.outerHTML='<span class=&quot;small text-muted&quot;>Photo unavailable</span>'">
                     </a>
                 @endforeach
             </div>
@@ -329,7 +354,7 @@
                 <div class="d-flex flex-wrap gap-2 mt-2">
                     @foreach($offer->completion_photos as $index => $path)
                         <a href="{{ route('contractor.jobs.completion_photo', [$offer, $index]) }}" target="_blank" rel="noopener">
-                            <img src="{{ route('contractor.jobs.completion_photo', [$offer, $index]) }}" alt="Completion photo {{ $loop->iteration }}" style="width:72px;height:72px;object-fit:cover" class="rounded border">
+                            <img src="{{ route('contractor.jobs.completion_photo', [$offer, $index]) }}" alt="Completion photo {{ $loop->iteration }}" style="width:72px;height:72px;object-fit:cover" class="rounded border" onerror="this.onerror=null;this.outerHTML='<span class=&quot;small text-muted&quot;>Photo unavailable</span>'">
                         </a>
                     @endforeach
                 </div>
@@ -480,7 +505,7 @@
                     </div>
                 </div>
 
-                <div class="mb-3">
+                <div class="mb-3 job-materials">
                     <span class="small text-muted me-2">Materials</span>
                     @foreach(['included' => 'Included', 'excluded' => 'Extra', 'estimate' => 'Estimate'] as $key => $label)
                         <label class="me-2 small"><input type="radio" name="materials" value="{{ $key }}" @checked(old('materials', $offer->materials ?: 'included') === $key)> {{ $label }}</label>

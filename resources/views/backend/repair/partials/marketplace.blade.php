@@ -95,7 +95,7 @@
                 <div class="d-flex flex-wrap gap-2 my-2">
                     @foreach($awarded->completion_photos as $index => $path)
                         <a href="{{ route('admin.property_repairs.job_offers.completion_photo', [$awarded, $index]) }}" target="_blank" rel="noopener">
-                            <img src="{{ route('admin.property_repairs.job_offers.completion_photo', [$awarded, $index]) }}" alt="Completion photo {{ $loop->iteration }}" style="width:80px;height:80px;object-fit:cover" class="rounded border">
+                            <img src="{{ route('admin.property_repairs.job_offers.completion_photo', [$awarded, $index]) }}" alt="Completion photo {{ $loop->iteration }}" style="width:80px;height:80px;object-fit:cover" class="rounded border" onerror="this.onerror=null;this.outerHTML='<span class=&quot;small text-muted&quot;>Photo unavailable</span>'">
                         </a>
                     @endforeach
                 </div>

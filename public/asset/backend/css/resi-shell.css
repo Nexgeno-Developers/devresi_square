@@ -1159,3 +1159,36 @@ body #wrapper .page-link:hover {
         letter-spacing: -0.01em;
     }
 }
+
+/* Five tabs (four + More) on a phone: "Contractors" and "Properties" need a touch less type to fit. */
+@media (max-width: 420px) {
+    html body .tp-bottom-nav.tp-bottom-nav--five .tp-bottom-nav__item {
+        padding-left: 0;
+        padding-right: 0;
+        font-size: 0.64rem;
+        letter-spacing: -0.01em;
+    }
+}
+
+/* Pill tab rows (such as the contractor admin tabs) scroll sideways on phones; make each tab a real tap target. */
+@media (max-width: 991px) {
+    body #wrapper .nav-pills.overflow-auto .nav-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 38px;
+    }
+}
+
+/* Scrolling pill tab rows: readable labels and a slim scrollbar. */
+body #wrapper .nav-pills.overflow-auto {
+    scrollbar-width: thin;
+    padding-bottom: 4px;
+}
+
+body #wrapper .nav-pills.overflow-auto .nav-link:not(.active) {
+    color: #3b4452;
+}
+
+body #wrapper .nav-pills.overflow-auto .nav-link:not(.active):hover {
+    color: #0b1220;
+}

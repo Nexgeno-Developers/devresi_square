@@ -56,6 +56,7 @@
     .job-invoice .dates { margin-left: auto; min-width: 180px; }
     .job-invoice .dates div { display: flex; justify-content: space-between; gap: 16px; }
     .job-invoice table { width: 100%; border-collapse: collapse; margin-top: 22px; }
+    .inv-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .job-invoice th { text-align: left; font-weight: 600; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; border-bottom: 1px solid #1c1c1c; padding: 6px 8px; }
     .job-invoice td { border-bottom: 1px solid #ececec; padding: 8px; vertical-align: top; }
     .job-invoice .num { text-align: right; white-space: nowrap; }
@@ -75,6 +76,14 @@
         .job-invoice .parties { margin-top: 18px; }
         .job-invoice .dates { margin-left: 0; min-width: 0; width: 100%; }
         .job-invoice th, .job-invoice td { padding: 6px 4px; }
+        .job-invoice .vatpct { display: block; font-size: 11px; color: #666; }
+        .job-invoice th { font-size: 11px; letter-spacing: 0; }
+    }
+    /* Very narrow phones: tighten the money columns so the table fits without sideways scrolling. */
+    @media (max-width: 360px) {
+        .job-invoice { padding-left: 12px; padding-right: 12px; }
+        .job-invoice th, .job-invoice td { padding: 6px 3px; font-size: 12px; }
+        .job-invoice .num { letter-spacing: -0.01em; }
     }
     @media print {
         body * { visibility: hidden; }
@@ -124,6 +133,7 @@
         </div>
     </div>
 
+    <div class="inv-table-wrap">
     <table>
         <thead>
             <tr>
@@ -139,7 +149,7 @@
                     <td>{{ $line['description'] ?? '' }}</td>
                     <td class="num">£{{ number_format((float) ($line['net'] ?? 0), 2) }}</td>
                     @if($invoice->vat_number)
-                        <td class="num">£{{ number_format((float) ($line['vat'] ?? 0), 2) }} ({{ rtrim(rtrim(number_format((float) ($line['vat_rate'] ?? 0), 2), '0'), '.') }}%)</td>
+                        <td class="num">£{{ number_format((float) ($line['vat'] ?? 0), 2) }} <span class="vatpct">({{ rtrim(rtrim(number_format((float) ($line['vat_rate'] ?? 0), 2), '0'), '.') }}%)</span></td>
                     @endif
                     <td class="num">£{{ number_format((float) ($line['gross'] ?? 0), 2) }}</td>
                 </tr>
@@ -172,6 +182,7 @@
             @endif
         </tfoot>
     </table>
+    </div>
 
     @if($showContractorBank && $payment !== [])
         <div class="pay">

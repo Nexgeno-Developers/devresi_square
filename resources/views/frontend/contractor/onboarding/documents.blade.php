@@ -142,6 +142,9 @@
     const cards = [...form.querySelectorAll('[data-doc]')];
     const tracked = cards.filter(card => card.hasAttribute('data-track'));
     const required = cards.filter(card => card.hasAttribute('data-required'));
+    // Required documents that are already saved: ready, nothing to check.
+    const savedCount = cards.filter(card => card.hasAttribute('data-saved')).length;
+    const total = required.length + savedCount;
     const ring = document.querySelector('[data-meter-ring]');
     const doneLabel = document.querySelector('[data-meter-done]');
     const hint = form.querySelector('[data-hint]');
@@ -163,17 +166,18 @@
             if (ready) card.classList.remove('is-shake');
             if (ready && card.hasAttribute('data-required')) done++;
         });
+        done += savedCount;
         if (ring) {
             ring.style.strokeDasharray = CIRC;
-            ring.style.strokeDashoffset = CIRC * (1 - (required.length ? done / required.length : 1));
-            ring.closest('[data-meter]').classList.toggle('is-full', done === required.length);
+            ring.style.strokeDashoffset = CIRC * (1 - (total ? done / total : 1));
+            ring.closest('[data-meter]').classList.toggle('is-full', done === total);
         }
         if (doneLabel) doneLabel.textContent = done;
-        if (hint && hint.classList.contains('is-warn') && done === required.length) {
+        if (hint && hint.classList.contains('is-warn') && done === total) {
             hint.textContent = 'All set. Send it over.';
             hint.classList.remove('is-warn');
         }
-        return done === required.length;
+        return done === total;
     };
 
     const toggle = (button, body) => {

@@ -41,6 +41,13 @@
         if ($bnUser->contractorProfile?->approval_status !== \App\Models\ContractorProfile::SUBMITTED) {
             $bnTabs[] = ['label' => 'Documents', 'route' => 'contractor.profile.edit', 'match' => ['contractor.profile.*'], 'icon' => 'bi-person-vcard'];
         }
+        // Contractors chat with landlords and tenants too: same Messages tab and unread dot as tenants.
+        if (\App\Support\Messaging\MessagingBadge::current()) {
+            $bnTabs[] = [
+                'label' => 'Messages', 'route' => 'contractor.messages.index', 'match' => ['contractor.messages.*'],
+                'icon' => 'bi-chat-dots', 'badge' => true,
+            ];
+        }
     } elseif ($bnSuper) {
         $bnLabel = 'Phone navigation';
         $bnTabs = [
@@ -73,7 +80,7 @@
         return $tab;
     })->all();
 @endphp
-<nav class="tp-bottom-nav rs-bottom-nav{{ count($bnTabs) >= 5 ? ' tp-bottom-nav--six' : '' }}" aria-label="{{ $bnLabel }}">
+<nav class="tp-bottom-nav rs-bottom-nav{{ count($bnTabs) >= 5 ? ' tp-bottom-nav--six' : (count($bnTabs) === 4 ? ' tp-bottom-nav--five' : '') }}" aria-label="{{ $bnLabel }}">
     @foreach($bnTabs as $tab)
         @php $bnUnread = ! empty($tab['badge']) ? \App\Support\Messaging\MessagingBadge::total() : 0; @endphp
         <a href="{{ route($tab['route']) }}" class="tp-bottom-nav__item{{ $tab['active'] ? ' is-active' : '' }}"@if($tab['active']) aria-current="page"@endif

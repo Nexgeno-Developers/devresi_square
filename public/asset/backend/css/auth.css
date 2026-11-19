@@ -1223,3 +1223,18 @@ body.auth-body {
         transition-duration: 0.001ms !important;
     }
 }
+
+/* Touch targets: renewal / extras toggles, text links and Log out are at least 40px tall on phones. */
+@media (max-width: 991px) {
+    .doc-toggle,
+    .onb-extras-toggle {
+        min-height: 40px;
+    }
+
+    .auth-link,
+    .onb-logout {
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+    }
+}

@@ -1,11 +1,12 @@
 @php
+    // One role-aware "home" for the error pages: contractors go to Jobs, tenants to Home, and so on.
     $home = route('login');
     if (auth()->check()) {
-        $home = match (true) {
-            auth()->user()->hasRole('Contractor') => route('contractor.jobs.index'),
-            is_tenant_portal_user() => route('backend.home'),
-            default => route('backend.dashboard'),
-        };
+        try {
+            $home = route(\App\Support\PostLoginRedirect::routeName(auth()->user()));
+        } catch (\Throwable $e) {
+            $home = route('login');
+        }
     }
 @endphp
 <x-errors.shell
@@ -14,7 +15,7 @@
     message="We couldn't find that record. It may have been moved, archived or removed."
 >
     @auth
-        <a class="btn" href="{{ $home }}">Back to Dashboard</a>
+        <a class="btn" href="{{ $home }}">Back to home</a>
     @else
         <a class="btn" href="{{ route('login') }}">Login</a>
     @endauth

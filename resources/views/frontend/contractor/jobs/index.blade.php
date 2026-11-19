@@ -90,7 +90,31 @@
         align-items: flex-end;
         gap: 0.45rem;
     }
-    .contractor-home-actions a { font-size: 0.85rem; font-weight: 650; }
+    .contractor-home-actions a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 36px;
+        font-size: 0.85rem;
+        font-weight: 650;
+        color: #c2410c;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+    /* The agreement tick box sits on its own line with a real-size box and readable text. */
+    .contractor-alert label.small {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.55rem;
+        margin-top: 0.7rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+    .contractor-alert label.small input {
+        flex: 0 0 auto;
+        width: 18px;
+        height: 18px;
+        margin-top: 0.1rem;
+    }
     .contractor-home-status {
         border-radius: 999px;
         padding: 0.32rem 0.75rem;
@@ -191,6 +215,8 @@
     @media (max-width: 700px) {
         .contractor-home-head, .contractor-alert { flex-direction: column; align-items: stretch; }
         .contractor-home-actions { align-items: flex-start; }
+        .contractor-alert .btn { width: 100%; min-height: 44px; }
+        .contractor-job form .btn { min-height: 36px; }
         /* Three short counts still fit side by side on a phone. */
         .contractor-stats { gap: 0.5rem; }
         .contractor-stat { padding: 0.7rem 0.75rem; }
