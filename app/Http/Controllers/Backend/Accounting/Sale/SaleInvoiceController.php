@@ -540,7 +540,7 @@ class SaleInvoiceController extends BaseCrudController
             'payments.bankAccount',
             'payments.paymentMethod',
             'receipts'
-        ])->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+        ])->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->findOrFail($id);
         $this->ensurePortalCanViewInvoice($invoice);
         $customer = User::find($invoice->user_id);
@@ -842,7 +842,7 @@ class SaleInvoiceController extends BaseCrudController
             'invoiceHeader',
             'payments.bankAccount',
             'payments.paymentMethod',
-        ])->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+        ])->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->findOrFail($id);
         $this->ensurePortalCanViewInvoice($invoice);
 
@@ -1004,7 +1004,7 @@ class SaleInvoiceController extends BaseCrudController
         }
 
         $invoice = SysSaleInvoice::with('payments')
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->findOrFail($id);
 
         if (! $signed) {
@@ -1130,7 +1130,7 @@ class SaleInvoiceController extends BaseCrudController
     public function applyCredit(Request $request, int $id)
     {
         $invoice = SysSaleInvoice::with('user')
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->findOrFail($id);
         $this->ensurePortalCanViewInvoice($invoice);
 
@@ -1175,7 +1175,7 @@ class SaleInvoiceController extends BaseCrudController
             DB::transaction(function () use ($invoice, $lines, $bankId, $methodId, &$newBalance) {
                 foreach ($lines as $row) {
                     $receipt = SysReceipt::where('id', $row['receipt_id'])
-                        ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                        ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                         ->where('receiptable_type', 'user')
                         ->where('receiptable_id', $invoice->user_id)
                         ->whereIn('status', ['unapplied', 'partially_applied'])
@@ -1268,7 +1268,7 @@ class SaleInvoiceController extends BaseCrudController
             })
             ->selectRaw('COALESCE(sys_sale_invoices.balance_amount, sys_sale_invoices.total_amount - COALESCE(SUM(sys_payments.amount), 0), sys_sale_invoices.total_amount, 0) as outstanding')
             ->groupBy('sys_sale_invoices.id', 'sys_sale_invoices.invoice_no', 'sys_sale_invoices.user_id', 'sys_sale_invoices.total_amount', 'sys_sale_invoices.balance_amount', 'users.name');
-        if (! auth()->user()?->hasRole('Super Admin')) {
+        if (! bypasses_account_scope()) {
             $query->where('sys_sale_invoices.account_id', current_account_id());
         }
 
@@ -1424,7 +1424,7 @@ class SaleInvoiceController extends BaseCrudController
 
         $tenants = Tenancy::query()
             ->with(['tenantMembers.user:id,name,email,phone'])
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->where('property_id', $property->id)
             ->whereNotIn('status', ['Archive', 'Archived'])
             ->get()
@@ -1474,7 +1474,7 @@ class SaleInvoiceController extends BaseCrudController
 
         $baseQuery = Tenancy::query()
             ->with(['tenantMembers.user:id,name,email,phone'])
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->where('property_id', $property->id)
             ->where('status', 'Active')
             ->whereHas('tenantMembers', function ($q) use ($tenant) {
@@ -1643,7 +1643,7 @@ class SaleInvoiceController extends BaseCrudController
         $user = auth()->user();
         $accountId = current_account_id();
 
-        if (! $user?->hasRole('Super Admin')) {
+        if (! bypasses_account_scope($user)) {
             $query->forAccount($accountId);
         }
 
@@ -1712,7 +1712,7 @@ class SaleInvoiceController extends BaseCrudController
         $user = auth()->user();
         $accountId = current_account_id();
 
-        if (! $user?->hasRole('Super Admin')) {
+        if (! bypasses_account_scope($user)) {
             $query->forAccount($accountId);
         }
 
@@ -1729,7 +1729,7 @@ class SaleInvoiceController extends BaseCrudController
 
     private function scopeUserQuery($query)
     {
-        if (! auth()->user()?->hasRole('Super Admin')) {
+        if (! bypasses_account_scope()) {
             $query->whereHas('accountUsers', function ($accountUserQuery) {
                 $accountUserQuery->where('account_id', current_account_id())
                     ->where('status', 'active');
@@ -1810,7 +1810,7 @@ class SaleInvoiceController extends BaseCrudController
         $this->ensurePortalCanViewInvoice($invoice);
 
         $payment = SysPayment::where('id', $paymentId)
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->where('reference_type', 'sale_invoice')
             ->where('reference_id', $invoiceId)
             ->firstOrFail();
@@ -1823,7 +1823,7 @@ class SaleInvoiceController extends BaseCrudController
         }
 
         $receipt = SysReceipt::query()
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->findOrFail($payment->source_receipt_id);
 
         // customer consistency guard

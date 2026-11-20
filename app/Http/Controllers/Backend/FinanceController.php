@@ -219,6 +219,7 @@ class FinanceController extends Controller
         ]);
 
         $finance->recordPayment($rentInvoice, $validated, (int) $request->user()->id);
+        app(\App\Services\Finance\RentStripeCheckoutService::class)->closeOpenCheckoutAfterManualPayment($rentInvoice->refresh());
 
         $period = $rentInvoice->issue_date?->format('F') ?: 'this period';
         flash(rs_money($validated['amount']).' has been recorded against '.$period.' rent.')->success();

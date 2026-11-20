@@ -39,6 +39,11 @@ return [
         'url' => env('CALENDLY_URL'),
     ],
 
+    // Set SMS_ENABLED=false to stop real texts (tests, staging). Message text is never logged.
+    'sms' => [
+        'enabled' => (bool) env('SMS_ENABLED', true),
+    ],
+
     'stripe' => [
         // Operating / business Stripe account — subscriptions and platform fees.
         'key' => env('STRIPE_KEY', env('STRIPE_PUBLISHABLE_TEST')),

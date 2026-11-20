@@ -33,6 +33,7 @@
 
                     <form method="POST" action="{{ route('admin.finance.rent-pay.bank') }}">
                         @csrf
+                        <x-submit-once-token />
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label" for="bank_name">Bank name</label>

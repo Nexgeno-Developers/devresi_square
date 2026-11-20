@@ -52,7 +52,7 @@ class DashboardController extends Controller
             abort(403);
         }
 
-        if ($user->isSuperAdmin()) {
+        if (bypasses_account_scope($user)) {
             return $this->superAdminDashboard();
         }
 
@@ -130,7 +130,13 @@ class DashboardController extends Controller
         }
 
         $crmDashboard = is_landlord_plan_user($user)
-            ? $this->landlordCrmDashboard($user, $accountId, $propertiesCount, $openRepairsCount, $complianceAttentionCount)
+            ? $this->landlordCrmDashboard($user, $accountId, $propertiesCount, $openRepairsCount, $complianceAttentionCount, [
+                'corrections' => $pendingCorrectionCount,
+                'correction_tenancy_id' => $pendingCorrectionTenancyId,
+                'arrears' => $overdueRentCount,
+                'deposits' => $depositAttentionCount,
+                'deposit_tenancy_id' => $depositAttentionTenancyId,
+            ])
             : null;
 
         return view('backend.dashboard', [
@@ -163,13 +169,29 @@ class DashboardController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function landlordCrmDashboard($user, ?int $accountId, int $propertiesCount, int $openRepairsCount, int $complianceAttentionCount): array
+    private function landlordCrmDashboard($user, ?int $accountId, int $propertiesCount, int $openRepairsCount, int $complianceAttentionCount, array $attention = []): array
     {
+        $correctionCount = (int) ($attention['corrections'] ?? 0);
+        $arrearsCount = (int) ($attention['arrears'] ?? 0);
+        $depositCount = (int) ($attention['deposits'] ?? 0);
         $occupied = 0;
         $notice = 0;
         $received = 0.0;
         $outstanding = 0.0;
         $actions = [];
+
+        if ($accountId && $correctionCount > 0) {
+            $tenancyId = $attention['correction_tenancy_id'] ?? null;
+            $actions[] = [
+                'kind' => 'Tenancy',
+                'tone' => 'alert',
+                'alert' => ['corrections', $correctionCount],
+                'place' => $correctionCount.' tenancy correction '.\Illuminate\Support\Str::plural('request', $correctionCount).' '.($correctionCount === 1 ? 'needs' : 'need').' your attention',
+                'detail' => 'A tenant asked you to check rent, dates or deposit before they confirm the let.',
+                'url' => $tenancyId ? route('admin.tenancies.show', $tenancyId) : route('admin.tenancies.all'),
+                'cta' => 'Review',
+            ];
+        }
 
         if ($accountId) {
             $occupied = (int) Tenancy::forAccount($accountId)
@@ -206,8 +228,12 @@ class DashboardController extends Controller
                     $days = $overdue->due_date ? (int) $overdue->due_date->startOfDay()->diffInDays(now()->startOfDay()) : 0;
                     $address = $overdue->property?->line_1 ?: 'A property';
                     $detail = rs_money($overdue->balance).' outstanding · '.$days.' '.($days === 1 ? 'day' : 'days').' overdue';
+                    if ($arrearsCount > 0) {
+                        $detail .= ' · '.$arrearsCount.' overdue rent '.\Illuminate\Support\Str::plural('invoice', $arrearsCount);
+                    }
                     $actions[] = [
                         'kind' => 'Rent',
+                        'alert' => ['arrears', max(1, $arrearsCount)],
                         'tone' => 'alert',
                         'place' => $address,
                         'detail' => $detail,
@@ -231,9 +257,15 @@ class DashboardController extends Controller
                     } else {
                         $detail = $name.' is missing.';
                     }
+                    if ($complianceAttentionCount > 1) {
+                        $detail .= ' '.$complianceAttentionCount.' certificates are missing, expired, or due within 60 days.';
+                    } else {
+                        $detail .= ' Certificates missing, expired, or due within 60 days need renewing.';
+                    }
                     $text = $address.' — '.$detail;
                     $actions[] = [
                         'kind' => 'Compliance',
+                        'alert' => ['certificates', max(1, $complianceAttentionCount)],
                         'tone' => 'alert',
                         'place' => $address,
                         'detail' => $detail,
@@ -244,7 +276,20 @@ class DashboardController extends Controller
                 }
             }
 
-            $repair = RepairIssue::forAccount($accountId)->with('property')->open()->latest('id')->first();
+            if ($depositCount > 0) {
+                $tenancyId = $attention['deposit_tenancy_id'] ?? null;
+                $actions[] = [
+                    'kind' => 'Deposit',
+                    'tone' => 'alert',
+                    'alert' => ['deposits', $depositCount],
+                    'place' => $depositCount.' '.\Illuminate\Support\Str::plural('deposit', $depositCount).' '.($depositCount === 1 ? 'needs' : 'need').' your attention',
+                    'detail' => 'Protection scheme, dates or prescribed information incomplete. Deposits must be protected within 30 days.',
+                    'url' => $tenancyId ? route('admin.tenancies.show', $tenancyId) : route('admin.tenancies.all'),
+                    'cta' => 'Review deposit',
+                ];
+            }
+
+            $repair =RepairIssue::forAccount($accountId)->with('property')->open()->latest('id')->first();
             if ($repair) {
                 $address = $repair->property?->line_1 ?: 'A property';
                 $title = \Illuminate\Support\Str::limit($repair->description ?: 'Repair', 80);

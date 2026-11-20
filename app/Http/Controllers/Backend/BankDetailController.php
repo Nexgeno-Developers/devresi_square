@@ -29,9 +29,11 @@ class BankDetailController
         abort_unless($accountId || auth()->user()?->isSuperAdmin(), 403);
 
         // Contact must belong to the active workspace (Super Admin may target any membership).
-        if (! auth()->user()?->isSuperAdmin()) {
+        if (! bypasses_account_scope()) {
             User::query()->forAccount($accountId)->findOrFail($data['user_id']);
         }
+        // Only the person themselves, or someone who manages the workspace, may change bank details.
+        $this->ensureMayChangeBankDetailsFor((int) $data['user_id']);
 
         $data['is_active'] = $request->has('is_active');
         $data['is_primary'] = $request->has('is_primary');
@@ -39,7 +41,7 @@ class BankDetailController
 
         $scoped = fn () => BankDetails::query()
             ->when(
-                ! auth()->user()?->isSuperAdmin(),
+                ! bypasses_account_scope(),
                 fn ($query) => $query->forAccount($accountId)
             );
 
@@ -103,6 +105,7 @@ class BankDetailController
     public function destroy($id)
     {
         $bank = $this->bankDetailForCurrentAccount((int) $id);
+        $this->ensureMayChangeBankDetailsFor((int) $bank->user_id);
         $bank->delete();
 
         return response()->json([
@@ -111,11 +114,23 @@ class BankDetailController
         ]);
     }
 
+    private function ensureMayChangeBankDetailsFor(int $ownerUserId): void
+    {
+        $actor = auth()->user();
+        if (! $actor || (int) $actor->id === $ownerUserId) {
+            abort_unless($actor, 403);
+
+            return;
+        }
+
+        abort_unless(\App\Support\WorkspaceAccess::canManageCurrentWorkspace($actor), 403);
+    }
+
     private function bankDetailForCurrentAccount(int $id): BankDetails
     {
         $query = BankDetails::query();
 
-        if (! auth()->user()?->isSuperAdmin()) {
+        if (! bypasses_account_scope()) {
             $query->forAccount(current_account_id());
         }
 

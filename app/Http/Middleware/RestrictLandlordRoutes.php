@@ -20,6 +20,16 @@ class RestrictLandlordRoutes
 
         $routeName = $request->route()?->getName() ?? '';
 
+        // Platform settings and shared lookups belong to Super Admin, whatever the caller's role or account.
+        if ($routeName !== '' && $this->platformOnly($routeName, $request)) {
+            abort(403, 'This area is only available to Resisquare administrators.');
+        }
+
+        // Account email templates are for people who run the workspace, not its tenants or contractors.
+        if ($this->matchesPrefix($routeName, 'email-templates.') && $this->isPortalMember($user)) {
+            abort(403);
+        }
+
         if ($routeName !== '' && $this->contractorDeskBlocked($user, $routeName)) {
             abort(403, 'This area is not available on the contractor account.');
         }
@@ -60,6 +70,14 @@ class RestrictLandlordRoutes
         $membership = function_exists('current_account_membership') ? current_account_membership($user) : null;
 
         return $membership && AccountMembership::isTenant($membership->member_type);
+    }
+
+    private function isPortalMember($user): bool
+    {
+        $membership = function_exists('current_account_membership') ? current_account_membership($user) : null;
+
+        return $user->hasRole('Contractor') || $user->hasRole('Tenant')
+            || ($membership && (AccountMembership::isTenant($membership->member_type) || $membership->member_type === AccountMembership::CONTRACTOR));
     }
 
     private function usesLandlordAllowlist($user): bool
@@ -114,6 +132,42 @@ class RestrictLandlordRoutes
         ] as $prefix) {
             if ($this->matchesPrefix($routeName, $prefix)) {
                 return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Fully platform-only: settings that change the whole platform, or tables with no account scope. */
+    private const PLATFORM_ROUTES = [
+        'otp.', 'sms-templates.', 'smtp_settings', 'business_settings', 'env_key_update', 'test.smtp',
+        'backend.transactions.', 'backend.transaction_categories.', 'backend.account_headers.',
+        'admin.estate-charges.', 'admin.estate-charges-items.',
+        // The double-entry accounting module does not scope GL, journals or reports by account yet,
+        // so it stays with Resisquare staff until it does. Landlord rent and finance use admin.finance.*.
+        'backend.accounting.',
+    ];
+
+    /** Shared lookups: anyone signed in may read them, only Super Admin may change them. */
+    private const PLATFORM_LOOKUP_ROUTES = [
+        'admin.document-types.', 'admin.note-types.', 'admin.job_types.', 'admin.tenancy_types.',
+        'admin.tenancy_sub_statuses.', 'backend.event_types.', 'backend.event_sub_types.', 'user-categories.',
+    ];
+
+    private function platformOnly(string $routeName, Request $request): bool
+    {
+        foreach (self::PLATFORM_ROUTES as $prefix) {
+            if ($this->matchesPrefix($routeName, $prefix)) {
+                return true;
+            }
+        }
+
+        $readOnly = in_array($request->method(), ['GET', 'HEAD'], true)
+            && ! preg_match('/\.(create|edit|destroy|delete)$/', $routeName);
+
+        foreach (self::PLATFORM_LOOKUP_ROUTES as $prefix) {
+            if ($this->matchesPrefix($routeName, $prefix)) {
+                return ! $readOnly;
             }
         }
 

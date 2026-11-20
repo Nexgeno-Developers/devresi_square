@@ -7,12 +7,12 @@ use PHPUnit\Framework\TestCase;
 
 class DatabaseCleanupTablePolicyTest extends TestCase
 {
-    public function test_current_policy_has_114_unique_explicit_tables(): void
+    public function test_current_policy_has_116_unique_explicit_tables(): void
     {
         $tables = (new DatabaseCleanupTablePolicy)->configuredTables();
 
-        $this->assertCount(114, $tables);
-        $this->assertCount(114, array_unique($tables));
+        $this->assertCount(116, $tables);
+        $this->assertCount(116, array_unique($tables));
     }
 
     public function test_unknown_tables_fail_closed_to_review(): void

@@ -51,8 +51,16 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ResiSquare — property operations</title>
-    <meta name="description" content="Manage your properties, tenancies, rent and repairs from one clean dashboard. Built for landlords and independent agents.">
+    @php
+        $siteName = trim((string) get_setting('website_name')) ?: 'ResiSquare';
+        $siteTitle = trim((string) get_setting('meta_title')) ?: $siteName.' — property operations';
+        $siteDescription = trim((string) get_setting('meta_description')) ?: 'Manage your properties, tenancies, rent and repairs from one clean dashboard. Built for landlords and independent agents.';
+        $companyEmail = trim((string) get_setting('company_email'));
+        $companyPhone = trim((string) get_setting('company_phone'));
+        $companyAddress = trim((string) get_setting('company_address'));
+    @endphp
+    <title>{{ $siteTitle }}</title>
+    <meta name="description" content="{{ $siteDescription }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -65,7 +73,7 @@
     <header class="nav">
         <div class="wrap nav-inner">
             <a class="brand" href="{{ route('home') }}">
-                <img src="{{ site_header_logo_url() }}" alt="ResiSquare">
+                <img src="{{ site_header_logo_url() }}" alt="{{ $siteName }}">
             </a>
             <nav class="nav-links" aria-label="Primary">
                 <a href="#product">Product</a>
@@ -369,7 +377,16 @@
 
     <footer class="foot">
         <div class="wrap foot-inner">
-            <p>&copy; {{ date('Y') }} ResiSquare</p>
+            <div>
+                <p data-site-footer-name>&copy; {{ date('Y') }} {{ $siteName }}</p>
+                @if($companyEmail || $companyPhone || $companyAddress)
+                    <p class="foot-contact" data-site-footer-contact>
+                        @if($companyEmail)<a href="mailto:{{ $companyEmail }}">{{ $companyEmail }}</a>@endif
+                        @if($companyPhone)<span>{{ $companyEmail ? ' · ' : '' }}<a href="tel:{{ preg_replace('/[^0-9+]/', '', $companyPhone) }}">{{ $companyPhone }}</a></span>@endif
+                        @if($companyAddress)<span>{{ ($companyEmail || $companyPhone) ? ' · ' : '' }}{{ $companyAddress }}</span>@endif
+                    </p>
+                @endif
+            </div>
             <nav aria-label="Footer">
                 <a href="{{ route('pricing') }}">Pricing</a>
                 <a href="{{ route('login') }}">Login</a>

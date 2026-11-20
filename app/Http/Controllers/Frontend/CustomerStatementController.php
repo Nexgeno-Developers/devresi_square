@@ -57,7 +57,7 @@ class CustomerStatementController extends Controller
         return view('frontend.customer.statement', [
             'title' => 'My Statement',
             'companies' => Company::query()
-                ->when(! $user?->hasRole('Super Admin'), fn ($query) => $query->forAccount($accountId))
+                ->when(! bypasses_account_scope($user), fn ($query) => $query->forAccount($accountId))
                 ->orderBy('name')
                 ->pluck('name', 'id'),
             'filters' => $data + [

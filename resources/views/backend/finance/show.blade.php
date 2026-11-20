@@ -35,6 +35,7 @@
                 <h5>Record payment</h5>
                 <form action="{{ route('admin.finance.payments.store', $invoice) }}" method="POST">
                     @csrf
+                    <x-submit-once-token />
                     <div class="row">
                         <div class="col-md-3 mb-3">
                             <label for="amount">Amount (£)</label>

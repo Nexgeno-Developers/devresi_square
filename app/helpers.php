@@ -249,6 +249,23 @@ if (!function_exists('plain_text')) {
     }
 }
 
+if (! function_exists('bypasses_account_scope')) {
+    /**
+     * True only for a Super Admin with no account selected (platform view).
+     * Once a Super Admin works inside an account, they see that account's data only.
+     */
+    function bypasses_account_scope(?\App\Models\User $user = null): bool
+    {
+        $user = $user ?? Auth::user();
+
+        if (! $user || ! $user->hasRole('Super Admin')) {
+            return false;
+        }
+
+        return ! (function_exists('current_account_id') && current_account_id());
+    }
+}
+
 if (!function_exists('ensureModelBelongsToCurrentAccount')) {
     /**
      * Abort when a normal user tries to access another account's model.
@@ -257,7 +274,7 @@ if (!function_exists('ensureModelBelongsToCurrentAccount')) {
     {
         $user = Auth::user();
 
-        if (! $user || $user->hasRole('Super Admin')) {
+        if (! $user || bypasses_account_scope($user)) {
             return;
         }
 
@@ -498,14 +515,14 @@ if (!function_exists('searchProperties')) {
         // If IDs are provided, fetch properties by IDs
         if ($ids) {
             $properties = Property::query()
-                ->when(Auth::check() && ! Auth::user()->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                ->when(Auth::check() && ! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                 ->whereIn('id', $ids)
                 ->get(['id', 'prop_ref_no', 'prop_name', 'line_1', 'line_2', 'city', 'country', 'postcode', 'specific_property_type', 'available_from']);  // Return only necessary fields
         } else {
             // If no IDs are passed, search properties based on the query (default behavior)
             $query = $request->input('query');
             $properties = Property::query()
-                ->when(Auth::check() && ! Auth::user()->hasRole('Super Admin'), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
+                ->when(Auth::check() && ! bypasses_account_scope(), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
                 ->where(function ($propertyQuery) use ($query) {
                     $propertyQuery->where('prop_ref_no', 'LIKE', '%' . $query . '%')
                         ->orWhere('prop_name', 'LIKE', '%' . $query . '%')
@@ -1455,15 +1472,31 @@ if (! function_exists('rs_money')) {
     /**
      * Always show sterling with £ for IN UI (minor units optional).
      */
-    function rs_money(int|float|string|null $amount, bool $fromMinor = false): string
+    /**
+     * Money for display. Uses the given ISO currency, else the current account's currency, else GBP.
+     */
+    function rs_money(int|float|string|null $amount, bool $fromMinor = false, ?string $currency = null): string
     {
-        if ($amount === null || $amount === '') {
-            return '£0.00';
+        $value = ($amount === null || $amount === '')
+            ? 0.0
+            : ($fromMinor ? ((int) $amount) / 100 : (float) $amount);
+
+        if ($currency === null) {
+            try {
+                $currency = function_exists('current_account') ? current_account()?->currency : null;
+            } catch (\Throwable) {
+                $currency = null;
+            }
         }
+        $currency = strtoupper(trim((string) ($currency ?: 'GBP')));
 
-        $value = $fromMinor ? ((int) $amount) / 100 : (float) $amount;
+        $symbols = ['GBP' => '£', 'EUR' => '€', 'USD' => '$'];
+        $sign = $value < 0 ? '-' : '';
+        $formatted = number_format(abs($value), 2);
 
-        return '£'.number_format($value, 2);
+        return isset($symbols[$currency])
+            ? $sign.$symbols[$currency].$formatted
+            : $sign.$currency.' '.$formatted;
     }
 }
 

@@ -223,7 +223,7 @@ class PhoneHandoffHttpTest extends TestCase
         $this->actingAs($landlord)->withSession($session)
             ->get(route('admin.property_repairs.index'))
             ->assertOk()
-            ->assertSee('data-repair-title="address"', false)
+            ->assertSee('data-title="12 Title Road', false)
             ->assertSee('12 Title Road', false);
     }
 

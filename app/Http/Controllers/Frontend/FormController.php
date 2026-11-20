@@ -16,12 +16,17 @@ class FormController
         return view("forms.$type", ['formType' => $type]);
     }
 
+    /** Public forms that may be submitted. Anything else is a missing page. */
+    private const SUBMITTABLE_TYPES = ['book_demo'];
+
     public function submit(Request $request, $type)
     {
+        abort_unless(in_array($type, self::SUBMITTABLE_TYPES, true), 404);
+
         $validated = $request->validate([
-            'first_name' => 'nullable|string|max:255',
-            'last_name'  => 'nullable|string|max:255',
-            'email'      => 'nullable|email',
+            'first_name' => 'required|string|max:191',
+            'last_name'  => 'nullable|string|max:191',
+            'email'      => 'required|email|max:191',
             'phone'      => 'nullable|string|max:20',
             'user_role'  => 'nullable|in:landlord,owner,freelancing_agent,contractor',
             'demo_date'  => 'nullable|date',
@@ -42,8 +47,9 @@ class FormController
         $validated['subscribe'] = $request->has('subscribe') ? true : false;
 
         $validated['ip'] = $request->ip();
-        $validated['ip_date'] = json_encode(request()->header()); // or geo-ip service
-        $validated['ref_url'] = $request->headers->get('referer');
+        // Request headers are not stored: they hold cookies and do not fit the 191-character column.
+        unset($validated['ip_data']);
+        $validated['ref_url'] = mb_substr((string) $request->headers->get('referer'), 0, 191) ?: null;
 
         FormSubmission::create($validated);
 

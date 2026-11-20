@@ -14,8 +14,13 @@
         <div class="col-sm-6 col-xl-3">
             <div class="card h-100"><div class="card-body">
                 <div class="text-muted small">Monthly recurring revenue</div>
-                <div class="fs-4 fw-bold">£{{ number_format($metrics['mrr'], 2) }}</div>
-                <div class="text-muted small">ARR £{{ number_format($metrics['arr'], 2) }}</div>
+                @forelse($metrics['mrr_by_currency'] ?? [] as $currencyCode => $currencyMrr)
+                    <div class="fs-4 fw-bold" data-mrr-currency="{{ $currencyCode }}">{{ rs_money($currencyMrr, false, $currencyCode) }}</div>
+                    <div class="text-muted small">ARR {{ rs_money($currencyMrr * 12, false, $currencyCode) }}</div>
+                @empty
+                    <div class="fs-4 fw-bold">{{ rs_money(0, false, 'GBP') }}</div>
+                    <div class="text-muted small">ARR {{ rs_money(0, false, 'GBP') }}</div>
+                @endforelse
             </div></div>
         </div>
         <div class="col-sm-6 col-xl-3">

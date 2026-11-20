@@ -35,7 +35,7 @@ class EventSubTypeController
 
         EventSubType::create($validated);
 
-        return redirect()->route('backend.events.event_sub_types.index')
+        return redirect()->route('backend.event_sub_types.index')
                          ->with('success', 'Event SubType created.');
     }
 

@@ -35,11 +35,12 @@ class PublicRegisterEntryHttpTest extends TestCase
 
         $this->get(route('pricing'))
             ->assertOk()
-            ->assertSee(route('register', [
+            // Blade escapes the query-string ampersands, so compare against the escaped href.
+            ->assertSee('href="'.e(route('register', [
                 'plan_id' => $planId,
                 'billing_cycle' => 'monthly',
                 'account_type' => 'landlord',
-            ]), false);
+            ])).'"', false);
     }
 
     private function entryPlanId(): int

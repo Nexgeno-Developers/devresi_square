@@ -427,8 +427,8 @@ class OwnerGroupController
         $ownerGroup->update([
             'property_id' => $validated['property_id'],
             'purchased_date' => $validated['purchased_date'],
-            'sold_date' => $validated['sold_date'],
-            'archived_date' => $validated['archived_date'],
+            'sold_date' => $validated['sold_date'] ?? null,
+            'archived_date' => $validated['archived_date'] ?? null,
             'status' => $validated['status'],
             'updated_by' => $userId,
         ]);
@@ -461,14 +461,15 @@ class OwnerGroupController
         $mergedUsers = array_unique(array_merge($existingUsers, $newUsers));
 
         // Loop through the merged users and either update or insert
-        foreach ($mergedUsers as $userId) {
+        $actorId = auth()->id();
+        foreach ($mergedUsers as $ownerUserId) {
             // Determine if the current user should be marked as 'is_main'
-            $isMain = (intval($userId) === intval($validated['is_main'])) ? 1 : 0;
+            $isMain = (intval($ownerUserId) === intval($validated['is_main'])) ? 1 : 0;
 
             // If the user already exists, update it
-            if (in_array($userId, $existingUsers)) {
+            if (in_array($ownerUserId, $existingUsers)) {
                 OwnerGroupUser::where('owner_group_id', $ownerGroup->id)
-                    ->where('user_id', $userId)
+                    ->where('user_id', $ownerUserId)
                     ->update([
                         'is_main' => $isMain,
                     ]);
@@ -476,9 +477,9 @@ class OwnerGroupController
                 // Otherwise, create a new user association
                 OwnerGroupUser::create([
                     'owner_group_id' => $ownerGroup->id,
-                    'user_id' => $userId,
+                    'user_id' => $ownerUserId,
                     'is_main' => $isMain,
-                    'added_by' => $userId,
+                    'added_by' => $actorId,
                 ]);
             }
         }
@@ -669,7 +670,7 @@ class OwnerGroupController
     {
         return User::role('Owner')
             ->when(
-                ! auth()->user()?->hasRole('Super Admin'),
+                ! bypasses_account_scope(),
                 fn ($query) => $query->forAccount(current_account_id())
             )
             ->orderBy('name');
@@ -691,7 +692,7 @@ class OwnerGroupController
     {
         return Property::query()
             ->when(
-                ! auth()->user()?->hasRole('Super Admin'),
+                ! bypasses_account_scope(),
                 fn ($query) => $query->forAccount(current_account_id())
             );
     }
@@ -700,7 +701,7 @@ class OwnerGroupController
     {
         return OwnerGroup::query()
             ->when(
-                ! auth()->user()?->hasRole('Super Admin'),
+                ! bypasses_account_scope(),
                 fn ($query) => $query->whereHas(
                     'property',
                     fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id())
@@ -718,7 +719,7 @@ class OwnerGroupController
 
     private function ensureOwnersAreAccessible(array $ownerIds): void
     {
-        if (auth()->user()?->hasRole('Super Admin')) {
+        if (bypasses_account_scope()) {
             return;
         }
 

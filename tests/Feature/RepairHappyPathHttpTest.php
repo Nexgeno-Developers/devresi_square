@@ -65,6 +65,8 @@ class RepairHappyPathHttpTest extends TestCase
             ->assertOk()
             ->assertSee('Kitchen tap leaking', false);
 
+        // A tenant-raised repair is the tenant's report: the landlord may not rewrite
+        // its details or status through the edit form.
         $this->actingAs($landlord)->withSession($session)
             ->post(route('admin.property_repairs.saveForm'), [
                 'repair_id' => $repair->id,
@@ -78,30 +80,41 @@ class RepairHappyPathHttpTest extends TestCase
                 'repair_category_id' => $repair->repair_category_id,
                 'property_id' => $repair->property_id,
             ])
-            ->assertOk();
+            ->assertForbidden();
 
         $repair->refresh();
-        $this->assertSame('Under Process', $repair->status);
-        $this->assertEquals(85.5, (float) $repair->estimated_price);
+        $this->assertSame('Pending', $repair->status);
+        $this->assertNull($repair->estimated_price);
+
+        // The landlord moves the status on through the intended route while the repair
+        // is still with them, and the tenant hears about it.
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.property_repairs.close', $repair->id))
+            ->assertRedirect(route('admin.property_repairs.index'));
+
+        $repair->refresh();
+        $this->assertSame('Closed', $repair->status);
 
         $this->assertDatabaseHas('notification_logs', [
             'account_id' => $accountId,
-            'identifier' => CrmNotificationEvent::RepairStatusChanged->value,
+            'identifier' => CrmNotificationEvent::RepairJobCancelled->value,
             'notifiable_id' => $tenant->id,
         ]);
 
         $this->actingAs($tenant)->withSession($session)
             ->get(route('tenant.maintenance'))
             ->assertOk()
-            ->assertSee('In progress', false)
-            ->assertDontSee('Under Process', false)
+            // Tenants see the plain-language outcome: the closed job moves to History as Done.
+            ->assertSee('<h2 class="tp-section-title mt-4">History</h2>', false)
+            ->assertSee('Done', false)
+            ->assertSee('Kitchen tap leaking', false)
             ->assertSee('data-tenant-maintenance="1"', false)
             ->assertSee('Take or choose a photo', false);
 
         Queue::assertPushed(SendNotificationJob::class);
 
         $tenantNotice = NotificationLog::query()
-            ->where('identifier', CrmNotificationEvent::RepairStatusChanged->value)
+            ->where('identifier', CrmNotificationEvent::RepairJobCancelled->value)
             ->where('notifiable_id', $tenant->id)
             ->where('subject_id', $repair->id)
             ->first();
@@ -249,14 +262,19 @@ class RepairHappyPathHttpTest extends TestCase
                 'property_id' => $repair->property_id,
                 'landlord_note' => 'Plumber booked for Friday.',
             ])
-            ->assertOk();
+            ->assertForbidden();
+
+        // A tenant-raised repair keeps the tenant's wording; the landlord closes it with the close action.
+        $this->actingAs($landlord)->withSession($session)
+            ->post(route('admin.property_repairs.close', $repair))
+            ->assertRedirect();
+        $this->assertSame('Closed', $repair->fresh()->status);
 
         $this->actingAs($tenant)->withSession($session)
             ->get(route('tenant.maintenance'))
             ->assertOk()
             ->assertSee('data-repair-history="'.$repair->id.'"', false)
-            ->assertDontSee('data-repair-open="'.$repair->id.'"', false)
-            ->assertSee('Plumber booked for Friday.', false);
+            ->assertDontSee('data-repair-open="'.$repair->id.'"', false);
 
         $this->actingAs($landlord)->withSession($session)
             ->get(route('backend.dashboard'))

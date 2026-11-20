@@ -57,6 +57,14 @@ class JobTypeController
             return redirect()->route('admin.job_types.index')->with('error', 'Job type not found.');
         }
 
+        // A type that work orders (or child types used by work orders) still use cannot be removed.
+        $typeIds = \App\Models\JobType::query()->where('parent_id', $id->id)->pluck('id')->push($id->id);
+        if (\App\Models\WorkOrder::query()->whereIn('job_type_id', $typeIds)->exists()) {
+            flash()->error('This job type is used by work orders, so it cannot be deleted.');
+
+            return redirect()->back();
+        }
+
         // Delete the branch
         $id->delete();
 

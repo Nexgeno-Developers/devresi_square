@@ -47,6 +47,7 @@ return [
         'backend.home',
         'backend.logout',
         'backend.notifications.',
+        'backend.command-search',
         'backend.accounts.',
         'backend.billing.',
         'backend.events.',

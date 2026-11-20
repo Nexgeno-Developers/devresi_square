@@ -177,7 +177,7 @@ class DocumentsController
         ]);
 
         $q = Document::with('documentType')
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->whereIn('documentable_type', $this->documentableTypeAliases($data['documentable_type']))
             ->where('documentable_id',   $data['documentable_id']);
 
@@ -353,7 +353,7 @@ class DocumentsController
 
         if (
             $documentable instanceof User
-            && ! auth()->user()?->hasRole('Super Admin')
+            && ! bypasses_account_scope()
             && ! User::forAccount(current_account_id())->whereKey($documentable->id)->exists()
         ) {
             abort(403, 'This user does not belong to your subscriber account.');
@@ -362,7 +362,7 @@ class DocumentsController
 
     private function ensureUploadsAreAccessible(string $uploadIds): void
     {
-        if (auth()->user()?->hasRole('Super Admin')) {
+        if (bypasses_account_scope()) {
             return;
         }
 

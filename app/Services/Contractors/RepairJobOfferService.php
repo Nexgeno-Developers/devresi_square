@@ -1202,7 +1202,7 @@ class RepairJobOfferService
 
     public function assertLandlord(RepairJobOffer $offer, User $user): void
     {
-        if ((int) $offer->account_id !== (int) current_account_id() && ! $user->isSuperAdmin()) {
+        if ((int) $offer->account_id !== (int) current_account_id() && ! bypasses_account_scope($user)) {
             throw new ContractorMarketplaceException('This offer belongs to another account.');
         }
     }

@@ -61,7 +61,7 @@ class TenancyTypeController
     public function update(Request $request, TenancyType $tenancyType)
     {
         $request->validate([
-            'name' => 'required|unique:tenancy_types,type,' . $tenancyType->id,
+            'name' => 'required|unique:tenancy_types,name,' . $tenancyType->id,
         ]);
 
         $tenancyType->update($request->all());

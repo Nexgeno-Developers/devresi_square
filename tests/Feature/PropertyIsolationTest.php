@@ -9,6 +9,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class PropertyIsolationTest extends TestCase
@@ -70,7 +71,8 @@ class PropertyIsolationTest extends TestCase
                 'account_id' => $firstSubscription['account_id'],
                 'created_by' => $firstSubscription['user_id'],
             ]);
-        } catch (QueryException) {
+        } catch (ValidationException|QueryException) {
+            // The model's saving hook rejects it first; the unique index is the backstop.
             $duplicateWasRejected = true;
         }
 

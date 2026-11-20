@@ -34,7 +34,7 @@ class BrandedAuthHttpTest extends TestCase
             ->withSession(['current_account_id' => $accountId])
             ->get(route('admin.finance.index'))
             ->assertOk()
-            ->assertSee('<title>Finance · Resisquare</title>', false);
+            ->assertSee('<title>Rent · Resisquare</title>', false);
     }
 
     /**

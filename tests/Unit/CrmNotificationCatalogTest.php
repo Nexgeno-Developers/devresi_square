@@ -17,7 +17,7 @@ class CrmNotificationCatalogTest extends TestCase
             $this->assertArrayHasKey($event->value, $events);
             $definition = $events[$event->value];
             $this->assertNotEmpty($definition['category']);
-            $this->assertContains($definition['priority'], ['normal', 'high', 'critical']);
+            $this->assertContains($definition['priority'], ['low', 'normal', 'high', 'critical']);
             $this->assertNotEmpty($definition['channels']);
             $this->assertNotEmpty($definition['subject']);
             $this->assertNotEmpty($definition['message']);

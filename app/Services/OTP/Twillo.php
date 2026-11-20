@@ -15,7 +15,7 @@ class Twillo implements SendSms
         $fromNumber = env('VALID_TWILLO_NUMBER', env('TWILIO_FROM'));
 
         if (!$sid || !$token || !$fromNumber) {
-            Log::warning("Twilio not configured. OTP for {$to}: {$text}");
+            Log::warning('Twilio not configured; message not sent.', ['to_suffix' => substr($to, -3)]);
             return;
         }
 

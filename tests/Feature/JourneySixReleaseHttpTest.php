@@ -223,7 +223,7 @@ class JourneySixReleaseHttpTest extends TestCase
 
         $this->get('/_journey6/boom')
             ->assertStatus(500)
-            ->assertSee('Something went wrong', false)
+            ->assertSee('Something Went Wrong', false)
             ->assertDontSee('SECRET-STACK-MARKER-JOURNEY6', false);
     }
 

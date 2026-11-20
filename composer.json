@@ -8,7 +8,7 @@
         "php": "^8.2",
         "intervention/image": "^2.5",
         "laracasts/flash": "^3.2",
-        "laravel/framework": "^11.9",
+        "laravel/framework": "^12.71",
         "laravel/tinker": "^2.9",
         "mpdf/mpdf": "^8.2",
         "niklasravnsborg/laravel-pdf": "^4.1",

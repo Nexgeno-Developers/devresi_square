@@ -380,12 +380,12 @@ class RepairPriorityComplaintHttpTest extends TestCase
         $this->actingAs($tenant)->withSession($session)
             ->get(route('tenant.maintenance'))
             ->assertOk()
-            ->assertSee('Available '.$repair->tenantAvailabilityLabel(), false);
+            ->assertSee('You can be in '.$repair->tenantAvailabilityLabel().'.', false);
 
         $this->actingAs($landlord)->withSession($session)
             ->get(route('admin.property_repairs.show', $repair->id))
             ->assertOk()
-            ->assertSee('Tenant availability: '.$repair->tenantAvailabilityLabel(), false);
+            ->assertSee('Tenant available: '.$repair->tenantAvailabilityLabel(), false);
 
         $this->actingAs($tenant)->withSession($session)
             ->post(route('tenant.maintenance.store'), [

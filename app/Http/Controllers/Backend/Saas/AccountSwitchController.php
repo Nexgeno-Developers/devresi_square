@@ -14,6 +14,8 @@ class AccountSwitchController extends Controller
 {
     private const IMPERSONATOR_SESSION_KEY = 'impersonator_user_id';
 
+    private const IMPERSONATED_SESSION_KEY = 'impersonated_user_id';
+
     public function switch(Request $request, CurrentAccountService $service)
     {
         $data = $request->validate([
@@ -50,10 +52,10 @@ class AccountSwitchController extends Controller
         }
 
         $service->setCurrentAccount($superAdmin, $account->id);
-        $request->session()->put(self::IMPERSONATOR_SESSION_KEY, $superAdmin->id);
-
         Auth::login($owner);
         $request->session()->regenerate();
+        $request->session()->put(self::IMPERSONATOR_SESSION_KEY, $superAdmin->id);
+        $request->session()->put(self::IMPERSONATED_SESSION_KEY, $owner->id);
 
         flash("You are now logged in as {$account->account_name}.")->success();
 
@@ -63,9 +65,15 @@ class AccountSwitchController extends Controller
     public function leave(Request $request, CurrentAccountService $service)
     {
         $superAdminId = $request->session()->pull(self::IMPERSONATOR_SESSION_KEY);
+        $impersonatedId = $request->session()->pull(self::IMPERSONATED_SESSION_KEY);
         $superAdmin = $superAdminId ? User::find($superAdminId) : null;
 
-        abort_unless($superAdmin?->isSuperAdmin(), 403, 'The Super Admin session is no longer available.');
+        // Only the account the Super Admin logged in as may hand the session back.
+        abort_unless(
+            $superAdmin?->isSuperAdmin() && $impersonatedId && (int) $impersonatedId === (int) $request->user()?->id,
+            403,
+            'The Super Admin session is no longer available.'
+        );
 
         Auth::login($superAdmin);
         $request->session()->regenerate();

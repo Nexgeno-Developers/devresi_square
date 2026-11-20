@@ -65,7 +65,7 @@ class WorkOrderController
         if (!empty($request->work_order_id)) {
             $workOrderQuery = WorkOrder::query()
                 ->when(
-                    ! auth()->user()?->isSuperAdmin(),
+                    ! bypasses_account_scope(),
                     fn ($query) => $query->forAccount(current_account_id())
                 );
 
@@ -295,7 +295,7 @@ class WorkOrderController
         ensureModelBelongsToCurrentAccount($repairIssue);
 
         $workOrder = WorkOrder::where('repair_issue_id', $repairIssueId)
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->first();
 
         return response()->json([
@@ -368,7 +368,7 @@ class WorkOrderController
             'repairIssue.tenant',
         ])
             ->when(
-                ! auth()->user()?->isSuperAdmin(),
+                ! bypasses_account_scope(),
                 fn ($query) => $query->forAccount(current_account_id())
             )
             ->findOrFail($id);

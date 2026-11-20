@@ -337,6 +337,8 @@ class RegistrationController extends Controller
                 'password' => $registration->password_hash,
                 'email_verified_at' => $registration->email_verified_at,
             ]);
+            // Not mass-assignable on User, so set it explicitly.
+            $user->forceFill(['email_verified_at' => $registration->email_verified_at])->save();
 
             $roleName = 'Landlord';
             $role = Role::findByName($roleName);

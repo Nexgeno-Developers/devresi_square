@@ -74,7 +74,7 @@ class InvoiceController
         // $invoiceNumber = 'INV-' . str_pad(Invoice::count() + 1, 6, '0', STR_PAD_LEFT);
 
         // Create the invoice
-        $invoiceNumber = generateReferenceNumber(Invoice::class, 'invoice_no', 'RESISQREINV');
+        $invoiceNumber = generateReferenceNumber(Invoice::class, 'invoice_number', 'RESISQREINV');
         
         // Calculate invoice totals dynamically from Work Order items
         $subtotal = 0;

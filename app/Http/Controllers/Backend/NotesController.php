@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend;
 use App\Models\Notes;
 use App\Models\NoteType;
 use App\Models\Property;
+use App\Models\Tenancy;
 use App\Models\User;
 use App\Services\Saas\PortalAccessService;
 use Illuminate\Http\Request;
@@ -131,7 +132,7 @@ class NotesController
         ]);
 
         $q = Notes::with('noteType')
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->where('noteable_type', $data['noteable_type'])
             ->where('noteable_id', $data['noteable_id']);
 
@@ -211,6 +212,12 @@ class NotesController
 
     private function authorizeNoteableView($noteable): void
     {
+        if ($noteable instanceof Tenancy) {
+            abort_if($this->isPortalViewer(), 403, 'Tenancy notes are private to the landlord.');
+
+            return;
+        }
+
         if (! $noteable instanceof Property) {
             return;
         }
@@ -231,7 +238,7 @@ class NotesController
 
     private function supportedNoteableTypes(): array
     {
-        return [Property::class, User::class];
+        return [Property::class, User::class, Tenancy::class];
     }
 
     private function isSupportedNoteableType(string $type): bool
@@ -245,7 +252,7 @@ class NotesController
 
         if (
             $noteable instanceof User
-            && ! auth()->user()?->hasRole('Super Admin')
+            && ! bypasses_account_scope()
             && ! User::forAccount(current_account_id())->whereKey($noteable->id)->exists()
         ) {
             abort(403, 'This user does not belong to your subscriber account.');
@@ -254,6 +261,12 @@ class NotesController
 
     private function authorizeNoteableWrite($noteable): void
     {
+        if ($noteable instanceof Tenancy) {
+            abort_if($this->isPortalViewer(), 403, 'Portal users cannot manage private notes.');
+
+            return;
+        }
+
         if (! $noteable instanceof Property) {
             return;
         }
@@ -261,6 +274,19 @@ class NotesController
         if ($this->isPortalPropertyViewer($noteable)) {
             abort(403, 'Portal users cannot manage private notes.');
         }
+    }
+
+    private function isPortalViewer(): bool
+    {
+        $user = auth()->user();
+        $accountId = current_account_id();
+
+        if (! $user) {
+            return true;
+        }
+
+        return (bool) ($accountId && app(PortalAccessService::class)->isPortalUser($user, $accountId)
+            && ! (function_exists('sees_landlord_portfolio') && sees_landlord_portfolio($user)));
     }
 
     private function isPortalPropertyViewer($noteable): bool

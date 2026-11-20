@@ -61,7 +61,7 @@ class DepositProtectionHttpTest extends TestCase
             ->get(route('admin.tenancies.show', $tenancy->id));
         $show->assertOk();
         $show->assertSee('data-deposit-protection="1"', false);
-        $show->assertSee('Prescribed information document attached', false);
+        $show->assertSee('Prescribed information document not attached', false);
         $show->assertSee('Needs your attention', false);
 
         $prescribedType = DocumentType::query()->firstOrCreate(

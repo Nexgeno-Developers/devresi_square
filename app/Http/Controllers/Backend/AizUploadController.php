@@ -352,7 +352,7 @@ class AizUploadController
 
     private function scopeUploadQuery($query)
     {
-        if (! auth()->user()?->hasRole('Super Admin')) {
+        if (! bypasses_account_scope()) {
             $query->forAccount(current_account_id());
         }
 

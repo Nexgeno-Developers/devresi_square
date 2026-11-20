@@ -87,7 +87,7 @@ use App\Http\Controllers\Backend\TransactionCategoryController;
 
 // Login Routes
 Route::get('/login', [AuthenticateController::class, 'index'])->name('backend.login');
-Route::post('/login', [AuthenticateController::class, 'login'])->name('backend.login.post');
+Route::post('/login', [AuthenticateController::class, 'login'])->middleware('throttle:login')->name('backend.login.post');
 Route::get('/logout', [AuthenticateController::class, 'logout'])->name('backend.logout');
 
 // Redirect / to login page if not authenticated
@@ -119,6 +119,8 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         ->name('backend.notifications.deliveries.retry');
 
     Route::get('/clear-cache', function () {
+        abort_unless(auth()->user()?->hasRole('Super Admin'), 403);
+
         // Clear application cache
         Artisan::call('cache:clear');
 
@@ -249,10 +251,10 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/create', 'create')->name('create');
             Route::get('/rent-pay', 'rentPay')->name('rent-pay');
-            Route::post('/rent-pay/bank', 'storeRentPayBank')->name('rent-pay.bank');
-            Route::post('/', 'store')->name('store');
+            Route::post('/rent-pay/bank', 'storeRentPayBank')->middleware('submit.once')->name('rent-pay.bank');
+            Route::post('/', 'store')->middleware('submit.once')->name('store');
             Route::get('/{rentInvoice}', 'show')->name('show');
-            Route::post('/{rentInvoice}/payments', 'storePayment')->name('payments.store');
+            Route::post('/{rentInvoice}/payments', 'storePayment')->middleware('submit.once')->name('payments.store');
             Route::post('/{rentInvoice}/void', 'void')->name('void');
         });
 
@@ -419,7 +421,6 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
             Route::get('/{ownerGroup}/show', 'show')->name('show');  // Show individual owner group
             Route::get('/{ownerGroup}/edit', 'edit')->name('edit');  // Show edit form
             Route::put('/{ownerGroup}/update', 'update')->name('update');  // Update owner group
-            Route::post('/{ownerGroup}/delete', 'destroy')->name('destroy');  // Delete owner group
             Route::post('/update-main/{id}', 'updateMain')->name('updateMain');  // Update main owner group
         });
 
@@ -612,7 +613,6 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
                 Route::put('/update/{id}', 'update')->name('job_types.update');  // Update job type
                 Route::delete('/delete/{id}', 'destroy')->name('job_types.delete');  // Delete job type
 
-                Route::get('/create', 'create')->name('job_types.create');  // Show form to create job type
                 Route::post('/store', 'store')->name('job_types.store');  // Store new job type
 
                 Route::get('/parent/{parentId}/subcategories', 'getSubTypes')->name('job_types.getSubCategories');  // Fetch subcategories
@@ -870,11 +870,9 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
 
         // Notes (credit/debit)
         Route::controller(AccountsNoteApplicationController::class)->group(function () {
-            Route::get('credit-notes/create','createCredit')->name('credit_notes.create');
             Route::post('credit-notes','storeCredit')->name('credit_notes.store');
             Route::get('credit-notes/{creditNote}','showCredit')->name('credit_notes.show');
 
-            Route::get('debit-notes/create','createDebit')->name('debit_notes.create');
             Route::post('debit-notes','storeDebit')->name('debit_notes.store');
             Route::get('debit-notes/{debitNote}','showDebit')->name('debit_notes.show');
                 

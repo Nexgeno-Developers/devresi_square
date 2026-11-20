@@ -20,13 +20,13 @@ class BranchController
         $company = $this->branchCompanyFor(auth()->user(), false);
         $branchesQuery = Branch::query();
 
-        if (! auth()->user()?->hasRole('Super Admin')) {
+        if (! bypasses_account_scope()) {
             $branchesQuery->forAccount(current_account_id());
         }
 
         $branches = $company
             ? $branchesQuery->where('company_id', $company->id)->get()
-            : (auth()->user()?->hasRole('Super Admin') ? $branchesQuery->get() : collect());
+            : (bypasses_account_scope() ? $branchesQuery->get() : collect());
 
         return view('backend.branches.index', compact('branches'));
     }
