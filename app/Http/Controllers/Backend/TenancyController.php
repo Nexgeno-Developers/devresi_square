@@ -65,7 +65,7 @@ class TenancyController
         Gate::authorize('viewAny', Tenancy::class);
 
         $query = Tenancy::with(['property', 'tenantMembers.user', 'tenancyType', 'tenancySubStatus', 'correctionRequests' => fn ($query) => $query->pending()])
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->orderByDesc('id');
 
         if ($request->filled('status')) {
@@ -92,7 +92,7 @@ class TenancyController
         }
 
         $properties = Property::query()
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->orderBy('line_1')
             ->get();
 
@@ -118,7 +118,7 @@ class TenancyController
             'status' => 'required|in:Active,Archived,Archive',
             // 'sub_status' => 'nullable|string|max:255',
             'move_in' => 'required|date',
-            'move_out' => 'nullable|date',
+            'move_out' => 'nullable|date|after_or_equal:move_in',
             'tenancy_renewal_confirm_date' => 'nullable|date', // Assuming it's a date format
             'extension_date' => 'nullable|date',
             'rent' => 'required|numeric', // Renamed from 'price' to 'rent' to match the model
@@ -170,7 +170,7 @@ class TenancyController
         if ($validated['status'] === 'Active') {
             $displaced = Tenancy::query()
                 ->where('property_id', $validated['property_id'])
-                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                 ->where('status', 'Active')
                 ->get();
 
@@ -285,13 +285,13 @@ class TenancyController
             'property',
             'offer',
             'tenantMembers' => fn ($query) => $query->when(
-                ! auth()->user()?->hasRole('Super Admin'),
+                ! bypasses_account_scope(),
                 fn ($memberQuery) => $memberQuery->forAccount(current_account_id())
             )->with('user'),
             'tenancyType',
             'tenancySubStatus',
             'propertyManagers' => fn ($query) => $query->when(
-                ! auth()->user()?->hasRole('Super Admin'),
+                ! bypasses_account_scope(),
                 fn ($userQuery) => $userQuery->forAccount(current_account_id())
             ),
             'correctionRequests' => fn ($query) => $query->with(['requester', 'reviewer'])->latest('id'),
@@ -310,14 +310,28 @@ class TenancyController
         }
         $returnToProperty = $request->boolean('from_property') && (bool) $tenancy->property_id;
 
+        $tenancyNotes = collect();
+        $noteTypes = collect();
+        if (! (function_exists('is_tenant_portal_user') && is_tenant_portal_user())) {
+            // The notes API stores the full class name; the morph map's short key is 'Tenancy'. Match both.
+            $tenancyNotes = \App\Models\Notes::query()
+                ->whereIn('noteable_type', [Tenancy::class, $tenancy->getMorphClass()])
+                ->where('noteable_id', $tenancy->id)
+                ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
+                ->with('noteType')
+                ->orderByDesc('updated_at')
+                ->get();
+            $noteTypes = \App\Models\NoteType::all();
+        }
+
         // The property control centre loads this endpoint into a modal. Return
         // only the tenancy detail component for that request; otherwise the
         // full page layout (including a second sidebar/header) is injected.
         if ($request->ajax()) {
-            return view('backend.tenancies.show', compact('tenancy', 'documentTypes', 'returnToProperty'));
+            return view('backend.tenancies.show', compact('tenancy', 'documentTypes', 'returnToProperty', 'tenancyNotes', 'noteTypes'));
         }
 
-        return view('backend.tenancies.show-page', compact('tenancy', 'documentTypes', 'returnToProperty'));
+        return view('backend.tenancies.show-page', compact('tenancy', 'documentTypes', 'returnToProperty', 'tenancyNotes', 'noteTypes'));
     }
 
     public function rentLedger($id)
@@ -325,13 +339,13 @@ class TenancyController
         $tenancy = Tenancy::with([
             'property',
             'tenantMembers' => fn ($query) => $query->when(
-                ! auth()->user()?->hasRole('Super Admin'),
+                ! bypasses_account_scope(),
                 fn ($memberQuery) => $memberQuery->forAccount(current_account_id())
             )->with('user'),
             'tenancyType',
             'tenancySubStatus',
             'propertyManagers' => fn ($query) => $query->when(
-                ! auth()->user()?->hasRole('Super Admin'),
+                ! bypasses_account_scope(),
                 fn ($userQuery) => $userQuery->forAccount(current_account_id())
             ),
         ])->findOrFail($id);
@@ -439,14 +453,14 @@ class TenancyController
 
         // Fetch the tenancy's current tenant members
         $tenantMembers = TenantMember::where('tenancy_id', $id)
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->get();
 
         // Find the main person from the tenant members
         $mainPersonId = $tenantMembers->where('is_main_person', true)->pluck('user_id')->first();
 
         $properties = Property::query()
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->orderBy('line_1')
             ->get();
         $returnToProperty = $request->boolean('from_property') && (bool) $tenancy->property_id;
@@ -490,7 +504,7 @@ class TenancyController
             'offer_id' => 'nullable|exists:offers,id',
             'status' => 'required|in:Active,Archived,Archive',
             'move_in' => 'required|date',
-            'move_out' => 'nullable|date',
+            'move_out' => 'nullable|date|after_or_equal:move_in',
             'tenancy_renewal_confirm_date' => 'nullable|date', // Assuming it's a date format
             'extension_date' => 'nullable|date',
             'rent' => 'required|numeric', // Renamed from 'price' to 'rent' to match the model
@@ -762,7 +776,7 @@ class TenancyController
 
     private function ensureRoleUsersAreAccessible(array $userIds, string $role, string $field): void
     {
-        if (auth()->user()?->hasRole('Super Admin') || empty($userIds)) {
+        if (bypasses_account_scope() || empty($userIds)) {
             return;
         }
 

@@ -66,6 +66,11 @@
                 <div class="rs-field rs-span-2">
                     <span>Tenant</span>
                     <strong>{{ $member->user?->name ?? 'Tenant' }}</strong>
+                    @if($member->right_to_rent_checked_at)
+                        <small class="text-success d-block" data-right-to-rent="checked"><i class="bi bi-check-circle"></i> Checked {{ rs_date($member->right_to_rent_checked_at) }}</small>
+                    @else
+                        <small class="text-danger d-block" data-right-to-rent="incomplete"><i class="bi bi-exclamation-circle"></i> Right to rent not checked</small>
+                    @endif
                 </div>
                 <label class="rs-check rs-span-2">
                     <input type="hidden" name="right_to_rent_required" value="0">
@@ -86,6 +91,23 @@
             </form>
         @endforeach
     </section>
+
+    @if(isset($noteTypes) && ! is_tenant_portal_user())
+    <section class="rs-section" data-tenancy-notes="{{ $tenancy->id }}">
+        <div class="rs-section-head">
+            <div>
+                <h2>Notes</h2>
+                <p>Private to you and your team. Tenants never see these.</p>
+            </div>
+        </div>
+        <x-backend-notes-component
+            :noteable-type="get_class($tenancy)"
+            :noteable-id="$tenancy->id"
+            :note-types="$noteTypes"
+            :initial-notes="$tenancyNotes ?? collect()"
+        />
+    </section>
+    @endif
 
     @unless(is_landlord_plan_user())
     <section class="rs-section">

@@ -93,7 +93,8 @@ class MessagingHttpTest extends TestCase
             ->get();
         $this->assertCount(2, $bells, 'One bell per message, not one per chat.');
         Mail::assertSent(\App\Mail\MailManager::class, fn ($mail) => $mail->hasTo($owner->email) && str_contains($mail->array['content'], 'The boiler is off again.'));
-        Mail::assertSent(\App\Mail\MailManager::class, fn ($mail) => $mail->hasTo($owner->email) && str_contains($mail->array['content'], 'Also the shower is cold.'));
+        // Emails are limited to one per person per chat every 15 minutes; the bell still shows every message.
+        Mail::assertNotSent(\App\Mail\MailManager::class, fn ($mail) => $mail->hasTo($owner->email) && str_contains($mail->array['content'], 'Also the shower is cold.'));
         Mail::assertNotSent(\App\Mail\MailManager::class, fn ($mail) => $mail->hasTo($tenant->email));
         $texts = $bells->map(fn ($b) => json_decode($b->data, true)['message'])->all();
         $this->assertContains('The boiler is off again.', $texts);
@@ -216,23 +217,36 @@ class MessagingHttpTest extends TestCase
         $this->assertStringContainsString('cancelled', $chat->fresh()->archived_reason);
     }
 
-    public function test_compliance_job_chat_includes_every_tenant_at_the_property(): void
+    public function test_compliance_job_chat_includes_the_tenant_of_a_single_let_home(): void
     {
         [$owner, $accountId] = $this->landlord();
         [$tenantA, $tenancyA] = $this->tenant($accountId);
-        [$tenantB] = $this->tenant($accountId, 'Active', $tenancyA->property);
         [$elsewhere] = $this->tenant($accountId);
         $contractor = $this->contractorUser();
 
         $offer = $this->complianceOffer($accountId, $owner, $contractor, $tenancyA->property);
         $chat = $this->chatFor(Conversation::KIND_COMPLIANCE_JOB, $offer->id);
         $this->assertTrue($chat->hasParticipant(Party::user($tenantA->id)));
-        $this->assertTrue($chat->hasParticipant(Party::user($tenantB->id)));
         $this->assertFalse($chat->hasParticipant(Party::user($elsewhere->id)));
         $this->asAccount($elsewhere, $accountId)->get(route('portal.messages.show', $chat))->assertNotFound();
 
         $offer->forceFill(['job_status' => ComplianceJobOffer::JOB_CONFIRMED])->save();
         $this->assertSame(Conversation::ARCHIVED, $chat->fresh()->status);
+    }
+
+    public function test_in_a_shared_house_a_compliance_chat_is_landlord_and_contractor_only(): void
+    {
+        [$owner, $accountId] = $this->landlord();
+        [$roomOne, $tenancyOne] = $this->tenant($accountId);
+        [$roomTwo] = $this->tenant($accountId, 'Active', $tenancyOne->property);
+        $contractor = $this->contractorUser();
+
+        // A compliance check has no reporting tenant, so tenants of separate lets never share its chat.
+        $offer = $this->complianceOffer($accountId, $owner, $contractor, $tenancyOne->property);
+        $chat = $this->chatFor(Conversation::KIND_COMPLIANCE_JOB, $offer->id);
+        $this->assertFalse($chat->hasParticipant(Party::user($roomOne->id)));
+        $this->assertFalse($chat->hasParticipant(Party::user($roomTwo->id)));
+        $this->asAccount($roomTwo, $accountId)->get(route('portal.messages.show', $chat))->assertNotFound();
     }
 
     public function test_in_a_shared_house_only_the_reporting_tenants_household_joins_a_repair_chat(): void

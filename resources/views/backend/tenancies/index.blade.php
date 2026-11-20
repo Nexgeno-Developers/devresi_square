@@ -52,6 +52,10 @@
                     </td>
                     <td>
                         {{ $tenancy->tenantMembers->map(fn($m) => rs_person($m->user))->filter(fn ($n) => $n !== 'Someone')->implode(', ') ?: '—' }}
+                        @php($rtrMissing = $tenancy->status === 'Active' ? $tenancy->tenantMembers->whereNull('right_to_rent_checked_at')->count() : 0)
+                        @if($rtrMissing > 0)
+                            <small class="text-danger d-block" data-right-to-rent="incomplete">Right to rent not checked{{ $rtrMissing > 1 ? ' ('.$rtrMissing.')' : '' }}</small>
+                        @endif
                     </td>
                     <td>{{ $tenancy->rentFrequencyLabel() }}</td>
                     <td>{{ rs_date($tenancy->move_in) }}</td>

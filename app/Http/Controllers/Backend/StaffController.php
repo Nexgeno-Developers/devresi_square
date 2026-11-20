@@ -35,7 +35,7 @@ class StaffController extends Controller
     {
         $staffs = Staff::with('user.designation')
             ->with('branch')
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->whereHas('user', fn($query) => $query->where('user_type', 'staff'))
             ->paginate(10);
 
@@ -49,7 +49,7 @@ class StaffController extends Controller
         }
 
         $designations = Designation::with('permissions')
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->orderBy('title')
             ->get();
         $permissions = Permission::orderBy('name')->get();
@@ -199,7 +199,7 @@ class StaffController extends Controller
         ensureModelBelongsToCurrentAccount($staff);
 
         $designations = Designation::with('permissions')
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->orderBy('title')
             ->get();
         $permissions = Permission::orderBy('name')->get();
@@ -391,7 +391,7 @@ class StaffController extends Controller
 
     private function branchOptionsFor(User $user)
     {
-        if (! $user->hasRole('Super Admin')) {
+        if (! bypasses_account_scope($user)) {
             return Branch::forAccount(current_account_id())->orderBy('name')->get();
         }
 

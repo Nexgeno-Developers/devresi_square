@@ -48,7 +48,7 @@ class OfferController
     //     ]);
 
     //     Offer::create($request->all());
-    //     return redirect()->route('offers.index')->with('success', 'Offer created successfully.');
+    //     return redirect()->route('admin.offers.index')->with('success', 'Offer created successfully.');
     // }
 
     public function store(Request $request)
@@ -177,7 +177,7 @@ class OfferController
             return response()->json($response);
 
             // Redirect back with a success message
-            // return redirect()->route('offers.index')->with('success', 'Offer created successfully.');
+            // return redirect()->route('admin.offers.index')->with('success', 'Offer created successfully.');
         }
         catch (\Exception $e) {
             DB::rollBack();  // Rollback the transaction in case of error
@@ -205,14 +205,14 @@ class OfferController
         $property = $this->findAccessibleProperty((int) $request->property_id);
         $offer = $this->offersForCurrentAccount()->findOrFail($id);
         $offer->update($request->all());
-        return redirect()->route('offers.index')->with('success', 'Offer updated successfully.');
+        return redirect()->route('admin.offers.index')->with('success', 'Offer updated successfully.');
     }
 
     public function destroy($id)
     {
         $offer = $this->offersForCurrentAccount()->findOrFail($id);
         $offer->delete();
-        return redirect()->route('offers.index')->with('success', 'Offer deleted successfully.');
+        return redirect()->route('admin.offers.index')->with('success', 'Offer deleted successfully.');
     }
 
     public function setMainPerson(Request $request, $id)
@@ -326,7 +326,7 @@ class OfferController
 
             // Check if there is any active tenancy for the same property
             $existingTenancy = Tenancy::where('property_id', $offer->property_id)
-                                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                                     ->where('status', 'Active')
                                     ->first();
 
@@ -336,7 +336,7 @@ class OfferController
 
             // Check if the tenancy record already exists
             $tenancy = Tenancy::where('offer_id', $offer->id)
-                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                 ->first();
 
             if (!$tenancy) {
@@ -462,7 +462,7 @@ class OfferController
     {
         return Property::query()
             ->when(
-                ! auth()->user()?->hasRole('Super Admin'),
+                ! bypasses_account_scope(),
                 fn ($query) => $query->forAccount(current_account_id())
             );
     }
@@ -471,7 +471,7 @@ class OfferController
     {
         return Offer::query()
             ->whereHas('property', function ($propertyQuery) {
-                if (! auth()->user()?->hasRole('Super Admin')) {
+                if (! bypasses_account_scope()) {
                     $propertyQuery->forAccount(current_account_id());
                 }
             });
@@ -484,7 +484,7 @@ class OfferController
 
     private function ensureTenantsAreAccessible(array $userIds): void
     {
-        if (auth()->user()?->hasRole('Super Admin') || empty($userIds)) {
+        if (bypasses_account_scope() || empty($userIds)) {
             return;
         }
 
@@ -504,7 +504,7 @@ class OfferController
 
     private function ensureExistingTenantsAreAccessible(array $userIds): void
     {
-        if (auth()->user()?->hasRole('Super Admin') || empty($userIds)) {
+        if (bypasses_account_scope() || empty($userIds)) {
             return;
         }
 

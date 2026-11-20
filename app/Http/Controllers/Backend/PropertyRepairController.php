@@ -44,6 +44,7 @@ class PropertyRepairController
         if (is_tenant_portal_user()) {
             return redirect()->route('tenant.maintenance');
         }
+        $this->ensureMayRaiseRepair();
 
         $categories = RepairCategory::with(['subCategories', 'parentCategory'])
             ->whereNull('parent_id')
@@ -217,7 +218,7 @@ class PropertyRepairController
             $tenantPropertyIds = TenantMember::where('user_id', auth()->id())
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
                 ->where('tenancies.status', 'Active')
-                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->where('tenancies.account_id', current_account_id()))
+                ->when(! bypasses_account_scope(), fn ($query) => $query->where('tenancies.account_id', current_account_id()))
                 ->pluck('tenancies.property_id')
                 ->unique();
             $query->whereIn('property_id', $tenantPropertyIds);
@@ -302,7 +303,7 @@ class PropertyRepairController
             $tenantPropertyIds = TenantMember::where('user_id', auth()->id())
                 ->join('tenancies', 'tenant_members.tenancy_id', '=', 'tenancies.id')
                 ->where('tenancies.status', 'Active')
-                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->where('tenancies.account_id', current_account_id()))
+                ->when(! bypasses_account_scope(), fn ($query) => $query->where('tenancies.account_id', current_account_id()))
                 ->pluck('tenancies.property_id')
                 ->unique();
             $query->whereIn('property_id', $tenantPropertyIds);
@@ -1112,6 +1113,9 @@ class PropertyRepairController
 
     public function raiseIssueStore(Request $request)
     {
+        if (! is_tenant_portal_user()) {
+            $this->ensureMayRaiseRepair();
+        }
         $request->validate([
             'property_id' => 'required',
             'repair_category_id' => 'required|integer|exists:repair_categories,id',
@@ -1320,13 +1324,13 @@ class PropertyRepairController
 
         // Retrieve tenancy IDs for the given property.
         $tenancyIds = Tenancy::where('property_id', $propertyId)
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->pluck('id')
             ->toArray();
 
         // Retrieve tenant members associated with those tenancies, with their user details.
         $tenantMembers = TenantMember::whereIn('tenancy_id', $tenancyIds)
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->with('user')
             ->get();
 
@@ -1905,7 +1909,7 @@ class PropertyRepairController
         $user = auth()->user();
         $accountId = current_account_id();
 
-        if (! $user?->hasRole('Super Admin')) {
+        if (! bypasses_account_scope($user)) {
             $query->forAccount(current_account_id());
         }
 
@@ -2029,5 +2033,32 @@ class PropertyRepairController
         if ($portalAccessService->isPortalUser($user, $accountId)) {
             abort_unless($portalAccessService->canAccessProperty($user, $property), 403, 'You do not have access to this property.');
         }
+    }
+
+    /** Landlords and Super Admin may raise repairs; other staff need a create permission, not only view. */
+    private function ensureMayRaiseRepair(): void
+    {
+        $user = auth()->user();
+        abort_unless($user, 403);
+
+        if ($user->isSuperAdmin() || is_landlord_plan_user($user)) {
+            return;
+        }
+
+        // On a landlord account, staff share the owner's allow-list; fine-grained permissions apply to agencies.
+        $account = current_account();
+        $membership = current_account_membership($user);
+        if ($account && $membership
+            && \App\Support\AccountType::isLandlord($account->account_type)
+            && $membership->member_type === \App\Support\AccountMembership::STAFF) {
+            return;
+        }
+
+        abort_unless(
+            $user->hasRole('Landlord')
+            || $user->hasEffectivePermission('create property repair')
+            || $user->hasEffectivePermission('create maintenance requests'),
+            403
+        );
     }
 }

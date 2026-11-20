@@ -66,6 +66,11 @@ class AppServiceProvider extends ServiceProvider
         if (! $this->app->environment('local')) {
             $this->app['config']->set('app.debug', false);
             $this->app['config']->set('debugbar.enabled', false);
+
+            // On HTTPS hosts the session cookie must never travel over plain HTTP.
+            if (str_starts_with((string) env('APP_URL', ''), 'https://')) {
+                $this->app['config']->set('session.secure', true);
+            }
         } else {
             $debugbarExplicit = env('DEBUGBAR_ENABLED');
             $debugbarOff = $debugbarExplicit === false
@@ -109,10 +114,16 @@ class AppServiceProvider extends ServiceProvider
         });
         //Paginator::useBootstrap(); // Enables Bootstrap 4 styling
 
-        // Super Admin still bypasses Gates so platform screens keep working.
-        // Customer records stay account-scoped in queries and policies for everyone else.
-        Gate::before(function ($user, $ability) {
-            return $user->isSuperAdmin() ? true : null;
+        // Super Admin bypasses policies (record-level checks) so platform screens keep working,
+        // but named permissions (e.g. "manage registrations") follow the Super Admin's own role and
+        // direct permissions, so an admin can be given narrower access.
+        $permissionNames = [];
+        Gate::before(function ($user, $ability) use (&$permissionNames) {
+            if (! $user->isSuperAdmin()) {
+                return null;
+            }
+
+            return in_array($ability, $permissionNames, true) ? null : true;
         });
 
         Gate::policy(Property::class, PropertyPolicy::class);
@@ -139,6 +150,8 @@ class AppServiceProvider extends ServiceProvider
                 throw $exception;
             }
         }
+
+        $permissionNames = collect($permissions)->pluck('name')->all();
 
         foreach ($permissions as $permission) {
             Gate::define($permission->name, function ($user) use ($permission) {

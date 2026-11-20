@@ -33,6 +33,7 @@ class TenantPortalService
     {
         return TenantMember::query()
             ->where('user_id', $user->id)
+            ->where('can_login', true)
             ->when($accountId, fn ($query) => $query->where('account_id', $accountId))
             ->with([
                 'tenancy.tenancyType',
@@ -80,7 +81,7 @@ class TenantPortalService
 
         return RentInvoice::query()
             ->with(['tenant', 'property'])
-            ->when($accountId && ! $user->isSuperAdmin(), fn ($query) => $query->forAccount($accountId))
+            ->when($accountId && ! bypasses_account_scope($user), fn ($query) => $query->forAccount($accountId))
             ->where('status', '!=', RentInvoice::STATUS_VOID)
             ->whereIn('tenancy_id', $tenancyIds)
             ->orderByDesc('issue_date')
@@ -119,7 +120,7 @@ class TenantPortalService
                 'jobOffers.contractor.contractorProfile',
                 'jobOffers.events.actor',
             ])
-            ->when($accountId && ! $user->isSuperAdmin(), fn ($query) => $query->forAccount($accountId))
+            ->when($accountId && ! bypasses_account_scope($user), fn ($query) => $query->forAccount($accountId))
             ->where(function ($outer) use ($tenancies) {
                 foreach ($tenancies as $tenancy) {
                     $memberIds = $tenancy->tenantMembers
@@ -207,7 +208,7 @@ class TenantPortalService
 
         $query = Document::query()
             ->with('documentType')
-            ->when($accountId && ! $user->isSuperAdmin(), fn ($inner) => $inner->forAccount($accountId));
+            ->when($accountId && ! bypasses_account_scope($user), fn ($inner) => $inner->forAccount($accountId));
 
         return $query->where(function ($outer) use ($propertyIds, $tenancyIds, $user, $visibilityFilter) {
             if ($propertyIds !== []) {
@@ -261,9 +262,9 @@ class TenantPortalService
     {
         $propertyIds = $this->propertyIds($tenancies)->all();
 
-        return Event::query()
+        $events = Event::query()
             ->with(['type', 'subType', 'properties', 'responses'])
-            ->when($accountId && ! $user->isSuperAdmin(), fn ($query) => $query->forAccount($accountId))
+            ->when($accountId && ! bypasses_account_scope($user), fn ($query) => $query->forAccount($accountId))
             ->where('status', '!=', 'Cancelled')
             ->where(function ($query) use ($user, $propertyIds) {
                 $query->whereHas('users', fn ($users) => $users->where('users.id', $user->id));
@@ -278,6 +279,49 @@ class TenantPortalService
             ->orderBy('start_datetime')
             ->limit(50)
             ->get();
+
+        return $events->concat($this->repairVisitsFor($accountId, $propertyIds))
+            ->sortBy(fn ($event) => $event->start_datetime?->getTimestamp() ?? PHP_INT_MAX)
+            ->values();
+    }
+
+    /**
+     * Booked contractor visits at the tenant's homes, shown on the tenant calendar as read-only entries.
+     * Built as unsaved Event models so the calendar view can render them like any other event.
+     *
+     * @param  array<int, int|string>  $propertyIds
+     * @return Collection<int, Event>
+     */
+    private function repairVisitsFor(?int $accountId, array $propertyIds): Collection
+    {
+        if ($propertyIds === []) {
+            return collect();
+        }
+
+        return \App\Models\RepairJobOffer::query()
+            ->with('repairIssue')
+            ->where('status', \App\Models\RepairJobOffer::JOB_ACCEPTED)
+            ->whereNotNull('scheduled_for')
+            ->whereHas('repairIssue', function ($repairs) use ($accountId, $propertyIds) {
+                $repairs->whereIn('property_id', $propertyIds)
+                    ->when($accountId, fn ($q) => $q->where('account_id', $accountId));
+            })
+            ->orderBy('scheduled_for')
+            ->limit(25)
+            ->get()
+            ->map(function (\App\Models\RepairJobOffer $offer) {
+                $what = \Illuminate\Support\Str::limit((string) ($offer->repairIssue?->description ?: 'repair'), 40);
+
+                $visit = (new Event)->forceFill([
+                    'title' => 'Repair visit: '.$what,
+                    'start_datetime' => $offer->scheduled_for,
+                    'status' => 'Booked',
+                ]);
+                $visit->setRelation('type', null);
+                $visit->setRelation('responses', collect());
+
+                return $visit;
+            });
     }
 
     /**

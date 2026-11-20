@@ -19,7 +19,7 @@ class DesignationController
         $this->abortIfSaasLimitDenied('roles_permissions');
 
         $designations = Designation::withCount('permissions')
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->get();
 
         return view('backend.designations.index', compact('designations'));

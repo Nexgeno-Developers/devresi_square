@@ -219,7 +219,10 @@ class JourneyTwoTenancyHttpTest extends TestCase
         $this->actingAs($landlord)->withSession(['current_account_id' => $accountId])
             ->get(route('admin.people.index'))
             ->assertOk()
-            ->assertSee('Everyone connected to your portfolio.', false);
+            ->assertSee('Everyone connected to your portfolio.', false)
+            // Login access only comes from the explicit tenant invite, not from adding a contact.
+            ->assertSee('Invite a tenant', false)
+            ->assertSee('They get a link to set a password.', false);
     }
 
     /**

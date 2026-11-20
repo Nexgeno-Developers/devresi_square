@@ -349,11 +349,17 @@ class ConversationProvisioner
             ->where('property_id', $propertyId)
             ->where('status', self::TENANCY_LIVE)
             ->pluck('id')->map(fn ($id) => (int) $id)->all();
-        if ($reporterUserId && count($tenancyIds) > 1) {
-            $reporterTenancy = TenantMember::query()->whereIn('tenancy_id', $tenancyIds)->where('user_id', $reporterUserId)->value('tenancy_id');
-            if ($reporterTenancy) {
-                $tenancyIds = [(int) $reporterTenancy];
+        if (count($tenancyIds) > 1) {
+            // Several lets at one address (e.g. rooms in a shared house): tenants of other lets
+            // must never see each other. Only the reporter's own let joins; if we cannot tell
+            // whose job it is (compliance checks, unknown reporter), the chat is landlord + contractor.
+            $reporterTenancy = $reporterUserId
+                ? TenantMember::query()->whereIn('tenancy_id', $tenancyIds)->where('user_id', $reporterUserId)->value('tenancy_id')
+                : null;
+            if (! $reporterTenancy) {
+                return [];
             }
+            $tenancyIds = [(int) $reporterTenancy];
         }
 
         return $this->tenantUserIds($tenancyIds);

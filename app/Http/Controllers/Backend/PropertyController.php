@@ -77,7 +77,7 @@ class PropertyController
                 ->orderBy('id', 'desc')
                 ->paginate(15);
         } elseif ($user->hasRole('Property Manager') || $user->hasRole('Super Admin')) {
-            // Property managers see all properties
+            // Property managers and Super Admin see every property the (account-scoped) query allows
             $properties = $propertiesQuery->orderBy('id', 'desc')->paginate(15);
         } elseif ($user->hasRole('Tenant')) {
             // Tenants see only properties where they have an active tenancy
@@ -430,7 +430,8 @@ class PropertyController
             return;
         }
 
-        $isAuthorized = $user->hasRole('Super Admin')
+        $isAuthorized = bypasses_account_scope($user)
+            || ($user->hasRole('Super Admin') && (int) $property->account_id === (int) current_account_id())
             || $user->hasRole('Property Manager')
             || (sees_landlord_portfolio($user) && (int) $property->account_id === (int) current_account_id())
             || (is_landlord_plan_user($user) && (int) $property->account_id === (int) current_account_id())
@@ -450,7 +451,7 @@ class PropertyController
 
     private function hasPropertyManagerAddon(): bool
     {
-        if (auth()->user()?->hasRole('Super Admin')) {
+        if (bypasses_account_scope()) {
             return true;
         }
 
@@ -506,7 +507,7 @@ class PropertyController
                     'ownerGroupUsers' => function ($ownerUserQuery) {
                         $ownerUserQuery
                             ->when(
-                                ! auth()->user()?->hasRole('Super Admin'),
+                                ! bypasses_account_scope(),
                                 fn ($query) => $query->where(function ($membershipQuery) {
                                     // Landlord onboarding stores co-owners as contact-only
                                     // rows. They have no user/login by design, so retain them
@@ -541,7 +542,7 @@ class PropertyController
                     ->unique()
                     ->values();
                 $tenantUsers = User::query()
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->whereIn('id', $tenantIds)
                     ->with('details')
                     ->get()
@@ -579,7 +580,7 @@ class PropertyController
             case 'tenancy':
                 // Fetch tenancies for all statuses
                 $tenancies = Tenancy::where('property_id', $propertyId)
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->with(['tenantMembers.user', 'tenancySubStatus'])
                     ->get(); // Fetch all tenancies for the property
 
@@ -619,7 +620,7 @@ class PropertyController
                 abort_unless($this->hasPropertyManagerAddon(), 403, 'The Property Manager add-on is required for responsibility mapping.');
                 $responsibilities = PropertyResponsibility::with('user')
                     ->where('property_id', $propertyId)
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->get();
 
                 return view('backend.properties.tabs.responsibility', compact('propertyId', 'property', 'responsibilities'))->render();
@@ -629,7 +630,7 @@ class PropertyController
                 }
 
                 $documents = $property->documents()
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->with('documentType')
                     ->orderByDesc('updated_at')
                     ->paginate(5);
@@ -652,7 +653,7 @@ class PropertyController
                 // Fetch the notes related to the specific property by property ID
                 // $notes = Notes::where('property_id', $propertyId)->orderBy('updated_at', 'desc')->get();
                 $notesQuery = $property->notes()
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->with('noteType')
                     ->orderByDesc('updated_at');
 
@@ -672,7 +673,7 @@ class PropertyController
 
             case 'appointments':
                 $query = $property->events()
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($eventQuery) => $eventQuery->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($eventQuery) => $eventQuery->forAccount(current_account_id()))
                     ->with(['diaryOwner', 'onBehalfOf', 'users'])
                     ->orderBy('start_datetime', 'desc');
 
@@ -783,6 +784,9 @@ class PropertyController
         if ($request->has('step')) {
             // Validate the request data
             $validatedData = $request->validate($this->getValidationRules($request->step, $request));
+            if (array_key_exists('country', $validatedData)) {
+                $validatedData['country'] = $this->countryIdFromInput($validatedData['country']);
+            }
 
             // Convert market_on to JSON if it's an array
             // if ($request->has('market_on') && is_array($request->market_on)) {
@@ -845,7 +849,7 @@ class PropertyController
                 if ($responsibilityId) {
                     $responsibility = PropertyResponsibility::query()
                         ->where('property_id', $property_id)
-                        ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                        ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                         ->findOrFail($responsibilityId);
                     $responsibility->update($data);
                 } else {
@@ -858,14 +862,14 @@ class PropertyController
             // Remove responsibilities that are not in the submitted IDs
             if (!empty($submitted_ids)) {
                 PropertyResponsibility::where('property_id', $property_id)
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->whereNotIn('id', $submitted_ids)
                     ->whereNull('deleted_at')  // Ensure we're only soft-deleting active records
                     ->update(['deleted_by' => Auth::id()]); // Set 'deleted_by' to the authenticated user
 
                 // Soft delete the records
                 PropertyResponsibility::where('property_id', $property_id)
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->whereNotIn('id', $submitted_ids)
                     ->delete();
             }
@@ -890,20 +894,20 @@ class PropertyController
 
                 // Fetch required data for dropdowns
                 $users = User::query()
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->select('id', 'name')
                     ->get();
                 $designations = Designation::query()
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->select('id', 'title')
                     ->get();
                 $branches = Branch::query()
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->select('id', 'name')
                     ->get();
 
                 $PropertyResponsibility = PropertyResponsibility::where('property_id', $property_id)
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->get();
 
                 if ($property) {
@@ -948,7 +952,7 @@ class PropertyController
                     $PropertyRefNumber = generateReferenceNumber(Property::class, 'prop_ref_no', 'RESISQP');
                     $validatedData['prop_ref_no'] = $PropertyRefNumber;
                     // $validatedData['prop_ref_no'] = $this->generatePropertyRefNumber();
-                    Log::info('Creating new pref', $validatedData['prop_ref_no']);
+                    Log::info('Creating new pref', ['prop_ref_no' => $validatedData['prop_ref_no'] ?? null]);
                     Log::info('Creating new property', $validatedData);
                     $property = $this->persistProperty(function () use ($validatedData, $request) {
                         return Property::create(array_merge($validatedData, [
@@ -988,7 +992,14 @@ class PropertyController
             // Load the next step view
             // return view('backend.properties.form_components.step' . ($request->step + 1));
             // return view('backend.properties.form_components.step' . ($request->step + 1))->withInput();
-            return view('backend.properties.form_components.step' . ($request->step + 1), compact('property', 'allstations', 'allschools', 'stations', 'schools', 'users', 'designations', 'branches', 'PropertyResponsibility', 'propertyResponsibilityIds'));
+            // These are only loaded when editing an existing property; a new property gets empty lists.
+            $viewData = ['property' => $property];
+            foreach (['allstations', 'allschools', 'stations', 'schools', 'users', 'designations', 'branches', 'PropertyResponsibility'] as $var) {
+                $viewData[$var] = $$var ?? collect();
+            }
+            $viewData['propertyResponsibilityIds'] = $propertyResponsibilityIds ?? [];
+
+            return view('backend.properties.form_components.step' . ($request->step + 1), $viewData);
         } else {
             // If no step is present, return a message (optional)
             return response()->json(['message' => 'Invalid step.']);
@@ -1101,19 +1112,19 @@ class PropertyController
                 abort_unless($property, 404);
 
                 $users = User::query()
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->select('id', 'name')
                     ->get();
                 $designations = Designation::query()
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->select('id', 'title')
                     ->get();
                 $branches = Branch::query()
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->select('id', 'name')
                     ->get();
                 $PropertyResponsibility = PropertyResponsibility::where('property_id', $property->id)
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->get();
 
                 return view(
@@ -1228,15 +1239,15 @@ class PropertyController
 
         // Fetch required data for dropdowns
         $users = User::query()
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->select('id', 'name')
             ->get();
         $designations = Designation::query()
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->select('id', 'title')
             ->get();
         $branches = Branch::query()
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->select('id', 'name')
             ->get();
 
@@ -1246,7 +1257,7 @@ class PropertyController
         // ->get();
 
         $PropertyResponsibility = PropertyResponsibility::where('property_id', $property->id)
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->get();
         $propertyResponsibilityIds = $PropertyResponsibility->pluck('id')->implode(',');
         // Return the edit view with the property data, stations, and schools
@@ -1368,7 +1379,7 @@ class PropertyController
 
         // Search for properties based on multiple criteria
         $properties = Property::query()
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
             ->where(function ($propertyQuery) use ($query) {
                 $propertyQuery->where('prop_ref_no', 'LIKE', '%' . $query . '%')
                     ->orWhere('prop_name', 'LIKE', '%' . $query . '%')
@@ -1391,7 +1402,7 @@ class PropertyController
 
         $properties = Property::query()
             ->with('countryRelation:id,name') // eager load country
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
             ->where(function ($q) use ($query) {
                 $q->where('prop_ref_no', 'LIKE', '%' . $query . '%')
                 ->orWhere('prop_name', 'LIKE', '%' . $query . '%')
@@ -1569,7 +1580,7 @@ class PropertyController
     {
         return Property::onlyTrashed()
             ->when(
-                ! auth()->user()?->hasRole('Super Admin'),
+                ! bypasses_account_scope(),
                 fn ($query) => $query->forAccount(current_account_id())
             );
     }
@@ -1959,7 +1970,7 @@ class PropertyController
                 ->get(['id', 'name', 'email']);
             $responsibilities = PropertyResponsibility::with('user')
                 ->where('property_id', $property->id)
-                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                 ->get();
 
             return compact('users', 'responsibilities');
@@ -1987,14 +1998,14 @@ class PropertyController
                 ->orWhereHas('roles', fn ($roleQuery) => $roleQuery->where('name', 'Staff'))
                 ->orWhereHas('staff');
         })->when(
-            ! auth()->user()?->hasRole('Super Admin'),
+            ! bypasses_account_scope(),
             fn ($query) => $query->forAccount(current_account_id())
         );
     }
 
     private function ensureStaffUsersAreAccessible(array $userIds): void
     {
-        if (auth()->user()?->hasRole('Super Admin') || empty($userIds)) {
+        if (bypasses_account_scope() || empty($userIds)) {
             return;
         }
 
@@ -2013,7 +2024,7 @@ class PropertyController
 
     private function ensureUploadsAreAccessible(?string $uploadIds): void
     {
-        if (auth()->user()?->hasRole('Super Admin') || blank($uploadIds)) {
+        if (bypasses_account_scope() || blank($uploadIds)) {
             return;
         }
 
@@ -2038,7 +2049,7 @@ class PropertyController
 
     private function ensureAccountIdsAreAccessible(array $ids, $query, string $field, string $label): void
     {
-        if (auth()->user()?->hasRole('Super Admin')) {
+        if (bypasses_account_scope()) {
             return;
         }
 
@@ -2314,7 +2325,7 @@ class PropertyController
             ->take(4)
             ->values();
         $photoPaths = Upload::whereIn('id', $photoIds)
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount($property->account_id ?: current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount($property->account_id ?: current_account_id()))
             ->get()
             ->sortBy(fn($upload) => $photoIds->search((string) $upload->id))
             ->map(function ($upload) {
@@ -2347,7 +2358,7 @@ class PropertyController
             return false;
         }
 
-        if ($user->hasRole('Super Admin')) {
+        if (bypasses_account_scope($user)) {
             return true;
         }
 
@@ -2645,7 +2656,7 @@ class PropertyController
         $user = auth()->user();
         $accountId = current_account_id();
 
-        if (! $user?->hasRole('Super Admin')) {
+        if (! bypasses_account_scope($user)) {
             $query->forAccount($accountId);
         }
 
@@ -2832,4 +2843,36 @@ class PropertyController
     }
 
 
+
+    /**
+     * properties.country stores a country id, but the full form takes free text.
+     * Accept an id, a country name or a country code; anything else is a validation error.
+     */
+    private function countryIdFromInput($value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_numeric($value) && \App\Models\Country::query()->whereKey((int) $value)->exists()) {
+            return (int) $value;
+        }
+
+        $needle = mb_strtolower(trim((string) $value));
+        $aliases = ['uk' => 'united kingdom', 'gb' => 'united kingdom', 'great britain' => 'united kingdom', 'england' => 'united kingdom', 'scotland' => 'united kingdom', 'wales' => 'united kingdom', 'northern ireland' => 'united kingdom'];
+        $needle = $aliases[$needle] ?? $needle;
+
+        $id = \App\Models\Country::query()
+            ->whereRaw('LOWER(name) = ?', [$needle])
+            ->orWhereRaw('LOWER(code) = ?', [$needle])
+            ->value('id');
+
+        if (! $id) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'country' => 'Enter a country we recognise, for example United Kingdom.',
+            ]);
+        }
+
+        return (int) $id;
+    }
 }

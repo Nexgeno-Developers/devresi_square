@@ -203,6 +203,10 @@ class AuthController
     public function logout(Request $request)
     {
         Auth::logout();
+        // Drop everything the session carried (current account, impersonation keys) so the next sign-in starts clean.
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
         return redirect()->route('login');
     }
 }

@@ -259,6 +259,9 @@ class DashboardController extends Controller
                     } else {
                         $detail = $name.' is missing.';
                     }
+                    if ($complianceAttentionCount > 1) {
+                        $detail .= ' '.$complianceAttentionCount.' certificates are missing, expired, or due within 60 days.';
+                    }
                     $text = $address.' — '.$detail;
                     $actions[] = [
                         'kind' => 'Compliance',
@@ -283,7 +286,7 @@ class DashboardController extends Controller
                     'alert' => 'deposits',
                     'count' => $depositCount,
                     'place' => $depositCount.' '.\Illuminate\Support\Str::plural('deposit', $depositCount).' '.($depositCount === 1 ? 'needs' : 'need').' your attention',
-                    'detail' => 'Protection scheme, dates or prescribed information incomplete.',
+                    'detail' => 'Protection scheme, dates or prescribed information incomplete. Deposits must be protected within 30 days.',
                     'url' => $depositTenancyId ? route('admin.tenancies.show', $depositTenancyId) : route('admin.tenancies.all'),
                     'cta' => 'Review deposit',
                 ];

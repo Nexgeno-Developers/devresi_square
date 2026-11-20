@@ -752,7 +752,7 @@ class ContractorMarketplaceTest extends TestCase
         $this->assertTrue(NotificationLog::query()
             ->where('identifier', 'repair.job_offer_withdrawn')
             ->where('notifiable_id', $contractor->id)
-            ->where('message', 'like', 'Your invitation was withdrawn%')
+            ->where('message', 'like', '%Your invitation was withdrawn%')
             ->exists());
     }
 
@@ -780,7 +780,7 @@ class ContractorMarketplaceTest extends TestCase
         $this->assertTrue(NotificationLog::query()
             ->where('identifier', 'repair.job_offer_withdrawn')
             ->where('notifiable_id', $contractor->id)
-            ->where('message', 'like', 'Your offer was not accepted before it expired%')
+            ->where('message', 'like', '%Your offer was not accepted before it expired%')
             ->exists());
         $this->assertTrue(NotificationLog::query()
             ->where('identifier', 'repair.job_offer_withdrawn')
@@ -805,7 +805,7 @@ class ContractorMarketplaceTest extends TestCase
         $this->assertTrue(NotificationLog::query()
             ->where('identifier', 'repair.job_cancelled')
             ->where('notifiable_id', $contractor->id)
-            ->where('message', 'like', 'This repair was closed%')
+            ->where('message', 'like', '%This repair was closed%')
             ->exists());
     }
 

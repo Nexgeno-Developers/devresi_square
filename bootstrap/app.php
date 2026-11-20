@@ -34,6 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // Append global middleware
         $middleware->append(EnsureTokenIsValid::class);
         $middleware->append(SecurityHeaders::class);
+        // Refuse saves stamped with an account other than the session's current one.
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureFormAccountMatches::class);
 
         // Laravel 11 already registers the standard web middleware group. Configure
         // its CSRF middleware directly so third-party webhooks can post safely.
@@ -69,6 +71,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'not.portal' => \App\Http\Middleware\DenyPortalUsers::class,
             'account.status' => \App\Http\Middleware\AccountStatusGuard::class,
             'landlord.restricted' => \App\Http\Middleware\RestrictLandlordRoutes::class,
+            'submit.once' => \App\Http\Middleware\PreventDuplicateSubmission::class,
             'tenancy.manage' => \App\Http\Middleware\RestrictTenancyManagement::class,
             'portal.tenant' => \App\Http\Middleware\EnsureTenantPortal::class,
             'legacy.contractors' => \App\Http\Middleware\LegacyContractorModule::class,

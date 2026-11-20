@@ -543,7 +543,7 @@
                     case 'cancel-one':
                         if (confirm('Cancel only this occurrence?')) {
                             $.ajax({
-                                url: '{{ route("backend.events.cancelInstance", "") }}/' + info.event.id,
+                                url: '{{ route("backend.events.cancelInstance", "__ID__") }}'.replace('__ID__', info.event.id),
                                 method: 'POST',
                                 data: {
                                     _token: '{{ csrf_token() }}',
@@ -564,7 +564,7 @@
                     case 'cancel-all':
                         if (confirm('Cancel entire series?')) {
                             $.ajax({
-                                url: '{{ route("backend.events.cancelInstance", "") }}/' + info.event.id,
+                                url: '{{ route("backend.events.cancelInstance", "__ID__") }}'.replace('__ID__', info.event.id),
                                 method: 'POST',
                                 data: {
                                     _token: '{{ csrf_token() }}',
@@ -585,7 +585,7 @@
                     case 'cancel-future':
                         if (confirm('Cancel this & future occurrences?')) {
                             $.ajax({
-                                url: '{{ route("backend.events.cancelInstance", "") }}/' + info.event.id,
+                                url: '{{ route("backend.events.cancelInstance", "__ID__") }}'.replace('__ID__', info.event.id),
                                 method: 'POST',
                                 data: {
                                     _token: '{{ csrf_token() }}',
@@ -767,7 +767,7 @@
                     var newEnd = moment(info.event.end).format('YYYY-MM-DD HH:mm:ss');
 
                     $.ajax({
-                        url: '{{ route("backend.events.updateInstance", "") }}/' + instId,
+                        url: '{{ route("backend.events.updateInstance", "__ID__") }}'.replace('__ID__', instId),
                         method: 'POST',
                         data: {
                             _token: '{{ csrf_token() }}',
@@ -886,7 +886,7 @@
                 $save.prop('disabled', true);
                 $.ajax({
                     url: updating
-                        ? '{{ route("backend.events.updateMaster", "") }}/' + masterId
+                        ? '{{ route("backend.events.updateMaster", "__ID__") }}'.replace('__ID__', masterId)
                         : '{{ route("backend.events.store") }}',
                     method: updating ? 'PUT' : 'POST',
                     data: $form.serialize(),

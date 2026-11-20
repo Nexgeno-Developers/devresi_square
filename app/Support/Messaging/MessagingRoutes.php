@@ -20,13 +20,13 @@ final class MessagingRoutes
             ->group(function () {
                 Route::get('/', [MessagingController::class, 'index'])->name('index');
                 Route::get('/archived', [MessagingController::class, 'archived'])->name('archived');
-                Route::get('/unread', [MessagingController::class, 'unread'])->middleware('throttle:60,1')->name('unread');
+                Route::get('/unread', [MessagingController::class, 'unread'])->middleware('throttle:60,1,msg-unread')->name('unread');
 
                 Route::get('/c/{conversation}', [MessagingController::class, 'show'])->name('show');
-                Route::get('/c/{conversation}/poll', [MessagingController::class, 'poll'])->middleware('throttle:60,1')->name('poll');
-                Route::post('/c/{conversation}/messages', [MessagingController::class, 'send'])->middleware('throttle:30,1')->name('send');
+                Route::get('/c/{conversation}/poll', [MessagingController::class, 'poll'])->middleware('throttle:60,1,msg-poll')->name('poll');
+                Route::post('/c/{conversation}/messages', [MessagingController::class, 'send'])->middleware('throttle:30,1,msg-send')->name('send');
                 Route::get('/c/{conversation}/files/{attachment}', [MessagingController::class, 'download'])->name('download');
-                Route::post('/c/{conversation}/report', [MessagingController::class, 'report'])->middleware('throttle:5,60')->name('report');
+                Route::post('/c/{conversation}/report', [MessagingController::class, 'report'])->middleware('throttle:5,60,msg-report')->name('report');
             });
     }
 }

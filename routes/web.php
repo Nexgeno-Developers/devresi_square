@@ -38,18 +38,18 @@ Route::group(['middleware' => 'web'], function () {
 
     // Auth routes
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login')->name('login.post');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     Route::get('/register/contractor', [RegistrationController::class, 'showContractorForm'])->name('register.contractor');
-    Route::post('/register/contractor', [RegistrationController::class, 'submitContractor'])->name('register.contractor.post');
+    Route::post('/register/contractor', [RegistrationController::class, 'submitContractor'])->middleware('throttle:auth-mail')->name('register.contractor.post');
 
     // Public Registration (OTP flow — email or phone)
     Route::get('/register',              [RegistrationController::class, 'showForm'])->name('register');
-    Route::post('/register',             [RegistrationController::class, 'submit'])->name('register.post');
+    Route::post('/register',             [RegistrationController::class, 'submit'])->middleware('throttle:auth-mail')->name('register.post');
     Route::get('/register/verify-otp',   [RegistrationController::class, 'showOtpForm'])->name('register.verify.otp');
-    Route::post('/register/verify-otp',  [RegistrationController::class, 'verifyOtp'])->name('register.verify.otp.post');
-    Route::post('/register/resend-otp',  [RegistrationController::class, 'resendOtp'])->name('register.resend.otp');
+    Route::post('/register/verify-otp',  [RegistrationController::class, 'verifyOtp'])->middleware('throttle:otp')->name('register.verify.otp.post');
+    Route::post('/register/resend-otp',  [RegistrationController::class, 'resendOtp'])->middleware('throttle:auth-mail')->name('register.resend.otp');
 
     // Local-only OTP lookup for signup debugging. 404 outside local+APP_DEBUG.
     Route::get('/_debug/registration-otp', [\App\Http\Controllers\Auth\DebugRegistrationOtpController::class, 'show'])
@@ -95,9 +95,9 @@ Route::group(['middleware' => 'web'], function () {
 
     // Password Reset Routes
     Route::get('/password/forgot', [PasswordResetController::class, 'showLinkRequestForm'])->name('password.request');
-    Route::post('/password/email', [PasswordResetController::class, 'sendResetLinkEmail'])->name('password.email');
+    Route::post('/password/email', [PasswordResetController::class, 'sendResetLinkEmail'])->middleware('throttle:auth-mail')->name('password.email');
     Route::get('/password/reset/form/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset.form');
-    Route::post('/password/reset/', [PasswordResetController::class, 'reset'])->name('password.reset');
+    Route::post('/password/reset/', [PasswordResetController::class, 'reset'])->middleware('throttle:login')->name('password.reset');
     Route::get('/email/confirm/{token}', [EmailChangeController::class, 'confirm'])
         ->middleware('throttle:20,1')
         ->where('token', '[A-Za-z0-9]+')
@@ -108,11 +108,6 @@ Route::group(['middleware' => 'web'], function () {
         Route::get('/customer/statements', [CustomerStatementController::class, 'show'])->name('customer.statements');
     });
 
-    // Design experiment — proposed replacement for the property detail page.
-    // Read-only prototype, self-contained in resources/views/backend/testExperiments.blade.php
-    Route::get('/testExperiments', function () {
-        return view('backend.testExperiments');
-    })->middleware(['auth', 'current.account', 'account.status', 'landlord.restricted'])->name('test.experiments');
 
     // Contractor marketplace. Old repair list redirects here and is not the product path.
     Route::middleware(['auth'])->prefix('contractor')->name('contractor.')->group(function () {
@@ -213,13 +208,9 @@ Route::controller(AizUploadController::class)->middleware(['auth', 'current.acco
 });
 
 // uploaded files
-Route::resource('/uploaded-files', AizUploadController::class)
-    ->except(['destroy'])
-    ->middleware(['auth', 'current.account', 'account.status']);
+// The old uploaded-files manager (its pages, a GET delete link and bulk delete) was never finished,
+// so it is not routed. Uploads and deletes go through /aiz-uploader (DELETE, CSRF-protected).
 Route::controller(AizUploadController::class)->middleware(['auth', 'current.account', 'account.status'])->group(function () {
-    Route::any('/uploaded-files/file-info', 'file_info')->name('uploaded-files.info');
-    Route::get('/uploaded-files/destroy/{id}', 'destroy')->name('uploaded-files.destroy');
-    Route::post('/bulk-uploaded-files-delete', 'bulk_uploaded_files_delete')->name('bulk-uploaded-files-delete');
     Route::get('/all-file', 'all_file');
 });
 
@@ -229,4 +220,4 @@ Route::get('/helper', function () {
 
 
 Route::get('/form/{type}', [FormController::class, 'show'])->name('form.show');
-Route::post('/form/{type}', [FormController::class, 'submit'])->name('form.submit');
+Route::post('/form/{type}', [FormController::class, 'submit'])->middleware('throttle:public-form')->name('form.submit');

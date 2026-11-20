@@ -57,7 +57,7 @@ class EventController
         $this->assertStaffCalendarAccess();
 
         $query = Event::query()
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->with(['type', 'subType', 'diaryOwner', 'properties', 'repairIssues'])
             ->orderByDesc('start_datetime');
 
@@ -145,7 +145,7 @@ class EventController
 
         // Fetch events directly
         $events = Event::query()
-            ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
             ->whereBetween('start_datetime', [$start, $end])
             ->where('status', '!=', 'Cancelled')
             ->with('reminders', 'properties', 'repairIssues', 'users', 'responses.user')
@@ -688,7 +688,7 @@ class EventController
                         $newChildEnd = Carbon::parse($validated['end_datetime']);         // e.g. 2025-07-03 11:00
 
                         // Step 1: Get the time shift (difference) between old and new start
-                        $startShift = abs($newChildStart->diffInSeconds($originalChildStart, false)); // -7200 seconds (if moved from 10:00 to 08:00)
+                        $startShift = (int) $originalChildStart->diffInSeconds($newChildStart, false); // signed: earlier moves are negative // -7200 seconds (if moved from 10:00 to 08:00)
 
                         // Step 2: Apply this shift to master start/end time
                         $masterStart = Carbon::parse($master->start_datetime)->addSeconds($startShift);
@@ -1005,7 +1005,7 @@ class EventController
 
         $event = Event::query()
             ->when(
-                ! auth()->user()?->hasRole('Super Admin'),
+                ! bypasses_account_scope(),
                 fn ($query) => $query->forAccount(current_account_id())
             )
             ->findOrFail($id);
@@ -1204,7 +1204,7 @@ class EventController
         $propertyIds = $validated['property_ids'] ?? [];
         $repairIds = $validated['repair_ids'] ?? [];
 
-        if (! auth()->user()?->hasRole('Super Admin')) {
+        if (! bypasses_account_scope()) {
             $propertyIds = Property::query()
                 ->forAccount(current_account_id())
                 ->whereIn('id', $propertyIds)
@@ -1226,7 +1226,7 @@ class EventController
 
     private function ensureEventRelationsAreAccessible(array $validated): void
     {
-        if (auth()->user()?->hasRole('Super Admin')) {
+        if (bypasses_account_scope()) {
             return;
         }
 

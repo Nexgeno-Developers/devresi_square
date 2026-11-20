@@ -97,6 +97,28 @@ class PortalAccessController
             ]);
         }
 
+        // Someone who already has portal access on this let is sent a fresh link with Resend, not a second invite.
+        $existingUser = User::query()->where('email', strtolower($validated['email']))->first();
+        if ($existingUser) {
+            $alreadyActive = \App\Models\TenantMember::query()
+                ->where('tenancy_id', $tenancy->id)
+                ->where('user_id', $existingUser->id)
+                ->where('can_login', true)
+                ->exists()
+                && AccountUser::query()
+                    ->where('account_id', $account->id)
+                    ->where('user_id', $existingUser->id)
+                    ->where('status', 'active')
+                    ->where('can_login', true)
+                    ->exists();
+
+            if ($alreadyActive) {
+                throw ValidationException::withMessages([
+                    'email' => 'This tenant already has access to this tenancy. Use Resend to send them a new sign-in link.',
+                ]);
+            }
+        }
+
         [$invitee, $wasNew] = $this->resolveInvitee($validated['name'], $validated['email'], $actor, $account);
 
         try {

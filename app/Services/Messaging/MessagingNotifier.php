@@ -97,7 +97,8 @@ class MessagingNotifier
     {
         $party = $participant->party();
         $event = CrmNotificationEvent::MessageReceived->value;
-        $url = MessagingArea::route(MessagingArea::forParticipant($participant), 'show', $conversation).($anchor ?? '');
+        $chatUrl = MessagingArea::route(MessagingArea::forParticipant($participant), 'show', $conversation);
+        $url = $chatUrl.($anchor ?? '');
         $perMessage = $anchor !== null;
 
         foreach (User::query()->whereIn('id', $party->userIds())->get() as $user) {
@@ -105,8 +106,12 @@ class MessagingNotifier
                 continue;
             }
             $accountId = $this->bellAccountFor($user, $party, (int) $conversation->account_id);
-            if ($perMessage && $this->wants($user, $event, $accountId, 'email')) {
-                $this->email($user, $title, $text, $url, (string) $from);
+            // At most one email per person per chat every 15 minutes, sent after the response
+            // so the sender never waits on the mail server.
+            if ($perMessage && $this->wants($user, $event, $accountId, 'email')
+                && \Illuminate\Support\Facades\Cache::add('msg-email:'.$user->id.':'.$conversation->id, true, now()->addMinutes(15))) {
+                $mailUser = $user;
+                dispatch(fn () => $this->email($mailUser, $title, $text, $url, (string) $from))->afterResponse();
             }
             if (! $this->wants($user, $event, $accountId)) {
                 continue;
@@ -177,7 +182,8 @@ class MessagingNotifier
             .'<p><strong>'.e($from).'</strong> sent you a message on '.e(config('app.name')).':</p>'
             .'<blockquote style="margin:16px 0;padding:12px 16px;border-left:4px solid #2a7ae2;background:#f4f6f9;color:#333;">'.nl2br(e($text)).'</blockquote>'
             .'<p><a href="'.e($url).'" style="display:inline-block;padding:10px 18px;background:#2a7ae2;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;">Open the chat to reply</a></p>'
-            .'<p style="font-size:13px;color:#777;">Please reply in the chat, not to this email. You can turn these emails off in your notification settings.</p>';
+            .'<p style="font-size:13px;color:#777;">Please reply in the chat, not to this email. You get at most one email per chat every 15 minutes. '
+            .'To stop these emails, turn off "Message received" email in your <a href="'.e(url('/admin/notification-preferences')).'">notification settings</a>.</p>';
         $this->mail->toUser($user, $title, $html);
     }
 

@@ -31,7 +31,7 @@ class TenancyNoticeController extends Controller
             'status' => 'served',
             'created_by' => $request->user()->id,
         ]);
-        $recipients = $validated['recipient_user_id']
+        $recipients = ($validated['recipient_user_id'] ?? null)
             ? [$validated['recipient_user_id']]
             : $tenantIds;
 

@@ -17,10 +17,16 @@ class SendSmsService
      */
     public function sendSMS(string $to, string $from, string $text, ?string $template_id = null): void
     {
+        // Never log the message body: it often carries a one-time code.
+        if (! config('services.sms.enabled', true)) {
+            Log::info('SMS sending is disabled (SMS_ENABLED=false); message not sent.', ['to_suffix' => substr($to, -3)]);
+            return;
+        }
+
         $active = OtpConfiguration::activeProvider();
 
         if (!$active) {
-            Log::warning("No active SMS provider configured. OTP for {$to}: {$text}");
+            Log::warning('No active SMS provider configured; message not sent.', ['to_suffix' => substr($to, -3)]);
             return;
         }
 

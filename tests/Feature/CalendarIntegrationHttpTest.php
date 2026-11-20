@@ -269,6 +269,11 @@ class CalendarIntegrationHttpTest extends TestCase
     {
         config(['crm_notifications.enabled' => true]);
 
+        // The tenant month grid pads to full Mon-Sun weeks, so a visit moved into
+        // early next month can still render as an outside-month cell. Freeze time in
+        // a month that ends on a Sunday (May 2026) so the padded grid never reaches June.
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-05-12 09:00:00'));
+
         [$landlord, $accountId, $tenant, $property] = $this->createHousehold();
         $session = ['current_account_id' => $accountId];
         [$type, $subType] = $this->inspectionType();

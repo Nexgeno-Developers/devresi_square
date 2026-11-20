@@ -590,7 +590,7 @@ class UserController
 
                 $properties = ! empty($propertyIds)
                     ? Property::query()
-                        ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                        ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                         ->with('countryRelation:id,name')
                         ->whereIn('id', $propertyIds)
                         ->get()
@@ -631,7 +631,7 @@ class UserController
             case 'documents':
                 $documents = $user->documents()
                     ->with('documentType')
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->orderByDesc('updated_at')
                     ->paginate(5);
                 $documentTypes = DocumentType::all();
@@ -642,7 +642,7 @@ class UserController
                 // Fetch the notes related to the specific user by user ID
                 $notes = $user->notes()
                     ->with('noteType')
-                    ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                    ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                     ->orderByDesc('updated_at')
                     ->paginate(5);
                 $noteTypes = NoteType::all();
@@ -696,6 +696,11 @@ class UserController
 
             // Get user_id from the request
             $user_id = $request->user_id;
+            $targetUser = $user_id ? User::find($user_id) : null;
+            if ($targetUser) {
+                $this->ensureUserManageable($targetUser);
+            }
+            $assignableRoles = $this->assignableRoleNames($request, $targetUser);
 
             // Check if first name, middle name, and last name are present
             $fullName = trim($request->first_name.' '.$request->middle_name.' '.$request->last_name);
@@ -737,13 +742,9 @@ class UserController
                 }
             }
 
-            // Attach roles
-            if ($request->filled('role_ids')) {
-                // Fetch the names of each selected role
-                $roles = Role::whereIn('id', $request->role_ids)->pluck('name')->toArray();
-
-                // Sync the user’s roles (removes any roles not in this array)
-                $user->syncRoles($roles);
+            // Attach roles (already checked by assignableRoleNames)
+            if ($assignableRoles !== null && isset($user)) {
+                $user->syncRoles($assignableRoles);
             }
 
             if (isset($user)) {
@@ -845,14 +846,14 @@ class UserController
         // If IDs are provided, fetch properties by IDs
         if ($ids) {
             $properties = Property::query()
-                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($query) => $query->forAccount(current_account_id()))
+                ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
                 ->whereIn('id', $ids)
                 ->get(['id', 'prop_ref_no', 'prop_name', 'line_1', 'line_2', 'city', 'country', 'postcode', 'specific_property_type', 'available_from']);  // Return only necessary fields
         } else {
             // If no IDs are passed, search properties based on the query (default behavior)
             $query = $request->input('query');
             $properties = Property::query()
-                ->when(! auth()->user()?->hasRole('Super Admin'), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
+                ->when(! bypasses_account_scope(), fn ($propertyQuery) => $propertyQuery->forAccount(current_account_id()))
                 ->where(function ($propertyQuery) use ($query) {
                     $propertyQuery->where('prop_ref_no', 'LIKE', '%'.$query.'%')
                         ->orWhere('prop_name', 'LIKE', '%'.$query.'%')
@@ -947,12 +948,19 @@ class UserController
             'email' => $validated['email'],
             'phone' => $phone !== '' ? $phone : null,
             'created_by' => Auth::id(),
-            'password' => Hash::make('password'),
+            // Never a known password: quick-added contacts sign in only after an invite or a reset link.
+            'password' => Hash::make(\Illuminate\Support\Str::random(40)),
             'status' => 1,
             'can_login' => true,
         ];
 
-        $role = $request->input('role', 'User');
+        $role = (string) ($validated['role'] ?? 'User');
+        // Platform roles (Super Admin, Staff) can only be granted by a Super Admin.
+        abort_if(
+            in_array($role, self::PLATFORM_ROLES, true) && ! $request->user()?->hasRole('Super Admin'),
+            403,
+            'That role cannot be assigned here.'
+        );
         // Always a plain User: Spatie stores the role against the model class, and a Tenant
         // instance is saved under the "Tenant" morph alias, which User::role('Tenant') never matches.
         $user = User::create($attributes);
@@ -989,6 +997,8 @@ class UserController
             'role_ids.*' => 'integer|exists:roles,id',
         ]);
 
+        $assignableRoles = $this->assignableRoleNames($request, null);
+
         // Concatenate first, middle, and last names to create name
         $fullName = trim($request->first_name.' '.$request->middle_name.' '.$request->last_name);
         // $Category_id = $request->category_id;
@@ -1009,14 +1019,8 @@ class UserController
             'status' => $validatedData['status'],
             'updated_by' => Auth::user()->id,
         ]);
-        // $user->assignRole($validatedData['role']);
-        // Attach roles
-        if ($request->filled('role_ids')) {
-            // Fetch the names of each selected role
-            $roles = Role::whereIn('id', $request->role_ids)->pluck('name')->toArray();
-
-            // Sync the user’s roles (removes any roles not in this array)
-            $user->syncRoles($roles);
+        if ($assignableRoles !== null) {
+            $user->syncRoles($assignableRoles);
         }
         $this->syncCurrentAccountMembership($user, $request->input('role_ids', []));
         // Redirect or return a response
@@ -1071,18 +1075,14 @@ class UserController
 
         // Find the user to be updated
         $user = User::findOrFail($id);
-        $this->ensureUserAccessible($user);
+        $this->ensureUserManageable($user);
+        $assignableRoles = $this->assignableRoleNames($request, $user);
 
         // Concatenate first, middle, and last names to create name
         $fullName = trim($request->first_name.' '.$request->middle_name.' '.$request->last_name);
 
-        // Attach roles
-        if ($request->filled('role_ids')) {
-            // Fetch the names of each selected role
-            $roles = Role::whereIn('id', $request->role_ids)->pluck('name')->toArray();
-
-            // Sync the user’s roles (removes any roles not in this array)
-            $user->syncRoles($roles);
+        if ($assignableRoles !== null) {
+            $user->syncRoles($assignableRoles);
         }
 
         // $category_id = $request->category_id;
@@ -1117,7 +1117,17 @@ class UserController
     {
         // Find the user to be deleted
         $user = User::findOrFail($id);
-        $this->ensureUserAccessible($user);
+        $this->ensureUserManageable($user);
+        $actor = auth()->user();
+
+        if (! $actor->hasRole('Super Admin')) {
+            abort_if((int) $user->id === (int) $actor->id, 403, 'You cannot delete your own login here.');
+
+            // Only a Super Admin deletes a login. Everyone else removes the contact from this account.
+            $user->accountUsers()->where('account_id', current_account_id())->delete();
+
+            return response()->json(['status' => true, 'notification' => 'Contact removed from this account.']);
+        }
 
         // Delete the user
         $user->delete();
@@ -1140,6 +1150,7 @@ class UserController
         if (! $user) {
             return response()->json(['error' => 'user not found'], 404);
         }
+        $this->ensureUserManageable($user);
 
         $viewPath = "backend.users.popup_forms.$formType";
 
@@ -1185,6 +1196,7 @@ class UserController
         if (auth()->user()->hasRole('Tenant') && $user->id !== auth()->id()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
+        $this->ensureUserManageable($user);
 
         $extraData = []; // <-- This prevents undefined variable errors
 
@@ -1193,10 +1205,8 @@ class UserController
             case 'user_detail':
 
                 // **Sync the user’s roles** if provided
-                if ($request->filled('role_ids')) {
-                    $roleNames = Role::whereIn('id', $request->role_ids)
-                        ->pluck('name')
-                        ->toArray();
+                $roleNames = $this->assignableRoleNames($request, $user);
+                if ($roleNames !== null) {
                     $user->syncRoles($roleNames);
                 }
 
@@ -1631,7 +1641,7 @@ class UserController
 
     private function scopeUsersToCurrentAccount($query)
     {
-        if (! auth()->user()?->hasRole('Super Admin')) {
+        if (! bypasses_account_scope()) {
             $query->whereHas('accountUsers', function ($accountUserQuery) {
                 $accountUserQuery->where('account_id', current_account_id())
                     ->where('status', 'active');
@@ -1648,9 +1658,54 @@ class UserController
         return $this->scopeUsersToCurrentAccount($query);
     }
 
+    /** Roles only a Super Admin may grant. */
+    private const PLATFORM_ROLES = ['Super Admin', 'Staff'];
+
+    /**
+     * Writes to another user need workspace-manager rights and a membership in the current account.
+     * Platform users (Super Admin, Staff) can only be changed by a Super Admin.
+     */
+    private function ensureUserManageable(User $target): void
+    {
+        $actor = auth()->user();
+        if ($actor?->hasRole('Super Admin')) {
+            return;
+        }
+
+        abort_if($target->hasAnyRole(self::PLATFORM_ROLES), 403);
+
+        if ((int) $target->id !== (int) $actor?->id) {
+            abort_unless($actor && \App\Support\WorkspaceAccess::canManageCurrentWorkspace($actor), 403);
+        }
+
+        $this->ensureUserAccessible($target);
+    }
+
+    /**
+     * Role names from role_ids that the current user may assign, or null when none were sent.
+     * Platform roles are Super Admin only, and nobody can change their own roles here.
+     */
+    private function assignableRoleNames(Request $request, ?User $target): ?array
+    {
+        if (! $request->filled('role_ids')) {
+            return null;
+        }
+
+        $names = Role::whereIn('id', (array) $request->input('role_ids'))->pluck('name')->all();
+        $actor = auth()->user();
+        if ($actor?->hasRole('Super Admin')) {
+            return $names;
+        }
+
+        abort_if(array_intersect($names, self::PLATFORM_ROLES) !== [], 403, 'That role cannot be assigned here.');
+        abort_if($target && (int) $target->id === (int) $actor?->id, 403, 'You cannot change your own roles.');
+
+        return $names;
+    }
+
     private function ensureUserAccessible(User $user): void
     {
-        if (auth()->user()?->hasRole('Super Admin') || (int) $user->id === (int) auth()->id()) {
+        if (bypasses_account_scope() || (int) $user->id === (int) auth()->id()) {
             return;
         }
 

@@ -127,6 +127,11 @@ class NotificationController
         abort_unless($this->canManageAccount($request), 403);
         abort_unless((int) $delivery->account_id === $this->accountId(), 404);
 
+        // Only a failed delivery can be retried; retrying a sent one would email the person again.
+        if ($delivery->status !== 'failed') {
+            return back()->with('error', 'Only failed deliveries can be retried.');
+        }
+
         $delivery->update(['status' => 'pending', 'attempt' => 0, 'error' => null]);
         SendNotificationJob::dispatch($delivery);
 

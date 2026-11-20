@@ -40,7 +40,7 @@ class MessagingLifecycleObserver
             }
             match (true) {
                 $model instanceof Tenancy => $this->tenancy($provisioner, $model, $deleted),
-                $model instanceof TenantMember => $this->member($provisioner, $model),
+                $model instanceof TenantMember => $this->member($provisioner, $model, $deleted),
                 $model instanceof RepairJobOffer => $model->wasChanged(['status', 'job_status']) || $model->wasRecentlyCreated || $deleted
                     ? $provisioner->syncRepairJob($model) : null,
                 $model instanceof ComplianceJobOffer => $model->wasChanged(['status', 'job_status']) || $model->wasRecentlyCreated || $deleted
@@ -68,8 +68,12 @@ class MessagingLifecycleObserver
         $provisioner->syncJobsAtProperty($tenancy->property_id ? (int) $tenancy->property_id : null);
     }
 
-    private function member(ConversationProvisioner $provisioner, TenantMember $member): void
+    private function member(ConversationProvisioner $provisioner, TenantMember $member, bool $deleted = false): void
     {
+        // Only who is on the let, or whether they can sign in, changes who is in the chats.
+        if (! $deleted && ! $member->wasRecentlyCreated && ! $member->wasChanged(['user_id', 'tenancy_id', 'can_login'])) {
+            return;
+        }
         $tenancy = $member->tenancy_id ? Tenancy::query()->find($member->tenancy_id) : null;
         if (! $tenancy) {
             return;

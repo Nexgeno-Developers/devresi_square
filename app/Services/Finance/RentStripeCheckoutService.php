@@ -194,6 +194,34 @@ class RentStripeCheckoutService
         }
     }
 
+    /**
+     * After a manual (bank, cash) payment, cancel any card Checkout still open for the invoice,
+     * so the tenant cannot go on to pay the old, larger amount. A Checkout that already
+     * completed is recorded instead. Never throws: the manual payment is already saved.
+     */
+    public function closeOpenCheckoutAfterManualPayment(RentInvoice $invoice): void
+    {
+        $sessionId = trim((string) $invoice->stripe_checkout_session_id);
+        if ($sessionId === '' || ! $this->isConfigured()) {
+            return;
+        }
+
+        try {
+            $this->configureStripe();
+            $session = $this->retrieveSession($sessionId);
+            if (($session->status ?? '') === 'open') {
+                $this->expireSession($sessionId);
+
+                return;
+            }
+            if (in_array((string) ($session->payment_status ?? ''), ['paid', 'no_payment_required'], true)) {
+                $this->fulfillSession($session);
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+    }
+
     protected function createSession(array $sessionData): mixed
     {
         return Session::create($sessionData, $this->requestOptions());
@@ -330,6 +358,21 @@ class RentStripeCheckoutService
             ]);
 
             return null;
+        }
+
+        $surplus = round($rent - $apply, 2);
+        if ($surplus >= 0.01) {
+            // Part of this card payment has nothing left to settle (another payment landed first).
+            // The rest is applied below; the surplus must be refunded by hand, so it is logged loudly.
+            Log::error('Rent card payment exceeded the open balance; surplus needs a refund', [
+                'checkout_session_id' => $sessionId,
+                'payment_intent_id' => $paymentIntentId ?: null,
+                'rent_invoice_id' => $invoice->id,
+                'account_id' => $invoice->account_id,
+                'tenant_user_id' => $tenantUserId,
+                'applied' => $apply,
+                'surplus' => $surplus,
+            ]);
         }
 
         try {

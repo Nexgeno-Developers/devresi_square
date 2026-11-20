@@ -2,13 +2,17 @@
 <html>
 
 <head>
-    <title>@yield('title', 'Resisquare')</title>
-    <meta name="description" content="@yield('meta_description', 'Resisquare helps landlords manage homes, rent, and repairs in one workspace.')">
+    @php
+        $siteName = trim((string) get_setting('website_name')) ?: 'Resisquare';
+        $siteDescription = trim((string) get_setting('meta_description')) ?: 'Resisquare helps landlords manage homes, rent, and repairs in one workspace.';
+    @endphp
+    <title>@yield('title', $siteName)</title>
+    <meta name="description" content="@yield('meta_description', $siteDescription)">
     <link rel="canonical" href="{{ url()->current() }}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ url()->current() }}">
-    <meta property="og:title" content="@yield('title', 'Resisquare')">
-    <meta property="og:description" content="@yield('meta_description', 'Resisquare helps landlords manage homes, rent, and repairs in one workspace.')">
+    <meta property="og:title" content="@yield('title', $siteName)">
+    <meta property="og:description" content="@yield('meta_description', $siteDescription)">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 	<meta name="app-url" content="{{ getBaseURL() }}">
 	<meta name="file-base-url" content="{{ getFileBaseURL() }}">

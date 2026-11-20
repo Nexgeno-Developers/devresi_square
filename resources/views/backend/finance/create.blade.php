@@ -26,6 +26,7 @@
             <div class="card-body">
         <form action="{{ route('admin.finance.store') }}" method="POST">
             @csrf
+            <x-submit-once-token />
 
             <div class="form-group mb-3">
                 <label for="tenancy_id">Tenancy</label>

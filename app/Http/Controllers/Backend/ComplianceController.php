@@ -299,7 +299,7 @@ class ComplianceController
         $complianceRecord = $this->complianceRecordsForCurrentAccount()
             ->findOrFail($complianceRecordId);
 
-        $photos = $validated['photos'] ? implode(',', explode(',', $validated['photos'])) : $complianceRecord->photos;
+        $photos = ! empty($validated['photos']) ? implode(',', explode(',', $validated['photos'])) : $complianceRecord->photos;
 
         $complianceRecord->update([
             'compliance_type_id' => $validated['compliance_type_id'],
@@ -368,6 +368,17 @@ class ComplianceController
     public function deleteCompliance($id)
     {
         $complianceRecord = $this->complianceRecordsForCurrentAccount()->findOrFail($id);
+
+        $sharedUploadIds = collect(explode(',', (string) $complianceRecord->photos))->map(fn ($v) => trim($v))->filter()->values();
+        if ($sharedUploadIds->isNotEmpty() && $complianceRecord->property_id) {
+            Document::query()
+                ->where('documentable_type', (new \App\Models\Property)->getMorphClass())
+                ->where('documentable_id', $complianceRecord->property_id)
+                ->where('visibility', 'portal')
+                ->whereIn('upload_ids', $sharedUploadIds->all())
+                ->delete();
+        }
+
         $complianceRecord->delete();
 
         return response()->json(['success' => true, 'message' => 'Compliance record deleted successfully.']);
@@ -398,7 +409,7 @@ class ComplianceController
     {
         return ComplianceRecord::query()
             ->whereHas('property', function ($propertyQuery) {
-                if (! auth()->user()?->hasRole('Super Admin')) {
+                if (! bypasses_account_scope()) {
                     $propertyQuery->forAccount(current_account_id());
                 }
             });
@@ -408,7 +419,7 @@ class ComplianceController
     {
         return Property::query()
             ->when(
-                ! auth()->user()?->hasRole('Super Admin'),
+                ! bypasses_account_scope(),
                 fn ($query) => $query->forAccount(current_account_id())
             )
             ->findOrFail($propertyId);
@@ -435,7 +446,7 @@ class ComplianceController
 
     private function ensureUploadsAreAccessible(?string $uploadIds): void
     {
-        if (auth()->user()?->hasRole('Super Admin') || blank($uploadIds)) {
+        if (bypasses_account_scope() || blank($uploadIds)) {
             return;
         }
 

@@ -333,7 +333,8 @@ class User extends Authenticatable
     public function hasEffectivePermission(string $permissionName): bool
     {
         if ($this->isSuperAdmin()) {
-            return true;
+            // Super Admins are bound by the permissions of their role(s) and any direct grants.
+            return $this->getAllPermissions()->contains('name', $permissionName);
         }
 
         $accountId = function_exists('current_account_id') ? current_account_id() : null;

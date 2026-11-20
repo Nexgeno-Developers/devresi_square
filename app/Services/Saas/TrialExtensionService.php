@@ -45,8 +45,10 @@ class TrialExtensionService
             ])->save();
 
             if ($subscription->account) {
-                $subscription->account->forceFill([
-                    'status' => 'trialing',
+                $account = $subscription->account;
+                $keepStatus = in_array($account->status, ['suspended', 'cancelled'], true);
+                $account->forceFill([
+                    'status' => $keepStatus ? $account->status : 'trialing',
                     'trial_ends_at' => $newTrialEnd,
                 ])->save();
             }

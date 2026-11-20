@@ -121,8 +121,8 @@ class LandlordMvpRouteRestrictionTest extends TestCase
             ->assertForbidden();
 
         $this->actingAs($user)->withSession($session)
-            ->get(route('test.experiments'))
-            ->assertForbidden();
+            ->get('/testExperiments')
+            ->assertNotFound();
 
         $this->actingAs($user)->withSession($session)
             ->post(route('admin.property_repairs.quote_contractors.store'))

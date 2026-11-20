@@ -288,6 +288,7 @@
             </div>
         </div>
     </div>
+    @include('backend.partials.account-stamp')
 </body>
 
 </html>

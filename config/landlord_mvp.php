@@ -49,6 +49,7 @@ return [
         'backend.notifications.',
         'admin.messages.',
         'portal.messages.',
+        'backend.command-search',
         'backend.accounts.',
         'backend.billing.',
         'backend.events.',
