@@ -29,7 +29,8 @@
         $bnLabel = 'Phone navigation';
         $bnTabs = [
             ['label' => 'Home', 'route' => 'backend.dashboard', 'match' => ['backend.dashboard'], 'icon' => 'bi-grid'],
-            ['label' => 'Properties', 'route' => 'admin.properties.index', 'match' => ['admin.properties.*'], 'icon' => 'bi-building'],
+            // Tenancies live inside a property for a landlord, so they keep the Properties tab lit.
+            ['label' => 'Properties', 'route' => 'admin.properties.index', 'match' => ['admin.properties.*', 'admin.tenancies.*'], 'icon' => 'bi-building'],
             ['label' => 'Rent', 'route' => 'admin.finance.index', 'match' => ['admin.finance.*'], 'icon' => 'bi-cash-stack'],
             ['label' => 'Repairs', 'route' => 'admin.property_repairs.index', 'match' => ['admin.property_repairs.*'], 'icon' => 'bi-tools'],
         ];

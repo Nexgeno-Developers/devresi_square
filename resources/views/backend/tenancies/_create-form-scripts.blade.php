@@ -191,6 +191,12 @@
             processData: false,
             contentType: false,
             success: function(response) {
+                // The standalone "Add tenancy" page is not in a modal: reloading it would show a blank
+                // form again (and invite a duplicate), so go to the tenancy list instead.
+                if (!$('#smallModal').hasClass('show') && response && response.redirect) {
+                    window.location.href = response.redirect;
+                    return;
+                }
                 $('#smallModal').modal('hide');
                 location.reload();
             },

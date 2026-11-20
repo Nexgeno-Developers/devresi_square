@@ -264,7 +264,13 @@ class TenancyController
         }
 
         if (request()->ajax()) {
-            return response()->json(['success' => true, 'message' => $message, 'invite_sent' => $inviteSent]);
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'invite_sent' => $inviteSent,
+                // Used by the full-page form; the modal version reloads in place instead.
+                'redirect' => route('admin.tenancies.all'),
+            ]);
         }
 
         return redirect()->route('admin.tenancies.all');

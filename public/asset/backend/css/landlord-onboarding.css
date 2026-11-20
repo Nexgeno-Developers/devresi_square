@@ -972,3 +972,20 @@ body.lob-open {
     display: grid;
     place-items: center;
 }
+
+/* Phones: the manual property form is one column. The earlier 640px block comes before the
+   base grid rules in this file, so the base rules won and left four columns cut off at the edge. */
+@media (max-width: 640px) {
+    .lob-manual-grid-2,
+    .lob-manual-grid-4,
+    .lob-manual-details,
+    .lob-manual-split,
+    .lob-rooms-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lob-area {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: stretch;
+    }
+}

@@ -46,7 +46,7 @@
             $sel.select2({
                 dropdownParent: $('#eventModal'),
                 placeholder: mode === "multi"
-                    ? `Select up to ${max} ${$sel.data("entity")}s`
+                    ? `Select up to ${max} ${String($sel.data("entity")) === "property" ? "properties" : $sel.data("entity") + "s"}`
                     : `Select one ${$sel.data("entity")}`,
                 allowClear: mode === "single",
                 maximumSelectionLength: mode === "multi" ? max : 1,

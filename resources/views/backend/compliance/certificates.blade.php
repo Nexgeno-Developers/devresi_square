@@ -47,7 +47,7 @@
                     There are no compliance items currently requiring attention.
                 </x-lw.empty>
             @else
-                <table class="table lw-table align-middle mb-0">
+                <table class="table lw-table lw-stack-table align-middle mb-0">
                     <thead>
                         <tr>
                             <th>Property</th>
@@ -62,17 +62,17 @@
                     <tbody>
                         @foreach($complianceRows as $row)
                             <tr>
-                                <td>
+                                <td data-label="Property">
                                     <a href="{{ route('admin.properties.index', ['property_id' => $row['property']->id, 'tabname' => 'Property']) }}">
                                         {{ rs_property_title($row['property']) }}
                                     </a>
                                 </td>
-                                <td>{{ $row['type']->name }}</td>
-                                <td>{{ $row['state'] }}</td>
-                                <td>{{ $row['record']?->issued_date ? rs_date($row['record']->issued_date) : '—' }}</td>
-                                <td>{{ $row['record']?->expiry_date ? rs_date($row['record']->expiry_date) : '—' }}</td>
-                                <td>{{ $row['record']?->hasFile() ? 'On file' : '—' }}</td>
-                                <td>
+                                <td data-label="Compliance item">{{ $row['type']->name }}</td>
+                                <td data-label="Status">{{ $row['state'] }}</td>
+                                <td data-label="Issue date">{{ $row['record']?->issued_date ? rs_date($row['record']->issued_date) : '—' }}</td>
+                                <td data-label="Expiry / review date">{{ $row['record']?->expiry_date ? rs_date($row['record']->expiry_date) : '—' }}</td>
+                                <td data-label="Document">{{ $row['record']?->hasFile() ? 'On file' : '—' }}</td>
+                                <td class="lw-stack-actions">
                                     @if($row['record']?->served_to_tenant_at)
                                         <div class="small text-muted mb-1">Served {{ rs_date($row['record']->served_to_tenant_at) }}</div>
                                     @endif

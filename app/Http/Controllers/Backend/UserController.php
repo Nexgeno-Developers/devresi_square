@@ -953,9 +953,9 @@ class UserController
         ];
 
         $role = $request->input('role', 'User');
-        $user = $role === 'Tenant'
-            ? Tenant::create($attributes)
-            : User::create($attributes);
+        // Always a plain User: Spatie stores the role against the model class, and a Tenant
+        // instance is saved under the "Tenant" morph alias, which User::role('Tenant') never matches.
+        $user = User::create($attributes);
 
         $user->assignRole($role);
         $this->syncCurrentAccountMembership($user, [$role]);

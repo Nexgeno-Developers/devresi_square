@@ -289,7 +289,13 @@ class DashboardController extends Controller
                 ];
             }
 
-            $repair = RepairIssue::forAccount($accountId)->with('property')->open()->latest('id')->first();
+            // "Assign Contractor" only for a repair that still needs one: nobody awarded yet
+            // and the work is not already finished, cancelled or rejected.
+            $repair = RepairIssue::forAccount($accountId)->with('property')->open()
+                ->whereNull('awarded_offer_id')
+                ->whereNotIn('status', ['Work Completed', 'Completed', 'Invoice Received', 'Cancelled', 'Rejected'])
+                ->latest('id')
+                ->first();
             if ($repair) {
                 $address = $repair->property?->line_1 ?: 'A property';
                 $title = \Illuminate\Support\Str::limit($repair->description ?: 'Repair', 80);

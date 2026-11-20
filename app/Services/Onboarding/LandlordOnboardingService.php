@@ -1070,9 +1070,9 @@ class LandlordOnboardingService
             'created_by' => $actor->id,
         ];
 
-        $user = $roleName === 'Tenant'
-            ? Tenant::create($attributes)
-            : User::create($attributes);
+        // A plain User: roles are stored per model class, and a Tenant instance would be saved under
+        // the "Tenant" morph alias, which User::role('Tenant') (the tenancy form's lookup) never matches.
+        $user = User::create($attributes);
 
         Role::findOrCreate($roleName, 'web');
         $user->assignRole($roleName);

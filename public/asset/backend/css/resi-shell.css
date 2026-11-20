@@ -1192,3 +1192,28 @@ body #wrapper .nav-pills.overflow-auto .nav-link:not(.active) {
 body #wrapper .nav-pills.overflow-auto .nav-link:not(.active):hover {
     color: #0b1220;
 }
+
+/* Phones and tablets: success/error toasts float above the bottom bar instead of covering its tabs. */
+@media (max-width: 991px) {
+    html body .aiz-notify[data-notify="container"] {
+        bottom: calc(var(--rs-bottom-nav-h, 64px) + 12px) !important;
+        left: 12px !important;
+        right: 12px !important;
+        width: auto !important;
+        max-width: none !important;
+        z-index: 1050 !important;
+    }
+}
+
+/* Selected-property tables on the repair forms are filled by script, which only writes the desktop
+   table. Keep that table on phones too, otherwise the chosen property looks empty. */
+@media (max-width: 991px) {
+    html body #dynamic_property_table .dynamic_div .desktop_only { display: block; }
+    html body #dynamic_property_table .dynamic_div .mobile_only { display: none; }
+    html body #dynamic_property_table .rs_table td,
+    html body #dynamic_property_table .rs_table th { font-size: 13px; padding: 8px 6px; }
+    html body #dynamic_property_table .rs_table td:first-child,
+    html body #dynamic_property_table .rs_table th:first-child { white-space: normal; overflow-wrap: anywhere; }
+    html body #dynamic_property_table .rs_table td:not(:first-child),
+    html body #dynamic_property_table .rs_table th:not(:first-child) { white-space: nowrap; }
+}

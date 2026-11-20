@@ -2282,3 +2282,50 @@ body.landlord-workspace #wrapper .crm-stat.is-alert strong { color: #9a3412; }
 
     .crm-job .btn { justify-self: start; }
 }
+
+/* Wide tables that carry actions (compliance list): on phones each row becomes a labelled card
+   so nothing hides off to the right. Opt in with .lw-stack-table and data-label on each cell. */
+@media (max-width: 767px) {
+    html body .lw-page .lw-stack-table,
+    html body .lw-page .lw-stack-table tbody,
+    html body .lw-page .lw-stack-table tr,
+    html body .lw-page .lw-stack-table td { display: block; width: 100%; }
+    html body .lw-page .lw-stack-table thead { display: none; }
+    html body .lw-page .card-body:has(> .lw-stack-table) { padding: 10px; }
+    html body .lw-page .lw-stack-table tr {
+        border: 1px solid var(--lw-line, #e6e9ef);
+        border-radius: 12px;
+        padding: 6px 14px 12px;
+        margin-bottom: 12px;
+        background: #fff;
+    }
+    html body .lw-page .lw-stack-table td {
+        border: 0;
+        padding: 8px 0;
+        text-align: left;
+        overflow-wrap: anywhere;
+    }
+    html body .lw-page .lw-stack-table td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--lw-muted, #5b6573);
+        margin-bottom: 2px;
+    }
+    html body .lw-page .lw-stack-table td[data-label="Property"] { font-weight: 600; }
+    html body .lw-page .lw-stack-table td.lw-stack-actions { border-top: 1px solid var(--lw-line, #e6e9ef); margin-top: 6px; padding-top: 12px; }
+    html body .lw-page .lw-stack-table td.lw-stack-actions .btn,
+    html body .lw-page .lw-stack-table td.lw-stack-actions .form-control { min-height: 44px; }
+    html body .lw-page .lw-stack-table td.lw-stack-actions form.d-flex { gap: 10px !important; }
+}
+
+/* Reminder rows in the add-visit dialog: let the label shrink so the remove button stays inside on phones. */
+@media (max-width: 575px) {
+    html body .reminder-row .input-group { flex-wrap: nowrap; }
+    html body .reminder-row .input-group > .form-control { flex: 0 0 72px; width: 72px; min-width: 0; }
+    html body .reminder-row .input-group > .input-group-text { flex: 1 1 auto; min-width: 0; white-space: normal; line-height: 1.2; font-size: 13px; }
+    html body .reminder-row .input-group > .btn { flex: 0 0 auto; }
+}
