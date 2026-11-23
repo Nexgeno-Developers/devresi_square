@@ -10,7 +10,7 @@
     </div>
 
     <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle">
+        <table class="rs-stack-table table table-bordered table-striped align-middle">
             <thead>
                 <tr>
                     <th>#</th>
@@ -28,24 +28,24 @@
             <tbody>
                 @forelse($addons as $addon)
                     <tr>
-                        <td>{{ $addons->firstItem() + $loop->index }}</td>
-                        <td>{{ $addon->name }}</td>
-                        <td><code>{{ $addon->code }}</code></td>
-                        <td>{{ ucwords(str_replace('_', ' ', $addon->addon_type)) }}</td>
-                        <td>{{ $addon->formattedMonthlyPrice() }}</td>
-                        <td>{{ $addon->formattedAnnualPrice() }}</td>
-                        <td>{{ $addon->grant_quantity }}</td>
-                        <td>
+                        <td data-label="#">{{ $addons->firstItem() + $loop->index }}</td>
+                        <td class="rs-stack-title" data-label="Name">{{ $addon->name }}</td>
+                        <td data-label="Code"><code>{{ $addon->code }}</code></td>
+                        <td data-label="Type">{{ ucwords(str_replace('_', ' ', $addon->addon_type)) }}</td>
+                        <td data-label="Monthly price">{{ $addon->formattedMonthlyPrice() }}</td>
+                        <td data-label="Annual price">{{ $addon->formattedAnnualPrice() }}</td>
+                        <td data-label="Grant quantity">{{ $addon->grant_quantity }}</td>
+                        <td data-label="Stackable">
                             <span class="badge bg-{{ $addon->is_stackable ? 'success' : 'secondary' }}">
                                 {{ $addon->is_stackable ? 'Yes' : 'No' }}
                             </span>
                         </td>
-                        <td>
+                        <td data-label="Active">
                             <span class="badge bg-{{ $addon->is_active ? 'success' : 'secondary' }}">
                                 {{ $addon->is_active ? 'Active' : 'Inactive' }}
                             </span>
                         </td>
-                        <td class="text-center">
+                        <td class="rs-stack-actions text-center">
                             <div class="d-flex justify-content-center gap-2">
                                 <a href="{{ route('backend.saas.addons.edit', $addon) }}" class="btn btn-sm btn-warning">
                                     <i class="fas fa-edit"></i> Edit

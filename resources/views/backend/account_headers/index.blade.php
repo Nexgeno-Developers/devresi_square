@@ -11,7 +11,7 @@
 
     <div class="table-responsive">
 
-    <table class="table table-bordered table-striped">
+    <table class="rs-stack-table table table-bordered table-striped">
         <thead>
             <tr>
                 <th>Name</th>
@@ -33,20 +33,20 @@
         <tbody>
             @forelse($accountHeaders as $header)
             <tr>
-                <td>{{ $header->name }}</td>
-                <td>{{ ucfirst($header->charge_on) }}</td>
-                <td>{{ ucfirst($header->who_can_view) }}</td>
-                <td>{!! booleanBadge($header->reminders) !!}</td>
-                <td>{!! booleanBadge($header->agent_fees) !!}</td>
-                <td>{!! booleanBadge($header->require_bank_details) !!}</td>
-                <td>{{ ucfirst($header->charge_in) }}</td>
-                <td>{!! booleanBadge($header->can_have_duration) !!}</td>
-                <td>{{ ucwords(str_replace('_', ' ', $header->settle_through)) }}</td>
-                <td>{{ $header->penalty_type ? ucfirst($header->penalty_type) : '-' }}</td>
-                <td>{!! booleanBadge($header->tax_included) !!}</td>
-                <td>{{ $header->tax_type ? ucfirst($header->tax_type) : '-' }}</td>
-                <td>{{ ucwords(str_replace('_', ' ', $header->transaction_between)) }}</td>
-                <td>
+                <td class="rs-stack-title" data-label="Name">{{ $header->name }}</td>
+                <td data-label="Charge On">{{ ucfirst($header->charge_on) }}</td>
+                <td data-label="Who Can View">{{ ucfirst($header->who_can_view) }}</td>
+                <td data-label="Reminders">{!! booleanBadge($header->reminders) !!}</td>
+                <td data-label="Agent Fees">{!! booleanBadge($header->agent_fees) !!}</td>
+                <td data-label="Bank Details Required">{!! booleanBadge($header->require_bank_details) !!}</td>
+                <td data-label="Charge In">{{ ucfirst($header->charge_in) }}</td>
+                <td data-label="Duration">{!! booleanBadge($header->can_have_duration) !!}</td>
+                <td data-label="Settle Through">{{ ucwords(str_replace('_', ' ', $header->settle_through)) }}</td>
+                <td data-label="Penalty Type">{{ $header->penalty_type ? ucfirst($header->penalty_type) : '-' }}</td>
+                <td data-label="Tax Included">{!! booleanBadge($header->tax_included) !!}</td>
+                <td data-label="Tax Type">{{ $header->tax_type ? ucfirst($header->tax_type) : '-' }}</td>
+                <td data-label="Transaction Between">{{ ucwords(str_replace('_', ' ', $header->transaction_between)) }}</td>
+                <td class="rs-stack-actions">
                     <a href="{{ route('backend.account_headers.edit', $header->id) }}" class="btn btn-warning btn-sm">Edit</a>
                     <form action="{{ route('backend.account_headers.destroy', $header->id) }}" method="POST" style="display:inline;">
                         @csrf @method('DELETE')

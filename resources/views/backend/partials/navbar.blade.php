@@ -38,11 +38,11 @@
             @endauth
             @auth
                 @if(session()->has('impersonator_user_id'))
-                    <span class="small text-muted text-nowrap">Viewing {{ current_account()?->account_name ?: 'customer account' }}</span>
+                    <span class="small text-muted text-nowrap d-none d-lg-inline">Viewing {{ current_account()?->account_name ?: 'customer account' }}</span>
                     <form action="{{ route('backend.accounts.leave-login') }}" method="POST" class="mb-0">
                         @csrf
-                        <button type="submit" class="rs-return-admin text-nowrap">
-                            <i class="bi bi-arrow-return-left"></i> Return to Super Admin
+                        <button type="submit" class="rs-return-admin text-nowrap" title="Viewing {{ current_account()?->account_name ?: 'customer account' }}. Return to Super Admin">
+                            <i class="bi bi-arrow-return-left"></i> Return<span class="d-none d-sm-inline"> to Super Admin</span>
                         </button>
                     </form>
                 @elseif(! auth()->user()->isSuperAdmin())
@@ -185,7 +185,8 @@
                         <div class="notification-foot">
                             @if(is_tenant_portal_user())
                             <a href="{{ route('tenant.notifications') }}">Preferences</a>
-                            @elseif(! auth()->user()->hasRole('Contractor'))
+                            @elseif(! auth()->user()->hasRole('Contractor') && current_account_id())
+                            {{-- These pages belong to an account: a Super Admin with none selected would get a 403. --}}
                             <a href="{{ route('backend.notifications.index') }}">View all</a>
                             <a href="{{ route('backend.notifications.preferences') }}">Preferences</a>
                             @endif
@@ -240,7 +241,7 @@
                         <li><a class="dropdown-item" href="{{ route('backend.billing.index') }}">Plan &amp; Billing</a></li>
                         <li><a class="dropdown-item" href="{{ route('backend.billing.index') }}">Workspace Settings</a></li>
                         @else
-                        @unless($navIsContractor)
+                        @unless($navIsContractor || (! $navIsTenant && ! current_account_id()))
                         <li>
                             <a class="dropdown-item" href="{{ $navIsTenant ? route('tenant.notifications') : route('backend.notifications.index') }}">Notifications</a>
                         </li>

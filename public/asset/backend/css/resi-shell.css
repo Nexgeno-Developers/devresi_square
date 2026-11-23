@@ -1185,8 +1185,8 @@ body #wrapper .nav-pills.overflow-auto {
     padding-bottom: 4px;
 }
 
-body #wrapper .nav-pills.overflow-auto .nav-link:not(.active) {
-    color: #3b4452;
+html body #wrapper .nav-pills.overflow-auto .nav-link:not(.active) {
+    color: #3b4452 !important;
 }
 
 body #wrapper .nav-pills.overflow-auto .nav-link:not(.active):hover {
@@ -1216,4 +1216,73 @@ body #wrapper .nav-pills.overflow-auto .nav-link:not(.active):hover {
     html body #dynamic_property_table .rs_table th:first-child { white-space: normal; overflow-wrap: anywhere; }
     html body #dynamic_property_table .rs_table td:not(:first-child),
     html body #dynamic_property_table .rs_table th:not(:first-child) { white-space: nowrap; }
+}
+
+/* Wide admin tables that carry actions: on phones every row becomes a labelled card so the
+   actions are not hidden off to the right. Opt in with .rs-stack-table and data-label on cells. */
+@media (max-width: 991px) {
+    html body .rs-stack-table,
+    html body .rs-stack-table tbody,
+    html body .rs-stack-table tr,
+    html body .rs-stack-table td { display: block; width: 100%; }
+    html body .rs-stack-table thead { display: none; }
+    html body .rs-stack-table tr {
+        border: 1px solid #e6e9ef;
+        border-radius: 12px;
+        padding: 6px 14px 12px;
+        margin-bottom: 12px;
+        background: #fff !important;
+    }
+    html body .rs-stack-table td {
+        border: 0 !important;
+        padding: 7px 0 !important;
+        text-align: left !important;
+        overflow-wrap: anywhere;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    html body .rs-stack-table td[data-label="#"] { display: none; }
+    html body .rs-stack-table td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #5b6573;
+        margin-bottom: 2px;
+    }
+    html body .rs-stack-table td.rs-stack-title { font-weight: 600; font-size: 15px; }
+    html body .rs-stack-table td.rs-stack-actions { border-top: 1px solid #e6e9ef !important; margin-top: 6px; padding-top: 12px !important; display: flex; flex-wrap: wrap; gap: 8px; }
+    html body .rs-stack-table td.rs-stack-actions form { display: block; margin: 0; }
+    html body .rs-stack-table td.rs-stack-actions .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+    html body .table-responsive:has(> .rs-stack-table) { overflow: visible; }
+}
+
+/* Filter rows (search box + selects + button): one control per line on phones. */
+@media (max-width: 575px) {
+    html body .rs-filter-form { width: 100%; }
+    html body .rs-filter-form > .form-control,
+    html body .rs-filter-form > .form-select,
+    html body .rs-filter-form > .btn { flex: 1 1 100%; width: 100% !important; min-height: 44px; }
+}
+
+/* Tablets: the cards use two columns so a record does not become one very tall strip. */
+@media (min-width: 576px) and (max-width: 991px) {
+    html body .rs-stack-table tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; }
+    html body .rs-stack-table td { width: auto; }
+    html body .rs-stack-table td.rs-stack-title,
+    html body .rs-stack-table td.rs-stack-actions { grid-column: 1 / -1; }
+}
+
+/* While a Super Admin views a customer account, the top bar also carries the Return button: tighten it on small phones. */
+@media (max-width: 420px) {
+    html body #header .rs-return-admin { padding: 0.28rem 0.55rem; font-size: 0.76rem; gap: 0.25rem; }
+    html body #header .rs-topbar-left { gap: 8px; min-width: 0; }
+    html body #header .rs-topbar-left .rs_logo img { max-width: 104px; height: auto; }
+}
+
+html body #wrapper .nav-pills.overflow-auto .nav-link.active {
+    color: #fff !important;
+    background-color: #0f173a;
 }

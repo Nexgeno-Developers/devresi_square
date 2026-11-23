@@ -31,7 +31,7 @@
     </form>
 
     <!-- Invoices Table -->
-    <table class="table table-bordered">
+    <table class="rs-stack-table table table-bordered">
         <thead>
             <tr>
                 <th>Invoice No</th>
@@ -46,17 +46,17 @@
         <tbody>
             @foreach($invoices as $invoice)
             <tr>
-                <td>{{ $invoice->invoice_number }}</td>
-                <td>{{ optional($invoice->workOrder)->works_order_no }}</td>
-                <td>{{ getPropertyDetails($invoice->property_id, ['prop_ref_no', 'prop_name', 'line_1', 'line_2', 'city', 'country']) }}</td>
-                <td>{{ optional($invoice->user)->name ?? 'N/A' }}</td>
-                <td>{{ getPoundSymbol() }} {{ number_format($invoice->total_amount, 2) }}</td>
-                <td>
+                <td class="rs-stack-title" data-label="Invoice No">{{ $invoice->invoice_number }}</td>
+                <td data-label="Work Order">{{ optional($invoice->workOrder)->works_order_no }}</td>
+                <td data-label="Property">{{ getPropertyDetails($invoice->property_id, ['prop_ref_no', 'prop_name', 'line_1', 'line_2', 'city', 'country']) }}</td>
+                <td data-label="User">{{ optional($invoice->user)->name ?? 'N/A' }}</td>
+                <td data-label="Total Amount">{{ getPoundSymbol() }} {{ number_format($invoice->total_amount, 2) }}</td>
+                <td data-label="Status">
                     <span class="mb-2 badge {{ getInvoiceStatusDetails($invoice->status_id)['badge'] }}">
                         {{ getInvoiceStatusDetails($invoice->status_id)['text'] }}
                     </span>
                 </td>
-                <td>
+                <td class="rs-stack-actions">
                     <a href="{{ route('admin.invoices.edit', $invoice->id) }}" class="btn btn-warning btn-sm">
                         <i class="fa-solid fa-pen-to-square"></i> Edit
                     </a>

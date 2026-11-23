@@ -35,7 +35,7 @@
 
         <div class="designations-table-card">
             <div class="table-responsive">
-                <table class="table designations-table align-middle mb-0">
+                <table class="rs-stack-table table designations-table align-middle mb-0">
                     <thead>
                         <tr>
                             <th scope="col" class="designation-id">#</th>
@@ -47,17 +47,17 @@
                     <tbody>
                         @forelse ($designations as $designation)
                             <tr>
-                                <td class="designation-id">{{ $loop->iteration }}</td>
-                                <td>
+                                <td class="designation-id" data-label="#">{{ $loop->iteration }}</td>
+                                <td class="rs-stack-title" data-label="Title">
                                     <div class="designation-title">{{ $designation->title }}</div>
                                 </td>
-                                <td>
+                                <td data-label="Permissions">
                                     <span class="permission-badge">
                                         {{ $designation->permissions_count }}
                                         {{ Str::plural('permission', $designation->permissions_count) }}
                                     </span>
                                 </td>
-                                <td>
+                                <td class="rs-stack-actions">
                                     <div class="designation-actions">
                                         <a href="{{ route('admin.designations.edit', $designation->id) }}" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-pencil-square"></i>

@@ -52,7 +52,7 @@
         @endif
     </div>
     <div class="card-body p-0 table-responsive">
-        <table class="table aiz-table mb-0">
+        <table class="table mb-0 rs-stack-table">
             <thead>
                 <tr>
                     <th width="4%">#</th>
@@ -71,16 +71,16 @@
             <tbody>
                 @forelse($registrations as $i => $reg)
                     <tr>
-                        <td>{{ ($registrations->currentPage() - 1) * $registrations->perPage() + $i + 1 }}</td>
-                        <td>
+                        <td data-label="#">{{ ($registrations->currentPage() - 1) * $registrations->perPage() + $i + 1 }}</td>
+                        <td data-label="Name" class="rs-stack-title">
                             <a href="{{ route('admin.registrations.show', $reg->id) }}" class="fw-semibold">
                                 {{ $reg->full_name }}
                             </a>
                         </td>
-                        <td>{{ $reg->email }}</td>
-                        <td>{{ $reg->phone ?? '—' }}</td>
-                        <td>{{ Str::headline(str_replace('_', ' ', $reg->type)) }}</td>
-                        <td>
+                        <td data-label="Email">{{ $reg->email }}</td>
+                        <td data-label="Phone">{{ $reg->phone ?? '—' }}</td>
+                        <td data-label="Type">{{ Str::headline(str_replace('_', ' ', $reg->type)) }}</td>
+                        <td data-label="Plan">
                             @if($reg->plan)
                                 {{ $reg->plan->name }}<br>
                                 <small class="text-muted">{{ ucfirst($reg->billing_cycle) }}</small>
@@ -88,7 +88,7 @@
                                 -
                             @endif
                         </td>
-                        <td>
+                        <td data-label="Verified via">
                             @if($reg->verify_via === 'email')
                                 <i class="fas fa-envelope text-primary"></i> Email
                             @elseif($reg->verify_via === 'phone')
@@ -97,7 +97,7 @@
                                 —
                             @endif
                         </td>
-                        <td>
+                        <td data-label="OTP verified">
                             @if($reg->otp_verified_at)
                                 <span class="badge bg-success">
                                     <i class="fas fa-check me-1"></i>{{ $reg->otp_verified_at->format('d/m/Y H:i') }}
@@ -106,7 +106,7 @@
                                 <span class="badge bg-secondary">Not verified</span>
                             @endif
                         </td>
-                        <td>
+                        <td data-label="Status">
                             @php
                                 $badgeMap = [
                                     'verified' => 'warning',
@@ -119,8 +119,8 @@
                                 {{ $reg->status === 'verified' ? 'Pending Review' : Str::headline($reg->status) }}
                             </span>
                         </td>
-                        <td>{{ $reg->created_at->format('d/m/Y H:i') }}</td>
-                        <td class="text-right text-nowrap">
+                        <td data-label="Registered">{{ $reg->created_at->format('d/m/Y H:i') }}</td>
+                        <td class="text-right text-nowrap rs-stack-actions">
                             {{-- Only View button — approve/reject is done on the detail page --}}
                             <a href="{{ route('admin.registrations.show', $reg->id) }}"
                                class="btn btn-sm btn-outline-primary"

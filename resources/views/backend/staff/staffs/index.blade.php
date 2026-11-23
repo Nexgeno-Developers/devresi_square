@@ -40,7 +40,7 @@
 
     <div class="staff-table-card">
         <div class="table-responsive">
-            <table class="table staff-table align-middle mb-0">
+            <table class="rs-stack-table table staff-table align-middle mb-0">
                 <thead>
                     <tr>
                         <th scope="col" class="staff-id">#</th>
@@ -55,8 +55,8 @@
                 <tbody>
                     @forelse($visibleStaffs as $staff)
                         <tr>
-                            <td class="staff-id">{{ ($staffs->firstItem() ?? 1) + $loop->index }}</td>
-                            <td>
+                            <td class="staff-id" data-label="#">{{ ($staffs->firstItem() ?? 1) + $loop->index }}</td>
+                            <td class="rs-stack-title" data-label="Staff member">
                                 <div class="staff-person">
                                     @if($staff->user->profile_picture)
                                         <img class="staff-avatar" src="{{ asset('storage/' . $staff->user->profile_picture) }}" alt="{{ $staff->user->name }}">
@@ -71,7 +71,7 @@
                                     </div>
                                 </div>
                             </td>
-                            <td>
+                            <td data-label="Contact">
                                 <div class="staff-contact">
                                     <span>{{ $staff->user->email }}</span>
                                     @if($staff->user->phone)
@@ -79,26 +79,26 @@
                                     @endif
                                 </div>
                             </td>
-                            <td>
+                            <td data-label="Designation">
                                 @if($staff->user->designation)
                                     <span class="designation-badge">{{ $staff->user->designation->title }}</span>
                                 @else
                                     <span class="staff-muted">Not assigned</span>
                                 @endif
                             </td>
-                            <td>
+                            <td data-label="Branch">
                                 @if($staff->branch)
                                     <span class="designation-badge">{{ $staff->branch->name }}</span>
                                 @else
                                     <span class="staff-muted">Not assigned</span>
                                 @endif
                             </td>
-                            <td>
+                            <td data-label="Access">
                                 <span class="access-badge {{ $staff->permissions_customized ? 'custom' : 'inherited' }}">
                                     {{ $staff->permissions_customized ? 'Custom' : 'Designation' }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="rs-stack-actions">
                                 <div class="staff-actions">
                                     @can('edit staff')
                                         <a class="btn btn-sm btn-outline-primary" href="{{ route('staffs.edit', encrypt($staff->id)) }}" title="Edit">

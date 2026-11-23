@@ -38,7 +38,8 @@
 
 
     <link href="{{ asset('asset/backend/css/aiz-main.css') }}" rel="stylesheet">
-    @if(auth()->check() && (is_landlord_plan_user() || is_tenant_portal_user()))
+    {{-- Super Admin pages (contractors, repair desk, billing) reuse the lw-* cards, buttons and tables. --}}
+    @if(auth()->check() && (is_landlord_plan_user() || is_tenant_portal_user() || auth()->user()->hasRole('Super Admin')))
         <link href="{{ asset('asset/backend/css/landlord-workspace.css') }}?v={{ filemtime(public_path('asset/backend/css/landlord-workspace.css')) }}" rel="stylesheet">
     @endif
     <link href="{{ asset('asset/backend/css/resi-shell.css') }}?v={{ filemtime(public_path('asset/backend/css/resi-shell.css')) }}" rel="stylesheet">

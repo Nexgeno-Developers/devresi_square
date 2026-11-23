@@ -62,7 +62,7 @@
     </form>
 
     <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle">
+        <table class="rs-stack-table table table-bordered table-striped align-middle">
             <thead>
                 <tr>
                     <th>#</th>
@@ -81,20 +81,20 @@
             <tbody>
                 @forelse($subscriptions as $subscription)
                     <tr>
-                        <td>{{ $subscriptions->firstItem() + $loop->index }}</td>
-                        <td>
+                        <td data-label="#">{{ $subscriptions->firstItem() + $loop->index }}</td>
+                        <td class="rs-stack-title" data-label="Account">
                             {{ $subscription->account?->account_name ?: '-' }}<br>
                             <small class="text-muted">{{ $subscription->account?->owner?->email }}</small>
                         </td>
-                        <td>{{ $subscription->plan?->name ?: '-' }}</td>
-                        <td>{{ ucwords($subscription->billing_cycle) }}</td>
-                        <td>{{ ucwords(str_replace('_', ' ', $subscription->status)) }}</td>
-                        <td>{{ $subscription->trial_ends_at ? $subscription->trial_ends_at->format('Y-m-d') : '-' }}</td>
-                        <td>{{ $subscription->current_period_start ? $subscription->current_period_start->format('Y-m-d') : '-' }}</td>
-                        <td>{{ $subscription->current_period_end ? $subscription->current_period_end->format('Y-m-d') : '-' }}</td>
-                        <td>{{ $subscription->stripe_subscription_id ?: '-' }}</td>
-                        <td>{{ $subscription->cancel_at_period_end ? 'Yes' : 'No' }}</td>
-                        <td class="text-center">
+                        <td data-label="Plan">{{ $subscription->plan?->name ?: '-' }}</td>
+                        <td data-label="Billing cycle">{{ ucwords($subscription->billing_cycle) }}</td>
+                        <td data-label="Status">{{ ucwords(str_replace('_', ' ', $subscription->status)) }}</td>
+                        <td data-label="Trial ends at">{{ $subscription->trial_ends_at ? $subscription->trial_ends_at->format('Y-m-d') : '-' }}</td>
+                        <td data-label="Current period start">{{ $subscription->current_period_start ? $subscription->current_period_start->format('Y-m-d') : '-' }}</td>
+                        <td data-label="Current period end">{{ $subscription->current_period_end ? $subscription->current_period_end->format('Y-m-d') : '-' }}</td>
+                        <td data-label="Stripe subscription ID">{{ $subscription->stripe_subscription_id ?: '-' }}</td>
+                        <td data-label="Cancel at period end">{{ $subscription->cancel_at_period_end ? 'Yes' : 'No' }}</td>
+                        <td class="rs-stack-actions text-center">
                             <a href="{{ route('backend.saas.subscriptions.show', $subscription) }}" class="btn btn-sm btn-primary">
                                 <i class="fas fa-eye"></i> View
                             </a>

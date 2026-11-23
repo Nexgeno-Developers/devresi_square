@@ -8,7 +8,7 @@
 
     <div class="table-responsive">
 
-    <table class="table table-bordered table-striped">
+    <table class="rs-stack-table table table-bordered table-striped">
         <thead>
             <tr>
                 <th>#</th>
@@ -20,10 +20,10 @@
         <tbody>
             @forelse ($noteTypes as $index => $type)
                 <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td>{{ $type->name }}</td>
-                    <td>{{ formatDateTime($type->created_at) }}</td>
-                    <td>
+                    <td data-label="#">{{ $index + 1 }}</td>
+                    <td class="rs-stack-title" data-label="Name">{{ $type->name }}</td>
+                    <td data-label="Created At">{{ formatDateTime($type->created_at) }}</td>
+                    <td class="rs-stack-actions">
                         <a href="{{ route('admin.note-types.edit', $type) }}" class="btn btn-sm btn-warning">Edit</a>
 
                         <form action="{{ route('admin.note-types.destroy', $type) }}" method="POST" style="display:inline-block;" onsubmit="return confirm('Are you sure?');">

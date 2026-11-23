@@ -9,7 +9,7 @@
 
     <div class="card">
         <div class="table-responsive">
-            <table class="table table-sm align-middle mb-0">
+            <table class="rs-stack-table table table-sm align-middle mb-0">
                 <thead>
                     <tr>
                         <th>Property</th>
@@ -23,12 +23,12 @@
                 <tbody>
                     @forelse($offers as $offer)
                         <tr>
-                            <td>{{ $offer->property?->name }}</td>
-                            <td>{{ $offer->price }}</td>
-                            <td>{{ $offer->deposit }}</td>
-                            <td>{{ $offer->term }}</td>
-                            <td>{{ $offer->move_in_date }}</td>
-                            <td class="text-end">
+                            <td class="rs-stack-title" data-label="Property">{{ $offer->property?->name }}</td>
+                            <td data-label="Price">{{ $offer->price }}</td>
+                            <td data-label="Deposit">{{ $offer->deposit }}</td>
+                            <td data-label="Term">{{ $offer->term }}</td>
+                            <td data-label="Move in date">{{ $offer->move_in_date }}</td>
+                            <td class="rs-stack-actions text-end">
                                 <div class="d-inline-flex gap-2">
                                     <a href="{{ route('admin.offers.edit', $offer->id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
                                     <form action="{{ route('admin.offers.destroy', $offer->id) }}" method="POST" class="d-inline">

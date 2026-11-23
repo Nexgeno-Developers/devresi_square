@@ -114,17 +114,17 @@
     <div class="card lw-card mb-3">
         <div class="card-body">
             <div class="lw-section-title mt-0">Usage</div>
-            <table class="table lw-table align-middle mb-0">
+            <table class="rs-stack-table table lw-table align-middle mb-0">
                 <thead>
                     <tr><th>Resource</th><th>Used</th><th>Limit</th><th>Remaining</th></tr>
                 </thead>
                 <tbody>
                     @foreach($resourceRows as $label => $summary)
                         <tr>
-                            <td>{{ $label }}</td>
-                            <td>{{ $summary['used'] ?? 0 }}</td>
-                            <td>{{ $summary['limit'] ?? 0 }}</td>
-                            <td>{{ $summary['remaining'] ?? 0 }}</td>
+                            <td class="rs-stack-title" data-label="Resource">{{ $label }}</td>
+                            <td data-label="Used">{{ $summary['used'] ?? 0 }}</td>
+                            <td data-label="Limit">{{ $summary['limit'] ?? 0 }}</td>
+                            <td data-label="Remaining" >{{ $summary['remaining'] ?? 0 }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -136,18 +136,18 @@
     <div class="card lw-card mb-3">
         <div class="card-body">
             <div class="lw-section-title mt-0">Active addons</div>
-            <table class="table lw-table align-middle mb-0">
+            <table class="rs-stack-table table lw-table align-middle mb-0">
                 <thead>
                     <tr><th>Addon</th><th>Type</th><th>Qty</th><th>Cycle</th><th>Price</th></tr>
                 </thead>
                 <tbody>
                     @forelse($activeAddons as $subscriptionAddon)
                         <tr>
-                            <td>{{ $subscriptionAddon->addon_name_at_purchase ?: $subscriptionAddon->addon?->name ?: '—' }}</td>
-                            <td>{{ $subscriptionAddon->addon ? ucwords(str_replace('_', ' ', $subscriptionAddon->addon->addon_type)) : '—' }}</td>
-                            <td>{{ $subscriptionAddon->quantity }}</td>
-                            <td>{{ ucwords($subscriptionAddon->billing_cycle) }}</td>
-                            <td>{{ $subscriptionAddon->price_at_purchase_minor !== null ? $formatMinor($subscriptionAddon->price_at_purchase_minor) : '—' }}</td>
+                            <td class="rs-stack-title" data-label="Addon">{{ $subscriptionAddon->addon_name_at_purchase ?: $subscriptionAddon->addon?->name ?: '—' }}</td>
+                            <td data-label="Type">{{ $subscriptionAddon->addon ? ucwords(str_replace('_', ' ', $subscriptionAddon->addon->addon_type)) : '—' }}</td>
+                            <td data-label="Qty">{{ $subscriptionAddon->quantity }}</td>
+                            <td data-label="Cycle">{{ ucwords($subscriptionAddon->billing_cycle) }}</td>
+                            <td data-label="Price" >{{ $subscriptionAddon->price_at_purchase_minor !== null ? $formatMinor($subscriptionAddon->price_at_purchase_minor) : '—' }}</td>
                         </tr>
                     @empty
                         <tr><td colspan="5" class="text-muted">No active addons.</td></tr>
@@ -160,18 +160,18 @@
     <div class="card lw-card mb-3">
         <div class="card-body">
             <div class="lw-section-title mt-0">Available addons</div>
-            <table class="table lw-table align-middle mb-0">
+            <table class="rs-stack-table table lw-table align-middle mb-0">
                 <thead>
                     <tr><th>Addon</th><th>Type</th><th>Grant</th><th>Price</th><th>Action</th></tr>
                 </thead>
                 <tbody>
                     @forelse($availableAddons as $addon)
                         <tr>
-                            <td>{{ $addon->name }}</td>
-                            <td>{{ ucwords(str_replace('_', ' ', $addon->addon_type)) }}</td>
-                            <td>{{ $addon->grant_quantity }}</td>
-                            <td>{{ $billingCycle === 'annual' ? $addon->formattedAnnualPrice() : $addon->formattedMonthlyPrice() }}</td>
-                            <td>
+                            <td class="rs-stack-title" data-label="Addon">{{ $addon->name }}</td>
+                            <td data-label="Type">{{ ucwords(str_replace('_', ' ', $addon->addon_type)) }}</td>
+                            <td data-label="Grant">{{ $addon->grant_quantity }}</td>
+                            <td data-label="Price">{{ $billingCycle === 'annual' ? $addon->formattedAnnualPrice() : $addon->formattedMonthlyPrice() }}</td>
+                            <td class="rs-stack-actions">
                                 @if($canBuyAddons)
                                     <form method="POST" action="{{ route('backend.billing.addons.checkout', $addon) }}" class="d-flex gap-2">
                                         @csrf

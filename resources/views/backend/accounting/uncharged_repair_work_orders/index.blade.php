@@ -13,7 +13,7 @@
         </div>
 
         <div class="table-responsive">
-            <table class="table table-bordered align-middle">
+            <table class="rs-stack-table table table-bordered align-middle">
                 <thead class="table-light">
                     <tr>
                         <th>Work Order No</th>
@@ -34,19 +34,19 @@
                             $repairIssue = $workOrder->repairIssue;
                         @endphp
                         <tr>
-                            <td>{{ $workOrder->works_order_no }}</td>
-                            <td>{{ $repairIssue->reference_number ?? '-' }}</td>
-                            <td>{{ $repairIssue ? getPropertyDetails($repairIssue->property_id, ['prop_name', 'line_1', 'city', 'postcode']) : '-' }}</td>
-                            <td>{{ $repairIssue->finalContractor->name ?? '-' }}</td>
-                            <td>{{ $workOrder->invoice_to ?? '-' }}</td>
-                            <td>{{ $workOrder->status ?? '-' }}</td>
-                            <td>
+                            <td class="rs-stack-title" data-label="Work Order No">{{ $workOrder->works_order_no }}</td>
+                            <td data-label="Repair Ref">{{ $repairIssue->reference_number ?? '-' }}</td>
+                            <td data-label="Property">{{ $repairIssue ? getPropertyDetails($repairIssue->property_id, ['prop_name', 'line_1', 'city', 'postcode']) : '-' }}</td>
+                            <td data-label="Final Contractor">{{ $repairIssue->finalContractor->name ?? '-' }}</td>
+                            <td data-label="Charge To">{{ $workOrder->invoice_to ?? '-' }}</td>
+                            <td data-label="Status">{{ $workOrder->status ?? '-' }}</td>
+                            <td data-label="Dates">
                                 {{ $workOrder->tentative_start_date ? formatDate($workOrder->tentative_start_date) : '-' }}
                                 -
                                 {{ $workOrder->tentative_end_date ? formatDate($workOrder->tentative_end_date) : '-' }}
                             </td>
-                            <td class="text-end">{{ getPoundSymbol() }}{{ number_format($total, 2) }}</td>
-                            <td class="text-end">
+                            <td class="text-end" data-label="Total">{{ getPoundSymbol() }}{{ number_format($total, 2) }}</td>
+                            <td class="rs-stack-actions text-end">
                                 @if($repairIssue)
                                     <a href="{{ route('admin.property_repairs.index_tabbed', ['repair_id' => $repairIssue->id, 'tabname' => 'work-order']) }}"
                                         class="btn btn-sm btn-outline-primary">

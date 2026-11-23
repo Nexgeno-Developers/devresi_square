@@ -99,7 +99,7 @@
             <div class="card shadow-sm">
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover table-striped align-middle mb-0">
+                        <table class="rs-stack-table table table-hover table-striped align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 50px;">#</th>
@@ -114,25 +114,25 @@
                             <tbody>
                                 @forelse($categories as $index => $cat)
                                     <tr class="{{ $cat->is_system ? 'table-primary' : '' }}">
-                                        <td>{{ $index+1 }}</td>
-                                        <td>{{ $cat->name }}</td>
-                                        <td>
+                                        <td data-label="#">{{ $index+1 }}</td>
+                                        <td class="rs-stack-title" data-label="Name">{{ $cat->name }}</td>
+                                        <td data-label="Type">
                                             <span class="badge rounded-pill bg-{{ $cat->is_income ? 'success' : 'danger' }}">
                                                 {{ $cat->is_income ? 'Income' : 'Expense' }}
                                             </span>
                                         </td>
-                                        <td>
+                                        <td data-label="Status">
                                             <span class="badge rounded-pill bg-{{ $cat->is_active ? 'primary' : 'secondary' }}">
                                                 {{ $cat->is_active ? 'Active' : 'Inactive' }}
                                             </span>
                                         </td>
-                                        <td><code class="text-uppercase">{{ $cat->code ?? '-' }}</code></td>
-                                        <td>
+                                        <td data-label="Code"><code class="text-uppercase">{{ $cat->code ?? '-' }}</code></td>
+                                        <td data-label="System">
                                             <span class="badge rounded-pill bg-{{ $cat->is_system ? 'dark' : 'light text-dark' }}">
                                                 {{ $cat->is_system ? 'Yes' : 'No' }}
                                             </span>
                                         </td>
-                                        <td class="text-center">
+                                        <td class="rs-stack-actions text-center">
                                             <div class="btn-group" role="group" aria-label="Actions">
                                                 <a href="{{ route('backend.transaction_categories.show', $cat) }}"
                                                     class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip"

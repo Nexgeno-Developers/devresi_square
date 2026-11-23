@@ -84,18 +84,18 @@
                 </div>
                 <div class="card-body px-4">
                     <div class="table-responsive">
-                        <table class="table align-middle mb-0">
+                        <table class="rs-stack-table table align-middle mb-0">
                             <thead class="text-muted small"><tr><th>Account</th><th>Plan</th><th>Status</th><th>Created</th><th></th></tr></thead>
                             <tbody>
                             @forelse($recentAccounts as $account)
                                 @php($subscription = $account->currentSubscription ?? $account->latestSubscription)
                                 @php($statusColour = ['active'=>'success','trialing'=>'info','past_due'=>'danger','suspended'=>'warning','cancelled'=>'secondary'][$account->status] ?? 'secondary')
                                 <tr>
-                                    <td><div class="fw-semibold">{{ $account->account_name ?: 'Unnamed account' }}</div><small class="text-muted">{{ $account->billing_email ?: $account->owner?->email }}</small></td>
-                                    <td>{{ $subscription?->plan?->name ?: '—' }}</td>
-                                    <td><span class="badge bg-{{ $statusColour }} bg-opacity-10 text-{{ $statusColour }}">{{ ucwords(str_replace('_', ' ', $account->status)) }}</span></td>
-                                    <td class="text-nowrap">{{ $account->created_at?->format('d M Y') }}</td>
-                                    <td class="text-nowrap">
+                                    <td class="rs-stack-title" data-label="Account"><div class="fw-semibold">{{ $account->account_name ?: 'Unnamed account' }}</div><small class="text-muted">{{ $account->billing_email ?: $account->owner?->email }}</small></td>
+                                    <td data-label="Plan">{{ $subscription?->plan?->name ?: '—' }}</td>
+                                    <td data-label="Status"><span class="badge bg-{{ $statusColour }} bg-opacity-10 text-{{ $statusColour }}">{{ ucwords(str_replace('_', ' ', $account->status)) }}</span></td>
+                                    <td class="text-nowrap" data-label="Created">{{ $account->created_at?->format('d M Y') }}</td>
+                                    <td class="rs-stack-actions text-nowrap">
                                         <a href="{{ route('backend.saas.accounts.show', $account) }}" class="btn btn-sm btn-light" aria-label="View account"><i class="bi bi-eye"></i></a>
                                         <form action="{{ route('backend.saas.accounts.login-as', $account) }}" method="POST" class="d-inline">
                                             @csrf

@@ -31,7 +31,7 @@
     </form>
     
     <!-- Job Types Table -->
-    <table class="table table-bordered table-striped">
+    <table class="rs-stack-table table table-bordered table-striped">
         <thead>
             <tr>
                 <th>Job Type</th>
@@ -43,10 +43,10 @@
         <tbody>
             @foreach ($jobTypes as $type)
             <tr>
-                <td>{{ $type->name }}</td>
-                <td>{{ $type->parent ? $type->parent->name : 'None' }}</td>
-                <td>{{ $type->order_level }}</td>
-                <td>
+                <td class="rs-stack-title" data-label="Job Type">{{ $type->name }}</td>
+                <td data-label="Parent">{{ $type->parent ? $type->parent->name : 'None' }}</td>
+                <td data-label="Order Level">{{ $type->order_level }}</td>
+                <td class="rs-stack-actions">
                     <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete({{ $type->id }})">Delete</button>
                 </td>
             </tr>

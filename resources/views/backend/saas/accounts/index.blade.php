@@ -51,7 +51,7 @@
     </form>
 
     <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle">
+        <table class="table table-bordered table-striped align-middle rs-stack-table">
             <thead>
                 <tr>
                     <th>#</th>
@@ -81,22 +81,22 @@
                         }
                     @endphp
                     <tr>
-                        <td>{{ $accounts->firstItem() + $loop->index }}</td>
-                        <td>{{ $accountLabel }}</td>
-                        <td>{{ ucwords(str_replace('_', ' ', $account->account_type)) }}</td>
-                        <td>
+                        <td data-label="#">{{ $accounts->firstItem() + $loop->index }}</td>
+                        <td data-label="Account name" class="rs-stack-title">{{ $accountLabel }}</td>
+                        <td data-label="Account type">{{ ucwords(str_replace('_', ' ', $account->account_type)) }}</td>
+                        <td data-label="Owner user">
                             {{ $ownerName }}<br>
                             <small class="text-muted">{{ $account->owner?->email }}</small>
                         </td>
-                        <td>{{ $account->billing_email ?: '-' }}</td>
-                        <td>
+                        <td data-label="Billing email">{{ $account->billing_email ?: '-' }}</td>
+                        <td data-label="Status">
                             <span class="badge bg-secondary">{{ ucwords(str_replace('_', ' ', $account->status)) }}</span>
                         </td>
-                        <td>{{ $subscription?->plan?->name ?: '-' }}</td>
-                        <td>{{ $subscription ? ucwords(str_replace('_', ' ', $subscription->status)) : '-' }}</td>
-                        <td>{{ $account->trial_ends_at ? rs_date($account->trial_ends_at) : '—' }}</td>
-                        <td>{{ $account->created_at ? rs_date($account->created_at) : '—' }}</td>
-                        <td class="text-center">
+                        <td data-label="Current plan">{{ $subscription?->plan?->name ?: '-' }}</td>
+                        <td data-label="Subscription status">{{ $subscription ? ucwords(str_replace('_', ' ', $subscription->status)) : '-' }}</td>
+                        <td data-label="Trial ends at">{{ $account->trial_ends_at ? rs_date($account->trial_ends_at) : '—' }}</td>
+                        <td data-label="Created">{{ $account->created_at ? rs_date($account->created_at) : '—' }}</td>
+                        <td class="text-center rs-stack-actions">
                             <a href="{{ route('backend.saas.accounts.show', $account) }}" class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye"></i> View
                             </a>

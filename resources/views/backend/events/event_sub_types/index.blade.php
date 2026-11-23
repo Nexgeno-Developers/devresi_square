@@ -16,7 +16,7 @@
         @if($subtypes->isEmpty())
             <div class="alert alert-info">No event subtypes found.</div>
         @else
-            <table class="table table-bordered table-hover">
+            <table class="rs-stack-table table table-bordered table-hover">
                 <thead class="table-light">
                     <tr>
                         <th>ID</th>
@@ -31,13 +31,13 @@
                 <tbody>
                     @foreach($subtypes as $sub)
                         <tr>
-                            <td>{{ $sub->id }}</td>
-                            <td>{{ $sub->type->name }}</td>
-                            <td>{{ $sub->name }}</td>
-                            {{-- <td>{{ $sub->slug }}</td> --}}
-                            <td>{{ Str::limit($sub->description, 50) ?? '-' }}</td>
-                            <td>{{ $sub->created_at->format('Y-m-d') }}</td>
-                            <td class="text-center">
+                            <td class="rs-stack-title" data-label="ID">{{ $sub->id }}</td>
+                            <td data-label="Type">{{ $sub->type->name }}</td>
+                            <td data-label="SubType Name">{{ $sub->name }}</td>
+                            {{-- <td data-label="Slug">{{ $sub->slug }}</td> --}}
+                            <td data-label="Description">{{ Str::limit($sub->description, 50) ?? '-' }}</td>
+                            <td data-label="Created At">{{ $sub->created_at->format('Y-m-d') }}</td>
+                            <td class="rs-stack-actions text-center">
                                 <a href="{{ route('backend.event_sub_types.show', $sub) }}" class="btn btn-sm btn-info">View</a>
                                 <a href="{{ route('backend.event_sub_types.edit', $sub) }}" class="btn btn-sm btn-warning">Edit</a>
                                 <form action="{{ route('backend.event_sub_types.destroy', $sub) }}" method="POST" class="d-inline"

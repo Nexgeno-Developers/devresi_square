@@ -126,7 +126,7 @@
     <div class="card lw-card">
         <div class="card-body table-responsive">
             <h5 class="mb-3">Portal access</h5>
-            <table class="table lw-table align-middle">
+            <table class="rs-stack-table table lw-table align-middle">
                 <thead>
                     <tr>
                         <th>User</th>
@@ -141,13 +141,13 @@
                 <tbody>
                     @forelse($portalUsers as $membership)
                         <tr>
-                            <td>{{ $membership->user?->name ?? 'Unknown user' }}</td>
-                            <td>{{ $membership->user?->email ?? '-' }}</td>
-                            <td>{{ ucwords(str_replace('_', ' ', $membership->member_type)) }}</td>
-                            <td>{{ $membership->can_login ? 'Yes' : 'No' }}</td>
-                            <td>{{ (int) $membership->assigned_properties_count }}</td>
-                            <td>{{ ucfirst($membership->status) }}</td>
-                            <td class="text-end">
+                            <td class="rs-stack-title" data-label="User">{{ $membership->user?->name ?? 'Unknown user' }}</td>
+                            <td data-label="Email">{{ $membership->user?->email ?? '-' }}</td>
+                            <td data-label="Member Type">{{ ucwords(str_replace('_', ' ', $membership->member_type)) }}</td>
+                            <td data-label="Can Login">{{ $membership->can_login ? 'Yes' : 'No' }}</td>
+                            <td data-label="Homes">{{ (int) $membership->assigned_properties_count }}</td>
+                            <td data-label="Status">{{ ucfirst($membership->status) }}</td>
+                            <td class="rs-stack-actions text-end">
                                 @if($membership->user)
                                     <a href="{{ route('admin.users.edit', $membership->user_id) }}" class="btn btn-sm btn-outline-primary">View</a>
                                     @if($membership->status === 'active')

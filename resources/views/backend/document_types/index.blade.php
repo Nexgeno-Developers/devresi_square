@@ -11,7 +11,7 @@
 
     <div class="table-responsive">
 
-    <table class="table table-bordered table-striped">
+    <table class="rs-stack-table table table-bordered table-striped">
         <thead>
             <tr>
                 <th>#</th>
@@ -23,10 +23,10 @@
         <tbody>
             @forelse ($documentTypes as $index => $type)
                 <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td>{{ $type->name }}</td>
-                    <td>{{ formatDateTime($type->created_at) }}</td>
-                    <td class="text-center">
+                    <td data-label="#">{{ $index + 1 }}</td>
+                    <td class="rs-stack-title" data-label="Name">{{ $type->name }}</td>
+                    <td data-label="Created At">{{ formatDateTime($type->created_at) }}</td>
+                    <td class="rs-stack-actions text-center">
                         <div class="d-flex justify-content-center gap-2">
                             <a href="{{ route('admin.document-types.edit', $type) }}" class="btn btn-sm btn-warning">
                                 <i class="fas fa-edit"></i> Edit

@@ -22,7 +22,7 @@
 
     <div class="card lw-card">
         <div class="card-body table-responsive">
-        <table class="table lw-table align-middle">
+        <table class="rs-stack-table table lw-table align-middle">
             <thead>
                 <tr>
                     <th>Property</th>
@@ -40,7 +40,7 @@
             <tbody>
                 @forelse($tenancies as $tenancy)
                 <tr>
-                    <td>
+                    <td class="rs-stack-title" data-label="Property">
                         @if($tenancy->property)
                             {{ rs_property_title($tenancy->property) }}
                         @else
@@ -50,19 +50,19 @@
                             @endif
                         @endif
                     </td>
-                    <td>
+                    <td data-label="Tenant">
                         {{ $tenancy->tenantMembers->map(fn($m) => rs_person($m->user))->filter(fn ($n) => $n !== 'Someone')->implode(', ') ?: '—' }}
                         @php($rtrMissing = $tenancy->status === 'Active' ? $tenancy->tenantMembers->whereNull('right_to_rent_checked_at')->count() : 0)
                         @if($rtrMissing > 0)
                             <small class="text-danger d-block" data-right-to-rent="incomplete">Right to rent not checked{{ $rtrMissing > 1 ? ' ('.$rtrMissing.')' : '' }}</small>
                         @endif
                     </td>
-                    <td>{{ $tenancy->rentFrequencyLabel() }}</td>
-                    <td>{{ rs_date($tenancy->move_in) }}</td>
-                    <td>{{ rs_date($tenancy->move_out) }}</td>
-                    <td>{{ rs_money($tenancy->rent) }}</td>
-                    <td>{{ rs_money($tenancy->deposit) }}</td>
-                    <td>
+                    <td data-label="How often">{{ $tenancy->rentFrequencyLabel() }}</td>
+                    <td data-label="Start Date">{{ rs_date($tenancy->move_in) }}</td>
+                    <td data-label="End Date">{{ rs_date($tenancy->move_out) }}</td>
+                    <td data-label="Rent">{{ rs_money($tenancy->rent) }}</td>
+                    <td data-label="Deposit">{{ rs_money($tenancy->deposit) }}</td>
+                    <td data-label="Notice">
                         @if($tenancy->correctionRequests->isNotEmpty())
                             Notice Given
                         @elseif(in_array($tenancy->status, ['Inactive', 'Terminated'], true))
@@ -71,12 +71,12 @@
                             —
                         @endif
                     </td>
-                    <td>
+                    <td data-label="Status">
                         <span class="badge {{ $tenancy->status === 'Active' ? 'bg-success' : 'bg-secondary' }}">
                             {{ \App\Support\CrmLanguage::tenancyStatus($tenancy->status) }}
                         </span>
                     </td>
-                    <td>
+                    <td class="rs-stack-actions">
                         <div class="d-flex gap-1">
                             <a href="{{ route('admin.tenancies.show', $tenancy->id) }}" class="btn btn-sm btn-outline-info">View</a>
                             @if(is_landlord_plan_user() || auth()->user()?->can('manage tenancies'))

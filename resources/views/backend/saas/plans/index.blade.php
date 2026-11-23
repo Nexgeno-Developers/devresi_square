@@ -10,7 +10,7 @@
     </div>
 
     <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle">
+        <table class="rs-stack-table table table-bordered table-striped align-middle">
             <thead>
                 <tr>
                     <th>#</th>
@@ -31,27 +31,27 @@
             <tbody>
                 @forelse($plans as $plan)
                     <tr>
-                        <td>{{ $plans->firstItem() + $loop->index }}</td>
-                        <td>{{ $plan->name }}</td>
-                        <td><code>{{ $plan->code }}</code></td>
-                        <td>{{ ucwords(str_replace('_', ' ', $plan->target_account_type)) }}</td>
-                        <td>{{ $plan->formattedMonthlyPrice() }}</td>
-                        <td>{{ $plan->formattedAnnualPrice() }}</td>
-                        <td>{{ $plan->property_limit }}</td>
-                        <td>{{ $plan->branch_limit }}</td>
-                        <td>{{ $plan->staff_limit }}</td>
-                        <td>{{ $plan->trial_days }}</td>
-                        <td>
+                        <td data-label="#">{{ $plans->firstItem() + $loop->index }}</td>
+                        <td class="rs-stack-title" data-label="Name">{{ $plan->name }}</td>
+                        <td data-label="Code"><code>{{ $plan->code }}</code></td>
+                        <td data-label="Target type">{{ ucwords(str_replace('_', ' ', $plan->target_account_type)) }}</td>
+                        <td data-label="Monthly price">{{ $plan->formattedMonthlyPrice() }}</td>
+                        <td data-label="Annual price">{{ $plan->formattedAnnualPrice() }}</td>
+                        <td data-label="Property limit">{{ $plan->property_limit }}</td>
+                        <td data-label="Branch limit">{{ $plan->branch_limit }}</td>
+                        <td data-label="Staff limit">{{ $plan->staff_limit }}</td>
+                        <td data-label="Trial days">{{ $plan->trial_days }}</td>
+                        <td data-label="Active">
                             <span class="badge bg-{{ $plan->is_active ? 'success' : 'secondary' }}">
                                 {{ $plan->is_active ? 'Active' : 'Inactive' }}
                             </span>
                         </td>
-                        <td>
+                        <td data-label="Pricing visible">
                             <span class="badge bg-{{ $plan->is_active ? 'success' : 'secondary' }}">
                                 {{ $plan->is_active ? 'Visible' : 'Hidden' }}
                             </span>
                         </td>
-                        <td class="text-center">
+                        <td class="rs-stack-actions text-center">
                             <div class="d-flex justify-content-center gap-2">
                                 <a href="{{ route('backend.saas.plans.edit', $plan) }}" class="btn btn-sm btn-warning">
                                     <i class="fas fa-edit"></i> Edit

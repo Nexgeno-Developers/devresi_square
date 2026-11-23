@@ -11,7 +11,7 @@
 
     <div class="table-responsive">
 
-    <table class="table table-bordered">
+    <table class="rs-stack-table table table-bordered">
         <thead>
             <tr>
                 <th>#</th>
@@ -26,13 +26,13 @@
         <tbody>
             @forelse($estateCharges as $charge)
                 <tr>
-                    <td>{{ $charge->id }}</td>
-                    <td>{{ $charge->ref_no }}</td>
-                    <td>{{ $charge->description }}</td>
-                    <td>{{ $charge->amount }}</td>
-                    <td>{{ $charge->due_date }}</td>
-                    <td>{{ $charge->status }}</td>
-                    <td>
+                    <td data-label="#">{{ $charge->id }}</td>
+                    <td class="rs-stack-title" data-label="Reference No">{{ $charge->ref_no }}</td>
+                    <td data-label="Description">{{ $charge->description }}</td>
+                    <td data-label="Amount">{{ $charge->amount }}</td>
+                    <td data-label="Due Date">{{ $charge->due_date }}</td>
+                    <td data-label="Status">{{ $charge->status }}</td>
+                    <td class="rs-stack-actions">
                         <a href="{{ route('admin.estate-charges.edit', $charge) }}" class="btn btn-sm btn-warning">Edit</a>
                         <form action="{{ route('admin.estate-charges.destroy', $charge) }}" method="POST" style="display:inline;">
                             @csrf

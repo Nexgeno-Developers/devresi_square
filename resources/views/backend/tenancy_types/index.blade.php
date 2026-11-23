@@ -12,7 +12,7 @@
         </div>
     @endif
 
-    <table class="table">
+    <table class="rs-stack-table table">
         <thead>
             <tr>
                 <th>Name</th>
@@ -22,8 +22,8 @@
         <tbody>
             @foreach($tenancyTypes as $tenancyType)
                 <tr>
-                    <td>{{ $tenancyType->name }}</td>
-                    <td>
+                    <td class="rs-stack-title" data-label="Name">{{ $tenancyType->name }}</td>
+                    <td class="rs-stack-actions">
                         <a href="{{ route('admin.tenancy_types.edit', $tenancyType->id) }}" class="btn btn-warning btn-sm">Edit</a>
                         <form action="{{ route('admin.tenancy_types.destroy', $tenancyType->id) }}" method="POST" style="display:inline;">
                             @csrf

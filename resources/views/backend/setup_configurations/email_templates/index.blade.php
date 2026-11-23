@@ -25,7 +25,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table mb-0">
+                <table class="rs-stack-table table mb-0">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -38,11 +38,11 @@
                     <tbody>
                         @forelse ($emailTemplates as $key => $emailTemplate)
                             <tr>
-                                <td>{{ ($key+1) + ($emailTemplates->currentPage() - 1)*$emailTemplates->perPage() }}</td>
-                                <td>{{ $emailTemplate->email_type }}</td>
-                                <td>
+                                <td data-label="#">{{ ($key+1) + ($emailTemplates->currentPage() - 1)*$emailTemplates->perPage() }}</td>
+                                <td class="rs-stack-title" data-label="Email Type">{{ $emailTemplate->email_type }}</td>
+                                <td data-label="Subject">
                                     {{ $emailTemplate->subject }}</td>
-                                <td>
+                                <td data-label="Status">
                                     <label class="aiz-switch aiz-switch-success mb-0">
                                         <input onchange="update_status(this)" 
                                             value="{{ $emailTemplate->id }}"
@@ -52,7 +52,7 @@
                                         <span class="slider round"></span>
                                     </label>
                                 </td>
-                                <td class="text-right">
+                                <td class="rs-stack-actions text-right">
                                      <a class="btn btn-sm btn-outline-primary" href="{{ route('email-templates.edit', $emailTemplate->id) }}" title="Edit">
                                         <i class="fa fa-edit"></i> Edit
                                     </a>

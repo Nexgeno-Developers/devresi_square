@@ -87,7 +87,7 @@
 
     <div class="card lw-card">
         <div class="card-body table-responsive">
-            <table class="table lw-table align-middle">
+            <table class="rs-stack-table table lw-table align-middle">
                 <thead>
                     <tr>
                         <th>Property</th>
@@ -116,16 +116,16 @@
                             $methodLabel = \App\Models\RentPayment::METHODS[$method] ?? '—';
                         @endphp
                         <tr>
-                            <td>
+                            <td class="rs-stack-title" data-label="Property">
                                 <a href="{{ route('admin.finance.show', $invoice) }}">{{ $invoice->property?->line_1 ?: ($invoice->property?->full_address ?: 'Property') }}</a>
                             </td>
-                            <td>{{ rs_person($invoice->tenant) }}</td>
-                            <td>{{ $invoice->issue_date?->format('F Y') ?: '—' }}</td>
-                            <td>{{ rs_money($invoice->amount) }}</td>
-                            <td>{{ rs_money($received) }}</td>
-                            <td>{{ rs_money($invoice->balance) }}</td>
-                            <td>{{ $methodLabel }}</td>
-                            <td><span class="badge bg-{{ $badge }}">{{ $label }}</span></td>
+                            <td data-label="Tenant">{{ rs_person($invoice->tenant) }}</td>
+                            <td data-label="Period">{{ $invoice->issue_date?->format('F Y') ?: '—' }}</td>
+                            <td data-label="Due">{{ rs_money($invoice->amount) }}</td>
+                            <td data-label="Received">{{ rs_money($received) }}</td>
+                            <td data-label="Balance">{{ rs_money($invoice->balance) }}</td>
+                            <td data-label="Payment Method">{{ $methodLabel }}</td>
+                            <td data-label="Status" ><span class="badge bg-{{ $badge }}">{{ $label }}</span></td>
                         </tr>
                     @empty
                         <tr>

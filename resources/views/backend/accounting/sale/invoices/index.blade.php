@@ -202,7 +202,7 @@
                                 <p class="text-muted mb-0">No available credits.</p>
                             @else
                                 <div class="table-responsive">
-                                    <table class="table table-bordered align-middle">
+                                    <table class="rs-stack-table table table-bordered align-middle">
                                         <thead class="table-light">
                                             <tr>
                                                 <th>Credit Note #</th>
@@ -215,11 +215,11 @@
                                         <tbody>
                                             @foreach($record->user->creditReceipts as $idx => $credit)
                                                 <tr>
-                                                    <td>{{ $credit->receipt_no }}</td>
-                                                    <td>{{ \Carbon\Carbon::parse($credit->receipt_date)->format('Y-m-d') }}</td>
-                                                    <td class="text-end">{{ number_format($credit->amount, 2) }}</td>
-                                                    <td class="text-end">{{ number_format($credit->remaining_amount, 2) }}</td>
-                                                    <td style="max-width: 160px;">
+                                                    <td class="rs-stack-title" data-label="Credit Note #">{{ $credit->receipt_no }}</td>
+                                                    <td data-label="Date">{{ \Carbon\Carbon::parse($credit->receipt_date)->format('Y-m-d') }}</td>
+                                                    <td class="text-end" data-label="Credit Amount">{{ number_format($credit->amount, 2) }}</td>
+                                                    <td class="text-end" data-label="Credits Available">{{ number_format($credit->remaining_amount, 2) }}</td>
+                                                    <td data-label="Amount to Credit" style="max-width: 160px;" >
                                                         <input type="hidden" name="credits[{{ $idx }}][receipt_id]" value="{{ $credit->id }}">
                                                         <input
                                                             type="number"

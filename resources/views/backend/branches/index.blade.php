@@ -38,7 +38,7 @@
 
     <div class="branch-table-card">
         <div class="table-responsive">
-            <table class="table branch-table align-middle mb-0">
+            <table class="rs-stack-table table branch-table align-middle mb-0">
                 <thead>
                     <tr>
                         <th>Branch</th>
@@ -60,23 +60,23 @@
                             ]));
                         @endphp
                         <tr>
-                            <td>
+                            <td class="rs-stack-title" data-label="Branch">
                                 <div class="branch-name">{{ $branch->name }}</div>
                                 @if($branch->is_main_head_office)
                                     <span class="badge bg-primary-subtle text-primary border border-primary-subtle mt-1">Main Head Office</span>
                                 @endif
                                 <div class="branch-muted">ID {{ $branch->id }}</div>
                             </td>
-                            <td>
+                            <td data-label="Address">
                                 <div class="branch-address">{{ $address ?: 'Address not set' }}</div>
                             </td>
-                            <td>
+                            <td data-label="Contact">
                                 <div class="branch-contact">
                                     <span>{{ $branch->user_email ?: 'No email' }}</span>
                                     <small>{{ $branch->user_phone ?: 'No phone' }}</small>
                                 </div>
                             </td>
-                            <td>
+                            <td class="rs-stack-actions">
                                 <div class="branch-actions">
                                     <a href="{{ route('admin.branches.edit', $branch) }}" class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-pencil-square"></i>

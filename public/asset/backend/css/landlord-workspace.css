@@ -2329,3 +2329,8 @@ body.landlord-workspace #wrapper .crm-stat.is-alert strong { color: #9a3412; }
     html body .reminder-row .input-group > .input-group-text { flex: 1 1 auto; min-width: 0; white-space: normal; line-height: 1.2; font-size: 13px; }
     html body .reminder-row .input-group > .btn { flex: 0 0 auto; }
 }
+
+/* Super Admin pages keep the gradient hero: links and muted text inside it must stay readable. */
+body:not(.landlord-workspace):not(.tenant-portal-shell) .lw-hero a:not(.btn) { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+body:not(.landlord-workspace):not(.tenant-portal-shell) .lw-hero .text-muted,
+body:not(.landlord-workspace):not(.tenant-portal-shell) .lw-hero .small { color: rgba(255, 255, 255, 0.85) !important; }

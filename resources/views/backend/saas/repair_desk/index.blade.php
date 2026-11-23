@@ -24,7 +24,7 @@
 
     <div class="card lw-card">
         <div class="card-body table-responsive">
-            <table class="table lw-table align-middle">
+            <table class="rs-stack-table table lw-table align-middle">
                 <thead>
                     <tr>
                         <th>Repair</th>
@@ -44,7 +44,7 @@
                             $where = $property?->full_address ?: trim(collect([$property?->city, $property?->postcode])->filter()->implode(' · '));
                         @endphp
                         <tr>
-                            <td>
+                            <td class="rs-stack-title" data-label="Repair">
                                 <div class="fw-semibold">{{ $title }}</div>
                                 <div class="small text-muted">{{ $where ?: 'No address on the repair' }}</div>
                                 <div class="small">{{ \Illuminate\Support\Str::limit($repair?->description, 140) }}</div>
@@ -52,14 +52,14 @@
                                     <div class="small mt-1">Landlord: {{ $desk->landlord_note }}</div>
                                 @endif
                             </td>
-                            <td>{{ $desk->account?->account_name ?: ('Account '.$desk->account_id) }}</td>
-                            <td>
+                            <td data-label="Account">{{ $desk->account?->account_name ?: ('Account '.$desk->account_id) }}</td>
+                            <td data-label="From">
                                 {{ $desk->requester?->name ?: 'Landlord' }}<br>
                                 <span class="small text-muted">{{ rs_date($desk->created_at) }}</span>
                             </td>
-                            <td>{{ $desk->statusLabel() }}</td>
-                            <td>{{ $desk->assignee?->name ?: 'Nobody yet' }}</td>
-                            <td class="text-end">
+                            <td data-label="Status">{{ $desk->statusLabel() }}</td>
+                            <td data-label="With">{{ $desk->assignee?->name ?: 'Nobody yet' }}</td>
+                            <td class="rs-stack-actions text-end">
                                 <a class="btn btn-primary btn-sm" href="{{ route('backend.saas.repair_desk.show', $desk) }}">Open</a>
                             </td>
                         </tr>

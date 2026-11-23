@@ -1501,7 +1501,29 @@ if (! function_exists('rs_page_title')) {
             'admin.users.profile.show' => 'Profile',
             'admin.users.profile.edit' => 'Profile',
         ];
-        $label = $labels[request()->route()?->getName() ?? ''] ?? null;
+        $routeName = request()->route()?->getName() ?? '';
+        $label = $labels[$routeName] ?? null;
+
+        if (! $label && $routeName !== '') {
+            // No hand-written label: build one from the route name ("backend.saas.plans.create" -> "Plans - new").
+            $parts = array_values(array_filter(explode('.', $routeName)));
+            while ($parts && in_array($parts[0], ['backend', 'admin', 'saas', 'accounting', 'masters'], true)) {
+                array_shift($parts);
+            }
+            $verbs = ['create' => 'new', 'edit' => 'edit', 'show' => 'details', 'view' => 'details'];
+            $verb = null;
+            while ($parts && in_array(end($parts), ['index', 'list', 'all', 'create', 'edit', 'show', 'view'], true)) {
+                $last = array_pop($parts);
+                $verb = $verb ?? ($verbs[$last] ?? null);
+            }
+            if ($parts) {
+                $label = \Illuminate\Support\Str::headline(str_replace('-', ' ', end($parts)));
+                $label = rtrim($label, '.');
+                if ($verb) {
+                    $label .= ' - '.$verb;
+                }
+            }
+        }
 
         return $label ? $label.' · '.$brand : $brand;
     }

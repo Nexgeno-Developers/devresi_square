@@ -23,7 +23,7 @@
                                 </div>
             @else
             <div class="table-responsive">
-            <table class="table lw-table align-middle">
+            <table class="rs-stack-table table lw-table align-middle">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -37,9 +37,9 @@
                 <tbody>
                     @foreach($documents as $document)
                         <tr>
-                            <td>{{ rs_document_title($document->displayName(), $document->documentType?->name) }}</td>
-                            <td>{{ $document->documentType?->name ?? '—' }}</td>
-                            <td>
+                            <td class="rs-stack-title" data-label="Name">{{ rs_document_title($document->displayName(), $document->documentType?->name) }}</td>
+                            <td data-label="Type">{{ $document->documentType?->name ?? '—' }}</td>
+                            <td data-label="Attached to">
                                 @if($document->documentable instanceof \App\Models\Property)
                                     {{ rs_property_title($document->documentable) }}
                                 @elseif($document->documentable instanceof \App\Models\User)
@@ -48,9 +48,9 @@
                                     Related record
                                 @endif
                             </td>
-                            <td>{{ $document->isSharedWithTenant() ? 'Shared' : 'Private' }}</td>
-                            <td>{{ rs_date($document->created_at) }}</td>
-                            <td class="text-end text-nowrap">
+                            <td data-label="Tenant">{{ $document->isSharedWithTenant() ? 'Shared' : 'Private' }}</td>
+                            <td data-label="Added">{{ rs_date($document->created_at) }}</td>
+                            <td class="rs-stack-actions text-end text-nowrap">
                                 @if($document->upload_ids)
                                     <a href="{{ route('admin.documents.download', $document) }}" class="btn btn-sm btn-outline-primary">Download</a>
                                 @endif

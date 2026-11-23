@@ -46,7 +46,7 @@
     </div>
 
     <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle">
+        <table class="rs-stack-table table table-bordered table-striped align-middle">
             <thead>
                 <tr>
                     <th>Account</th>
@@ -62,17 +62,17 @@
             <tbody>
                 @forelse($subscriptions as $subscription)
                     <tr>
-                        <td>
+                        <td class="rs-stack-title" data-label="Account">
                             {{ $subscription->account?->account_name ?: '-' }}<br>
                             <small class="text-muted">{{ $subscription->account?->billing_email ?: $subscription->account?->owner?->email }}</small>
                         </td>
-                        <td>{{ $subscription->plan?->name ?: ($subscription->plan_name_at_signup ?: '-') }}</td>
-                        <td>{{ ucwords($subscription->billing_cycle) }}</td>
-                        <td>{{ ucwords(str_replace('_', ' ', $subscription->status)) }}</td>
-                        <td>{{ $subscription->formattedSignupPrice() }}</td>
-                        <td>{{ $subscription->trial_ends_at?->format('Y-m-d') ?: '-' }}</td>
-                        <td>{{ $subscription->stripe_subscription_id ?: '-' }}</td>
-                        <td class="text-nowrap text-center">
+                        <td data-label="Plan">{{ $subscription->plan?->name ?: ($subscription->plan_name_at_signup ?: '-') }}</td>
+                        <td data-label="Cycle">{{ ucwords($subscription->billing_cycle) }}</td>
+                        <td data-label="Status">{{ ucwords(str_replace('_', ' ', $subscription->status)) }}</td>
+                        <td data-label="Price at signup">{{ $subscription->formattedSignupPrice() }}</td>
+                        <td data-label="Trial ends">{{ $subscription->trial_ends_at?->format('Y-m-d') ?: '-' }}</td>
+                        <td data-label="Stripe subscription">{{ $subscription->stripe_subscription_id ?: '-' }}</td>
+                        <td class="rs-stack-actions text-nowrap text-center">
                             @if($subscription->account)
                                 <a href="{{ route('backend.saas.accounts.show', $subscription->account) }}" class="btn btn-sm btn-light">Account</a>
                             @endif

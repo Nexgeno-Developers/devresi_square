@@ -2,9 +2,9 @@
 
 @section('content')
 <div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">{{ $account->account_name ?: 'Account #' . $account->id }}</h2>
-        <div class="d-flex gap-2">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+        <h2 class="mb-0 h3">{{ $account->account_name ?: 'Account #' . $account->id }}</h2>
+        <div class="d-flex flex-wrap gap-2">
             <form action="{{ route('backend.saas.accounts.login-as', $account) }}" method="POST">
                 @csrf
                 <button type="submit" class="btn btn-primary" @disabled(! $account->owner || ! $account->owner->can_login || ! $account->owner->status)>
@@ -154,13 +154,13 @@
                             $summaryRow = $limitSummary[$usedKey] ?? null;
                         @endphp
                         <tr>
-                            <td>{{ $row['label'] }}</td>
-                            <td>{{ $row['base'] }}</td>
-                            <td>{{ $row['addons'] }}</td>
-                            <td>{{ $row['total'] }}</td>
-                            <td>{{ $usedCounts[$usedKey] ?? 0 }}</td>
-                            <td>{{ $summaryRow['remaining'] ?? 0 }}</td>
-                            <td>{{ ($summaryRow['can_add'] ?? false) ? 'Yes' : 'No' }}</td>
+                            <td class="rs-stack-title" data-label="Limit">{{ $row['label'] }}</td>
+                            <td data-label="Base plan">{{ $row['base'] }}</td>
+                            <td data-label="Addons">{{ $row['addons'] }}</td>
+                            <td data-label="Total limit">{{ $row['total'] }}</td>
+                            <td data-label="Used">{{ $usedCounts[$usedKey] ?? 0 }}</td>
+                            <td data-label="Remaining">{{ $summaryRow['remaining'] ?? 0 }}</td>
+                            <td data-label="Can add" >{{ ($summaryRow['can_add'] ?? false) ? 'Yes' : 'No' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -185,7 +185,7 @@
     <div class="mb-4">
         <h5>Purchased addons</h5>
         <div class="table-responsive">
-            <table class="table table-bordered table-striped align-middle">
+            <table class="rs-stack-table table table-bordered table-striped align-middle">
                 <thead>
                     <tr>
                         <th>Name</th>
@@ -199,12 +199,12 @@
                 <tbody>
                     @forelse($activeAddons as $subscriptionAddon)
                         <tr>
-                            <td>{{ $subscriptionAddon->addon?->name ?: '-' }}</td>
-                            <td>{{ $subscriptionAddon->addon ? ucwords(str_replace('_', ' ', $subscriptionAddon->addon->addon_type)) : '-' }}</td>
-                            <td>{{ $subscriptionAddon->quantity }}</td>
-                            <td>{{ $subscriptionAddon->addon?->grant_quantity ?: '-' }}</td>
-                            <td>{{ ucwords($subscriptionAddon->billing_cycle) }}</td>
-                            <td>{{ ucwords($subscriptionAddon->status) }}</td>
+                            <td class="rs-stack-title" data-label="Name">{{ $subscriptionAddon->addon?->name ?: '-' }}</td>
+                            <td data-label="Type">{{ $subscriptionAddon->addon ? ucwords(str_replace('_', ' ', $subscriptionAddon->addon->addon_type)) : '-' }}</td>
+                            <td data-label="Quantity">{{ $subscriptionAddon->quantity }}</td>
+                            <td data-label="Grant each">{{ $subscriptionAddon->addon?->grant_quantity ?: '-' }}</td>
+                            <td data-label="Billing cycle">{{ ucwords($subscriptionAddon->billing_cycle) }}</td>
+                            <td data-label="Status" >{{ ucwords($subscriptionAddon->status) }}</td>
                         </tr>
                     @empty
                         <tr>
@@ -219,7 +219,7 @@
     <div class="mb-4">
         <h5>Account users</h5>
         <div class="table-responsive">
-            <table class="table table-bordered table-striped align-middle">
+            <table class="rs-stack-table table table-bordered table-striped align-middle">
                 <thead>
                     <tr>
                         <th>User</th>
@@ -234,16 +234,16 @@
                 <tbody>
                     @forelse($account->accountUsers as $accountUser)
                         <tr>
-                            <td>
+                            <td class="rs-stack-title" data-label="User">
                                 {{ $accountUser->user?->name ?: '-' }}<br>
                                 <small class="text-muted">{{ $accountUser->user?->email }}</small>
                             </td>
-                            <td>{{ ucwords(str_replace('_', ' ', $accountUser->member_type)) }}</td>
-                            <td>{{ ucwords(str_replace('_', ' ', $accountUser->access_level)) }}</td>
-                            <td>{{ $accountUser->can_login ? 'Yes' : 'No' }}</td>
-                            <td>{{ $accountUser->branch?->name ?: '-' }}</td>
-                            <td>{{ $accountUser->designation?->title ?: '-' }}</td>
-                            <td>{{ ucwords($accountUser->status) }}</td>
+                            <td data-label="Member type">{{ ucwords(str_replace('_', ' ', $accountUser->member_type)) }}</td>
+                            <td data-label="Access level">{{ ucwords(str_replace('_', ' ', $accountUser->access_level)) }}</td>
+                            <td data-label="Can login">{{ $accountUser->can_login ? 'Yes' : 'No' }}</td>
+                            <td data-label="Branch">{{ $accountUser->branch?->name ?: '-' }}</td>
+                            <td data-label="Designation">{{ $accountUser->designation?->title ?: '-' }}</td>
+                            <td data-label="Status" >{{ ucwords($accountUser->status) }}</td>
                         </tr>
                     @empty
                         <tr>
