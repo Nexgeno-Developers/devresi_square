@@ -120,7 +120,7 @@ class Invoice extends Model
      * @param int $limit
      * @return \Illuminate\Support\Collection
      */
-    public static function ajaxSearchForSelect(?string $q = null, bool $onlyOutstanding = false, int $limit = 50)
+    public static function ajaxSearchForSelect(?string $q = null, bool $onlyOutstanding = false, int $limit = 50, ?int $accountId = null)
     {
         $query = self::select([
                 'invoices.id',
@@ -140,6 +140,11 @@ class Invoice extends Model
             ->leftJoin('users', 'users.id', '=', 'invoices.user_id')
             ->leftJoin('transactions', 'transactions.invoice_id', '=', 'invoices.id')
             ->groupBy('invoices.id', 'invoices.invoice_number', 'invoices.property_id', 'invoices.total_amount', 'invoices.user_id', 'users.name');
+
+        // An invoice belongs to the account of its work order.
+        if ($accountId !== null) {
+            $query->whereIn('invoices.work_order_id', WorkOrder::query()->withoutGlobalScopes()->where('account_id', $accountId)->select('id'));
+        }
 
         if (!is_null($q) && $q !== '') {
             $query->where(function ($w) use ($q) {

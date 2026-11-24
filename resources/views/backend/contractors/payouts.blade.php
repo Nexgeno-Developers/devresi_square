@@ -23,6 +23,11 @@
                             · {{ $name }}
                             · {{ $offer?->repairIssue?->reference_number ?: 'Repair' }}
                             <div class="small mt-1">Send <strong>£{{ number_format((float) $payment->contractor_amount, 2) }}</strong>. Commission kept £{{ number_format((float) $payment->commission_amount, 2) }}. Landlord paid £{{ number_format((float) $payment->landlord_amount, 2) }}.</div>
+                            @if(($offer?->status ?? null) === 'cancelled')
+                                <div class="small text-danger fw-semibold">This job was cancelled. Check whether the landlord should be refunded before sending anything.</div>
+                            @elseif($offer?->disputed_at)
+                                <div class="small text-danger fw-semibold">This job is disputed: {{ $offer->dispute_reason }}. Resolve the dispute before sending.</div>
+                            @endif
                             @if(filled($bank['account_number'] ?? null))
                                 <div class="small text-muted">{{ $bank['account_name'] ?? '' }}@if(filled($bank['bank_name'] ?? null)), {{ $bank['bank_name'] }}@endif · Sort code {{ $bank['sort_code'] ?? '' }} · Account {{ $bank['account_number'] }} · Reference {{ $bank['reference'] ?? $invoice?->number }}</div>
                             @else
@@ -60,6 +65,11 @@
                             · {{ $name }}
                             · {{ $check }}
                             <div class="small mt-1">Send <strong>£{{ number_format((float) $payment->contractor_amount, 2) }}</strong>. Commission kept £{{ number_format((float) $payment->commission_amount, 2) }}. Landlord paid £{{ number_format((float) $payment->landlord_amount, 2) }}.</div>
+                            @if(($offer?->status ?? null) === 'cancelled')
+                                <div class="small text-danger fw-semibold">This job was cancelled. Check whether the landlord should be refunded before sending anything.</div>
+                            @elseif($offer?->disputed_at)
+                                <div class="small text-danger fw-semibold">This job is disputed: {{ $offer->dispute_reason }}. Resolve the dispute before sending.</div>
+                            @endif
                             @if(filled($bank['account_number'] ?? null))
                                 <div class="small text-muted">{{ $bank['account_name'] ?? '' }}@if(filled($bank['bank_name'] ?? null)), {{ $bank['bank_name'] }}@endif · Sort code {{ $bank['sort_code'] ?? '' }} · Account {{ $bank['account_number'] }} · Reference {{ $bank['reference'] ?? $invoice?->number }}</div>
                             @else

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backend\Saas;
 use App\Models\AccountSubscription;
 use App\Models\Plan;
 use App\Services\Saas\TrialExtensionService;
+use App\Support\AuditTrail;
 use Illuminate\Http\Request;
 
 class SubscriptionController extends BaseSaasController
@@ -85,9 +86,18 @@ class SubscriptionController extends BaseSaasController
             'additional_days' => ['required', 'integer', 'min:1', 'max:730'],
         ]);
 
+        $before = $subscription->only(['trial_ends_at']);
         try {
             $service->extend($subscription, (int) $data['additional_days']);
-            flash('Trial extended successfully in Stripe and the application.')->success();
+            // A trial extension is free access, so keep a record of who gave it and how long.
+            AuditTrail::record($subscription->account_id, $request->user()->id, 'subscription_trial_extended', $subscription, [
+                'trial_ends_at' => $before['trial_ends_at']?->toDateTimeString(),
+            ], [
+                'trial_ends_at' => $subscription->trial_ends_at?->toDateTimeString(),
+                'additional_days' => (int) $data['additional_days'],
+                'in_stripe' => (bool) $subscription->stripe_subscription_id,
+            ]);
+            flash('Trial extended to '.$subscription->trial_ends_at->format('j M Y').($subscription->stripe_subscription_id ? ' in Stripe and the application.' : '. This trial has no Stripe subscription yet, so only the application was changed.'))->success();
         } catch (\Throwable $exception) {
             flash('Trial extension failed: ' . $exception->getMessage())->error();
         }

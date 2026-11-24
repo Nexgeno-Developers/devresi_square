@@ -633,6 +633,266 @@ class ContractorMarketplaceTest extends TestCase
         $this->assertTrue($profile->tradeApprovals->every(fn ($trade) => $trade->status === ContractorTrade::APPROVED));
     }
 
+    public function test_pack_approve_checks_each_document_and_changes_nothing_when_blocked(): void
+    {
+        $admin = $this->superAdmin();
+        $user = $this->contractorUser('pack-gap');
+        $profile = ContractorProfile::create([
+            'user_id' => $user->id,
+            'trading_type' => 'sole_trader',
+            'legal_name' => 'Pack Gap Contractor',
+            'postcode' => 'E14 9RU',
+            'coverage_radius_miles' => 15,
+            'trades' => ['electrical'],
+            'approval_status' => ContractorProfile::SUBMITTED,
+            'submitted_at' => now(),
+        ]);
+        ContractorCompliance::syncTrades($profile, ['electrical']);
+        $this->doc($profile, 'photo_id', ['status' => ContractorDocument::PENDING]);
+        $this->doc($profile, 'public_liability', [
+            'status' => ContractorDocument::PENDING,
+            'cover_amount' => 2000000,
+            'expires_at' => now()->addYear(),
+        ]);
+        // The scheme registration has a number but no expiry, which a per-document approve refuses.
+        $scheme = $this->doc($profile, 'electrical_scheme', [
+            'status' => ContractorDocument::PENDING,
+            'reference' => 'NAP-1',
+            'issuer' => 'NAPIT',
+        ]);
+
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.pack', $profile), ['decision' => 'approve'])
+            ->assertSessionHas('error', fn ($message) => str_contains($message, 'expiry'));
+
+        $profile->refresh()->load(['documents', 'tradeApprovals']);
+        $this->assertSame(ContractorProfile::SUBMITTED, $profile->approval_status);
+        $this->assertTrue($profile->documents->every(fn ($doc) => $doc->status === ContractorDocument::PENDING));
+        $this->assertSame(ContractorTrade::PENDING, $profile->tradeApproval('electrical')->status);
+        $this->assertFalse($profile->reviewEvents()->where('action', 'document_approved')->exists());
+
+        $scheme->forceFill(['expires_at' => now()->addYear()])->save();
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.pack', $profile), ['decision' => 'approve'])
+            ->assertSessionHas('success');
+        $this->assertSame(ContractorProfile::APPROVED, $profile->fresh()->approval_status);
+    }
+
+    public function test_rejecting_a_live_document_withdraws_open_offers_of_an_approved_contractor(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        $repair = $this->repair($landlord, $accountId);
+        $contractor = $this->contractor('rejected-pl');
+        $profile = $contractor->contractorProfile;
+        $this->landlord($landlord, $accountId)->post(route('admin.property_repairs.job_offers.store', $repair), [
+            'contractor_ids' => [$contractor->id],
+            'urgency' => 'routine',
+        ])->assertSessionHas('success');
+        $offer = RepairJobOffer::query()->where('repair_issue_id', $repair->id)->firstOrFail();
+
+        $this->actingAs($this->superAdmin())->post(route('admin.registrations.contractors.document.decide', [$profile, $profile->document('public_liability')]), [
+            'decision' => 'reject',
+            'reason_code' => 'cover_too_low',
+        ])->assertSessionHas('success');
+
+        $this->assertSame(RepairJobOffer::WITHDRAWN, $offer->fresh()->status);
+    }
+
+    public function test_status_actions_are_refused_for_the_wrong_status(): void
+    {
+        $admin = $this->superAdmin();
+        $profile = $this->contractor('status-guard')->contractorProfile;
+
+        // Approved: no "more info" and no "reject application", only suspend or remove.
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.changes', $profile), ['review_note' => 'forged'])
+            ->assertSessionHas('error');
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.reject', $profile), ['review_note' => 'forged'])
+            ->assertSessionHas('error');
+        $this->assertSame(ContractorProfile::APPROVED, $profile->fresh()->approval_status);
+
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.remove', $profile), ['review_note' => 'Closed down']);
+        $this->assertSame(ContractorProfile::REMOVED, $profile->fresh()->approval_status);
+
+        // Removed: cannot be suspended, rejected or removed again.
+        foreach (['suspend', 'reject', 'remove'] as $action) {
+            $this->actingAs($admin)->post(route('admin.registrations.contractors.'.$action, $profile), ['review_note' => 'again'])
+                ->assertSessionHas('error');
+        }
+        $this->assertSame(ContractorProfile::REMOVED, $profile->fresh()->approval_status);
+    }
+
+    public function test_removal_tells_the_contractor_and_reinstate_restores_the_company_number(): void
+    {
+        $admin = $this->superAdmin();
+        $contractor = $this->contractor('removed-ltd');
+        $profile = $contractor->contractorProfile;
+        $profile->forceFill(['trading_type' => 'limited_company', 'company_number' => 'RM123456'])->save();
+
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.remove', $profile), ['review_note' => 'Duplicate account'])
+            ->assertSessionHas('success');
+        $this->assertNull($profile->fresh()->company_number);
+        Mail::assertSent(MailManager::class, fn (MailManager $mail) => $mail->hasTo($contractor->email) && str_contains($mail->array['content'], 'Duplicate account'));
+
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.reinstate', $profile))->assertSessionHas('success');
+        $this->assertSame('RM123456', $profile->fresh()->company_number);
+        $this->assertSame(ContractorProfile::APPROVED, $profile->fresh()->approval_status);
+    }
+
+    public function test_suspending_a_contractor_with_an_awarded_job_does_not_call_it_a_compliance_lapse(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        $repair = $this->repair($landlord, $accountId);
+        $contractor = $this->contractor('suspended-awarded');
+        $offer = RepairJobOffer::forceCreate([
+            'account_id' => $accountId,
+            'repair_issue_id' => $repair->id,
+            'contractor_user_id' => $contractor->id,
+            'invited_by' => $landlord->id,
+            'status' => RepairJobOffer::JOB_ACCEPTED,
+            'job_status' => RepairJobOffer::JOB_ACCEPTED_STATE,
+            'price_is_estimate' => false,
+        ]);
+
+        $this->actingAs($this->superAdmin())->post(route('admin.registrations.contractors.suspend', $contractor->contractorProfile), ['review_note' => 'Complaint'])
+            ->assertSessionHas('success');
+
+        $this->assertSame(RepairJobOffer::JOB_ACCEPTED, $offer->fresh()->status);
+        Mail::assertSent(MailManager::class, fn (MailManager $mail) => str_contains((string) ($mail->array['subject'] ?? ''), 'inactive contractor'));
+        Mail::assertNotSent(MailManager::class, fn (MailManager $mail) => str_contains((string) ($mail->array['subject'] ?? ''), 'lapsed compliance'));
+    }
+
+    public function test_admin_job_overrides_refuse_changes_that_do_not_apply(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        $admin = $this->superAdmin();
+        $repair = $this->repair($landlord, $accountId);
+        $award = fn (User $contractor, array $extra = []) => RepairJobOffer::forceCreate($extra + [
+            'account_id' => $accountId,
+            'repair_issue_id' => $repair->id,
+            'contractor_user_id' => $contractor->id,
+            'invited_by' => $landlord->id,
+            'status' => RepairJobOffer::JOB_ACCEPTED,
+            'job_status' => RepairJobOffer::JOB_ACCEPTED_STATE,
+            'price_is_estimate' => false,
+        ]);
+        $override = fn (RepairJobOffer $offer, string $action) => $this->actingAs($admin)
+            ->post(route('admin.registrations.contractors.jobs.override', $offer), ['action' => $action, 'note' => 'QA']);
+
+        // An invoiced, disputed job cannot have its award cancelled.
+        $invoiced = $award($this->contractor('override-invoiced'), [
+            'job_status' => RepairJobOffer::JOB_INVOICED,
+            'disputed_at' => now(),
+            'dispute_reason' => 'Price',
+        ]);
+        RepairJobInvoice::forceCreate([
+            'repair_job_offer_id' => $invoiced->id,
+            'account_id' => $accountId,
+            'contractor_user_id' => $invoiced->contractor_user_id,
+            'number' => 'QA-OVR-1',
+            'issued_on' => now(),
+            'due_on' => now()->addDays(14),
+            'lines' => [['description' => 'Work', 'amount' => 100]],
+            'net_amount' => 100,
+            'gross_amount' => 100,
+            'status' => RepairJobInvoice::PAID,
+        ]);
+        $override($invoiced, 'cancel_award')->assertSessionHas('error', fn ($m) => str_contains($m, 'already invoiced'));
+        $this->assertSame(RepairJobOffer::JOB_ACCEPTED, $invoiced->fresh()->status);
+
+        // A job that is not open or not disputed cannot be closed or "resolved"; nothing is logged.
+        $override($invoiced, 'close')->assertSessionHas('error');
+        $override($invoiced, 'resolve_dispute')->assertSessionHas('success');
+        $override($invoiced, 'resolve_dispute')->assertSessionHas('error', 'This job is not disputed.');
+        $this->assertSame(1, $invoiced->events()->where('note', 'like', 'Admin resolved dispute%')->count());
+
+        // A plain awarded job is cancelled, and a dispute on it is cleared at the same time.
+        $stuck = $award($this->contractor('override-stuck'), ['disputed_at' => now(), 'dispute_reason' => 'No show']);
+        $override($stuck, 'cancel_award')->assertSessionHas('success');
+        $this->assertSame(RepairJobOffer::CANCELLED, $stuck->fresh()->status);
+        $this->assertNull($stuck->fresh()->disputed_at);
+        $override($stuck, 'cancel_award')->assertSessionHas('error', 'Only an awarded job can be cancelled.');
+    }
+
+    public function test_settings_check_reminder_days_and_warn_when_a_new_minimum_blocks_contractors(): void
+    {
+        $admin = $this->superAdmin();
+        $this->contractor('below-new-minimum');
+        $settings = collect(array_keys(config('contractor_marketplace.defaults')))
+            ->mapWithKeys(fn ($key) => [$key => ContractorSettings::get($key)])->all();
+        $form = array_merge($settings, [
+            'reminder_days' => implode(', ', $settings['reminder_days']),
+            'trade_documents' => $settings['trade_documents'],
+        ]);
+
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.settings.save'), ['reminder_days' => '30, 30, 999'] + $form)
+            ->assertSessionHas('error', fn ($m) => str_contains($m, 'between 1 and 365'));
+
+        $this->actingAs($admin)->post(route('admin.registrations.contractors.settings.save'), ['reminder_days' => '7, 30, 14', 'public_liability_minimum' => 50000000] + $form)
+            ->assertSessionHas('error', fn ($m) => str_starts_with($m, 'Settings saved.') && str_contains($m, 'less cover than the new minimum'));
+        $this->assertSame([30, 14, 7], ContractorSettings::get('reminder_days'));
+        $this->assertSame(50000000, (int) ContractorSettings::get('public_liability_minimum'));
+    }
+
+    public function test_legacy_invite_resends_a_claim_link_that_expired(): void
+    {
+        $user = $this->contractorUser('legacy-expired');
+        $profile = ContractorProfile::create([
+            'user_id' => $user->id,
+            'approval_status' => ContractorProfile::DRAFT,
+            'legacy_contractor' => true,
+        ]);
+        $profile->forceFill(['claim_invited_at' => now()->subDays(5), 'claim_expires_at' => now()->subDays(2), 'claim_token_hash' => 'old'])->save();
+
+        $this->actingAs($this->superAdmin())->post(route('admin.registrations.contractors.legacy'))->assertSessionHas('success');
+
+        $profile->refresh();
+        $this->assertTrue($profile->claim_expires_at->isFuture());
+        $this->assertNotSame('old', $profile->claim_token_hash);
+        Mail::assertSent(MailManager::class, fn (MailManager $mail) => $mail->hasTo($user->email));
+    }
+
+    public function test_repair_tabs_only_list_this_accounts_contractors_and_managers(): void
+    {
+        [$landlord, $accountId] = $this->createLandlord();
+        $repair = $this->repair($landlord, $accountId);
+        $stranger = $this->contractor('other-account-contractor');
+        $ours = $this->contractor('our-contractor');
+        AccountContractor::create(['account_id' => $accountId, 'contractor_user_id' => $ours->id, 'email' => $ours->email, 'name' => $ours->name]);
+        $otherManager = User::create(['name' => 'Other Agency Manager', 'email' => 'other-pm-'.uniqid().'@resisquare.test', 'password' => bcrypt('x'), 'status' => 1]);
+        $otherManager->assignRole(Role::findOrCreate('Property Manager', 'web'));
+
+        $url = fn (string $tab) => route('admin.property_repairs.index_tabbed', ['repair_id' => $repair->id, 'tabname' => $tab]);
+        $this->landlord($landlord, $accountId)->get($url('contractors'))->assertOk()
+            ->assertSee($ours->email, false)
+            ->assertDontSee($stranger->email, false);
+        $this->landlord($landlord, $accountId)->get($url('property-manager'))->assertOk()
+            ->assertDontSee($otherManager->email, false);
+    }
+
+    public function test_adding_a_quote_contractor_never_edits_an_existing_user(): void
+    {
+        config(['contractor_marketplace.legacy_module_enabled' => true]);
+        [$landlord] = $this->createLandlord();
+        $landlord->forceFill(['first_name' => 'Real', 'last_name' => 'Landlord', 'phone' => '07111111111'])->save();
+
+        $this->actingAs($this->superAdmin())
+            ->postJson(route('admin.property_repairs.quote_contractors.store'), ['new_contractor' => [
+                'email' => $landlord->email, 'first_name' => 'Hijacked', 'phone' => '07000000000',
+            ]])
+            ->assertStatus(422);
+
+        $landlord->refresh();
+        $this->assertSame('Real', $landlord->first_name);
+        $this->assertSame('07111111111', $landlord->phone);
+        $this->assertFalse($landlord->hasRole('Contractor'));
+    }
+
+    public function test_trade_more_info_without_a_reason_explains_what_is_missing(): void
+    {
+        $contractor = $this->contractor('trade-reason');
+        $this->actingAs($this->superAdmin())
+            ->post(route('admin.registrations.contractors.trade.decide', [$contractor->contractorProfile, 'plumbing']), ['decision' => 'more_info'])
+            ->assertSessionHasErrors(['reason' => 'Add a reason so the contractor knows what to fix.']);
+    }
+
     public function test_admin_decides_per_document_and_per_trade_then_approves(): void
     {
         $admin = $this->superAdmin();

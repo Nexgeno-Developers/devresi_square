@@ -190,7 +190,7 @@
                     @elseif($status === 'approved')
                         <form method="POST" action="{{ route('admin.registrations.contractors.suspend', $profile) }}" class="mb-2">
                             @csrf
-                            <textarea class="form-control form-control-sm mb-1" name="review_note" rows="2" required placeholder="Reason for suspending"></textarea>
+                            <textarea class="form-control form-control-sm mb-1" name="review_note" rows="2" required placeholder="Reason for suspending (the contractor sees this)"></textarea>
                             <button class="btn btn-outline-danger btn-sm w-100" type="submit">Suspend</button>
                         </form>
                     @elseif(in_array($status, ['suspended', 'removed'], true))
@@ -204,7 +204,7 @@
                             <summary class="small text-danger">Remove contractor</summary>
                             <form method="POST" action="{{ route('admin.registrations.contractors.remove', $profile) }}" class="mt-2">
                                 @csrf
-                                <textarea class="form-control form-control-sm mb-1" name="review_note" rows="2" required placeholder="Reason"></textarea>
+                                <textarea class="form-control form-control-sm mb-1" name="review_note" rows="2" required placeholder="Reason for removing (the contractor sees this)"></textarea>
                                 <button class="btn btn-danger btn-sm w-100" type="submit">Remove</button>
                             </form>
                         </details>

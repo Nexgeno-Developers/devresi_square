@@ -251,7 +251,7 @@ class AccountLimitService
             ->where('account_subscription_addons.status', 'active')
             ->join('addons', 'addons.id', '=', 'account_subscription_addons.addon_id')
             ->where('addons.addon_type', $addonType)
-            ->where('addons.is_active', true)
+            // addons.is_active only takes an add-on off sale; customers keep what they already pay for.
             ->selectRaw('COALESCE(SUM(account_subscription_addons.quantity * addons.grant_quantity), 0) as granted')
             ->value('granted');
 

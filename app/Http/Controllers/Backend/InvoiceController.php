@@ -19,15 +19,17 @@ class InvoiceController
     */
     public function index(Request $request)
     {
-        $query = Invoice::with(['workOrder.repairIssue.property', 'user']);
+        $query = $this->invoices()->with(['workOrder.repairIssue.property', 'user']);
 
         // Apply filters if provided
         if ($request->has('status')) {
+            // Same ids as getInvoiceStatusDetails() and Transaction::updateInvoiceStatus() (3 is part-paid).
             $statusMap = [
                 'pending' => 1,
                 'paid' => 2,
-                'overdue' => 3,
-                'cancelled' => 4
+                'partially_paid' => 3,
+                'overdue' => 4,
+                'cancelled' => 5,
             ];
             if (array_key_exists($request->status, $statusMap)) {
                 $query->where('status_id', $statusMap[$request->status]);
@@ -55,7 +57,9 @@ class InvoiceController
      */
     public function createFromWorkOrder(Request $request, $workOrderId)
     {
-        $workOrder = WorkOrder::with(['jobType', 'repairIssue.property', 'items'])->findOrFail($workOrderId);
+        $workOrder = WorkOrder::with(['jobType', 'repairIssue.property', 'items'])
+            ->when(! bypasses_account_scope(), fn ($query) => $query->forAccount(current_account_id()))
+            ->findOrFail($workOrderId);
 
         // Check if an invoice already exists for this Work Order
         if ($workOrder->invoice) {
@@ -145,7 +149,7 @@ class InvoiceController
      */
     public function show($invoiceId)
     {
-        $invoice = Invoice::with(['workOrder.repairIssue.property', 'user', 'items'])->findOrFail($invoiceId);
+        $invoice = $this->invoices()->with(['workOrder.repairIssue.property', 'user', 'items'])->findOrFail($invoiceId);
             
         // nice helpers available on model:
         $paid = $invoice->paidAmount();
@@ -158,7 +162,7 @@ class InvoiceController
      */
     public function download($invoiceId)
     {
-        $invoice = Invoice::with('items', 'user')->findOrFail($invoiceId);
+        $invoice = $this->invoices()->with('items', 'user')->findOrFail($invoiceId);
     
         // if (Language::where('code', $language_code)->first()->rtl == 1) {
         //     $direction = 'rtl';
@@ -192,7 +196,7 @@ class InvoiceController
      */
     public function markAsPaid($invoiceId)
     {
-        $invoice = Invoice::findOrFail($invoiceId);
+        $invoice = $this->invoices()->findOrFail($invoiceId);
         $invoice->update(['status_id' => 2]); // "Paid" status
 
         return response()->json(['message' => 'Invoice marked as paid!']);
@@ -200,8 +204,8 @@ class InvoiceController
 
     public function edit($invoiceId)
     {
-        $invoice = Invoice::with('items')->findOrFail($invoiceId);
-        $users = User::all(); // Fetch clients
+        $invoice = $this->invoices()->with('items')->findOrFail($invoiceId);
+        $users = $this->billableUsers()->get();
         $taxRates = TaxRates::all(); // Fetch all tax rates from the database
 
         return view('backend.invoices.edit-page', compact('invoice', 'users', 'taxRates'));
@@ -232,7 +236,10 @@ class InvoiceController
         }
 
         // Fetch the invoice
-        $invoice = Invoice::findOrFail($invoiceId);
+        $invoice = $this->invoices()->findOrFail($invoiceId);
+        if (! $this->billableUsers()->whereKey($request->input('user_id'))->exists()) {
+            return response()->json(['message' => 'Validation Failed', 'errors' => ['user_id' => ['Choose someone on this account.']]], 422);
+        }
         $workOrder = $invoice->workOrder; // Get associated Work Order
 
         // Recalculate totals
@@ -296,7 +303,7 @@ class InvoiceController
         $onlyOutstanding = (bool) $request->query('only_outstanding', false);
         $limit = (int) $request->query('limit', 50);
 
-        $results = Invoice::ajaxSearchForSelect($q, $onlyOutstanding, $limit);
+        $results = Invoice::ajaxSearchForSelect($q, $onlyOutstanding, $limit, bypasses_account_scope() ? null : (int) current_account_id());
 
         return response()->json(['results' => $results]);
     }
@@ -306,7 +313,26 @@ class InvoiceController
      */
     public function ajaxGet(Invoice $invoice)
     {
+        abort_unless($this->invoices()->whereKey($invoice->id)->exists(), 404);
+
         return response()->json($invoice->toAjaxData());
     }
     
+
+    /**
+     * Repair invoices have no account column of their own; they belong to the account of their work order.
+     * Everyone except a Super Admin outside any account only reaches their own account's invoices.
+     */
+    private function invoices()
+    {
+        return Invoice::query()->when(! bypasses_account_scope(), fn ($query) => $query
+            ->whereHas('workOrder', fn ($workOrder) => $workOrder->forAccount(current_account_id())));
+    }
+
+    /** People an invoice can be addressed to: members of the current account. */
+    private function billableUsers()
+    {
+        return User::query()->when(! bypasses_account_scope(), fn ($query) => $query
+            ->whereIn('users.id', \App\Models\AccountUser::query()->where('account_id', current_account_id())->where('status', 'active')->select('user_id')));
+    }
 }

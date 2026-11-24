@@ -63,7 +63,7 @@
     <div class="card mb-4">
         <div class="card-body">
             <h5 class="mb-3">Account actions</h5>
-            <p class="text-muted small mb-3">These change workspace access only. They do not open Stripe checkout, rent Finance, or Accounting.</p>
+            <p class="text-muted small mb-3">Suspend and reactivate change workspace access only. Cancel also cancels the customer's Stripe subscriptions (plan and add-ons) straight away, with no refund. None of these touch rent Finance or Accounting.</p>
             <form action="{{ route('backend.saas.accounts.status', $account) }}" method="POST" class="row g-3 align-items-end">
                 @csrf
                 <div class="col-md-6">
@@ -78,7 +78,7 @@
                         <button type="submit" name="action" value="reactivate" class="btn btn-success">Reactivate</button>
                     @endif
                     @if($account->status !== 'cancelled')
-                        <button type="submit" name="action" value="cancel" class="btn btn-danger">Cancel account</button>
+                        <button type="submit" name="action" value="cancel" class="btn btn-danger" onclick="return confirm('Cancel this account? Stripe billing stops now with no refund, the team loses access, and it cannot be reactivated from here.')">Cancel account</button>
                     @endif
                 </div>
             </form>

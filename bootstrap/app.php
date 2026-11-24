@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('sale-invoices:apply-penalties')->dailyAt('00:10');
         $schedule->command('contractors:sweep')->hourly()->withoutOverlapping();
         $schedule->command('accounts:trial-expiry-warning')->dailyAt('08:00');
+        $schedule->command('accounts:expire-trials')->dailyAt('00:30')->withoutOverlapping();
         $schedule->command('accounts:monthly-summary')->monthlyOn(1, '08:00');
         $schedule->command('messaging:sync')->dailyAt('02:30')->withoutOverlapping();
         // cPanel has no long-running worker: drain queued jobs from the minute cron.

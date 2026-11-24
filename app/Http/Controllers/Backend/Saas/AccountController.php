@@ -7,7 +7,10 @@ use App\Models\Branch;
 use App\Models\Plan;
 use App\Models\Property;
 use App\Models\Staff;
+use App\Models\AccountSubscriptionAddon;
 use App\Services\Saas\AccountLimitService;
+use App\Services\Saas\StripeCheckoutService;
+use App\Support\AuditTrail;
 use Illuminate\Http\Request;
 
 class AccountController extends BaseSaasController
@@ -100,7 +103,7 @@ class AccountController extends BaseSaasController
         ));
     }
 
-    public function updateStatus(Request $request, Account $account)
+    public function updateStatus(Request $request, Account $account, StripeCheckoutService $stripe)
     {
         $data = $request->validate([
             'action' => ['required', 'in:suspend,reactivate,cancel'],
@@ -128,18 +131,60 @@ class AccountController extends BaseSaasController
             return back();
         }
 
+        // Reactivating returns the account to where its billing really is, so a suspension
+        // cannot clear a failed payment or turn an ended trial into free access.
+        $reactivateTo = null;
+        if ($action === 'reactivate') {
+            $live = $account->currentSubscription()->first();
+            $trialOver = ! $account->trial_ends_at || $account->trial_ends_at->isPast();
+            // A local-only trial whose end has passed is not live: it would be suspended again tonight.
+            if ($live && $live->status === 'trialing' && ! $live->stripe_subscription_id && $trialOver) {
+                flash('This account\'s trial has ended. Extend the trial from its subscription page, or ask the owner to choose a plan in Billing & Plan.')->error();
+
+                return back();
+            }
+            $reactivateTo = $live?->status
+                ?? ($trialOver ? null : 'trialing');
+            if (! $reactivateTo) {
+                flash('This account has no live subscription or trial, so reactivating would give free access. Ask the owner to subscribe from Billing & Plan, or cancel the account.')->error();
+
+                return back();
+            }
+        }
+
         $next = match ($action) {
             'suspend' => 'suspended',
             'cancel' => 'cancelled',
-            'reactivate' => ($account->trial_ends_at && $account->trial_ends_at->isFuture()) ? 'trialing' : 'active',
+            'reactivate' => $reactivateTo,
         };
 
+        // Cancelling stops billing in Stripe first. If Stripe refuses, nothing changes here,
+        // so the admin never sees "cancelled" while the customer is still being charged.
+        $stoppedInStripe = [];
+        if ($action === 'cancel') {
+            $hasStripeBilling = $account->stripe_customer_id
+                || $account->subscriptions()->whereNotNull('stripe_subscription_id')->whereIn('status', ['trialing', 'active', 'past_due'])->exists();
+            if ($hasStripeBilling) {
+                try {
+                    $stoppedInStripe = $stripe->cancelAllBillingNow($account);
+                } catch (\Throwable $exception) {
+                    report($exception);
+                    flash('Stripe could not cancel the billing for this account, so nothing was changed. Try again, or cancel the subscription in the Stripe dashboard first. ('.$exception->getMessage().')')->error();
+
+                    return back();
+                }
+            }
+        }
+
+        $before = $account->only(['status', 'status_reason']);
         $account->forceFill([
             'status' => $next,
             'status_reason' => $data['reason'],
             'status_changed_at' => now(),
             'status_changed_by' => $request->user()->id,
         ])->save();
+        // status_reason is overwritten by the next change, so keep every change in the audit log.
+        AuditTrail::record($account->id, $request->user()->id, 'account_status_'.$action, $account, $before, $account->only(['status', 'status_reason']) + array_filter(['stripe_subscriptions_cancelled' => $stoppedInStripe]));
 
         if ($action === 'cancel') {
             $account->subscriptions()
@@ -148,9 +193,10 @@ class AccountController extends BaseSaasController
                     'status' => 'cancelled',
                     'cancelled_at' => now(),
                 ]);
+            AccountSubscriptionAddon::query()->where('account_id', $account->id)->where('status', 'active')->update(['status' => 'cancelled']);
         }
 
-        flash('Account status updated to '.$next.'.')->success();
+        flash('Account status updated to '.$next.'.'.($stoppedInStripe ? ' Stripe billing was cancelled ('.count($stoppedInStripe).' '.str('subscription')->plural(count($stoppedInStripe)).'); no refund was issued.' : ''))->success();
 
         return back();
     }

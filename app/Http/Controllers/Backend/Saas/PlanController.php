@@ -58,6 +58,7 @@ class PlanController extends BaseSaasController
         $this->normaliseCode($request);
 
         $data = $this->validatedData($request);
+        $this->assertStripePricesMatch($data);
         $data['monthly_price_minor'] = $this->priceToMinor($data['monthly_price']);
         $data['annual_price_minor'] = $this->priceToMinor($data['annual_price']);
         unset($data['monthly_price'], $data['annual_price']);
@@ -90,6 +91,7 @@ class PlanController extends BaseSaasController
         $this->normaliseCode($request);
 
         $data = $this->validatedData($request, $plan);
+        $this->assertStripePricesMatch($data);
         $data['monthly_price_minor'] = $this->priceToMinor($data['monthly_price']);
         $data['annual_price_minor'] = $this->priceToMinor($data['annual_price']);
         unset($data['monthly_price'], $data['annual_price']);
@@ -132,12 +134,12 @@ class PlanController extends BaseSaasController
             'name' => ['required', 'string', 'max:255'],
             'target_account_type' => ['required', Rule::in(self::TARGET_ACCOUNT_TYPES)],
             'description' => ['nullable', 'string'],
-            'monthly_price' => ['required', 'numeric', 'min:0'],
-            'annual_price' => ['required', 'numeric', 'min:0'],
+            'monthly_price' => ['required', 'numeric', 'min:0', 'max:100000'],
+            'annual_price' => ['required', 'numeric', 'min:0', 'max:1000000'],
             'currency' => ['required', 'string', 'size:3'],
             'stripe_monthly_price_id' => ['nullable', 'string', 'max:255', 'regex:/^price_[A-Za-z0-9]+$/'],
             'stripe_annual_price_id' => ['nullable', 'string', 'max:255', 'regex:/^price_[A-Za-z0-9]+$/'],
-            'trial_days' => ['required', 'integer', 'min:0'],
+            'trial_days' => ['required', 'integer', 'min:0', 'max:730'],
             'property_limit' => ['required', 'integer', 'min:0'],
             'branch_limit' => ['required', 'integer', 'min:0'],
             'staff_limit' => ['required', 'integer', 'min:0'],

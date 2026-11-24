@@ -11,6 +11,9 @@ use App\Models\RepairHistory;
 use App\Models\RepairIssue;
 use App\Models\RepairIssueUser;
 use App\Models\RepairIssueContractorAssignment;
+use App\Models\AccountContractor;
+use App\Models\AccountUser;
+use App\Support\AccountMembership;
 use App\Models\RepairIssuePropertyManager;
 use App\Models\RepairPhoto;
 use App\Models\PropertyManagerTenancy;
@@ -192,8 +195,8 @@ class PropertyRepairController
         // $contractors = User::whereHas('category', callback: function ($query) {
         //     $query->where('name', 'Contractor');
         // })->get();
-        $propertyManagers = User::role('Property Manager')->get();
-        $contractors = User::role('Contractor')->get();
+        $propertyManagers = $this->accountPropertyManagersQuery()->get();
+        $contractors = $this->accountContractorsQuery()->get();
         $jobTypes = JobType::getHierarchy();
         // Apply search filter
         if ($request->has('search')) {
@@ -416,12 +419,12 @@ class PropertyRepairController
         }
 
         if ($tabName === 'contractors') {
-            $contractors = $this->contractorUsersQuery()->orderBy('name')->get();
+            $contractors = $this->accountContractorsQuery($repairIssue)->orderBy('name')->get();
             $viewData = array_merge($viewData, compact('contractors'));
         }
 
         if ($tabName === 'property-manager') {
-            $propertyManagers = User::role('Property Manager')->orderBy('name')->get();
+            $propertyManagers = $this->accountPropertyManagersQuery($repairIssue)->orderBy('name')->get();
             $assignedManagers = RepairIssuePropertyManager::where('repair_issue_id', $repairIssue->id)
                 ->pluck('property_manager_id')
                 ->toArray();
@@ -452,10 +455,62 @@ class PropertyRepairController
             });
     }
 
+    /**
+     * Contractors this account works with: its contractor members, the contractors it has added, and
+     * (for one repair) anyone already asked to quote on it. Other accounts' contractors stay private.
+     */
+    private function accountContractorsQuery(?RepairIssue $repairIssue = null)
+    {
+        $query = $this->contractorUsersQuery();
+        if (bypasses_account_scope()) {
+            return $query;
+        }
+        $accountId = current_account_id();
+
+        return $query->where(function ($own) use ($accountId, $repairIssue) {
+            $own->whereIn('users.id', AccountUser::query()->where('account_id', $accountId)->where('member_type', AccountMembership::CONTRACTOR)->select('user_id'))
+                ->orWhereIn('users.id', AccountContractor::query()->where('account_id', $accountId)->whereNotNull('contractor_user_id')->select('contractor_user_id'));
+            if ($repairIssue) {
+                $own->orWhereIn('users.id', RepairIssueContractorAssignment::query()->where('repair_issue_id', $repairIssue->id)->select('contractor_id'));
+            }
+        });
+    }
+
+    /** Property managers on this account (plus, for one repair, anyone already assigned to it). */
+    private function accountPropertyManagersQuery(?RepairIssue $repairIssue = null)
+    {
+        $query = User::role('Property Manager');
+        if (bypasses_account_scope()) {
+            return $query;
+        }
+        $accountId = current_account_id();
+
+        return $query->where(function ($own) use ($accountId, $repairIssue) {
+            $own->whereIn('users.id', AccountUser::query()->where('account_id', $accountId)->where('status', 'active')->select('user_id'));
+            if ($repairIssue) {
+                $own->orWhereIn('users.id', RepairIssuePropertyManager::query()->where('repair_issue_id', $repairIssue->id)->select('property_manager_id'));
+            }
+        });
+    }
+
     private function saveQuoteContractor(array $contractorData): User
     {
         $contractorCategoryId = UserCategory::where('name', 'Contractor')->value('id');
-        $contractor = User::firstOrNew(['email' => $contractorData['email']]);
+        $existing = User::query()->where('email', $contractorData['email'])->first();
+        if ($existing) {
+            // An existing person is linked, never edited: the email may belong to another account's
+            // contractor, landlord or staff, so their name, phone, address and roles are not ours to change.
+            if (! $this->contractorUsersQuery()->whereKey($existing->id)->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'new_contractor.email' => 'This email belongs to an existing user who is not a contractor. Use a different email.',
+                ]);
+            }
+            $this->linkContractorToAccount($existing);
+
+            return $existing;
+        }
+
+        $contractor = new User(['email' => $contractorData['email']]);
 
         $contractor->fill([
             'first_name' => $contractorData['first_name'] ?? $contractor->first_name,
@@ -476,8 +531,19 @@ class PropertyRepairController
         if ($role && ! $contractor->hasRole($role->name)) {
             $contractor->assignRole($role);
         }
+        $this->linkContractorToAccount($contractor);
 
         return $contractor;
+    }
+
+    private function linkContractorToAccount(User $contractor): void
+    {
+        if ($accountId = current_account_id()) {
+            AccountContractor::query()->firstOrCreate(
+                ['account_id' => $accountId, 'contractor_user_id' => $contractor->id],
+                ['email' => $contractor->email, 'name' => $contractor->name, 'invited_by' => Auth::id(), 'invited_at' => now()]
+            );
+        }
     }
 
     public function storeQuoteContractor(Request $request)
@@ -540,7 +606,7 @@ class PropertyRepairController
         $queued = 0;
 
         foreach ($contractorIds->unique() as $contractorId) {
-            $contractor = $this->contractorUsersQuery()->find($contractorId);
+            $contractor = $this->accountContractorsQuery($repairIssue)->find($contractorId);
             if (! $contractor) {
                 continue;
             }
@@ -710,13 +776,13 @@ class PropertyRepairController
         // $propertyManagers = User::whereHas('category', callback: function ($query) {
         // $query->where('id', 2);
         // })->get();
-        $propertyManagers = User::role('Property Manager')->get();
+        $propertyManagers = $this->accountPropertyManagersQuery($repairIssue)->get();
         $assignedManagers = RepairIssuePropertyManager::where('repair_issue_id', $id)->pluck('property_manager_id')->toArray();
         $contractorAssignments = RepairIssueContractorAssignment::where('repair_issue_id', $id)->get();
         // $contractors = User::whereHas('category', callback: function ($query) {
         //     $query->where('name', 'Contractor');
         // })->get();
-        $contractors = User::role('Contractor')->get();
+        $contractors = $this->accountContractorsQuery($repairIssue)->get();
         $jobTypes = JobType::getHierarchy();
 
         // Return partial HTML if request is AJAX (from jQuery)
@@ -797,7 +863,7 @@ class PropertyRepairController
         // $propertyManagers = User::whereHas('category', callback: function ($query) {
         //     $query->where('id', 2);
         // })->get();
-        $propertyManagers = User::role('Property Manager')->get();
+        $propertyManagers = $this->accountPropertyManagersQuery($repairIssue)->get();
         // dd($repairIssue->repairPhotos);
 
         $assignedManagers = RepairIssuePropertyManager::where('repair_issue_id', $id)->pluck('property_manager_id')->toArray();
@@ -808,7 +874,7 @@ class PropertyRepairController
         // $contractors = User::whereHas('role', function ($query) {
         //     $query->where('name', 'contractor');
         // })->get();
-        $contractors = User::role('Contractor')->get();
+        $contractors = $this->accountContractorsQuery($repairIssue)->get();
 
         $jobTypes = JobType::getHierarchy();
 
@@ -1779,7 +1845,7 @@ class PropertyRepairController
     private function getFormTypeExtras($formType, $repair)
     {
         if ($formType === 'manager_assign') {
-            $propertyManagers = User::role('Property Manager')->orderBy('name')->get();
+            $propertyManagers = $this->accountPropertyManagersQuery($repair)->orderBy('name')->get();
             $assignedManagers = RepairIssuePropertyManager::where('repair_issue_id', $repair->id)
                 ->pluck('property_manager_id')
                 ->toArray();
@@ -1788,7 +1854,7 @@ class PropertyRepairController
         }
 
         if ($formType === 'contractor_assign' || $formType === 'final_contractor') {
-            $contractors = $this->contractorUsersQuery()->orderBy('name')->get();
+            $contractors = $this->accountContractorsQuery($repair)->orderBy('name')->get();
             $contractorAssignments = RepairIssueContractorAssignment::where('repair_issue_id', $repair->id)
                 ->get();
             $assignedContractorIds = $contractorAssignments

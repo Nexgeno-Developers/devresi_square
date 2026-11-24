@@ -168,6 +168,8 @@ class ContractorReviewController extends Controller
             ])->save();
             $profile->log('document_rejected', $request->user(), $document->type, $reason);
             if ($profile->approval_status === ContractorProfile::APPROVED) {
+                // A rejected live document stops new work; open invitations and offers go the same way.
+                $this->offers->withdrawBlocked($profile->fresh(['documents', 'tradeApprovals']));
                 $this->tell($profile->user, $label.' needs another upload', '<p>We could not accept your '.e(strtolower($label)).': '.e($reason).'.</p><p><a href="'.e(route('contractor.profile.edit')).'">Upload it again</a>.</p>', 'We could not accept your '.strtolower($label).': '.$reason, route('contractor.profile.edit'));
             }
 
@@ -181,22 +183,8 @@ class ContractorReviewController extends Controller
             'issuer' => $data['issuer'] ?? null,
         ], fn ($value) => $value !== null && $value !== '');
         $document->fill($attributes);
-        if (($spec['expires'] ?? false) && ! $document->expires_at) {
-            return back()->with('error', 'Add the expiry date before approving '.$label.'.');
-        }
-        if ($document->expires_at && $document->isExpired()) {
-            return back()->with('error', $label.' has already expired.');
-        }
-        if (($spec['reference'] ?? false) && blank($document->reference)) {
-            return back()->with('error', 'Add the registration number before approving '.$label.'.');
-        }
-        $minimum = match ($baseType) {
-            ContractorDocument::PUBLIC_LIABILITY => ContractorSettings::plMinimum(),
-            ContractorDocument::EMPLOYERS_LIABILITY => ContractorSettings::elMinimum(),
-            default => null,
-        };
-        if ($minimum !== null && (float) $document->cover_amount < $minimum) {
-            return back()->with('error', $label.' cover must be at least £'.number_format($minimum, 0).'.');
+        if ($problem = $this->approvalProblem($document)) {
+            return back()->with('error', $problem);
         }
         $document->forceFill([
             'status' => ContractorDocument::APPROVED,
@@ -220,6 +208,8 @@ class ContractorReviewController extends Controller
         $data = $request->validate([
             'decision' => ['required', Rule::in([ContractorTrade::APPROVED, ContractorTrade::MORE_INFO, ContractorTrade::REJECTED])],
             'reason' => ['nullable', 'string', 'max:500', 'required_unless:decision,approved'],
+        ], [
+            'reason.required_unless' => 'Add a reason so the contractor knows what to fix.',
         ]);
         $label = ContractorCompliance::trades()[$trade] ?? $trade;
         if ($data['decision'] === ContractorTrade::APPROVED) {
@@ -290,19 +280,20 @@ class ContractorReviewController extends Controller
 
                 return back()->with('error', $label.' expired on '.$document->expires_at->format('j M Y').'.');
             }
-            $minimum = match ($type) {
-                ContractorDocument::PUBLIC_LIABILITY => ContractorSettings::plMinimum(),
-                ContractorDocument::EMPLOYERS_LIABILITY => ContractorSettings::elMinimum(),
-                default => null,
-            };
-            if ($minimum !== null && (float) $document?->cover_amount < $minimum) {
-                $label = ContractorCompliance::documentSpec($type)['label'] ?? $type;
-
-                return back()->with('error', $label.' cover must be at least £'.number_format($minimum, 0).'.');
+        }
+        // Approving the pack is the same as approving each document, so each one meets the same rules.
+        foreach ($profile->documents as $document) {
+            if (in_array($document->status, [ContractorDocument::APPROVED, ContractorDocument::REJECTED, ContractorDocument::PURGED], true)) {
+                continue;
+            }
+            if ($problem = $this->approvalProblem($document)) {
+                return back()->with('error', $problem.' You can fix this on the contractor review page.');
             }
         }
 
-        DB::transaction(function () use ($profile, $request) {
+        $renewals = [];
+        DB::beginTransaction();
+        try {
             foreach ($profile->documents as $document) {
                 if (in_array($document->status, [ContractorDocument::APPROVED, ContractorDocument::REJECTED, ContractorDocument::PURGED], true)) {
                     continue;
@@ -315,7 +306,8 @@ class ContractorReviewController extends Controller
                 ])->save();
                 $base = str_replace(ContractorDocumentStore::RENEWAL, '', $document->type);
                 if (str_ends_with($document->type, ContractorDocumentStore::RENEWAL)) {
-                    $document = $this->store->promote($document);
+                    // Promoting deletes the old file, which a rollback cannot undo, so it waits for the commit.
+                    $renewals[] = $document;
                 }
                 $profile->log('document_approved', $request->user(), $base);
             }
@@ -336,7 +328,26 @@ class ContractorReviewController extends Controller
                 ])->save();
                 $profile->log('trade_approved', $request->user(), $trade);
             }
-        });
+
+            // Keep nothing half-approved: if the contractor still cannot be approved, undo the pack.
+            $profile->unsetRelation('documents');
+            $profile->unsetRelation('tradeApprovals');
+            $profile->load(['documents', 'tradeApprovals']);
+            if ($block = $this->approvalBlock($profile)) {
+                DB::rollBack();
+                $profile->unsetRelation('documents');
+                $profile->unsetRelation('tradeApprovals');
+
+                return back()->with('error', 'Cannot approve yet. '.$block);
+            }
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            throw $e;
+        }
+        foreach ($renewals as $renewal) {
+            $this->store->promote($renewal);
+        }
 
         $profile->unsetRelation('documents');
         $profile->unsetRelation('tradeApprovals');
@@ -384,6 +395,9 @@ class ContractorReviewController extends Controller
     public function requestChanges(Request $request, ContractorProfile $profile)
     {
         $data = $request->validate(['review_note' => ['nullable', 'string', 'max:2000']]);
+        if ($refusal = $this->refuseUnless($profile, self::IN_REVIEW, 'sent back for more info')) {
+            return $refusal;
+        }
         $profile->load(['documents', 'tradeApprovals']);
         $failed = $profile->documents->where('status', ContractorDocument::REJECTED)
             ->map(fn (ContractorDocument $doc) => $doc->label().': '.$doc->rejected_reason)
@@ -413,6 +427,9 @@ class ContractorReviewController extends Controller
     public function reject(Request $request, ContractorProfile $profile)
     {
         $data = $request->validate(['review_note' => ['required', 'string', 'max:2000']]);
+        if ($refusal = $this->refuseUnless($profile, self::IN_REVIEW, 'rejected')) {
+            return $refusal;
+        }
         $profile->forceFill([
             'approval_status' => ContractorProfile::REJECTED,
             'review_note' => $data['review_note'],
@@ -431,6 +448,9 @@ class ContractorReviewController extends Controller
     public function suspend(Request $request, ContractorProfile $profile)
     {
         $data = $request->validate(['review_note' => ['required', 'string', 'max:2000']]);
+        if ($refusal = $this->refuseUnless($profile, [ContractorProfile::APPROVED], 'suspended')) {
+            return $refusal;
+        }
         $profile->forceFill([
             'approval_status' => ContractorProfile::SUSPENDED,
             'review_note' => $data['review_note'],
@@ -451,6 +471,20 @@ class ContractorReviewController extends Controller
         if ($block = $this->approvalBlock($profile)) {
             return back()->with('error', 'Cannot reinstate yet. '.$block);
         }
+        // Removal frees the company number for a new sign-up; take it back unless someone else now uses it.
+        $note = null;
+        if ($profile->approval_status === ContractorProfile::REMOVED && blank($profile->company_number)) {
+            $previous = $profile->reviewEvents()->where('action', 'removed')->latest('id')->first()?->snapshot['company_number'] ?? null;
+            if ($previous) {
+                $taken = ContractorProfile::query()->where('company_number', $previous)->where('id', '!=', $profile->id)
+                    ->where('approval_status', '!=', ContractorProfile::REMOVED)->exists();
+                if ($taken) {
+                    $note = ' Company number '.$previous.' is now used by another contractor account, so it was not restored.';
+                } else {
+                    $profile->company_number = $previous;
+                }
+            }
+        }
         $profile->forceFill([
             'approval_status' => ContractorProfile::APPROVED,
             'removed_at' => null,
@@ -460,12 +494,16 @@ class ContractorReviewController extends Controller
         $profile->log('reinstated', $request->user());
         $this->tell($profile->user, 'Your contractor account is active again', '<p>You can receive repair jobs again.</p>', 'You can receive repair jobs again.', route('contractor.jobs.index'));
 
-        return back()->with('success', 'Reinstated.');
+        return back()->with($note ? 'error' : 'success', 'Reinstated.'.($note ?? ''));
     }
 
     public function remove(Request $request, ContractorProfile $profile)
     {
         $data = $request->validate(['review_note' => ['required', 'string', 'max:2000']]);
+        if ($profile->approval_status === ContractorProfile::REMOVED) {
+            return back()->with('error', 'This contractor is already removed.');
+        }
+        $companyNumber = $profile->company_number;
         DB::transaction(function () use ($profile, $data, $request) {
             $profile->forceFill([
                 'approval_status' => ContractorProfile::REMOVED,
@@ -476,8 +514,14 @@ class ContractorReviewController extends Controller
                 'reviewed_at' => now(),
             ])->save();
         });
-        $profile->log('removed', $request->user(), null, $data['review_note']);
+        $profile->log('removed', $request->user(), null, $data['review_note'], array_filter(['company_number' => $companyNumber]));
         $this->offers->withdrawOpenForSuspended($profile);
+        $this->tell(
+            $profile->user,
+            'Your contractor account was removed',
+            '<p>'.e($data['review_note']).'</p><p>You will not receive new jobs. Contact us if you think this is a mistake.</p>',
+            $data['review_note'].' You will not receive new jobs. Contact us if you think this is a mistake.'
+        );
 
         return redirect()->route('admin.registrations.contractors.directory')
             ->with('success', 'Removed. Documents are deleted after '.ContractorSettings::get('document_retention_days').' days; job history stays.');
@@ -531,6 +575,12 @@ class ContractorReviewController extends Controller
         if (! in_array(ContractorDocument::GAS_SAFE, $tradeDocs['gas'] ?? [], true)) {
             return back()->withInput()->with('error', 'Gas work must always require Gas Safe registration.');
         }
+        $reminderDays = array_map('intval', array_map('trim', explode(',', $data['reminder_days'])));
+        if (min($reminderDays) < 1 || max($reminderDays) > 365 || count($reminderDays) !== count(array_unique($reminderDays))) {
+            return back()->withInput()->with('error', 'Expiry reminders must be different numbers of days between 1 and 365, for example 30, 14, 7.');
+        }
+        rsort($reminderDays);
+        $oldMinimums = [ContractorSettings::plMinimum(), ContractorSettings::elMinimum()];
         ContractorSettings::put([
             'public_liability_minimum' => $data['public_liability_minimum'],
             'employers_liability_minimum' => $data['employers_liability_minimum'],
@@ -543,11 +593,24 @@ class ContractorReviewController extends Controller
             'invoice_due_days' => $data['invoice_due_days'],
             'job_commission_percent' => number_format((float) $data['job_commission_percent'], 2, '.', ''),
             'job_commission_bearer' => $data['job_commission_bearer'],
-            'reminder_days' => array_values(array_map('intval', array_filter(array_map('trim', explode(',', $data['reminder_days']))))),
+            'reminder_days' => $reminderDays,
             'invite_hours' => array_map('intval', $data['invite_hours']),
             'offer_valid_hours' => array_map('intval', $data['offer_valid_hours']),
             'trade_documents' => $tradeDocs,
         ]);
+
+        // A higher insurance minimum takes contractors below it out of work at once; say how many.
+        if ((float) $data['public_liability_minimum'] > $oldMinimums[0] || (float) $data['employers_liability_minimum'] > $oldMinimums[1]) {
+            $belowMinimum = ContractorProfile::query()
+                ->where('approval_status', ContractorProfile::APPROVED)
+                ->with(['documents', 'tradeApprovals'])
+                ->get()
+                ->filter(fn (ContractorProfile $profile) => str_contains((string) ContractorCompliance::profileBlock($profile), 'cover is below'))
+                ->count();
+            if ($belowMinimum > 0) {
+                return back()->with('error', 'Settings saved. '.$belowMinimum.' approved '.str('contractor')->plural($belowMinimum).' now '.($belowMinimum === 1 ? 'has' : 'have').' less cover than the new minimum and cannot receive jobs until they upload new insurance.');
+            }
+        }
 
         return back()->with('success', 'Settings saved.');
     }
@@ -692,6 +755,55 @@ class ContractorReviewController extends Controller
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
+
+    /** Statuses where the application is still being reviewed (the page offers approve, more info and reject). */
+    private const IN_REVIEW = [
+        ContractorProfile::SUBMITTED,
+        ContractorProfile::CHANGES,
+        ContractorProfile::DRAFT,
+        ContractorProfile::REJECTED,
+    ];
+
+    /** The page only offers each action for some statuses; a stale page or a forged request must not skip that. */
+    private function refuseUnless(ContractorProfile $profile, array $statuses, string $action)
+    {
+        if (in_array($profile->approval_status, $statuses, true)) {
+            return null;
+        }
+
+        return back()->with('error', 'This contractor is '.strtolower($profile->statusLabel()).', so they cannot be '.$action.'.');
+    }
+
+    /** Why this document cannot be approved as it stands, or null. Used by the single and the whole-pack approve. */
+    private function approvalProblem(ContractorDocument $document): ?string
+    {
+        $baseType = str_replace(ContractorDocumentStore::RENEWAL, '', $document->type);
+        $spec = ContractorCompliance::documentSpec($baseType);
+        $label = $spec['label'] ?? $baseType;
+
+        if ($document->status === ContractorDocument::PURGED || (($spec['file'] ?? false) && blank($document->path))) {
+            return $label.' has no file on record. Ask the contractor to upload it again.';
+        }
+        if (($spec['expires'] ?? false) && ! $document->expires_at) {
+            return 'Add the expiry date before approving '.$label.'.';
+        }
+        if ($document->expires_at && $document->isExpired()) {
+            return $label.' has already expired.';
+        }
+        if (($spec['reference'] ?? false) && blank($document->reference)) {
+            return 'Add the registration number before approving '.$label.'.';
+        }
+        $minimum = match ($baseType) {
+            ContractorDocument::PUBLIC_LIABILITY => ContractorSettings::plMinimum(),
+            ContractorDocument::EMPLOYERS_LIABILITY => ContractorSettings::elMinimum(),
+            default => null,
+        };
+        if ($minimum !== null && (float) $document->cover_amount < $minimum) {
+            return $label.' cover must be at least £'.number_format($minimum, 0).'.';
+        }
+
+        return null;
+    }
 
     /** What stops approval: base documents, cover, and at least one approved trade. */
     private function approvalBlock(ContractorProfile $profile): ?string

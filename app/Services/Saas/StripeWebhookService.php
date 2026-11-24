@@ -392,6 +392,17 @@ class StripeWebhookService
             default => null,
         };
 
+        // A Resisquare admin suspended this account. Billing events keep the subscription in step,
+        // but only an admin lifts the suspension; a renewal or a new checkout must not.
+        if ($accountStatus && $accountStatus !== 'cancelled'
+            && $subscription->account->status === 'suspended' && $subscription->account->status_changed_by) {
+            Log::info('Stripe webhook left an admin-suspended account suspended', [
+                'account_id' => $subscription->account_id,
+                'subscription_status' => $subscriptionStatus,
+            ]);
+            $accountStatus = null;
+        }
+
         if ($accountStatus) {
             $accountUpdates = ['status' => $accountStatus];
 

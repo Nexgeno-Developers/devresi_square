@@ -39,9 +39,13 @@ class AccountStatusGuard
             return $next($request);
         }
 
-        $message = $account->status === 'cancelled'
-            ? 'This account is cancelled. Please visit Billing & Plan to reactivate access.'
-            : 'This account is suspended. Please visit Billing & Plan to restore access.';
+        // An admin suspension is not lifted by paying, so don't send the owner to Billing for it.
+        $message = match (true) {
+            $account->status === 'cancelled' => 'This account is cancelled. Please visit Billing & Plan to reactivate access.',
+            (bool) $account->status_changed_by => 'This account has been suspended by Resisquare. Please contact support to restore access.',
+            $account->status_reason === \App\Console\Commands\ExpireEndedTrials::REASON => 'Your free trial has ended. Choose a plan in Billing & Plan to carry on.',
+            default => 'This account is suspended. Please visit Billing & Plan to restore access.',
+        };
 
         if ($request->expectsJson()) {
             abort(403, $message);

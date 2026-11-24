@@ -29,6 +29,28 @@ abstract class BaseSaasController extends Controller
         ]);
     }
 
+    /**
+     * Checkout charges the Stripe price when one is set, so it must match the price shown in the app.
+     *
+     * @param  array<string, mixed>  $data  validated data with monthly_price, annual_price, currency and the two Stripe price ids
+     */
+    protected function assertStripePricesMatch(array $data): void
+    {
+        $check = app(\App\Services\Saas\StripePriceCheck::class);
+        $errors = [];
+        foreach (['stripe_monthly_price_id' => ['monthly_price', 'month'], 'stripe_annual_price_id' => ['annual_price', 'year']] as $field => [$priceField, $interval]) {
+            if (blank($data[$field] ?? null)) {
+                continue;
+            }
+            if ($problem = $check->problem((string) $data[$field], $this->priceToMinor($data[$priceField]), (string) $data['currency'], $interval)) {
+                $errors[$field] = $problem;
+            }
+        }
+        if ($errors) {
+            throw \Illuminate\Validation\ValidationException::withMessages($errors);
+        }
+    }
+
     protected function priceToMinor(mixed $value): int
     {
         return (int) round(((float) $value) * 100);

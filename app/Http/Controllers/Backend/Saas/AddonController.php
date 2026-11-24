@@ -46,6 +46,7 @@ class AddonController extends BaseSaasController
         $this->normaliseCode($request);
 
         $data = $this->validatedData($request);
+        $this->assertStripePricesMatch($data);
         $data['monthly_price_minor'] = $this->priceToMinor($data['monthly_price']);
         $data['annual_price_minor'] = $this->priceToMinor($data['annual_price']);
         $data['is_stackable'] = $request->boolean('is_stackable');
@@ -76,6 +77,15 @@ class AddonController extends BaseSaasController
         $this->normaliseCode($request);
 
         $data = $this->validatedData($request, $addon);
+        // Limits are worked out from the catalogue add-on, so changing what it grants would change
+        // what every current buyer has, without them paying more or less.
+        $inUse = $addon->subscriptionAddons()->where('status', 'active')->exists();
+        if ($inUse && ((int) $data['grant_quantity'] !== (int) $addon->grant_quantity || $data['addon_type'] !== $addon->addon_type)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'grant_quantity' => 'Customers already pay for this add-on, so what it grants cannot change. Create a new add-on instead, and deactivate this one to take it off sale.',
+            ]);
+        }
+        $this->assertStripePricesMatch($data);
         $data['monthly_price_minor'] = $this->priceToMinor($data['monthly_price']);
         $data['annual_price_minor'] = $this->priceToMinor($data['annual_price']);
         $data['is_stackable'] = $request->boolean('is_stackable');
@@ -115,12 +125,12 @@ class AddonController extends BaseSaasController
             'code' => ['required', 'string', 'max:255', 'regex:/^[a-z0-9_]+$/', $uniqueCode],
             'name' => ['required', 'string', 'max:255'],
             'addon_type' => ['required', Rule::in(self::ADDON_TYPES)],
-            'monthly_price' => ['required', 'numeric', 'min:0'],
-            'annual_price' => ['required', 'numeric', 'min:0'],
+            'monthly_price' => ['required', 'numeric', 'min:0', 'max:100000'],
+            'annual_price' => ['required', 'numeric', 'min:0', 'max:1000000'],
             'currency' => ['required', 'string', 'size:3'],
-            'stripe_monthly_price_id' => ['nullable', 'string', 'max:255'],
-            'stripe_annual_price_id' => ['nullable', 'string', 'max:255'],
-            'grant_quantity' => ['required', 'integer', 'min:1'],
+            'stripe_monthly_price_id' => ['nullable', 'string', 'max:255', 'regex:/^price_[A-Za-z0-9]+$/'],
+            'stripe_annual_price_id' => ['nullable', 'string', 'max:255', 'regex:/^price_[A-Za-z0-9]+$/'],
+            'grant_quantity' => ['required', 'integer', 'min:1', 'max:1000'],
         ]);
     }
 }

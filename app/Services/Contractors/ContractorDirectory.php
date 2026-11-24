@@ -98,7 +98,9 @@ class ContractorDirectory
             ->whereNotNull('email')
             ->where(function ($query) {
                 $query->whereDoesntHave('contractorProfile')
-                    ->orWhereHas('contractorProfile', fn ($profile) => $profile->where('legacy_contractor', true)->whereNull('claim_invited_at')->whereNull('terms_accepted_at'));
+                    // Not invited yet, or invited but the 72-hour link ran out before they claimed it.
+                    ->orWhereHas('contractorProfile', fn ($profile) => $profile->where('legacy_contractor', true)->whereNull('terms_accepted_at')
+                        ->where(fn ($invite) => $invite->whereNull('claim_invited_at')->orWhere('claim_expires_at', '<', now())));
             })
             ->chunkById(100, function ($users) use ($admin, &$sent) {
                 foreach ($users as $user) {
@@ -106,7 +108,8 @@ class ContractorDirectory
                         ['user_id' => $user->id],
                         ['approval_status' => ContractorProfile::DRAFT, 'legacy_contractor' => true, 'phone' => $user->phone, 'postcode' => $user->postcode]
                     );
-                    if (! $profile->legacy_contractor || $profile->claim_invited_at || $profile->terms_accepted_at) {
+                    $linkLive = $profile->claim_invited_at && $profile->claim_expires_at && $profile->claim_expires_at->isFuture();
+                    if (! $profile->legacy_contractor || $linkLive || $profile->terms_accepted_at) {
                         continue;
                     }
                     $plain = Str::random(48);

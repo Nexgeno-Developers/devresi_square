@@ -6,6 +6,7 @@ use App\Enums\CrmNotificationEvent;
 use App\Models\ContractorProfile;
 use App\Models\RepairContractorRequest;
 use App\Models\RepairIssue;
+use App\Models\RepairJobInvoice;
 use App\Models\RepairJobOffer;
 use App\Models\RepairJobOfferEvent;
 use App\Models\User;
@@ -726,31 +727,40 @@ class RepairJobOfferService
     {
         abort_unless($admin->isSuperAdmin(), 403);
         $offer->loadMissing('contractor', 'invitedBy');
+        // Each action only applies in some states. Refuse the rest, so the admin is never told "Done"
+        // for a change that did not happen and the audit trail holds no entry for it.
         switch ($action) {
             case 'resolve_dispute':
-                $wasDisputed = (bool) $offer->disputed_at;
+                if (! $offer->disputed_at) {
+                    throw new ContractorMarketplaceException('This job is not disputed.');
+                }
                 $offer->forceFill(['disputed_at' => null])->save();
                 $this->log($offer, $offer->status, $offer->status, $admin, 'Admin resolved dispute: '.$note);
-                if ($wasDisputed) {
-                    $this->tellBoth($offer, CrmNotificationEvent::RepairJobDisputed, 'Dispute resolved', 'An admin resolved the dispute: '.$note, 'dispute-resolved-'.$offer->id);
-                }
+                $this->tellBoth($offer, CrmNotificationEvent::RepairJobDisputed, 'Dispute resolved', 'An admin resolved the dispute: '.$note, 'dispute-resolved-'.$offer->id);
                 break;
             case 'close':
-                $wasOpen = in_array($offer->status, RepairJobOffer::OPEN_STATUSES, true);
-                $this->transition($offer, $wasOpen ? RepairJobOffer::CLOSED : $offer->status, $admin, 'Admin closed: '.$note);
-                if ($wasOpen) {
-                    $this->tellBoth($offer, CrmNotificationEvent::RepairJobCancelled, 'Job closed', 'An admin closed this job: '.$note, 'admin-closed-'.$offer->id);
+                if (! in_array($offer->status, RepairJobOffer::OPEN_STATUSES, true)) {
+                    throw new ContractorMarketplaceException('Only an open invitation or offer can be closed.');
                 }
+                $this->transition($offer, RepairJobOffer::CLOSED, $admin, 'Admin closed: '.$note);
+                $this->tellBoth($offer, CrmNotificationEvent::RepairJobCancelled, 'Job closed', 'An admin closed this job: '.$note, 'admin-closed-'.$offer->id);
                 break;
             case 'cancel_award':
-                if ($offer->status === RepairJobOffer::JOB_ACCEPTED) {
-                    DB::transaction(function () use ($offer, $admin, $note) {
-                        $this->transition($offer, RepairJobOffer::CANCELLED, $admin, 'Admin cancelled the award: '.$note);
-                        RepairIssue::withoutEvents(fn () => RepairIssue::query()->whereKey($offer->repair_issue_id)->where('awarded_offer_id', $offer->id)->update(['awarded_offer_id' => null]));
-                        RepairContractorRequest::query()->where('repair_issue_id', $offer->repair_issue_id)->update(['status' => RepairContractorRequest::AWAITING]);
-                    });
-                    $this->tellBoth($offer, CrmNotificationEvent::RepairJobCancelled, 'Award cancelled', 'An admin cancelled this job: '.$note, 'admin-cancel-award-'.$offer->id);
+                if ($offer->status !== RepairJobOffer::JOB_ACCEPTED) {
+                    throw new ContractorMarketplaceException('Only an awarded job can be cancelled.');
                 }
+                // Once the contractor has invoiced, cancelling would leave a paid or payable invoice on a cancelled job.
+                $invoiced = $offer->invoice()->where('status', '!=', RepairJobInvoice::VOID)->exists();
+                if ($invoiced || $offer->job_status === RepairJobOffer::JOB_INVOICED) {
+                    throw new ContractorMarketplaceException('This job is already invoiced, so the award cannot be cancelled. Mark the dispute resolved instead, and refund the landlord in Stripe if needed.');
+                }
+                DB::transaction(function () use ($offer, $admin, $note) {
+                    $offer->disputed_at = null;
+                    $this->transition($offer, RepairJobOffer::CANCELLED, $admin, 'Admin cancelled the award: '.$note);
+                    RepairIssue::withoutEvents(fn () => RepairIssue::query()->whereKey($offer->repair_issue_id)->where('awarded_offer_id', $offer->id)->update(['awarded_offer_id' => null]));
+                    RepairContractorRequest::query()->where('repair_issue_id', $offer->repair_issue_id)->update(['status' => RepairContractorRequest::AWAITING]);
+                });
+                $this->tellBoth($offer, CrmNotificationEvent::RepairJobCancelled, 'Award cancelled', 'An admin cancelled this job: '.$note, 'admin-cancel-award-'.$offer->id);
                 break;
             default:
                 throw new ContractorMarketplaceException('Unknown action.');
@@ -819,7 +829,7 @@ class RepairJobOfferService
             }
             if ($offer->status === RepairJobOffer::JOB_ACCEPTED) {
                 if (! $offer->isFinished()) {
-                    $this->flagCompliance($offer, $reason);
+                    $this->flagCompliance($offer, $reason, $forcedReason !== null);
                 }
                 continue;
             }
@@ -851,7 +861,10 @@ class RepairJobOfferService
         $this->withdrawBlocked($profile, 'Contractor is no longer approved.');
     }
 
-    public function flagCompliance(RepairJobOffer $offer, string $reason): void
+    /**
+     * @param  bool  $statusChange  true when an admin suspended, removed or rejected the contractor, rather than a document lapsing
+     */
+    public function flagCompliance(RepairJobOffer $offer, string $reason, bool $statusChange = false): void
     {
         if ($offer->compliance_notified_at || ! in_array($offer->status, array_merge(RepairJobOffer::OPEN_STATUSES, [RepairJobOffer::JOB_ACCEPTED]), true)) {
             return;
@@ -861,12 +874,15 @@ class RepairJobOfferService
             CrmNotificationEvent::RepairContractorComplianceBlocked,
             $offer,
             array_filter([$offer->contractor, $offer->invitedBy]),
-            'Contractor insurance or registration needs attention',
+            $statusChange ? 'Contractor is no longer active' : 'Contractor insurance or registration needs attention',
             $reason.' The job already accepted is not cancelled automatically.',
             'compliance-'.$offer->id
         );
         if ($offer->status === RepairJobOffer::JOB_ACCEPTED) {
-            $this->mail->toAdmins('Awarded job with lapsed compliance', '<p>'.e($this->name($offer)).' has an awarded job on repair '.e($offer->repairIssue?->reference_number ?: '#'.$offer->repair_issue_id).'. '.e($reason).'</p>');
+            $this->mail->toAdmins(
+                $statusChange ? 'Awarded job with an inactive contractor' : 'Awarded job with lapsed compliance',
+                '<p>'.e($this->name($offer)).' has an awarded job on repair '.e($offer->repairIssue?->reference_number ?: '#'.$offer->repair_issue_id).'. '.e($reason).'</p>'
+            );
         }
     }
 

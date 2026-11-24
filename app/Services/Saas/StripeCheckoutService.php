@@ -9,7 +9,9 @@ use App\Models\Addon;
 use RuntimeException;
 use Stripe\Checkout\Session;
 use Stripe\Customer;
+use Stripe\Exception\InvalidRequestException;
 use Stripe\Stripe;
+use Stripe\Subscription;
 use Stripe\SubscriptionItem;
 
 class StripeCheckoutService
@@ -179,6 +181,63 @@ class StripeCheckoutService
             'id' => $sessionId,
             'expand' => ['subscription'],
         ]);
+    }
+
+    /**
+     * Stop all Resisquare billing for this account in Stripe now: the plan subscription and any add-on
+     * subscriptions (add-ons bought through checkout are separate Stripe subscriptions). No refund is issued.
+     *
+     * @return array<int, string> the Stripe subscription ids that were cancelled
+     */
+    public function cancelAllBillingNow(Account $account): array
+    {
+        $this->configureStripe();
+
+        $ids = $account->subscriptions()->whereNotNull('stripe_subscription_id')
+            ->whereIn('status', ['trialing', 'active', 'past_due'])
+            ->pluck('stripe_subscription_id')->all();
+        if ($account->stripe_customer_id) {
+            foreach (Subscription::all(['customer' => $account->stripe_customer_id, 'status' => 'all', 'limit' => 100])->autoPagingIterator() as $stripeSubscription) {
+                if (in_array($stripeSubscription->status, ['trialing', 'active', 'past_due', 'unpaid', 'incomplete', 'paused'], true)) {
+                    $ids[] = $stripeSubscription->id;
+                }
+            }
+        }
+
+        $cancelled = [];
+        foreach (array_unique($ids) as $id) {
+            if ($this->cancelSubscriptionNow($id)) {
+                $cancelled[] = $id;
+            }
+        }
+
+        return $cancelled;
+    }
+
+    /**
+     * Cancel one subscription in Stripe straight away. A subscription Stripe has already cancelled,
+     * or no longer has, counts as done (returns false).
+     */
+    public function cancelSubscriptionNow(string $stripeSubscriptionId): bool
+    {
+        $this->configureStripe();
+
+        try {
+            $stripeSubscription = Subscription::retrieve($stripeSubscriptionId);
+        } catch (InvalidRequestException $exception) {
+            if ($exception->getStripeCode() === 'resource_missing') {
+                return false;
+            }
+            throw $exception;
+        }
+
+        if (in_array($stripeSubscription->status, ['canceled', 'incomplete_expired'], true)) {
+            return false;
+        }
+
+        $stripeSubscription->cancel();
+
+        return true;
     }
 
     public function addAddonToSubscription(

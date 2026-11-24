@@ -107,8 +107,9 @@ input[readonly], select[disabled], .select2-container--default.select2-container
         </div>
         <div class="col-md-4 mb-3">
             <label>Bank Account</label>
-            <select name="bank_account_id" class="form-control" @if($isFinal) disabled @endif required>
-                <option value="">-- Select Bank Account --</option>
+            {{-- Optional, as on the server: a cash payment or a site with no bank accounts set up has none. --}}
+            <select name="bank_account_id" class="form-control" @if($isFinal) disabled @endif>
+                <option value="">{{ $accounts->isEmpty() ? '-- No bank accounts set up --' : '-- None --' }}</option>
                 @foreach($accounts as $id => $label)
                     <option value="{{ $id }}" {{ old('bank_account_id', $transaction->bank_account_id ?? '') == $id ? 'selected' : '' }}>
                         {{ $label }}
