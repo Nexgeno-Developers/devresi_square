@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ResiSquare — Role test inventory</title>
+<style>
+  :root {
+    --ink: #1c2430;
+    --muted: #5c6778;
+    --line: #d8dee8;
+    --bg: #f4f6f9;
+    --card: #fff;
+    --header: #152033;
+    --pass: #1f7a45;
+    --fail: #b42318;
+    --crit: #7a1212;
+    --high: #c2410c;
+    --med: #b45309;
+    --low: #3b5b8a;
+    --blocked: #c2410c;
+    --nt: #5c6778;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 "Segoe UI", Calibri, sans-serif; color: var(--ink); background: var(--bg); }
+  header.top { background: var(--header); color: #fff; padding: 28px 32px 22px; }
+  header.top h1 { margin: 0 0 6px; font-size: 28px; font-weight: 650; }
+  header.top p { margin: 0; color: #c5d0e0; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 48px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; letter-spacing: .02em; }
+  .badge.nt, .badge.blocked { background: #eceff3; color: var(--nt); }
+  .badge.pass, .badge.fixed { background: #e5f6ec; color: var(--pass); }
+  .badge.fail, .badge.open, .badge.critical { background: #fde8e6; color: var(--fail); }
+  .badge.high { background: #ffedd5; color: var(--high); }
+  .badge.medium { background: #fef3c7; color: var(--med); }
+  .badge.low { background: #e8eef8; color: var(--low); }
+  .status-pill { display: inline-block; margin-top: 12px; background: #3d4a60; color: #fff; padding: 6px 12px; border-radius: 6px; font-weight: 650; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 18px 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card strong { display: block; font-size: 22px; }
+  .card span { color: var(--muted); font-size: 13px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 18px 8px; margin: 16px 0; }
+  h2 { margin: 0 0 8px; font-size: 20px; }
+  h3 { margin: 18px 0 8px; font-size: 16px; }
+  p, li { color: var(--ink); }
+  .note { color: var(--muted); font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 13.5px; }
+  th, td { border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; padding: 8px 8px; }
+  th { background: #eef2f7; font-weight: 650; }
+  tr:nth-child(even) td { background: #fafbfd; }
+  code, .path { font-family: Consolas, "Courier New", monospace; font-size: 12px; }
+  .score { font-size: 40px; font-weight: 700; margin: 0; }
+  footer { color: var(--muted); font-size: 13px; padding: 8px 4px 24px; }
+  @media print {
+    body { background: #fff; }
+    header.top { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    section { break-inside: avoid; }
+    a { color: inherit; text-decoration: none; }
+  }
+  @media (max-width: 720px) {
+    header.top, .wrap { padding-left: 12px; padding-right: 12px; }
+    table { display: block; overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>ResiSquare role test inventory</h1>
+  <p>Tenant, landlord, contractor, and Super Admin SaaS — features and edge cases to test</p>
+  <div class="status-pill">Testing Incomplete</div>
+</header>
+<div class="wrap">
+
+<section id="project">
+  <h2>1. Project Information</h2>
+  <table>
+    <tr><th>Field</th><th>Value</th></tr>
+    <tr><td>Project</td><td>ResiSquare (devresi_square) — Laravel property SaaS</td></tr>
+    <tr><td>Testing date</td><td>19 October 2026</td></tr>
+    <tr><td>Environment</td><td>Codebase inspection only. No live browser session and no role credentials were used.</td></tr>
+    <tr><td>Purpose</td><td>Inventory of every in-scope module and the edge cases that must be tested. This is not an executed test run.</td></tr>
+    <tr><td>Roles</td><td>Tenant portal, landlord workspace (plan allow-list), contractor marketplace (“constructor”), Super Admin platform.</td></tr>
+    <tr><td>Sources</td><td><span class="path">routes/web.php</span>, <span class="path">routes/backend.php</span>, <span class="path">config/landlord_mvp.php</span>, <span class="path">app/Http/Middleware/RestrictLandlordRoutes.php</span>, <span class="path">app/Http/Middleware/AccountStatusGuard.php</span>, portal controllers under <span class="path">app/Http/Controllers</span></td></tr>
+  </table>
+  <h3>Who can reach what</h3>
+  <table>
+    <tr><th>Role</th><th>Home</th><th>In scope</th><th>Must be blocked</th></tr>
+    <tr><td>Tenant</td><td><span class="path">backend.home</span> and <span class="path">tenant.*</span></td><td>Tenancy, rent, repairs, documents, calendar, profile, notification preferences</td><td>Landlord finance writes, property admin, SaaS, staff, accounting, contractor review</td></tr>
+    <tr><td>Landlord</td><td><span class="path">backend.dashboard</span></td><td>Allow-list in <span class="path">config/landlord_mvp.php</span>: properties, tenancies, rent finance, people/portal access, documents, notes, compliance, repairs and marketplace, calendar, billing, onboarding</td><td>Prefixes in <span class="path">blocked_route_name_prefixes</span>: full accounting, SaaS admin, registrations, staff, SMTP, offers, work orders, legacy contractor quotes</td></tr>
+    <tr><td>Contractor</td><td><span class="path">contractor.jobs.index</span></td><td>Jobs, quotes, progress, messages, variations, invoices, profile, claim</td><td>Properties, dashboard, home, tenant portal, landlord finance, offers, tenancies, billing</td></tr>
+    <tr><td>Super Admin</td><td>Platform SaaS menu</td><td>Plans, add-ons, accounts, subscriptions, platform billing, repair desk, registrations, contractor review, plus the full back office</td><td>Must not be provisioned as a member of a customer account</td></tr>
+  </table>
+  <p class="note">Estate Agent on a landlord account uses the landlord allow-list. A tenant membership on a landlord account does not. A contractor membership on a landlord account does not. Super Admin skips the allow-list.</p>
+</section>
+
+<section id="summary">
+  <h2>2. Testing Summary</h2>
+  <div class="cards">
+    <div class="card"><strong>214</strong><span>Functional cases listed</span></div>
+    <div class="card"><strong>0</strong><span>Passed</span></div>
+    <div class="card"><strong>0</strong><span>Failed</span></div>
+    <div class="card"><strong>Not calculated</strong><span>Overall score</span></div>
+  </div>
+  <table>
+    <tr><th>Testing Type</th><th>Total</th><th>Passed</th><th>Failed</th><th>Status</th></tr>
+    <tr><td>Functional Testing</td><td>214</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Security Testing</td><td>18</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>UI/UX Testing</td><td>14</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Performance Testing</td><td>8</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>SEO Testing</td><td>8</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Content Testing</td><td>6</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Compatibility Testing</td><td>7</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>API Testing</td><td>8</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Database Testing</td><td>8</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+    <tr><td>Production / Deployment Testing</td><td>10</td><td>0</td><td>0</td><td><span class="badge nt">Not Tested</span></td></tr>
+  </table>
+  <p class="note">Passed and failed stay at zero because none of these cases were executed in this run. Blocked and Not Tested rows are excluded from any score.</p>
+</section>
+
+<section id="functional">
+  <h2>3. Functional Testing</h2>
+  <p class="note">Each row is a case that still needs a Pass or Fail. Priority follows business risk: money, access, and tenancy data are Critical or High.</p>
+
+  <h3>Shared access and public site</h3>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>FT-001</td><td>Public</td><td>Homepage loads and primary calls to action reach register and pricing.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-002</td><td>Public</td><td>Pricing page lists landlord plans with monthly and annual prices from plan records.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-003</td><td>Registration</td><td>New landlord registration with a unique email, password of at least 8 characters, and matching confirmation creates a pending registration and sends an OTP.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-004</td><td>Registration</td><td>Duplicate email, password under 8 characters, mismatched confirmation, and empty required fields are rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-005</td><td>Registration</td><td>Valid 6-digit OTP creates the user. Wrong OTP, expired OTP, and resend while throttled are rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-006</td><td>Registration</td><td>Contractor registration is a separate form and does not create a landlord SaaS account or subscription.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-007</td><td>Auth</td><td>Valid login lands each role on its own home: tenant home, landlord dashboard, contractor jobs, Super Admin platform.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-008</td><td>Auth</td><td>Wrong password, unknown email, and empty fields show an error and do not start a session.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-009</td><td>Auth</td><td>Logout ends the session. Back button and a copied protected URL require login again.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-010</td><td>Auth</td><td>Forgot-password email, valid reset token, expired or reused token, and weak new password.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-011</td><td>Auth</td><td>Signed email-change link confirms the pending address. Unsigned, expired, or already-used links fail. Login stays on the old email until confirmation.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-012</td><td>Webhooks</td><td>Stripe subscription webhook with a valid signature updates the subscription. Missing or bad signature is rejected. Replayed events do not double-charge or double-extend.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-013</td><td>Webhooks</td><td>Stripe rent webhook marks the matching open invoice paid once. A webhook for another account’s invoice is ignored.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-014</td><td>Auth</td><td>User with two accounts can switch account and leave a Super Admin “login as” session. Data on screen matches the account just selected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+  </table>
+
+  <h3>Tenant</h3>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>FT-015</td><td>Tenant — Home</td><td>Home shows only this tenant’s tenancies, open rent, and open repairs for the current account.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-016</td><td>Tenant — Home</td><td>Tenant with no tenancy sees the empty state and cannot raise a repair or pay rent.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-017</td><td>Tenant — Home</td><td>Tenant with two tenancies sees both and actions stay tied to the chosen tenancy.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-018</td><td>Tenant — Tenancy</td><td>Tenancy page lists rent, dates, property, and deposit details the landlord recorded.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-019</td><td>Tenant — Tenancy</td><td>Confirm details with a valid tenancy id records confirmation and shows the success flash.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-020</td><td>Tenant — Tenancy</td><td>Confirm with a missing tenancy id, another tenant’s tenancy, or a tenancy on another account is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-021</td><td>Tenant — Tenancy</td><td>Correction request requires a message (max 2000), at least one allowed field, and optional suggestions of max 255. Unknown field keys are rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-022</td><td>Tenant — Tenancy</td><td>Submitting the same confirmation twice does not create a second conflicting confirmation.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-023</td><td>Tenant — Rent</td><td>Rent list shows open invoices, balances, and outstanding total for this tenant only.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-024</td><td>Tenant — Rent</td><td>Invoice detail shows property, tenancy, payments, and fee breakdown when card pay is configured.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-025</td><td>Tenant — Rent</td><td>Pay on an open invoice owned by this tenant redirects to Stripe Checkout.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-026</td><td>Tenant — Rent</td><td>Pay on another tenant’s invoice returns 404. Pay when the invoice is visible but tenant_user_id is not this user returns 403. Pay on a paid or void invoice returns 403.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-027</td><td>Tenant — Rent</td><td>Return URL without session_id, or with a session id that does not start with cs_, does not mark the invoice paid.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-028</td><td>Tenant — Rent</td><td>Cancelled checkout (?checkout=cancelled) leaves the invoice open. Refreshing a successful return does not record a second payment.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-029</td><td>Tenant — Rent</td><td>When card pay is paused or Stripe is not configured, bank details are shown and the card button is unavailable.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-030</td><td>Tenant — Rent</td><td>Partial landlord-recorded payments reduce the balance the tenant is asked to pay. Overpayment is not offered.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-031</td><td>Tenant — Rent</td><td>On a suspended or cancelled landlord account, the tenant can still open the portal, and card pay is refused with the bank-transfer message.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-032</td><td>Tenant — Repairs</td><td>Maintenance list shows only repairs for this tenant’s tenancies.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-033</td><td>Tenant — Repairs</td><td>Raise a repair with a known complaint code and no extra description. “Other” or a blank code requires a description up to 2000 characters.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-034</td><td>Tenant — Repairs</td><td>Availability must be 09:00, 13:00, or 17:00, from today through 60 days. Past dates, later dates, and other times fail.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-035</td><td>Tenant — Repairs</td><td>property_id for a property the tenant does not occupy is rejected. Priority outside low, medium, high, critical is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-036</td><td>Tenant — Repairs</td><td>Tenant cannot assign contractors, accept quotes, mark invoices paid, or open the landlord repair marketplace.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-037</td><td>Tenant — Documents</td><td>Document list shows files shared with this tenant. Download of an allowed file succeeds.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-038</td><td>Tenant — Documents</td><td>Download of another account’s document, an unshared document, or a guessed id returns 403 or 404 and does not stream the file.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-039</td><td>Tenant — Calendar</td><td>Calendar shows appointments for this tenant’s property and hides other properties’ events.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-040</td><td>Tenant — Profile</td><td>Update first name (required, max 55), last name, and phone (max 20). Email change to a new address sends a confirmation and does not switch login immediately.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-041</td><td>Tenant — Profile</td><td>Email already used as another user’s email or pending_email is rejected. Empty first name is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-042</td><td>Tenant — Profile</td><td>Password change requires the current password, a new password of at least 8 characters, and confirmation. Wrong current password and a new password equal to the current one are rejected. Other sessions end.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-043</td><td>Tenant — Notifications</td><td>Preferences save only for tenancy, repair, appointment, finance, and rent events. Locked channels stay on. A posted event key outside that set is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-044</td><td>Tenant — Access</td><td>Direct URLs for landlord finance, property create, SaaS plans, staff, registrations, and contractor jobs return 403 or redirect.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-045</td><td>Tenant — Access</td><td>Revoked portal user cannot log in. Resend-invite after revoke does not restore access until a new invite exists.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-046</td><td>Tenant — Phone nav</td><td>Bottom nav reaches Home, Rent, Repairs, Docs, and Me. Me covers profile, notifications, tenancy, and calendar.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+  </table>
+
+  <h3>Landlord</h3>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>FT-047</td><td>Landlord — Dashboard</td><td>Dashboard loads portfolio counts for the current account only.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-048</td><td>Landlord — Onboarding</td><td>New landlord can search an address, save property, documents, owners, and tenancy, then complete onboarding.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-049</td><td>Landlord — Onboarding</td><td>Dismiss and resume restore the saved step. Address search is throttled (20 per minute). A non-landlord role cannot run the landlord onboarding actions.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-050</td><td>Landlord — Property wizard</td><td>Property passport wizard is available only when landlord_mvp.wizard_enabled is on. When off, the wizard routes are not a working path.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-051</td><td>Landlord — Properties</td><td>List, search, and control-center view show only this account’s properties.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-052</td><td>Landlord — Properties</td><td>Full create and quick-create save a property under the current account. Required address fields and invalid steps are rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-053</td><td>Landlord — Properties</td><td>Edit, tab load, and brochure use the property’s own account. Opening another account’s property id is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-054</td><td>Landlord — Properties</td><td>Soft delete hides the property from the active list. Restore brings it back. Force delete and bulk force delete remove it. Bulk restore works on a mixed selection of this account only.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-055</td><td>Landlord — Properties</td><td>Creating a property at the plan property limit is blocked. A limit of 0 and a limit exactly equal to the current count are both checked.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-056</td><td>Landlord — Properties</td><td>Address lookup search and resolve respect throttle (30 per minute) and do not write another account’s property.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-057</td><td>Landlord — Tenancies</td><td>Tenancy list filters Active, Archived, Inactive, and Terminated. Create links a tenant to a property on this account.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-058</td><td>Landlord — Tenancies</td><td>Edit, delete, and rent ledger stay on this account. Another account’s tenancy id is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-059</td><td>Landlord — Tenancies</td><td>Overlapping active tenancies on the same property, end date before start date, and a tenant who is not a member of this account are rejected or visibly blocked.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-060</td><td>Landlord — Tenancies</td><td>Right-to-rent update on a tenancy member saves. Updating a member on another tenancy is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-061</td><td>Landlord — Tenancies</td><td>Serving a notice stores it against the tenancy and the tenant can see the related notice. A notice on another account’s tenancy is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-062</td><td>Landlord — Tenancies</td><td>Approve and reject a tenant correction request. Acting on a correction for another account, or approving an already decided request, is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-063</td><td>Landlord — Finance</td><td>Issue a rent invoice for a billable tenancy: amount 0.01 to 99999999.99, due date on or after issue date, optional period end on or after period start.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-064</td><td>Landlord — Finance</td><td>Amount 0, negative, above the max, due date before issue date, and a tenancy or tenant from another account are rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-065</td><td>Landlord — Finance</td><td>Auto-recurring turns on the next period. If the tenancy has no rent due day, the day is taken from the due date and capped at 28.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-066</td><td>Landlord — Finance</td><td>Record a manual payment with an allowed method, amount, and paid-at date. Payment above the balance, zero, and an unknown method are rejected. A second payment that settles the balance marks the invoice paid.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-067</td><td>Landlord — Finance</td><td>Void an open invoice. Voiding a paid invoice, and a tenant paying a void invoice, must not collect money.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-068</td><td>Landlord — Finance</td><td>Rent-pay bank details require account name, number, sort code, and bank name. Saving replaces the primary details. Tenants see them when card pay is off.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-069</td><td>Landlord — People</td><td>Invite a new email onto a tenancy that has a property. The person receives a set-password email and can log into the tenant portal only.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-070</td><td>Landlord — People</td><td>Invite an existing user sends a login link and does not reset their password. Invite on a tenancy with no property is rejected. Duplicate active membership is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-071</td><td>Landlord — People</td><td>Resend deletes the old reset token and emails a new one. Resend for a user with no linked property is rejected. Revoke ends portal access. Revoking yourself returns 403. Revoking a non-tenant returns 404.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-072</td><td>Landlord — Documents</td><td>Upload, edit, download, share, and delete a document on this account’s property or tenancy. Sharing makes it visible to the intended tenant only.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-073</td><td>Landlord — Documents</td><td>Disallowed file types and oversized files are rejected. A document id from another account cannot be downloaded, shared, or deleted.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-074</td><td>Landlord — Notes</td><td>Create, edit, and delete a note on a property or tenancy in this account. Image upload on a note stores a file the author can see.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-075</td><td>Landlord — Compliance</td><td>Add, update, and delete a certificate. Share certificate reaches the tenant documents area. Expired and missing certificates are visible on the compliance list.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-076</td><td>Landlord — Repairs</td><td>Raise, edit, and close a repair on this account’s property. Status filters and the tabbed list match the same records.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-077</td><td>Landlord — Marketplace</td><td>Find contractors, send job offers, invite a contractor, favourite, and close the request.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-078</td><td>Landlord — Marketplace</td><td>Accept, decline, and reconfirm an offer. Withdraw and cancel require a valid offer state. Accepting one offer does not leave a second offer payable.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-079</td><td>Landlord — Marketplace</td><td>Approve or reject a variation, reschedule, mark complete, dispute, rate, and mark the contractor invoice paid. Each action on another account’s offer is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-080</td><td>Landlord — Repairs</td><td>SLA events only accept dispatched, made_safe, and resolved. Repair desk submit and withdraw stay on this repair.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-081</td><td>Landlord — Calendar</td><td>Create an event, drag an instance, edit the series, cancel one instance, and delete single, future, or series. Events from another account are absent.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-082</td><td>Landlord — Owners</td><td>Create an owner group, add and edit a subgroup, and delete a group that is not the only owner of a live property. Transfer of a company owner is blocked on the landlord plan.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-083</td><td>Landlord — Billing</td><td>Billing page shows the current plan, trial, and limits. Checkout starts for a published plan. Success URL applies only if the Stripe session belongs to this account. Cancel leaves the plan unchanged.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-084</td><td>Landlord — Billing</td><td>Add-on checkout and the Stripe billing portal open for an account owner. A tenant membership cannot open billing.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-085</td><td>Landlord — Account status</td><td>Suspended account: workspace routes redirect to billing with the suspended message. Cancelled account uses the cancelled message. Billing, logout, account switch, and profile stay available.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-086</td><td>Landlord — Notifications</td><td>In-app list, mark one read, mark all read, preferences, and delivery retry affect only this account.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-087</td><td>Landlord — Allow-list</td><td>These routes return 403 on a landlord plan: accounting, GL, sale and purchase invoices, receipts, reports, bank reconciliation, fixed assets, SaaS plans, add-ons, accounts, subscriptions, platform billing, registrations, designations, branches, roles, staff, SMTP, companies, offers, work orders, legacy quote assignment, transactions, and cache clear.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-088</td><td>Landlord — Allow-list</td><td>Estate Agent on a landlord account is restricted the same way. A tenant member of that account is not put through the landlord allow-list and still cannot manage tenancies. A contractor member is not put through the allow-list and still cannot open landlord finance.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-089</td><td>Landlord — Users</td><td>Where contact management is allowed, create and edit stay inside the account. Deleting a user is refused for anyone who is not Super Admin.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+  </table>
+
+  <h3>Contractor</h3>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>FT-090</td><td>Contractor — Registration</td><td>Submit the contractor form with valid business details. Duplicate email and a short password are rejected. Approval does not create a landlord account.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-091</td><td>Contractor — Claim</td><td>Claim link opens for the invited user and sets a password. A claim for another user id, or repeated claims after the profile is claimed, fails.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-092</td><td>Contractor — Profile</td><td>Update business details and compliance documents. Reapply after a request for changes returns the profile to review.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-093</td><td>Contractor — Profile</td><td>While approval_status is submitted, the jobs nav shows the hold state and the contractor cannot be awarded a live job.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-094</td><td>Contractor — Jobs</td><td>Job list and job detail show only offers owned by this contractor. Another contractor’s offer id returns 403.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-095</td><td>Contractor — Quote</td><td>Submit fixed, hourly, and inspection prices with materials included, excluded, or estimate, VAT 20, 5, or 0, and validity 24, 48, 72, or 168 hours.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-096</td><td>Contractor — Quote</td><td>Negative amounts, amounts above the field caps, an unknown pricing type, and a quote on an offer that is no longer open are rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-097</td><td>Contractor — Quote</td><td>Decline uses a configured reason code. Withdraw requires a reason of max 500. Reconfirm is only allowed when the landlord is waiting on it.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-098</td><td>Contractor — Job progress</td><td>Schedule requires a date. Start marks the job in progress. Complete requires at least one image, each under 8 MB, and not more than the photo cap. PDF or text files are rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-099</td><td>Contractor — Job progress</td><td>Cancel requires a reason. Cancelling before acceptance and cancelling after the landlord has paid follow the service rules and do not leave the job both active and cancelled.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-100</td><td>Contractor — Messages</td><td>Message body is required and max 2000. More than 30 messages in a minute is throttled. Messages are not visible to a different contractor.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-101</td><td>Contractor — Variations</td><td>Extra work requires a net amount from 0.01 to 1000000 and a reason. Withdraw variation only works for a variation on this offer. Work must stay blocked until the landlord approves.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-102</td><td>Contractor — Schedule</td><td>Reschedule requires a date and notifies landlord and tenant. A missing slot is rejected. The tenant calendar shows the new time.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-103</td><td>Contractor — Invoice</td><td>Issue an invoice after completion with an optional final net and notes. Issuing before completion, issuing twice, and opening an invoice on an offer that has none are rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-104</td><td>Contractor — Dispute</td><td>Dispute requires a reason of max 1000 and flags the job for the platform team. The landlord sees the same dispute.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-105</td><td>Contractor — Photos</td><td>Completion photo and repair photo download only for this offer. A missing index returns 404. A photo URL from another offer does not stream.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-106</td><td>Contractor — Access</td><td>Direct visits to properties, dashboard, tenant home, tenant routes, landlord finance, offers, tenancies, and billing return 403.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-107</td><td>Contractor — Legacy</td><td>Signed repair-quote links return 404 while legacy_module_enabled is off. When the flag is on, a bad token cannot submit a quote.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-108</td><td>Contractor — Visits</td><td>Signed repair-visit confirm page accepts one confirmation. An unsigned link and a second confirmation do not change the visit twice.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-109</td><td>Contractor — Terms</td><td>Public contractor terms page loads without login.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge low">Low</span></td><td>-</td></tr>
+  </table>
+
+  <h3>Super Admin</h3>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>FT-110</td><td>SaaS — Plans</td><td>Create, edit, and delete a plan. Code is unique, lowercase letters, numbers, and underscores. Currency is 3 characters. Monthly and annual prices are at least 0. Stripe price ids match price_….</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-111</td><td>SaaS — Plans</td><td>Property, branch, staff, and property-manager limits accept 0 and positive integers. A landlord account on that plan then enforces the property limit.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-112</td><td>SaaS — Add-ons</td><td>Create, edit, and delete an add-on. A landlord can purchase only an active add-on. Deleting an add-on that is on a live subscription is blocked or leaves the subscription intact.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-113</td><td>SaaS — Accounts</td><td>Account list filters by plan and search (account and owner). Account detail shows subscription, limits, and members.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-114</td><td>SaaS — Accounts</td><td>Set account status to suspended and cancelled, then back to active. The landlord workspace follows AccountStatusGuard. The tenant portal stays usable except card pay.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-115</td><td>SaaS — Login as</td><td>Login-as opens that customer account. Leave returns to Super Admin. Actions taken while logged in are limited to that account’s data. A second login-as replaces the first.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-116</td><td>SaaS — Subscriptions</td><td>Subscription list filters by account type and search. Extend trial adds the requested days once. A negative or empty extension is rejected. Extending a cancelled subscription follows the service rule.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-117</td><td>SaaS — Platform billing</td><td>Platform billing totals live subscriptions and active add-ons. A trial that is not live is not counted as MRR. Currency mixing is visible rather than summed silently.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-118</td><td>SaaS — Repair desk</td><td>Repair desk queue lists landlord requests. Update changes status. A landlord cannot open the Super Admin repair desk index.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-119</td><td>SaaS — Registrations</td><td>With permission “manage registrations”, approve a landlord registration and confirm a customer account is created. Reject does not create an account. Permission update on the registration saves.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-120</td><td>SaaS — Registrations</td><td>A Super Admin without “manage registrations”, and every landlord, receives 403 on the registration routes. Approving the same registration twice does not create two accounts.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-121</td><td>SaaS — Contractors</td><td>Review queue, directory, stuck jobs, coverage gaps, and settings load. Saving settings persists. Job override records a platform decision.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-122</td><td>SaaS — Contractors</td><td>Decide a document, decide a trade, approve, request changes, reject, suspend, reinstate, and remove. Approve never creates a landlord subscription. Suspended contractor cannot progress a job.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-123</td><td>SaaS — Contractors</td><td>Legacy invitation creates a claim path only. Opening another profile’s document id does not download the wrong file.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-124</td><td>SaaS — Guard</td><td>Super Admin is not inserted into a customer account. Provisioning a Super Admin user into an account throws. Landlord and tenant routes still scope data when a Super Admin is not logged in.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-125</td><td>SaaS — Back office</td><td>Roles, permissions, and staff can be created and edited. Staff and branch counts respect plan limits when those limits apply to the account being managed.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-126</td><td>SaaS — Back office</td><td>Website header, footer, and appearance save and appear on the public site. SMTP test email uses the saved settings and does not expose the password back in the page.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-127</td><td>SaaS — Back office</td><td>Email templates, SMS templates, and OTP activation and credentials save. A template status toggle does not send mail. Test SMTP sends one message.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-128</td><td>SaaS — Lookups</td><td>CRUD for user categories, branches, designations, note types, document types, tenancy types, tenancy sub-statuses, event types, event sub-types, and job types. Duplicate names and delete-in-use are handled without orphaning records.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-129</td><td>SaaS — Accounting</td><td>Banks, payment methods, income and expense categories, invoice headers, taxes, GL accounts, journals, and journal lines save under the selected account. A journal that does not balance is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-130</td><td>SaaS — Accounting</td><td>Sale invoice, credit note, receipt, purchase invoice, and debit note can be created and applied. Applying more credit than the balance is rejected. PDF download is for that document only.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-131</td><td>SaaS — Accounting</td><td>Trial balance, profit and loss, balance sheet, AR aging, and AP aging use the selected account and date range. An empty range returns an empty report, not another account’s rows.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-132</td><td>SaaS — Accounting</td><td>Bank reconciliation reconciles a selected line once. Fixed asset create, edit, and dispose keep cost and depreciation on that asset.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-133</td><td>SaaS — Offers</td><td>Property offers can be created, accepted, set as main person, and deleted. This module stays unavailable on the landlord plan.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-134</td><td>SaaS — Work orders</td><td>Work order create, PDF, and send, then invoice generate, edit, download, and mark paid. Marking paid twice does not duplicate the receipt.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-135</td><td>SaaS — Files</td><td>Uploader stores a file for the current user. Bulk delete and the destroy routes that require Super Admin return 403 for a landlord.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-136</td><td>SaaS — Users</td><td>Only Super Admin can delete a user. Deleting a user who is a tenant on a live tenancy does not leave a login that still opens that portal.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-137</td><td>SaaS — Allow-list bypass</td><td>Super Admin can open accounting and SaaS screens that landlords receive 403 for. A forged role on a landlord session cannot.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+  </table>
+
+  <h3>Cross-role journeys</h3>
+  <table>
+    <tr><th>ID</th><th>Module</th><th>Test Case</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>FT-138</td><td>Journey — Portfolio</td><td>Landlord adds a property, then a tenancy, and the tenant home shows that property only.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-139</td><td>Journey — Rent</td><td>Landlord issues rent, tenant pays by card, webhook and return URL agree, and the landlord invoice shows one payment.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-140</td><td>Journey — Rent</td><td>Landlord records a bank payment for the same invoice the tenant is paying. Only one of the two may settle the balance. The other must not over-collect.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-141</td><td>Journey — Repair</td><td>Tenant raises a repair, landlord sends an offer, contractor quotes, landlord accepts, contractor schedules and completes with photos, landlord confirms, contractor invoices, landlord marks paid.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-142</td><td>Journey — Repair</td><td>Contractor variation is invisible as approved work until the landlord accepts. A declined variation is not added to the invoice.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-143</td><td>Journey — Access</td><td>Landlord invites a tenant, tenant sets a password, confirms tenancy details, and requests a correction that the landlord approves. The tenant then sees the updated details.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-144</td><td>Journey — Isolation</td><td>Two landlord accounts with the same property address cannot see each other’s tenancies, invoices, documents, repairs, or contractors’ messages.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-145</td><td>Journey — Trial</td><td>Trial end blocks landlord writes according to account status, while an in-flight tenant bank transfer page still shows the saved bank details.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-146</td><td>Forms</td><td>Public form by type submits valid data and rejects an unknown type and missing required fields.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-147</td><td>Uploads</td><td>Aiz uploader rejects an unauthenticated call. An authenticated user cannot download another user’s private upload by id.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-148</td><td>Commands</td><td>Scheduled rent auto-invoice creates the next open invoice once per period and does not invoice a terminated tenancy.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-149</td><td>Commands</td><td>Privacy delete command removes the requested person and does not delete a different user with a similar email.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-150</td><td>Empty states</td><td>Landlord with no properties, tenant with no invoices, and contractor with no jobs each see the designed empty state rather than an error.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-151</td><td>Session</td><td>Expired session on a POST (pay, invite, quote) returns to login and does not apply the action after re-login without a new submit.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-152</td><td>Ids</td><td>Non-numeric and missing ids on property, tenancy, invoice, offer, and account routes return 404, not a 500 stack trace.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-153</td><td>Debug</td><td>Registration OTP debug route is unreachable in a production-like environment.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-154</td><td>Notifications</td><td>Repair, rent, and tenancy emails go to the participant on that account. A preference with email off suppresses mail and still stores an in-app notice when in-app is on.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-155</td><td>Deposit</td><td>Deposit protection fields on a tenancy save and display to the tenant. Clearing them does not invent a scheme.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-156</td><td>Statements</td><td>Customer statement for a tenant shows that tenant’s charges. A landlord on the plan is blocked from the customer statement route. A tenant member may open their own statement.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-157</td><td>Search</td><td>Command search and property AJAX search return only the current account’s rows and no results for an empty query that dumps the whole table.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-158</td><td>Estate charges</td><td>Where estate charges are enabled for a non-landlord operator, items total onto the charge. A landlord plan user receives 403 if the route is outside the allow-list.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-159</td><td>Double submit</td><td>Double-clicking invite, issue invoice, accept offer, and record payment creates one record.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-160</td><td>Back button</td><td>After rent payment and after contractor quote, the browser back button does not resubmit a second charge or a second quote.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-161</td><td>Landlord — Bank details</td><td>Generic bank-detail store and delete on a user stay in the current account. Swift code may be empty. Account number and sort code may not.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-162</td><td>Tenant — Notices</td><td>Notice list on the tenant notification screen includes only notices for that tenant’s tenancies, properties, repairs, and invoices.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-163</td><td>Contractor — Availability</td><td>When the tenant changes availability after the offer snapshot, the contractor job page shows that the slot changed.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-164</td><td>SaaS — Currency</td><td>Plan currency of the wrong length, a negative price, and a Stripe id without the price_ prefix are rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-165</td><td>Auth — Throttle</td><td>Login, registration, contractor claim, and address search hit their throttle limits and then accept a normal request after the window.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-166</td><td>Landlord — Property tabs</td><td>Property, documents, compliance, and tenancy tabs on one property save without wiping the other tabs.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-167</td><td>Landlord — Bulk</td><td>Property bulk action with an empty selection and with an id from another account changes nothing outside this account.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-168</td><td>Tenant — Profile cache</td><td>After a tenant name change, property and user lookup caches used by the landlord show the new name.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-169</td><td>SaaS — Checkout mismatch</td><td>A billing success URL whose Stripe session belongs to a different account does not change this account’s plan.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-170</td><td>Contractor — Pricing maths</td><td>Hourly rate times estimated hours, plus call-out and materials estimate, matches the price summary the landlord sees before accept.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-171</td><td>Landlord — Rent fee</td><td>Tenant fee breakdown matches the amount Stripe charges. The landlord invoice balance is the rent, and the fee is not added twice.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-172</td><td>Access — No account</td><td>An authenticated user with no current SaaS account receives the no-active-account response and is not shown another tenant’s home.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-173</td><td>Landlord — Notes XSS</td><td>A note and a repair description containing script markup are stored and rendered as text.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-174</td><td>People — Email failure</td><td>If invite mail fails, access is still granted and the warning flash is shown. Resend can deliver the link later.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-175</td><td>Tenancy — Portal flag</td><td>A tenancy member with can_login false cannot open the tenant portal even if they know the URL.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-176</td><td>Calendar — Tenant write</td><td>Tenant calendar is read-only. Posting to event store as a tenant is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-177</td><td>Documents — Share scope</td><td>Sharing a certificate or document with one tenant does not list it for a second tenant in another property.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-178</td><td>Repair — Categories</td><td>Tenant repair categories are the tenant area choices. A category id that is not in repair_categories is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-179</td><td>Finance — Invoice number</td><td>Two invoices created at the same time receive different invoice numbers.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-180</td><td>Marketplace — One winner</td><td>After accept, other open offers on that repair cannot also be accepted.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-181</td><td>Contractor — Hold documents</td><td>Rejected document can be replaced. Approved document is not silently replaced without review.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-182</td><td>SaaS — Trial days</td><td>Plan trial_days of 0 starts without a trial. A large trial_days value is what the new account receives.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-183</td><td>Roles — Permission names</td><td>A staff user with view property repair but without create cannot open raise-repair. A user with create can. Landlord plan users are not blocked from repairs by that permission gap.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-184</td><td>Logout — All roles</td><td>Logout from tenant, landlord, contractor, and Super Admin “login as” clears the session cookie and the account context.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-185</td><td>Registration — Verify channel</td><td>Email OTP and any non-email verify path store the matching verified timestamp and do not mark the other channel verified.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-186</td><td>Property — Archived</td><td>An archived property cannot receive a new active tenancy until it is restored, or the product shows a clear block.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-187</td><td>Rent — Zero balance</td><td>An invoice with a zero balance is not payable and is not listed as outstanding.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-188</td><td>Contractor — Quote expiry</td><td>An offer past its valid hours cannot be accepted until the contractor reconfirms, if that is the implemented rule.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-189</td><td>SaaS — Account search</td><td>Search text that looks like SQL or HTML returns a safe empty or filtered list and does not error.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-190</td><td>Notifications — Retry</td><td>Retry on a failed delivery sends once. Retry on another account’s delivery id is rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-191</td><td>Landlord — Onboarding complete</td><td>Completing onboarding with a missing property or missing tenancy does not mark the account onboarded.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-192</td><td>Tenant — Correction fields</td><td>Suggested values longer than 255 characters and a fields array of only blanks are rejected.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-193</td><td>Finance — Period</td><td>Period end before period start is rejected. A blank period is allowed.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-194</td><td>Marketplace — Message throttle</td><td>Landlord-side job offer messages use the same 30-per-minute throttle as the contractor.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge low">Low</span></td><td>-</td></tr>
+    <tr><td>FT-195</td><td>Compliance — Delete</td><td>Deleting a certificate removes it from the tenant document list if it had been shared.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-196</td><td>Profile — Password mail</td><td>When the password-changed email fails, the password is still updated and the warning flash is shown.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge low">Low</span></td><td>-</td></tr>
+    <tr><td>FT-197</td><td>SaaS — Sort order</td><td>Plans render on the pricing page in sort_order, not in insertion order.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-198</td><td>Access — JSON</td><td>A suspended landlord calling a blocked route with an Accept JSON header receives 403 and the suspended message, not an HTML redirect.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-199</td><td>Repair desk — Withdraw</td><td>Landlord can withdraw a repair-desk request that is still open and cannot withdraw one the platform has already closed.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-200</td><td>Owner groups — Delete</td><td>Deleting a subgroup that properties still reference is blocked or those properties keep a valid owner.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-201</td><td>Calendar — Recurrence</td><td>Editing one instance does not rewrite past instances. Deleting “future” leaves past instances.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-202</td><td>Tenant — Pay processing</td><td>If checkout fulfillment throws, the tenant sees the processing warning and a later webhook still settles the invoice once.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-203</td><td>Contractor — VAT</td><td>VAT 0, 5, and 20 change the gross on the landlord accept screen and on the issued invoice by the same rate.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-204</td><td>People — Self invite</td><td>Inviting the landlord’s own email as a tenant does not remove their landlord membership.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-205</td><td>Switch account</td><td>Switching account mid-form does not save the form into the newly selected account.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-206</td><td>Force delete</td><td>Force-deleting a property that still has a tenancy, invoice, or repair is blocked or those child rows are removed with it, with no leftover tenant access.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>FT-207</td><td>Job types</td><td>Parent and subcategory job types load in the repair form. Deleting a parent used by open repairs is blocked or those repairs keep a label.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-208</td><td>Invoice PDF</td><td>Contractor invoice and landlord rent invoice print views show the same totals as the screen, including a void watermark or status when void.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-209</td><td>Registration — Rejected email</td><td>An email on a rejected registration can register again. An email on a pending registration cannot.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-210</td><td>Contractor — Removed</td><td>A removed contractor cannot log into jobs. Historical invoices remain visible to the landlord.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-211</td><td>Billing — Portal</td><td>Stripe customer portal return lands back on billing without dropping the session.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>FT-212</td><td>Right to rent</td><td>A tenancy member without a right-to-rent date is listed as incomplete. Saving a date shows on the tenancy page for the landlord.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-213</td><td>Multi-currency display</td><td>Rent and plan prices render with the account currency and two decimal places. A value of 0.01 is not rounded to zero.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>FT-214</td><td>Error pages</td><td>Unknown URLs render the 404 page. A forced server error renders the 500 page without a stack trace, database password, or APP_KEY.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="bugs">
+  <h2>4. Bug / Issue Report</h2>
+  <p>No defects recorded. Cases in this document were not executed, so none are confirmed failures.</p>
+  <table>
+    <tr><th>Bug ID</th><th>Module</th><th>Issue</th><th>Severity</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td colspan="6">None.</td></tr>
+  </table>
+</section>
+
+<section id="security">
+  <h2>5. Security Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Security Check</th><th>Status</th><th>Severity</th><th>Recommendation</th></tr>
+    <tr><td>SEC-001</td><td>SQL injection on search, login, and account filters</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-002</td><td>Stored and reflected XSS in notes, repairs, messages, and names</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-003</td><td>CSRF on every state-changing POST, including pay, invite, and quote</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-004</td><td>Authentication on admin, portal, and contractor routes</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-005</td><td>Role separation: tenant, landlord, contractor, Super Admin</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-006</td><td>IDOR on property, tenancy, invoice, document, offer, and account ids</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-007</td><td>Session fixation, logout, and “login as” leave</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-008</td><td>Password hashing and reset-token single use</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-009</td><td>Upload type, size, and path traversal on documents and completion photos</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-010</td><td>Stripe webhook signature and replay</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-011</td><td>Security headers and HTTPS on the public host</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>SEC-012</td><td>Rate limits on login, OTP, address lookup, and messages</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>SEC-013</td><td>Debug OTP route and APP_DEBUG error pages</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-014</td><td>Secrets absent from the repo, Blade output, and client-side JS</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-015</td><td>CORS on any public API</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>SEC-016</td><td>Signed URLs for email change, contractor claim, and repair visits</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>SEC-017</td><td>Privilege escalation by posting a role or member_type field</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+    <tr><td>SEC-018</td><td>Mass assignment of account_id on invoices, properties, and repairs</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge critical">Critical</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="ui">
+  <h2>6. UI/UX Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>UX-001</td><td>Landlord sidebar</td><td>Landlord sees properties, tenancies, finance, repairs, people, compliance, documents, calendar, and billing, and does not see accounting or SaaS admin.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-002</td><td>Tenant shell</td><td>Tenant sidebar and phone bottom nav match the five destinations and hide landlord menus.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-003</td><td>Contractor nav</td><td>Jobs and profile are reachable. Hold state is obvious while approval is pending.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-004</td><td>Super Admin nav</td><td>Plans, add-ons, accounts, repair desk, subscriptions, billing, registrations, and contractors are visible only to Super Admin.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-005</td><td>Forms</td><td>Validation errors sit on the field that failed and keep the rest of the entered values.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-006</td><td>Empty states</td><td>No properties, no invoices, no jobs, and no documents use the designed empty states.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-007</td><td>Flash messages</td><td>Success, warning, and error flashes match the server outcome, including mail-failed warnings.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-008</td><td>Destructive actions</td><td>Delete property, void invoice, revoke access, and cancel job ask for confirmation.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-009</td><td>Loading</td><td>Checkout and address lookup show a pending state and cannot be double-submitted.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-010</td><td>Mobile</td><td>Tenant bottom nav does not cover the pay button. Landlord tables scroll sideways.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-011</td><td>Tablet</td><td>Sidebar and content remain usable at a tablet width.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-012</td><td>Accessibility</td><td>Nav landmarks, form labels, and error text are available to a keyboard and screen reader on login, rent pay, and invite.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-013</td><td>Print</td><td>Rent invoice and contractor invoice print without the app sidebar.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>UX-014</td><td>Consistency</td><td>Money, dates, and status labels use the same format on landlord and tenant screens.</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="performance">
+  <h2>7. Performance Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Area</th><th>Test</th><th>Status</th><th>Priority</th><th>Recommendation</th></tr>
+    <tr><td>PF-001</td><td>Property list</td><td>Account with a large portfolio paginates and does not load every property into the DOM.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+    <tr><td>PF-002</td><td>Repair list</td><td>Status filters query the current account only.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-003</td><td>Calendar</td><td>Instance fetch for a month stays bounded.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-004</td><td>Accounting reports</td><td>Trial balance and aging on a large ledger finish without a timeout.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-005</td><td>Search</td><td>Property and account search stay indexed for the typed term.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-006</td><td>Uploads</td><td>Photo and document upload of the maximum allowed size completes or fails cleanly.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-007</td><td>N+1</td><td>Tenant home, repair job detail, and account show do not query once per row without need.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge medium">Medium</span></td><td>-</td></tr>
+    <tr><td>PF-008</td><td>Queues</td><td>Invite and notification jobs drain without stalling the HTTP request.</td><td><span class="badge nt">Not Tested</span></td><td><span class="badge high">High</span></td><td>-</td></tr>
+  </table>
+  <p class="note">Not Tested — measurement unavailable in this run. No timings were taken.</p>
+</section>
+
+<section id="seo">
+  <h2>8. SEO Testing</h2>
+  <p class="note">Applies to the public marketing site only. Authenticated portals should stay out of the index.</p>
+  <table>
+    <tr><th>ID</th><th>SEO Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>SEO-001</td><td>Home and pricing title, meta description, and one H1</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>SEO-002</td><td>Canonical URL</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>SEO-003</td><td>robots.txt disallows contractor, admin, and portal paths</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>SEO-004</td><td>sitemap.xml lists public URLs only</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>SEO-005</td><td>Open Graph tags on home and pricing</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>SEO-006</td><td>Image alt text on the landing page</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>SEO-007</td><td>404 page returns HTTP 404</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>SEO-008</td><td>Authenticated pages send noindex</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="content">
+  <h2>9. Content Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Content Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>CT-001</td><td>Pricing figures match plan records</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>CT-002</td><td>Landlord, tenant, and contractor empty states and buttons use plain language</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>CT-003</td><td>No placeholder or lorem text on live screens</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>CT-004</td><td>Rent and invoice labels match the amount the user will pay</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>CT-005</td><td>Contractor terms page is complete</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>CT-006</td><td>Error flashes do not blame the wrong role</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="compatibility">
+  <h2>10. Browser &amp; Device Testing</h2>
+  <table>
+    <tr><th>Browser / Device</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>Chrome Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Firefox Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Edge Desktop</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Safari</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Android Mobile</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>iPhone</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>Tablet</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="api">
+  <h2>11. API Testing</h2>
+  <table>
+    <tr><th>ID</th><th>API / Feature</th><th>Test</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>API-001</td><td>Stripe subscription webhook</td><td>Valid signature, bad signature, replay</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-002</td><td>Stripe rent webhook</td><td>Settles the right invoice once</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-003</td><td>Property search AJAX</td><td>Auth required, account scoped, empty query</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-004</td><td>Users and tenants by property</td><td>Only participants of that property and account</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-005</td><td>Address lookup</td><td>Throttle, no results, provider down</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-006</td><td>Calendar instances</td><td>Date range required and account scoped</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-007</td><td>Repair category and job type lookups</td><td>Unknown parent id returns an empty list</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>API-008</td><td>Invoice JSON helpers</td><td>Another account’s invoice id is not returned</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="database">
+  <h2>12. Database Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>DB-001</td><td>Rent invoice, payment, and void stay consistent in one transaction</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-002</td><td>Property soft delete and force delete leave no tenant login to a removed home</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-003</td><td>Account membership unique per user, account, and member type</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-004</td><td>Foreign keys from tenancy, invoice, repair, and offer point at the same account</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-005</td><td>Plan code uniqueness and Stripe price id format</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-006</td><td>Duplicate webhook events do not insert a second rent payment</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-007</td><td>Migrations match the columns the tenant, finance, and contractor forms write</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DB-008</td><td>Null due day, null period, and null optional bank swift code are stored without errors</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="deployment">
+  <h2>13. Production / Deployment Testing</h2>
+  <table>
+    <tr><th>ID</th><th>Check</th><th>Status</th><th>Recommendation</th></tr>
+    <tr><td>DP-001</td><td>APP_DEBUG false and 500 page hides internals</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-002</td><td>HTTPS on the public site and Stripe return URLs</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-003</td><td>Queue worker running for invite and notification mail</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-004</td><td>Scheduler running for rent auto-invoice</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-005</td><td>Stripe keys and webhook secrets set, and not the test keys on production</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-006</td><td>Mail and SMS credentials send a real template</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-007</td><td>Private upload disk is not publicly listable</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-008</td><td>Registration OTP debug route disabled</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-009</td><td>Landlord wizard flag matches the release decision</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+    <tr><td>DP-010</td><td>Backups exist for the database and the private file disk</td><td><span class="badge nt">Not Tested</span></td><td>-</td></tr>
+  </table>
+</section>
+
+<section id="score">
+  <h2>14. Overall Score</h2>
+  <p class="score">Not calculated</p>
+  <p>Every category is Not Tested, so those rows are excluded from the score. Giving them 100% would be wrong. Weights that will apply once a run is executed:</p>
+  <table>
+    <tr><th>Category</th><th>Weight</th></tr>
+    <tr><td>Functional</td><td>30%</td></tr>
+    <tr><td>Security</td><td>20%</td></tr>
+    <tr><td>UI/UX</td><td>15%</td></tr>
+    <tr><td>Performance</td><td>15%</td></tr>
+    <tr><td>SEO</td><td>10%</td></tr>
+    <tr><td>Compatibility</td><td>5%</td></tr>
+    <tr><td>Content</td><td>5%</td></tr>
+  </table>
+  <p class="note">API, database, and deployment are listed because they need a run. They are not in the default weight table until that run happens.</p>
+</section>
+
+<section id="status">
+  <h2>15. Final Status</h2>
+  <p><strong>Testing Incomplete</strong></p>
+  <h3>Recommendation</h3>
+  <p>The module map is ready to execute. Nothing in this file has been passed or failed. Start with the Critical rows: registration, role homes, tenant rent pay and invoice isolation, landlord allow-list, plan limits, people invite and revoke, the repair marketplace from raise to paid invoice, Stripe webhooks, and Super Admin login-as plus contractor approval. Do not treat the product as release-ready from this inventory alone.</p>
+</section>
+
+<section id="limits">
+  <h2>16. Testing Limitations</h2>
+  <ul>
+    <li>No browser session was run. No screen was clicked.</li>
+    <li>No tenant, landlord, contractor, or Super Admin credentials were used.</li>
+    <li>Stripe, mail, SMS, and address-lookup providers were not called.</li>
+    <li>The database was not queried, so live column values and row counts were not checked.</li>
+    <li>Edge cases are taken from routes, middleware, and validation in the codebase. A rule that exists only in a service class and was not opened may be missing from a row.</li>
+    <li>Full accounting, offers, and work orders are Super Admin or non-landlord modules. They are out of the landlord plan by the allow-list, and their internal calculations were not executed.</li>
+    <li>Safari, Firefox, mobile, and tablet were not available in this run.</li>
+    <li>Existing PHPUnit feature tests in <span class="path">tests/Feature</span> were not executed here, so their last results are not copied into this report.</li>
+  </ul>
+</section>
+
+<footer>Generated 19 October 2026. ResiSquare role test inventory. Status values mean the case has not been run.</footer>
+</div>
+</body>
+</html>
