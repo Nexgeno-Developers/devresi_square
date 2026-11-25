@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h2 class="mb-0">{{ $title }}</h2>
         <div class="d-flex gap-2">
             <a class="btn btn-outline-secondary" href="{{ request()->fullUrlWithQuery(['format' => 'csv']) }}">Export CSV</a>
@@ -59,7 +59,7 @@
         <div class="card-body">
             <h5 class="card-title">Net Running Balance</h5>
             <div class="table-responsive">
-                <table class="table table-bordered table-sm">
+                <table class="rs-stack-table table table-bordered table-sm">
                     <thead>
                         <tr>
                             <th>Date</th>
@@ -75,18 +75,18 @@
                     <tbody>
                         <tr>
                             <td colspan="7"><strong>Opening Balance</strong></td>
-                            <td class="text-end">{{ number_format($statement['opening'], 2) }}</td>
+                            <td class="text-end" data-label="Running">{{ number_format($statement['opening'], 2) }}</td>
                         </tr>
                         @foreach($statement['lines'] as $line)
                             <tr>
-                                <td>{{ $line['date'] }}</td>
-                                <td>{{ $line['memo'] ?? '-' }}</td>
-                                <td>{{ trim(($line['source_type'] ?? '') . ' ' . ($line['source_id'] ?? '')) }}</td>
-                                <td>{{ $line['account_code'] }} - {{ $line['account_name'] }}</td>
-                                <td class="text-end">{{ number_format($line['debit'], 2) }}</td>
-                                <td class="text-end">{{ number_format($line['credit'], 2) }}</td>
-                                <td class="text-end">{{ number_format($line['delta'], 2) }}</td>
-                                <td class="text-end">{{ number_format($line['running'], 2) }}</td>
+                                <td data-label="Date">{{ $line['date'] }}</td>
+                                <td class="rs-stack-title" data-label="Memo">{{ $line['memo'] ?? '-' }}</td>
+                                <td data-label="Source">{{ trim(($line['source_type'] ?? '') . ' ' . ($line['source_id'] ?? '')) }}</td>
+                                <td data-label="Account">{{ $line['account_code'] }} - {{ $line['account_name'] }}</td>
+                                <td class="text-end" data-label="Debit">{{ number_format($line['debit'], 2) }}</td>
+                                <td class="text-end" data-label="Credit">{{ number_format($line['credit'], 2) }}</td>
+                                <td class="text-end" data-label="Delta">{{ number_format($line['delta'], 2) }}</td>
+                                <td class="text-end" data-label="Running">{{ number_format($line['running'], 2) }}</td>
                             </tr>
                         @endforeach
                     </tbody>

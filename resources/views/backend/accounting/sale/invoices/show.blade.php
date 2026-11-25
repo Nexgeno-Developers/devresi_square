@@ -42,6 +42,13 @@
     .btn-pdf { display: inline-block; padding: 8px 16px; border: none; background: #111; color: #fff; border-radius: 4px; cursor: pointer; font-size: 13px; text-decoration: none; }
     .btn-pdf:hover { background: #333; color: #fff; }
     .notes-box { background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px 12px; }
+    @media (max-width: 575px) {
+        .invoice-hero { padding: 16px; }
+        .invoice-grid { grid-template-columns: 1fr; }
+        .invoice-meta, .text-right { text-align: left; }
+        .totals { width: 100%; margin-left: 0; }
+        .invoice-shell div[style*="padding: 18px 24px"] { padding: 12px !important; }
+    }
 </style>
 @endpush
 
@@ -235,7 +242,7 @@
         </div>
 
         <div style="padding: 18px 24px;">
-            <table class="table-items">
+            <table class="table-items rs-stack-table">
                 <thead>
                     <tr>
                         <th style="width:40px;">#</th>
@@ -255,14 +262,14 @@
                             $lineTotal = $lineBase + ($row->tax_amount ?? 0);
                         @endphp
                         <tr>
-                            <td>{{ $idx + 1 }}</td>
-                            <td>{{ $row->item_name }}</td>
-                            <td>{{ $row->description }}</td>
-                            <td class="text-right">{{ number_format($row->quantity, 2) }}</td>
-                            <td class="text-right">{{ number_format($row->rate, 2) }}</td>
-                            <td class="text-right">{{ number_format($row->discount ?? 0, 2) }}</td>
-                            <td class="text-right">{{ number_format($row->tax_amount ?? 0, 2) }}</td>
-                            <td class="text-right">{{ number_format($lineTotal, 2) }}</td>
+                            <td data-label="#">{{ $idx + 1 }}</td>
+                            <td class="rs-stack-title" data-label="Item">{{ $row->item_name }}</td>
+                            <td data-label="Description">{{ $row->description }}</td>
+                            <td class="text-right" data-label="Qty">{{ number_format($row->quantity, 2) }}</td>
+                            <td class="text-right" data-label="Rate">{{ number_format($row->rate, 2) }}</td>
+                            <td class="text-right" data-label="Discount">{{ number_format($row->discount ?? 0, 2) }}</td>
+                            <td class="text-right" data-label="Tax">{{ number_format($row->tax_amount ?? 0, 2) }}</td>
+                            <td class="text-right" data-label="Total">{{ number_format($lineTotal, 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -309,7 +316,7 @@
             </div>
 
             <div class="mt-5">
-                <div class="d-flex justify-content-between">
+                <div class="d-flex justify-content-between flex-wrap gap-2">
                     <h5 class="m-3">Payments</h5>
                     @if(($balance ?? 0) > 0)
                         <button type="button" class="btn-stripe" data-bs-toggle="modal" data-bs-target="#stripePayModal">
@@ -322,7 +329,7 @@
                         @endif --}}
                     @endif
                 </div>
-                <table class="table-items">
+                <table class="table-items rs-stack-table">
                     <thead>
                         <tr>
                             <th style="width:40px;">#</th>
@@ -337,13 +344,13 @@
                     <tbody>
                         @forelse($invoice->payments as $pidx => $pay)
                             <tr>
-                                <td>{{ $pidx + 1 }}</td>
-                                <td>{{ $pay->payment_date }}</td>
-                                <td>{{ optional($pay->paymentMethod)->name ?? '-' }}</td>
-                                <td>{{ optional($pay->bankAccount)->account_name ?? '-' }}</td>
-                                <td class="text-right">{{ number_format($pay->amount, 2) }}</td>
-                                <td>{{ $pay->notes }}</td>
-                                <td class="text-center">
+                                <td data-label="#">{{ $pidx + 1 }}</td>
+                                <td class="rs-stack-title" data-label="Date">{{ $pay->payment_date }}</td>
+                                <td data-label="Method">{{ optional($pay->paymentMethod)->name ?? '-' }}</td>
+                                <td data-label="Bank">{{ optional($pay->bankAccount)->account_name ?? '-' }}</td>
+                                <td class="text-right" data-label="Amount">{{ number_format($pay->amount, 2) }}</td>
+                                <td data-label="Notes">{{ $pay->notes }}</td>
+                                <td class="rs-stack-actions text-center">
                                     @if($pay->is_voided)
                                         <span class="badge bg-secondary">Voided</span>
                                     @elseif($pay->source_receipt_id)
@@ -414,7 +421,7 @@
                             <p class="text-muted mb-0">No available credits.</p>
                         @else
                             <div class="table-responsive">
-                                <table class="table table-bordered align-middle">
+                                <table class="rs-stack-table table table-bordered align-middle">
                                     <thead class="table-light">
                                         <tr>
                                             <th>Credit Note #</th>
@@ -427,11 +434,11 @@
                                     <tbody>
                                         @foreach($credits as $idx => $credit)
                                             <tr>
-                                                <td>{{ $credit->receipt_no }}</td>
-                                                <td>{{ \Carbon\Carbon::parse($credit->receipt_date)->format('Y-m-d') }}</td>
-                                                <td class="text-end">{{ number_format($credit->amount, 2) }}</td>
-                                                <td class="text-end">{{ number_format($credit->remaining_amount, 2) }}</td>
-                                                <td style="max-width: 160px;">
+                                                <td class="rs-stack-title" data-label="Credit Note #">{{ $credit->receipt_no }}</td>
+                                                <td data-label="Date">{{ \Carbon\Carbon::parse($credit->receipt_date)->format('Y-m-d') }}</td>
+                                                <td class="text-end" data-label="Credit Amount">{{ number_format($credit->amount, 2) }}</td>
+                                                <td class="text-end" data-label="Credits Available">{{ number_format($credit->remaining_amount, 2) }}</td>
+                                                <td data-label="Amount to Credit" style="max-width: 160px;">
                                                     <input type="hidden" name="credits[{{ $idx }}][receipt_id]" value="{{ $credit->id }}">
                                                     <input
                                                         type="number"

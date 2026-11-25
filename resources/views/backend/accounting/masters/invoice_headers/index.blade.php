@@ -26,16 +26,16 @@
             <tbody>
                 @forelse($records as $record)
                     <tr>
-                        <td data-label="#" data-label="#">{{ (($records->currentPage() - 1) * $records->perPage()) + $loop->iteration }}</td>
-                        <td class="rs-stack-title rs-stack-title" data-label="Header Name" data-label="Header Name">{{ $record->header_name }}</td>
-                        <td data-label="Unique Reference Number" data-label="Unique Reference Number">{{ $record->unique_reference_number }}</td>
-                        <td data-label="Status" data-label="Status">
+                        <td data-label="#">{{ (($records->currentPage() - 1) * $records->perPage()) + $loop->iteration }}</td>
+                        <td class="rs-stack-title" data-label="Header Name">{{ $record->header_name }}</td>
+                        <td data-label="Unique Reference Number">{{ $record->unique_reference_number }}</td>
+                        <td data-label="Status">
                             <span class="badge bg-{{ $record->status === 'active' ? 'success' : 'secondary' }}">
                                 {{ ucfirst($record->status) }}
                             </span>
                         </td>
-                        <td data-label="Header Description" data-label="Header Description">{{ $record->header_description ?: '-' }}</td>
-                        <td class="rs-stack-actions rs-stack-actions d-flex gap-1">
+                        <td data-label="Header Description">{{ $record->header_description ?: '-' }}</td>
+                        <td class="rs-stack-actions d-flex gap-1 flex-wrap">
                             <a href="{{ route($routeName . '.edit', $record->id) }}" class="btn btn-sm btn-warning">Edit</a>
                             <form action="{{ route($routeName . '.destroy', $record->id) }}" method="POST">
                                 @csrf

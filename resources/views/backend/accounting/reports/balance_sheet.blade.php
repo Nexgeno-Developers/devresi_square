@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h2 class="mb-0">{{ $title }}</h2>
         <a class="btn btn-outline-secondary" href="{{ request()->fullUrlWithQuery(['format' => 'csv']) }}">Export CSV</a>
     </div>
@@ -42,23 +42,23 @@
             <div class="card mb-3">
                 <div class="card-header"><strong>Assets</strong></div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
+                    <table class="rs-stack-table table table-sm mb-0">
                         <thead class="table-light">
                             <tr><th>Code</th><th>Account</th><th class="text-end">Balance</th></tr>
                         </thead>
                         <tbody>
                             @forelse($report['asset_rows'] as $row)
                             <tr>
-                                <td>{{ $row['code'] }}</td>
-                                <td>{{ $row['name'] }}</td>
-                                <td class="text-end">{{ number_format($row['balance'], 2) }}</td>
+                                <td data-label="Code">{{ $row['code'] }}</td>
+                                <td class="rs-stack-title" data-label="Account">{{ $row['name'] }}</td>
+                                <td class="text-end" data-label="Balance">{{ number_format($row['balance'], 2) }}</td>
                             </tr>
                             @empty
                             <tr><td colspan="3" class="text-center text-muted">No assets</td></tr>
                             @endforelse
                         </tbody>
                         <tfoot class="table-light fw-bold">
-                            <tr><td colspan="2">Total Assets</td><td class="text-end">{{ number_format($report['total_assets'], 2) }}</td></tr>
+                            <tr><td colspan="2">Total Assets</td><td class="text-end" data-label="Balance">{{ number_format($report['total_assets'], 2) }}</td></tr>
                         </tfoot>
                     </table>
                 </div>
@@ -69,23 +69,23 @@
             <div class="card mb-3">
                 <div class="card-header"><strong>Liabilities</strong></div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
+                    <table class="rs-stack-table table table-sm mb-0">
                         <thead class="table-light">
                             <tr><th>Code</th><th>Account</th><th class="text-end">Balance</th></tr>
                         </thead>
                         <tbody>
                             @forelse($report['liability_rows'] as $row)
                             <tr>
-                                <td>{{ $row['code'] }}</td>
-                                <td>{{ $row['name'] }}</td>
-                                <td class="text-end">{{ number_format($row['balance'], 2) }}</td>
+                                <td data-label="Code">{{ $row['code'] }}</td>
+                                <td class="rs-stack-title" data-label="Account">{{ $row['name'] }}</td>
+                                <td class="text-end" data-label="Balance">{{ number_format($row['balance'], 2) }}</td>
                             </tr>
                             @empty
                             <tr><td colspan="3" class="text-center text-muted">No liabilities</td></tr>
                             @endforelse
                         </tbody>
                         <tfoot class="table-light fw-bold">
-                            <tr><td colspan="2">Total Liabilities</td><td class="text-end">{{ number_format($report['total_liabilities'], 2) }}</td></tr>
+                            <tr><td colspan="2">Total Liabilities</td><td class="text-end" data-label="Balance">{{ number_format($report['total_liabilities'], 2) }}</td></tr>
                         </tfoot>
                     </table>
                 </div>
@@ -94,27 +94,27 @@
             <div class="card mb-3">
                 <div class="card-header"><strong>Equity</strong></div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
+                    <table class="rs-stack-table table table-sm mb-0">
                         <thead class="table-light">
                             <tr><th>Code</th><th>Account</th><th class="text-end">Balance</th></tr>
                         </thead>
                         <tbody>
                             @forelse($report['equity_rows'] as $row)
                             <tr>
-                                <td>{{ $row['code'] }}</td>
-                                <td>{{ $row['name'] }}</td>
-                                <td class="text-end">{{ number_format($row['balance'], 2) }}</td>
+                                <td data-label="Code">{{ $row['code'] }}</td>
+                                <td class="rs-stack-title" data-label="Account">{{ $row['name'] }}</td>
+                                <td class="text-end" data-label="Balance">{{ number_format($row['balance'], 2) }}</td>
                             </tr>
                             @empty
                             @endforelse
                             <tr class="table-info">
-                                <td></td>
-                                <td>Retained Earnings (Net Income)</td>
-                                <td class="text-end">{{ number_format($report['retained_earnings'], 2) }}</td>
+                                <td data-label="Code"></td>
+                                <td class="rs-stack-title" data-label="Account">Retained Earnings (Net Income)</td>
+                                <td class="text-end" data-label="Balance">{{ number_format($report['retained_earnings'], 2) }}</td>
                             </tr>
                         </tbody>
                         <tfoot class="table-light fw-bold">
-                            <tr><td colspan="2">Total Equity</td><td class="text-end">{{ number_format($report['total_equity'], 2) }}</td></tr>
+                            <tr><td colspan="2">Total Equity</td><td class="text-end" data-label="Balance">{{ number_format($report['total_equity'], 2) }}</td></tr>
                         </tfoot>
                     </table>
                 </div>

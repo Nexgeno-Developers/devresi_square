@@ -2,9 +2,9 @@
 
 @section('content')
 <div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h4 class="mb-0">Payment for Invoice {{ $receipt->receiptable_type === 'sale_invoice' && $receipt->receiptable ? ($receipt->receiptable->invoice_no ?? $receipt->receiptable_id) : $receipt->receiptable_id }}</h4>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
             <button onclick="window.print()" class="btn btn-outline-secondary">Print</button>
             <a href="{{ route($routeName . '.pdf', $receipt->id) }}" class="btn btn-outline-primary">Download PDF</a>
             <a href="{{ route($routeName . '.edit', $receipt->id) }}" class="btn btn-warning">Edit</a>
@@ -45,7 +45,7 @@
         <div class="card-body">
             <h6 class="mb-3">Payment For</h6>
             <div class="table-responsive">
-                <table class="table table-sm table-bordered">
+                    <table class="rs-stack-table table table-sm table-bordered">
                     <thead class="table-light">
                         <tr>
                             <th>Invoice Number</th>
@@ -57,10 +57,10 @@
                     <tbody>
                         @php $inv = ($receipt->receiptable_type === 'sale_invoice') ? $receipt->receiptable : null; @endphp
                         <tr>
-                            <td>{{ $inv->invoice_no ?? '-' }}</td>
-                            <td>{{ $inv->invoice_date ?? '-' }}</td>
-                            <td class="text-end">{{ isset($inv->total_amount) ? number_format($inv->total_amount, 2) : '-' }}</td>
-                            <td class="text-end">{{ number_format($receipt->amount, 2) }}</td>
+                            <td class="rs-stack-title" data-label="Invoice Number">{{ $inv->invoice_no ?? '-' }}</td>
+                            <td data-label="Invoice Date">{{ $inv->invoice_date ?? '-' }}</td>
+                            <td class="text-end" data-label="Invoice Amount">{{ isset($inv->total_amount) ? number_format($inv->total_amount, 2) : '-' }}</td>
+                            <td class="text-end" data-label="Payment Amount">{{ number_format($receipt->amount, 2) }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -73,7 +73,7 @@
             <div class="card-body">
                 <h6 class="card-title">Journal (ID: {{ $receipt->gl_journal_id }})</h6>
                 <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
+                    <table class="rs-stack-table table table-sm table-bordered">
                         <thead class="table-light">
                             <tr>
                                 <th>Account</th>
@@ -84,9 +84,9 @@
                         <tbody>
                             @foreach($receipt->journal->lines as $line)
                                 <tr>
-                                    <td>{{ $line->account->name ?? $line->gl_account_id }}</td>
-                                    <td class="text-end">{{ number_format($line->debit, 2) }}</td>
-                                    <td class="text-end">{{ number_format($line->credit, 2) }}</td>
+                                    <td class="rs-stack-title" data-label="Account">{{ $line->account->name ?? $line->gl_account_id }}</td>
+                                    <td class="text-end" data-label="Debit">{{ number_format($line->debit, 2) }}</td>
+                                    <td class="text-end" data-label="Credit">{{ number_format($line->credit, 2) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

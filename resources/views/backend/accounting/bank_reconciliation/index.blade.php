@@ -89,7 +89,7 @@
         <div class="card-header"><strong>GL Transactions for this Bank Account</strong></div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-bordered table-sm mb-0">
+                <table class="rs-stack-table table table-bordered table-sm mb-0">
                     <thead class="table-light">
                         <tr>
                             <th>Date</th>
@@ -102,11 +102,11 @@
                     <tbody>
                         @foreach($glLines as $line)
                         <tr>
-                            <td>{{ $line->date }}</td>
-                            <td>{{ $line->memo ?? '-' }}</td>
-                            <td>{{ $line->source_type ?? '-' }}</td>
-                            <td class="text-end">{{ number_format((float)$line->debit, 2) }}</td>
-                            <td class="text-end">{{ number_format((float)$line->credit, 2) }}</td>
+                            <td data-label="Date">{{ $line->date }}</td>
+                            <td class="rs-stack-title" data-label="Memo">{{ $line->memo ?? '-' }}</td>
+                            <td data-label="Source">{{ $line->source_type ?? '-' }}</td>
+                            <td class="text-end" data-label="Debit">{{ number_format((float)$line->debit, 2) }}</td>
+                            <td class="text-end" data-label="Credit">{{ number_format((float)$line->credit, 2) }}</td>
                         </tr>
                         @endforeach
                     </tbody>

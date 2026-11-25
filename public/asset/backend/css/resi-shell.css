@@ -1257,6 +1257,13 @@ body #wrapper .nav-pills.overflow-auto .nav-link:not(.active):hover {
     html body .rs-stack-table td.rs-stack-actions form { display: block; margin: 0; }
     html body .rs-stack-table td.rs-stack-actions .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
     html body .table-responsive:has(> .rs-stack-table) { overflow: visible; }
+    html body .rs-stack-table tfoot,
+    html body .rs-stack-table tfoot tr,
+    html body .rs-stack-table th,
+    html body .rs-stack-table tfoot td { display: block; width: 100%; text-align: left !important; }
+    html body .rs-stack-table tfoot .input-group { flex-wrap: wrap; }
+    html body .rs-stack-table tfoot .input-group > .form-select,
+    html body .rs-stack-table tfoot .input-group > .form-control { max-width: none !important; width: 100%; }
 }
 
 /* Filter rows (search box + selects + button): one control per line on phones. */
@@ -1285,4 +1292,43 @@ body #wrapper .nav-pills.overflow-auto .nav-link:not(.active):hover {
 html body #wrapper .nav-pills.overflow-auto .nav-link.active {
     color: #fff !important;
     background-color: #0f173a;
+}
+
+/* Admin forms and detail pages: the title, the buttons and a label-beside-value row stay on screen. */
+@media (max-width: 575px) {
+    html body #wrapper .container-fluid > .d-flex.justify-content-between,
+    html body #wrapper .card-body > .d-flex.justify-content-between,
+    html body #wrapper .card-header.d-flex.justify-content-between,
+    html body #wrapper .alert.d-flex.justify-content-between {
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: flex-start !important;
+    }
+    html body #wrapper .container-fluid > .d-flex.justify-content-between > .d-flex,
+    html body #wrapper .card-body > .d-flex.justify-content-between > .d-flex {
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 8px;
+    }
+    html body #wrapper form .text-right .btn,
+    html body #wrapper form .text-end .btn,
+    html body #wrapper .card-footer.text-right .btn,
+    html body #wrapper .card-footer.text-end .btn {
+        float: none !important;
+        width: 100%;
+    }
+    html body #wrapper .form-group.row { row-gap: 4px; }
+    html body #wrapper .card-body > form.p-4 { padding: 0 !important; }
+    html body #wrapper .smtp-settings .row > .col,
+    html body #wrapper .smtp-settings .row > .col-auto { flex: 1 1 100%; width: 100%; }
+    html body #wrapper .smtp-settings .row > .col-auto .btn { width: 100%; margin-top: 8px; }
+    html body #wrapper .input-group[data-toggle="aizuploader"] { flex-wrap: wrap; }
+    html body #wrapper .input-group[data-toggle="aizuploader"] > .form-control,
+    html body #wrapper .input-group[data-toggle="aizuploader"] > .input-group-prepend { flex: 1 1 100%; width: 100%; }
+    html body .rs-detail-table,
+    html body .rs-detail-table tbody,
+    html body .rs-detail-table tr,
+    html body .rs-detail-table th,
+    html body .rs-detail-table td { display: block; width: 100% !important; }
+    html body .rs-detail-table th { padding-bottom: 0 !important; border: 0; }
 }

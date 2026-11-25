@@ -130,7 +130,7 @@
     <div class="mb-4">
         <h5>Limits summary</h5>
         <div class="table-responsive">
-            <table class="table table-bordered table-striped align-middle">
+            <table class="rs-stack-table table table-bordered table-striped align-middle">
                 <thead>
                     <tr>
                         <th>Limit</th>

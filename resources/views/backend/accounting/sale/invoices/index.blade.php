@@ -2,9 +2,9 @@
 
 @section('content')
 <div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h2 class="mb-0">{{ $title }}</h2>
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
             <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#advanceModal">Record Advance</button>
             <a href="{{ $createUrl ?? route($routeName . '.create') }}" class="btn btn-primary">Create</a>
         </div>
@@ -15,7 +15,7 @@
     @endif
 
     <div class="table-responsive">
-        <table class="table table-bordered table-striped">
+        <table class="rs-stack-table table table-bordered table-striped">
             <thead>
                 <tr>
                     @foreach($columns as $column)
@@ -26,16 +26,24 @@
             </thead>
             <tbody>
                 @forelse($records as $record)
+                    @php $stackTitlePlaced = false; @endphp
                     <tr>
                         @foreach($columns as $column)
-                            @if(($column['key'] ?? '') === 'id' && ($column['label'] ?? '') === '#')
-                                <td>{{ (($records->currentPage() - 1) * $records->perPage()) + $loop->parent->iteration }}</td>
+                            @php
+                                $isRowNumber = ($column['key'] ?? '') === 'id' && ($column['label'] ?? '') === '#';
+                                $stackTitle = ! $isRowNumber && ! $stackTitlePlaced;
+                                if ($stackTitle) {
+                                    $stackTitlePlaced = true;
+                                }
+                            @endphp
+                            @if($isRowNumber)
+                                <td data-label="#">{{ (($records->currentPage() - 1) * $records->perPage()) + $loop->parent->iteration }}</td>
                             @else
                                 @php
                                     $value = data_get($record, $column['key']);
                                     $type = $column['type'] ?? 'text';
                                 @endphp
-                                <td>
+                                <td @class(['rs-stack-title' => $stackTitle]) data-label="{{ $column['label'] }}">
                                     @if($type === 'boolean')
                                         <span class="badge bg-{{ $value ? 'success' : 'secondary' }}">{{ $value ? 'Yes' : 'No' }}</span>
                                     @elseif($type === 'money')
@@ -48,7 +56,7 @@
                                 </td>
                             @endif
                         @endforeach
-                        <td class="d-flex gap-1">
+                        <td class="rs-stack-actions d-flex gap-1 flex-wrap">
                             <a href="{{ route($routeName . '.edit', $record->id) }}" class="btn btn-sm btn-warning">Edit</a>
                             @if(($record->balance_amount ?? 0) > 0)
                                 <button type="button"

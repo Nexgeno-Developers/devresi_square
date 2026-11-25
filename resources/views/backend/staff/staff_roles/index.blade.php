@@ -31,7 +31,7 @@
             <li><strong>Staff:</strong> Permissions configured by a workspace administrator.</li>
         </ul>
         <p class="small text-muted">Permission levels: View, Create, Edit, Approve, Delete.</p>
-        <table class="table table-bordered table-striped align-middle">
+        <table class="rs-stack-table table table-bordered table-striped align-middle">
             <thead class="table-light">
                 <tr>
                     <th width="10%">#</th>
@@ -42,9 +42,9 @@
             <tbody>
                 @foreach($roles as $key => $role)
                 <tr>
-                    <td>{{ ($key + 1) + ($roles->currentPage() - 1) * $roles->perPage() }}</td>
-                    <td>{{ $role->name }}</td>
-                    <td class="d-flex text-end">
+                    <td data-label="#">{{ ($key + 1) + ($roles->currentPage() - 1) * $roles->perPage() }}</td>
+                    <td class="rs-stack-title" data-label="Name">{{ $role->name }}</td>
+                    <td class="rs-stack-actions d-flex text-end">
                         @can('edit staff role')
                         <a href="{{ route('roles.edit', ['id' => $role->id, 'lang' => env('DEFAULT_LANGUAGE')]) }}" class="btn btn-outline-primary btn-sm rounded-circle" title="Edit">
                             <i class="fas fa-edit"></i>

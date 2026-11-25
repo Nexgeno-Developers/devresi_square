@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h2 class="mb-0">{{ $title }}</h2>
         <a class="btn btn-outline-secondary" href="{{ request()->fullUrlWithQuery(['format' => 'csv']) }}">Export CSV</a>
     </div>
@@ -59,23 +59,23 @@
             <div class="card mb-3">
                 <div class="card-header bg-success text-white"><strong>Income</strong></div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
+                    <table class="rs-stack-table table table-sm mb-0">
                         <thead class="table-light">
                             <tr><th>Code</th><th>Account</th><th class="text-end">Amount</th></tr>
                         </thead>
                         <tbody>
                             @forelse($report['income_rows'] as $row)
                             <tr>
-                                <td>{{ $row['code'] }}</td>
-                                <td>{{ $row['name'] }}</td>
-                                <td class="text-end">{{ number_format($row['amount'], 2) }}</td>
+                                <td data-label="Code">{{ $row['code'] }}</td>
+                                <td class="rs-stack-title" data-label="Account">{{ $row['name'] }}</td>
+                                <td class="text-end" data-label="Amount">{{ number_format($row['amount'], 2) }}</td>
                             </tr>
                             @empty
                             <tr><td colspan="3" class="text-center text-muted">No income recorded</td></tr>
                             @endforelse
                         </tbody>
                         <tfoot class="table-light fw-bold">
-                            <tr><td colspan="2">Total Income</td><td class="text-end">{{ number_format($report['total_income'], 2) }}</td></tr>
+                            <tr><td colspan="2">Total Income</td><td class="text-end" data-label="Amount">{{ number_format($report['total_income'], 2) }}</td></tr>
                         </tfoot>
                     </table>
                 </div>
@@ -85,23 +85,23 @@
             <div class="card mb-3">
                 <div class="card-header bg-danger text-white"><strong>Expenses</strong></div>
                 <div class="card-body p-0">
-                    <table class="table table-sm mb-0">
+                    <table class="rs-stack-table table table-sm mb-0">
                         <thead class="table-light">
                             <tr><th>Code</th><th>Account</th><th class="text-end">Amount</th></tr>
                         </thead>
                         <tbody>
                             @forelse($report['expense_rows'] as $row)
                             <tr>
-                                <td>{{ $row['code'] }}</td>
-                                <td>{{ $row['name'] }}</td>
-                                <td class="text-end">{{ number_format($row['amount'], 2) }}</td>
+                                <td data-label="Code">{{ $row['code'] }}</td>
+                                <td class="rs-stack-title" data-label="Account">{{ $row['name'] }}</td>
+                                <td class="text-end" data-label="Amount">{{ number_format($row['amount'], 2) }}</td>
                             </tr>
                             @empty
                             <tr><td colspan="3" class="text-center text-muted">No expenses recorded</td></tr>
                             @endforelse
                         </tbody>
                         <tfoot class="table-light fw-bold">
-                            <tr><td colspan="2">Total Expenses</td><td class="text-end">{{ number_format($report['total_expense'], 2) }}</td></tr>
+                            <tr><td colspan="2">Total Expenses</td><td class="text-end" data-label="Amount">{{ number_format($report['total_expense'], 2) }}</td></tr>
                         </tfoot>
                     </table>
                 </div>

@@ -504,12 +504,12 @@
 
 <div class="card shadow-sm mb-3">
     <div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
             <h5 class="mb-0 d-flex align-items-center gap-2"><span class="bi bi-list"></span> Invoice Items</h5>
             <button type="button" class="btn btn-sm btn-success" id="add-item-row">+ Add Item</button>
         </div>
         <div class="table-responsive">
-            <table class="table table-bordered align-middle mb-0" id="items-table">
+            <table class="rs-stack-table table table-bordered align-middle mb-0" id="items-table">
                 <thead class="table-light text-center">
                     <tr>
                         <th style="width:220px;">Item Name</th>
@@ -526,14 +526,14 @@
                 <tbody>
                     @foreach($existingItems as $index => $row)
                     <tr>
-                        <td>
+                        <td class="rs-stack-title" data-label="Item Name">
                             <input type="text" name="items[{{ $index }}][item_name]" class="form-control item-name" value="{{ $row['item_name'] }}" required>
                             <input type="hidden" name="items[{{ $index }}][discount]" class="discount" value="{{ $row['discount'] }}">
                         </td>
-                        <td><input type="text" name="items[{{ $index }}][description]" class="form-control" value="{{ $row['description'] }}"></td>
-                        <td><input type="number" step="0.01" min="0" name="items[{{ $index }}][rate]" class="form-control rate text-end" value="{{ $row['rate'] }}"></td>
-                        <td><input type="number" step="0.01" min="0" name="items[{{ $index }}][quantity]" class="form-control qty text-end" value="{{ $row['quantity'] }}"></td>
-                        <td>
+                        <td data-label="Description"><input type="text" name="items[{{ $index }}][description]" class="form-control" value="{{ $row['description'] }}"></td>
+                        <td data-label="Unit Price"><input type="number" step="0.01" min="0" name="items[{{ $index }}][rate]" class="form-control rate text-end" value="{{ $row['rate'] }}"></td>
+                        <td data-label="Quantity"><input type="number" step="0.01" min="0" name="items[{{ $index }}][quantity]" class="form-control qty text-end" value="{{ $row['quantity'] }}"></td>
+                        <td data-label="Tax">
                             <select name="items[{{ $index }}][tax_id]" class="form-select tax-id">
                                 <option value="">None</option>
                                 @foreach($taxes as $id => $name)
@@ -541,10 +541,10 @@
                                 @endforeach
                             </select>
                         </td>
-                        <td><input type="number" step="0.01" min="0" name="items[{{ $index }}][tax_rate]" class="form-control tax-rate text-end" value="{{ $row['tax_rate'] }}"></td>
-                        <td><input type="number" step="0.01" min="0" name="items[{{ $index }}][tax_amount]" class="form-control tax-amount text-end" value="{{ $row['tax_amount'] }}" readonly></td>
-                        <td><input type="number" step="0.01" min="0" name="items[{{ $index }}][line_total]" class="form-control line-total text-end" value="{{ $row['line_total'] }}" readonly></td>
-                        <td class="text-center">
+                        <td data-label="Tax Rate (%)"><input type="number" step="0.01" min="0" name="items[{{ $index }}][tax_rate]" class="form-control tax-rate text-end" value="{{ $row['tax_rate'] }}"></td>
+                        <td data-label="Tax Amount"><input type="number" step="0.01" min="0" name="items[{{ $index }}][tax_amount]" class="form-control tax-amount text-end" value="{{ $row['tax_amount'] }}" readonly></td>
+                        <td data-label="Total (Incl. Tax)"><input type="number" step="0.01" min="0" name="items[{{ $index }}][line_total]" class="form-control line-total text-end" value="{{ $row['line_total'] }}" readonly></td>
+                        <td class="rs-stack-actions text-center">
                             <button type="button" class="btn btn-sm btn-outline-danger remove-row">&times;</button>
                         </td>
                     </tr>
@@ -1672,14 +1672,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const index = tableBody.rows.length;
         const tpl = `
         <tr>
-            <td>
+            <td class="rs-stack-title" data-label="Item Name">
                 <input type="text" name="items[${index}][item_name]" class="form-control item-name" required>
                 <input type="hidden" name="items[${index}][discount]" class="discount" value="0">
             </td>
-            <td><input type="text" name="items[${index}][description]" class="form-control"></td>
-            <td><input type="number" step="0.01" min="0" name="items[${index}][rate]" class="form-control rate text-end" value="0"></td>
-            <td><input type="number" step="0.01" min="0" name="items[${index}][quantity]" class="form-control qty text-end" value="1"></td>
-            <td>
+            <td data-label="Description"><input type="text" name="items[${index}][description]" class="form-control"></td>
+            <td data-label="Unit Price"><input type="number" step="0.01" min="0" name="items[${index}][rate]" class="form-control rate text-end" value="0"></td>
+            <td data-label="Quantity"><input type="number" step="0.01" min="0" name="items[${index}][quantity]" class="form-control qty text-end" value="1"></td>
+            <td data-label="Tax">
                 <select name="items[${index}][tax_id]" class="form-select tax-id">
                     <option value="">None</option>
                     @foreach($taxes as $id => $name)
@@ -1687,10 +1687,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     @endforeach
                 </select>
             </td>
-            <td><input type="number" step="0.01" min="0" name="items[${index}][tax_rate]" class="form-control tax-rate text-end" value="0"></td>
-            <td><input type="number" step="0.01" min="0" name="items[${index}][tax_amount]" class="form-control tax-amount text-end" value="0" readonly></td>
-            <td><input type="number" step="0.01" min="0" name="items[${index}][line_total]" class="form-control line-total text-end" value="0" readonly></td>
-            <td class="text-center">
+            <td data-label="Tax Rate (%)"><input type="number" step="0.01" min="0" name="items[${index}][tax_rate]" class="form-control tax-rate text-end" value="0"></td>
+            <td data-label="Tax Amount"><input type="number" step="0.01" min="0" name="items[${index}][tax_amount]" class="form-control tax-amount text-end" value="0" readonly></td>
+            <td data-label="Total (Incl. Tax)"><input type="number" step="0.01" min="0" name="items[${index}][line_total]" class="form-control line-total text-end" value="0" readonly></td>
+            <td class="rs-stack-actions text-center">
                 <button type="button" class="btn btn-sm btn-outline-danger remove-row">&times;</button>
             </td>
         </tr>`;

@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h2 class="mb-0">{{ $title }}</h2>
         <a class="btn btn-outline-secondary" href="{{ request()->fullUrlWithQuery(['format' => 'csv']) }}">Export CSV</a>
     </div>
@@ -26,7 +26,7 @@
             $bucketColors = ['current' => 'success', '31_60' => 'info', '61_90' => 'warning', '91_120' => 'danger', 'over_120' => 'dark'];
         @endphp
         @foreach($report['buckets'] as $key => $amount)
-        <div class="col">
+        <div class="col-6 col-md-4 col-xl-2">
             <div class="card text-center">
                 <div class="card-body">
                     <h6 class="text-muted">{{ $bucketLabels[$key] }}</h6>
@@ -35,7 +35,7 @@
             </div>
         </div>
         @endforeach
-        <div class="col">
+        <div class="col-6 col-md-4 col-xl-2">
             <div class="card text-center border-primary">
                 <div class="card-body">
                     <h6 class="text-muted">Total Outstanding</h6>
@@ -48,7 +48,7 @@
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered table-sm">
+                <table class="rs-stack-table table table-bordered table-sm">
                     <thead class="table-light">
                         <tr>
                             <th>Invoice #</th>
@@ -64,14 +64,14 @@
                     <tbody>
                         @forelse($report['rows'] as $row)
                         <tr>
-                            <td>{{ $row['invoice_no'] }}</td>
-                            <td>{{ $row['customer'] }}</td>
-                            <td>{{ $row['invoice_date'] }}</td>
-                            <td>{{ $row['due_date'] }}</td>
-                            <td class="text-end">{{ number_format($row['total'], 2) }}</td>
-                            <td class="text-end">{{ number_format($row['balance'], 2) }}</td>
-                            <td class="text-end">{{ $row['days_overdue'] }}</td>
-                            <td><span class="badge bg-{{ $bucketColors[$row['bucket']] }}">{{ $bucketLabels[$row['bucket']] }}</span></td>
+                            <td class="rs-stack-title" data-label="Invoice #">{{ $row['invoice_no'] }}</td>
+                            <td data-label="Customer">{{ $row['customer'] }}</td>
+                            <td data-label="Invoice Date">{{ $row['invoice_date'] }}</td>
+                            <td data-label="Due Date">{{ $row['due_date'] }}</td>
+                            <td class="text-end" data-label="Total">{{ number_format($row['total'], 2) }}</td>
+                            <td class="text-end" data-label="Balance">{{ number_format($row['balance'], 2) }}</td>
+                            <td class="text-end" data-label="Days Overdue">{{ $row['days_overdue'] }}</td>
+                            <td data-label="Bucket"><span class="badge bg-{{ $bucketColors[$row['bucket']] }}">{{ $bucketLabels[$row['bucket']] }}</span></td>
                         </tr>
                         @empty
                         <tr><td colspan="8" class="text-center text-muted">No outstanding receivables</td></tr>

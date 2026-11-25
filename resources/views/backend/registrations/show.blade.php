@@ -40,7 +40,7 @@
                 </span>
             </div>
             <div class="card-body p-0">
-                <table class="table table-sm table-borderless mb-0" style="word-break: break-word;">
+                <table class="rs-detail-table table table-sm table-borderless mb-0" style="word-break: break-word;">
                     <tr>
                         <th class="text-muted ps-3" width="42%">Name</th>
                         <td>{{ $registration->full_name }}</td>
@@ -122,7 +122,7 @@
                     $provisionedAccount = $registration->account;
                     $provisionedSubscription = $provisionedAccount?->currentSubscription;
                 @endphp
-                <table class="table table-sm table-borderless mb-0">
+                <table class="rs-detail-table table table-sm table-borderless mb-0">
                     @if($registration->plan)
                         <tr>
                             <th class="text-muted ps-3" width="42%">Plan</th>

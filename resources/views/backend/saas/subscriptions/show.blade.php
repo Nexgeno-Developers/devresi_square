@@ -83,7 +83,7 @@
     <div class="mb-4">
         <h5>Addons linked to subscription</h5>
         <div class="table-responsive">
-            <table class="table table-bordered table-striped align-middle">
+            <table class="rs-stack-table table table-bordered table-striped align-middle">
                 <thead>
                     <tr>
                         <th>Addon</th>
@@ -99,14 +99,14 @@
                 <tbody>
                     @forelse($subscription->accountSubscriptionAddons as $subscriptionAddon)
                         <tr>
-                            <td>{{ $subscriptionAddon->addon?->name ?: '-' }}</td>
-                            <td>{{ $subscriptionAddon->addon ? ucwords(str_replace('_', ' ', $subscriptionAddon->addon->addon_type)) : '-' }}</td>
-                            <td>{{ $subscriptionAddon->quantity }}</td>
-                            <td>{{ $subscriptionAddon->addon?->grant_quantity ?: '-' }}</td>
-                            <td>{{ ucwords($subscriptionAddon->billing_cycle) }}</td>
-                            <td>{{ ucwords($subscriptionAddon->status) }}</td>
-                            <td>{{ $subscriptionAddon->stripe_subscription_item_id ?: '-' }}</td>
-                            <td>{{ $subscriptionAddon->stripe_price_id ?: '-' }}</td>
+                            <td class="rs-stack-title" data-label="Addon">{{ $subscriptionAddon->addon?->name ?: '-' }}</td>
+                            <td data-label="Type">{{ $subscriptionAddon->addon ? ucwords(str_replace('_', ' ', $subscriptionAddon->addon->addon_type)) : '-' }}</td>
+                            <td data-label="Quantity">{{ $subscriptionAddon->quantity }}</td>
+                            <td data-label="Grant quantity">{{ $subscriptionAddon->addon?->grant_quantity ?: '-' }}</td>
+                            <td data-label="Billing cycle">{{ ucwords($subscriptionAddon->billing_cycle) }}</td>
+                            <td data-label="Status">{{ ucwords($subscriptionAddon->status) }}</td>
+                            <td data-label="Stripe item ID">{{ $subscriptionAddon->stripe_subscription_item_id ?: '-' }}</td>
+                            <td data-label="Stripe price ID">{{ $subscriptionAddon->stripe_price_id ?: '-' }}</td>
                         </tr>
                     @empty
                         <tr>

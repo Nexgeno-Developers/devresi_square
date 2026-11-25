@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="container-fluid py-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <h2 class="mb-0">{{ $title }}</h2>
         <a class="btn btn-outline-secondary" href="{{ request()->fullUrlWithQuery(['format' => 'csv']) }}">Export CSV</a>
     </div>
@@ -47,7 +47,7 @@
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered table-sm">
+                <table class="rs-stack-table table table-bordered table-sm">
                     <thead class="table-light">
                         <tr>
                             <th>Code</th>
@@ -60,19 +60,19 @@
                     <tbody>
                         @foreach($report['rows'] as $row)
                         <tr>
-                            <td>{{ $row['code'] }}</td>
-                            <td>{{ $row['name'] }}</td>
-                            <td><span class="badge bg-secondary">{{ ucfirst($row['type']) }}</span></td>
-                            <td class="text-end">{{ number_format($row['debit'], 2) }}</td>
-                            <td class="text-end">{{ number_format($row['credit'], 2) }}</td>
+                            <td data-label="Code">{{ $row['code'] }}</td>
+                            <td class="rs-stack-title" data-label="Account Name">{{ $row['name'] }}</td>
+                            <td data-label="Type"><span class="badge bg-secondary">{{ ucfirst($row['type']) }}</span></td>
+                            <td class="text-end" data-label="Debit">{{ number_format($row['debit'], 2) }}</td>
+                            <td class="text-end" data-label="Credit">{{ number_format($row['credit'], 2) }}</td>
                         </tr>
                         @endforeach
                     </tbody>
                     <tfoot class="table-light fw-bold">
                         <tr>
                             <td colspan="3">Total</td>
-                            <td class="text-end">{{ number_format($report['total_debit'], 2) }}</td>
-                            <td class="text-end">{{ number_format($report['total_credit'], 2) }}</td>
+                            <td class="text-end" data-label="Debit">{{ number_format($report['total_debit'], 2) }}</td>
+                            <td class="text-end" data-label="Credit">{{ number_format($report['total_credit'], 2) }}</td>
                         </tr>
                         @if(!$report['is_balanced'])
                         <tr class="table-danger">

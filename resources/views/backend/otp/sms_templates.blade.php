@@ -15,7 +15,7 @@
 
 <div class="card">
     <div class="card-body p-0">
-        <table class="table aiz-table mb-0">
+        <table class="rs-stack-table table aiz-table mb-0">
             <thead>
                 <tr>
                     <th>#</th>
@@ -29,16 +29,16 @@
             <tbody>
                 @foreach($templates as $i => $t)
                     <tr>
-                        <td>{{ $i + 1 }}</td>
-                        <td><code>{{ $t->identifier }}</code></td>
-                        <td class="small text-muted" style="max-width:300px;">{{ $t->sms_body }}</td>
-                        <td>{{ $t->template_id ?? '—' }}</td>
-                        <td>
+                        <td data-label="#">{{ $i + 1 }}</td>
+                        <td class="rs-stack-title" data-label="Identifier"><code>{{ $t->identifier }}</code></td>
+                        <td class="small text-muted" style="max-width:300px;" data-label="Template Body">{{ $t->sms_body }}</td>
+                        <td data-label="DLT Template ID">{{ $t->template_id ?? '—' }}</td>
+                        <td data-label="Status">
                             <span class="badge bg-{{ $t->status ? 'success' : 'secondary' }}">
                                 {{ $t->status ? 'Active' : 'Disabled' }}
                             </span>
                         </td>
-                        <td class="text-right">
+                        <td class="rs-stack-actions text-right">
                             <a href="{{ route('sms-templates.edit', $t->id) }}"
                                class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-edit"></i> Edit
