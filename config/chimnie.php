@@ -12,6 +12,6 @@ return [
     */
     'test_mode' => filter_var(env('CHIMNIE_TEST_MODE', false), FILTER_VALIDATE_BOOLEAN),
     'api_key' => env('CHIMNIE_API_KEY'),
-    'base_url' => env('CHIMNIE_BASE_URL', 'https://api.chimnie.com'),
+    'base_url' => env('CHIMNIE_BASE_URL', 'https://api.propertydatagateway.com'),
     'timeout' => (int) env('CHIMNIE_TIMEOUT', 12),
 ];

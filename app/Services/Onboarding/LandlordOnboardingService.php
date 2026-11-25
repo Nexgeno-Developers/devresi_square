@@ -261,6 +261,16 @@ class LandlordOnboardingService
     }
 
     /**
+     * Full data for the address the landlord picked, used to pre-fill the room counts.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function propertyDetails(string $chimnieId, string $postcode): ?array
+    {
+        return $this->chimnie->findById($chimnieId, $postcode);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function saveProperty(Account $account, User $user, string $chimnieId, string $postcode, array $rooms = []): array

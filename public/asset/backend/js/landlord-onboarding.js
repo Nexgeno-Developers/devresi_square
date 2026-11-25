@@ -205,17 +205,19 @@
             ['Tenure', property.tenure],
             ['Band', property.council_tax_band],
             ['Floor', property.floor],
-            ['m²', property.square_meter],
+            // "61.0000" from the database reads as 61.
+            ['m²', parseFloat(property.square_meter) || ''],
         ].filter((pair) => pair[1]);
         selectedFacts.innerHTML = facts.map(([label, value]) => (
-            `<div><dt>${label}</dt><dd>${value}</dd></div>`
+            `<div><dt>${label}</dt><dd>${escapeHtml(String(value))}</dd></div>`
         )).join('');
 
         const sources = (property.data_sources || []).filter((source) => source && source !== 'manual');
         if (sourcesEl) {
             if (sources.length) {
                 sourcesEl.hidden = false;
-                sourcesEl.textContent = 'Filled from ' + sources.join(' · ');
+                const named = sources.map((source) => (source === 'live' || source === 'chimnie' ? 'Chimnie' : source));
+                sourcesEl.textContent = 'Filled from ' + [...new Set(named)].join(' · ');
             } else {
                 sourcesEl.hidden = true;
             }
@@ -322,14 +324,7 @@
             resultsEl.innerHTML = rows.map((row) => `
                 <button type="button" class="lob-result" data-chimnie-id="${escapeHtml(row.id)}" data-label="${escapeHtml(row.label || '')}" data-bedroom="${escapeHtml(String(row.bedroom || ''))}" data-bathroom="${escapeHtml(String(row.bathroom || ''))}" data-reception="${escapeHtml(String(row.reception || ''))}">
                     <strong>${escapeHtml(row.label || '')}</strong>
-                    <div class="lob-result-meta">
-                        <span>${escapeHtml(row.specific_property_type || 'property')}</span>
-                        <span>${escapeHtml(String(row.bedroom || '?'))} bed</span>
-                        <span>${escapeHtml(String(row.bathroom || '?'))} bath</span>
-                        <span>${escapeHtml(String(row.reception || '?'))} reception</span>
-                        <span>EPC ${escapeHtml(row.epc_rating || '—')}</span>
-                        <span>${escapeHtml(row.tenure || '')}</span>
-                    </div>
+                    ${resultMeta(row)}
                 </button>
             `).join('');
             resultsEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -364,12 +359,71 @@
         if (address) {
             address.textContent = button.dataset.label || 'this property';
         }
-        roomsForm.querySelector('[name="bedroom"]').value = String(roomCount(button.dataset.bedroom));
-        roomsForm.querySelector('[name="bathroom"]').value = String(roomCount(button.dataset.bathroom));
-        roomsForm.querySelector('[name="reception"]').value = String(roomCount(button.dataset.reception));
+        fillRooms(button.dataset);
         roomsForm.dataset.chimnieId = button.dataset.chimnieId || '';
         roomsForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        // A live search only lists addresses: fetch the chosen one so the rooms are pre-filled.
+        if (!button.dataset.bedroom && !button.dataset.bathroom && root.dataset.propertyDetails) {
+            await loadRooms(button);
+        }
     });
+
+    function fillRooms(values) {
+        ['bedroom', 'bathroom', 'reception'].forEach((name) => {
+            const input = roomsForm.querySelector(`[name="${name}"]`);
+            input.value = String(roomCount(values[name]));
+            // Remember what the lookup did not tell us, so an untouched 0 never overwrites it on save.
+            input.dataset.unknown = values[name] ? '' : '1';
+        });
+    }
+
+    async function loadRooms(button) {
+        const query = new URLSearchParams({
+            chimnie_id: button.dataset.chimnieId || '',
+            postcode: lastPostcode || postcodeInput.value.trim(),
+        });
+        setBusy(true, {
+            label: 'Getting the property details…',
+            button: roomsForm.querySelector('[data-lob-rooms-save]'),
+        });
+        try {
+            const payload = await request(`${root.dataset.propertyDetails}?${query}`);
+            const record = payload.data || {};
+            fillRooms(record);
+            ['bedroom', 'bathroom', 'reception'].forEach((name) => {
+                button.dataset[name] = record[name] || '';
+            });
+            if (record.details_unavailable) {
+                showAlert('We could not get the room details for this address. Enter them below.');
+            }
+        } catch (error) {
+            showAlert(error.message);
+        } finally {
+            setBusy(false);
+        }
+    }
+
+    function roomValue(name) {
+        const input = roomsForm.querySelector(`[name="${name}"]`);
+        const count = roomCount(input.value);
+        return input.dataset.unknown && count === 0 ? null : count;
+    }
+
+    function resultMeta(row) {
+        const facts = [
+            row.specific_property_type,
+            row.bedroom ? `${row.bedroom} bed` : '',
+            row.bathroom ? `${row.bathroom} bath` : '',
+            row.reception ? `${row.reception} reception` : '',
+            row.epc_rating ? `EPC ${row.epc_rating}` : '',
+            row.tenure,
+        ].filter(Boolean);
+        if (!facts.length) {
+            return '';
+        }
+        return `<div class="lob-result-meta">${facts.map((fact) => `<span>${escapeHtml(String(fact))}</span>`).join('')}</div>`;
+    }
 
     roomsForm?.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -390,9 +444,9 @@
                 body: JSON.stringify({
                     chimnie_id: chimnieId,
                     postcode: lastPostcode || postcodeInput.value.trim(),
-                    bedroom: roomCount(roomsForm.querySelector('[name="bedroom"]').value),
-                    bathroom: roomCount(roomsForm.querySelector('[name="bathroom"]').value),
-                    reception: roomCount(roomsForm.querySelector('[name="reception"]').value),
+                    bedroom: roomValue('bedroom'),
+                    bathroom: roomValue('bathroom'),
+                    reception: roomValue('reception'),
                 }),
             });
             state.property = payload.data;

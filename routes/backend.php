@@ -270,6 +270,7 @@ Route::middleware(['auth', 'landlord.restricted'])->group(function () {
         Route::prefix('onboarding/landlord')->name('onboarding.landlord.')->controller(LandlordOnboardingController::class)->group(function () {
             Route::get('/state', 'state')->name('state');
             Route::get('/search', 'search')->middleware('throttle:20,1')->name('search');
+            Route::get('/property/details', 'propertyDetails')->middleware('throttle:20,1')->name('property.details');
             Route::post('/property', 'storeProperty')->name('property');
             Route::post('/property/manual', 'storeManualProperty')->name('property.manual');
             Route::post('/documents', 'storeDocument')->name('documents');

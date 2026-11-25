@@ -2,12 +2,39 @@
 
 namespace App\Services\Chimnie;
 
-use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Chimnie Data API (https://docs.chimnie.com).
+ *
+ * A live lookup takes two steps: /search/postcode lists the addresses, then /residential/address
+ * returns the data for the one the landlord picks. Property lookups are billed, so results are
+ * cached and details are only requested for a chosen address.
+ */
 class ChimnieClient
 {
+    /**
+     * Only the fields the property record uses. Leaving "fields" empty returns, and bills, every
+     * tier up to Ultra; these stay within Plus, which is the minimum for an address lookup.
+     */
+    private const DETAIL_FIELDS = [
+        'property.attributes.indoor.bedrooms',
+        'property.attributes.indoor.bathrooms',
+        'property.attributes.indoor.reception_rooms',
+        'property.attributes.indoor.floor_area',
+        'property.bills.tax.council_tax_band',
+        'property.bills.energy.energy_rating_current',
+        'property.ownership.lease_type',
+        'plus.property.attributes.status.property_class',
+        'plus.property.attributes.status.property_type',
+        'plus.property.attributes.status.is_hmo',
+    ];
+
     public function searchByPostcode(string $postcode): array
     {
         $normalised = $this->normalisePostcode($postcode);
@@ -25,11 +52,15 @@ class ChimnieClient
         return $this->liveSearch($normalised);
     }
 
+    /**
+     * The chosen property with its full data. In live mode this is the billed lookup; if Chimnie
+     * cannot supply the data, the address alone comes back so the property can still be saved.
+     */
     public function findById(string $id, string $postcode): ?array
     {
         foreach ($this->searchByPostcode($postcode) as $property) {
             if (($property['id'] ?? null) === $id) {
-                return $property;
+                return config('chimnie.test_mode', false) ? $property : $this->withLiveDetails($property);
             }
         }
 
@@ -87,6 +118,198 @@ class ChimnieClient
      */
     private function liveSearch(string $postcode): array
     {
+        $compact = str_replace(' ', '', $postcode);
+        $cacheKey = 'chimnie:search:'.$compact;
+
+        // Choosing and saving a property both search again: reuse the list rather than pay twice.
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $response = $this->send('get', '/search/postcode/'.rawurlencode($postcode));
+
+        if ($response->status() === 404) {
+            return [];
+        }
+
+        if ($response->failed()) {
+            $this->fail($response, 'postcode search');
+        }
+
+        $rows = collect($response->json('addresses'))
+            ->filter(fn ($address) => is_string($address) && trim($address) !== '')
+            ->map(fn (string $address) => $this->rowFromAddress($address, $postcode))
+            ->values()
+            ->all();
+
+        if ($rows !== []) {
+            Cache::put($cacheKey, $rows, now()->addHour());
+        }
+
+        // Passing this session to the address lookup makes the search free. Chimnie expires it after 5 minutes.
+        $session = (string) $response->json('session');
+        if ($session !== '') {
+            Cache::put('chimnie:session:'.$compact, $session, now()->addSeconds(290));
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @return array<string, mixed>
+     */
+    private function withLiveDetails(array $row): array
+    {
+        $cacheKey = 'chimnie:property:'.md5((string) $row['label']);
+        $payload = Cache::get($cacheKey);
+
+        if (! is_array($payload)) {
+            $body = [
+                'address' => $row['label'],
+                'fields' => implode(',', self::DETAIL_FIELDS),
+            ];
+            $session = Cache::pull('chimnie:session:'.str_replace(' ', '', (string) $row['postcode']));
+            if ($session) {
+                $body['autocomplete_session'] = $session;
+            }
+
+            try {
+                $response = $this->send('post', '/residential/address', $body);
+            } catch (ValidationException) {
+                return $row + ['details_unavailable' => true];
+            }
+
+            // 404 means Chimnie holds no match, or none of these fields, for the address.
+            if ($response->failed() && $response->status() !== 404) {
+                $this->log($response, 'property lookup');
+
+                return $row + ['details_unavailable' => true];
+            }
+
+            $payload = $response->successful() ? (array) $response->json() : [];
+            Cache::put($cacheKey, $payload, now()->addDay());
+        }
+
+        $details = array_filter($this->detailsFromPayload($payload), fn (string $value) => $value !== '');
+
+        return array_merge($row, $details, $details === [] ? ['details_unavailable' => true] : []);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, string>
+     */
+    private function detailsFromPayload(array $payload): array
+    {
+        $value = function (string $path) use ($payload): string {
+            $found = data_get($payload, $path);
+
+            return is_scalar($found) ? trim((string) $found) : '';
+        };
+        $indoor = 'property.attributes.indoor.';
+        $status = 'plus.property.attributes.status.';
+
+        return [
+            'uprn' => $value('id'),
+            'bedroom' => $value($indoor.'bedrooms'),
+            'bathroom' => $value($indoor.'bathrooms'),
+            'reception' => $value($indoor.'reception_rooms'),
+            'square_meter' => $value($indoor.'floor_area'),
+            'council_tax_band' => strtoupper($value('property.bills.tax.council_tax_band')),
+            'epc_rating' => strtoupper($value('property.bills.energy.energy_rating_current')),
+            'tenure' => ucfirst(strtolower($value('property.ownership.lease_type'))),
+            'specific_property_type' => $this->propertyType(
+                $value($status.'property_class').' '.$value($status.'property_type'),
+                (bool) data_get($payload, $status.'is_hmo'),
+            ),
+        ];
+    }
+
+    /**
+     * Map Chimnie's wording onto the property types the app offers ("bunglow" is the stored spelling).
+     */
+    private function propertyType(string $description, bool $isHmo): string
+    {
+        if ($isHmo) {
+            return 'hmo';
+        }
+
+        $description = strtolower($description);
+
+        return match (true) {
+            str_contains($description, 'bungalow') => 'bunglow',
+            str_contains($description, 'maisonette') => 'maisonette',
+            str_contains($description, 'studio') => 'studio',
+            str_contains($description, 'flat'), str_contains($description, 'apartment') => 'flat',
+            str_contains($description, 'house'),
+            str_contains($description, 'detached'),
+            str_contains($description, 'terrace') => 'house',
+            default => '',
+        };
+    }
+
+    /**
+     * The postcode search returns each address as one line, for example
+     * "Rose Cottage, 15 Chimnie Walk, Chimnietown, Chimnieshire, CH1 1MN".
+     *
+     * @return array<string, mixed>
+     */
+    private function rowFromAddress(string $address, string $postcode): array
+    {
+        $parts = array_values(array_filter(array_map('trim', explode(',', $address)), fn ($part) => $part !== ''));
+
+        if ($parts !== [] && strcasecmp(str_replace(' ', '', end($parts)), str_replace(' ', '', $postcode)) === 0) {
+            array_pop($parts);
+        }
+
+        $county = '';
+        if (count($parts) >= 3 && preg_match('/shire$/i', (string) end($parts))) {
+            $county = (string) array_pop($parts);
+        }
+        $city = count($parts) >= 2 ? (string) array_pop($parts) : '';
+
+        // A house number on its own ("11, Downing Street") belongs to the street that follows it.
+        $lines = [];
+        for ($i = 0; $i < count($parts); $i++) {
+            if (preg_match('/^\d+[A-Za-z]?(\s*-\s*\d+[A-Za-z]?)?$/', $parts[$i]) && isset($parts[$i + 1])) {
+                $lines[] = $parts[$i].' '.$parts[++$i];
+            } else {
+                $lines[] = $parts[$i];
+            }
+        }
+
+        return [
+            'id' => 'chimnie:'.md5($address),
+            'uprn' => '',
+            'label' => $address,
+            'line_1' => (string) ($lines[0] ?? $address),
+            'line_2' => implode(', ', array_slice($lines, 1)),
+            'city' => $city,
+            'county' => $county,
+            'postcode' => $postcode,
+            'country' => 'United Kingdom',
+            'country_code' => 'GB',
+            'specific_property_type' => '',
+            'bedroom' => '',
+            'bathroom' => '',
+            'reception' => '',
+            'tenure' => '',
+            'epc_rating' => '',
+            'council_tax_band' => '',
+            'square_meter' => '',
+            'floor' => '',
+            'local_authority' => '',
+            'source' => 'live',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function send(string $method, string $path, array $data = []): Response
+    {
         $apiKey = (string) config('chimnie.api_key');
 
         if ($apiKey === '') {
@@ -95,74 +318,42 @@ class ChimnieClient
             ]);
         }
 
+        $url = rtrim((string) config('chimnie.base_url'), '/').$path;
+        $request = Http::acceptJson()
+            ->timeout((int) config('chimnie.timeout', 12))
+            ->withToken($apiKey);
+
         try {
-            $response = Http::acceptJson()
-                ->timeout((int) config('chimnie.timeout', 12))
-                ->withToken($apiKey)
-                ->get(rtrim((string) config('chimnie.base_url'), '/').'/v1/properties', [
-                    'postcode' => $postcode,
-                ]);
-        } catch (RequestException $exception) {
+            return $method === 'post' ? $request->post($url, $data) : $request->get($url, $data);
+        } catch (ConnectionException $exception) {
+            Log::warning('Chimnie could not be reached: '.$exception->getMessage());
+
             throw ValidationException::withMessages([
                 'postcode' => 'Chimnie did not respond. Try again in a moment.',
             ]);
         }
-
-        if ($response->failed()) {
-            throw ValidationException::withMessages([
-                'postcode' => 'Chimnie could not look up that postcode right now.',
-            ]);
-        }
-
-        $payload = $response->json();
-        $rows = $payload['data'] ?? $payload['results'] ?? $payload['properties'] ?? $payload;
-
-        if (! is_array($rows)) {
-            return [];
-        }
-
-        return collect($rows)
-            ->filter(fn ($row) => is_array($row))
-            ->map(fn (array $row) => $this->normaliseLiveRow($row, $postcode))
-            ->values()
-            ->all();
     }
 
-    /**
-     * @param  array<string, mixed>  $row
-     * @return array<string, mixed>
-     */
-    private function normaliseLiveRow(array $row, string $postcode): array
+    private function fail(Response $response, string $action): never
     {
-        $address = is_array($row['address'] ?? null) ? $row['address'] : $row;
-        $line1 = (string) ($address['line_1'] ?? $address['line1'] ?? $address['address_line_1'] ?? $row['paon'] ?? '');
-        $line2 = (string) ($address['line_2'] ?? $address['line2'] ?? $address['address_line_2'] ?? $row['street'] ?? '');
-        $city = (string) ($address['city'] ?? $address['town'] ?? $address['post_town'] ?? '');
-        $resolvedPostcode = strtoupper((string) ($address['postcode'] ?? $row['postcode'] ?? $postcode));
+        $this->log($response, $action);
 
-        return [
-            'id' => (string) ($row['id'] ?? $row['uprn'] ?? $line1.'|'.$resolvedPostcode),
-            'uprn' => (string) ($row['uprn'] ?? ''),
-            'label' => (string) ($row['label'] ?? trim($line1.', '.$city.', '.$resolvedPostcode, ' ,')),
-            'line_1' => $line1,
-            'line_2' => $line2,
-            'city' => $city,
-            'county' => (string) ($address['county'] ?? ''),
-            'postcode' => $resolvedPostcode,
-            'country' => 'United Kingdom',
-            'country_code' => 'GB',
-            'specific_property_type' => (string) ($row['property_type'] ?? $row['specific_property_type'] ?? ''),
-            'bedroom' => (string) ($row['bedrooms'] ?? $row['bedroom'] ?? ''),
-            'bathroom' => (string) ($row['bathrooms'] ?? $row['bathroom'] ?? ''),
-            'reception' => (string) ($row['receptions'] ?? $row['reception'] ?? ''),
-            'tenure' => (string) ($row['tenure'] ?? ''),
-            'epc_rating' => (string) ($row['epc_rating'] ?? $row['epc'] ?? ''),
-            'council_tax_band' => (string) ($row['council_tax_band'] ?? ''),
-            'square_meter' => (string) ($row['internal_area'] ?? $row['square_meter'] ?? ''),
-            'floor' => (string) ($row['floor'] ?? ''),
-            'local_authority' => (string) ($row['local_authority'] ?? ''),
-            'source' => 'live',
-        ];
+        throw ValidationException::withMessages([
+            'postcode' => match ($response->status()) {
+                429 => 'Too many lookups just now. Wait a minute and try again.',
+                401, 402, 403 => 'Property lookup is unavailable right now. Add the property manually.',
+                default => 'Chimnie could not look up that postcode right now.',
+            },
+        ]);
+    }
+
+    private function log(Response $response, string $action): void
+    {
+        // The status explains the failure to us: 401 bad key, 402/403 credit, 429 rate limit.
+        Log::warning('Chimnie '.$action.' failed', [
+            'status' => $response->status(),
+            'body' => mb_substr($response->body(), 0, 300),
+        ]);
     }
 
     /**

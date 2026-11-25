@@ -24,6 +24,7 @@
     data-csrf="{{ csrf_token() }}"
     data-search="{{ route('admin.onboarding.landlord.search') }}"
     data-property="{{ route('admin.onboarding.landlord.property') }}"
+    data-property-details="{{ route('admin.onboarding.landlord.property.details') }}"
     data-property-manual="{{ route('admin.onboarding.landlord.property.manual') }}"
     data-owners="{{ route('admin.onboarding.landlord.owners') }}"
     data-tenancy="{{ route('admin.onboarding.landlord.tenancy') }}"

@@ -39,6 +39,29 @@ class LandlordOnboardingController extends Controller
         ]);
     }
 
+    public function propertyDetails(Request $request): JsonResponse
+    {
+        $this->guard($request);
+
+        $validated = $request->validate([
+            'chimnie_id' => 'required|string|max:120',
+            'postcode' => 'required|string|max:12',
+        ]);
+
+        $record = $this->onboarding->propertyDetails($validated['chimnie_id'], $validated['postcode']);
+
+        if (! $record) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'chimnie_id' => 'That property is no longer in the Chimnie results. Search again.',
+            ]);
+        }
+
+        return response()->json([
+            'ok' => true,
+            'data' => $record,
+        ]);
+    }
+
     public function storeProperty(Request $request): JsonResponse
     {
         [$account, $user] = $this->guard($request);
