@@ -50,19 +50,28 @@ Staging may reuse test keys for both. **Production must use two different Stripe
 
 ### Webhook events to enable
 
+Select exactly these events. They are the ones the code handles (`StripeWebhookService::handle`,
+`StripeRentWebhookController`); any other event is logged and ignored.
+
 **Operating** (`/stripe/webhook`):
 
-- `checkout.session.completed`
-- `customer.subscription.created|updated|deleted`
-- `invoice.paid` / `invoice.payment_failed`
-- `customer.subscription.trial_will_end` (optional reminders)
+- `checkout.session.completed` (plan checkout, and card payment of repair and compliance invoices)
+- `checkout.session.expired`
+- `customer.subscription.created`
+- `customer.subscription.updated` (also how a cancellation booked in the Customer Portal arrives)
+- `customer.subscription.deleted`
+- `invoice.payment_succeeded` (renewals; the code does **not** listen for `invoice.paid`)
+- `invoice.payment_failed`
+
+Trial reminders come from the app's own `accounts:trial-expiry-warning` job, so `customer.subscription.trial_will_end` is not needed.
 
 **Rent** (`/stripe/rent/webhook`):
 
 - `checkout.session.completed`
 - `checkout.session.async_payment_succeeded`
+- `checkout.session.async_payment_failed`
 
-Both endpoints are CSRF-exempt; signatures are verified with the matching webhook secret.
+Both endpoints are CSRF-exempt; signatures are verified with the matching webhook secret. After setup, send a test event from the Stripe Dashboard to each endpoint and confirm a 200 response.
 
 ### Plan limits
 
@@ -87,7 +96,7 @@ Enforced in-app via `AccountLimitService` + `EnforcesSaasPlanLimits` (properties
 1. Stripe Dashboard → Customers → open failed invoice → confirm `invoice.payment_failed` webhook delivered (200).
 2. App: account `status=past_due`; Billing & Plan shows “Payment failed”.
 3. Landlord: **Manage billing** (Customer Portal) → update card → pay open invoice.
-4. Confirm `invoice.paid` / `customer.subscription.updated` → local status `active`.
+4. Confirm `invoice.payment_succeeded` / `customer.subscription.updated` → local status `active`.
 5. If stuck: Super Admin may extend trial / note reason; never manually invent Stripe IDs in DB without Dashboard match.
 
 ### Tenant rent (client-money Stripe)
