@@ -1475,6 +1475,62 @@ class ContractorMarketplaceTest extends TestCase
             ->assertSee('Resisquare sent £150.00', false);
     }
 
+    public function test_only_one_checkout_can_be_paid_for_a_repair_invoice(): void
+    {
+        [$landlord, $accountId, , $contractor, $offer] = $this->awardedJob();
+        $invoice = $this->issuedInvoice($contractor, $offer, $accountId, 150);
+        config(['services.stripe.secret' => 'sk_test_jobs']);
+        $service = new class(app(RepairJobOfferService::class)) extends RepairJobPaymentService
+        {
+            public array $sessions = [];
+
+            public array $expired = [];
+
+            protected function createSession(array $sessionData): mixed
+            {
+                $id = 'cs_fake_'.uniqid();
+                $this->sessions[$id] = (object) [
+                    'id' => $id,
+                    'status' => 'open',
+                    'payment_status' => 'unpaid',
+                    'payment_intent' => 'pi_'.$id,
+                    'metadata' => $sessionData['metadata'],
+                ];
+
+                return (object) ['id' => $id, 'url' => 'https://checkout.stripe.com/c/pay/'.$id];
+            }
+
+            protected function retrieveSession(string $sessionId): mixed
+            {
+                return $this->sessions[$sessionId];
+            }
+
+            protected function expireSession(string $sessionId): void
+            {
+                $this->sessions[$sessionId]->status = 'expired';
+                $this->expired[] = $sessionId;
+            }
+        };
+
+        $service->createCheckoutUrl($landlord, $invoice);
+        $service->createCheckoutUrl($landlord, $invoice->fresh());
+        [$first, $second] = array_keys($service->sessions);
+        $this->assertSame([$first], $service->expired);
+
+        // Paid in another tab, then Pay pressed again: record it, never open a third Checkout.
+        $service->sessions[$second]->status = 'complete';
+        $service->sessions[$second]->payment_status = 'paid';
+        try {
+            $service->createCheckoutUrl($landlord, $invoice->fresh());
+            $this->fail('A paid invoice was sent to Checkout again.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            $this->assertStringContainsString('not waiting for payment', $exception->validator->errors()->first('invoice'));
+        }
+        $this->assertCount(2, $service->sessions);
+        $this->assertSame(RepairJobInvoice::PAID, $invoice->fresh()->status);
+        $this->assertSame($second, $invoice->fresh()->cardPayment->stripe_checkout_session_id);
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
 
     /**

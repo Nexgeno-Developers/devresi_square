@@ -5,14 +5,15 @@
 
 @section('content')
 <div class="tenant-portal">
+    @php $cardFeeNote = collect($fees ?? [])->contains(fn ($fee) => ($fee['fee'] ?? 0) >= 0.01) ? ' A small card fee may apply.' : ''; @endphp
     <div class="tp-hero">
         <div>
             <p class="tp-kicker">Rent &amp; payments</p>
             <h1>What you owe</h1>
             @if(($cardReady ?? false) && ($rentBank ?? null))
-                <p>Pay an open invoice by card, or by bank transfer using the details below. A small card fee may apply.</p>
+                <p>Pay an open invoice by card, or by bank transfer using the details below.{{ $cardFeeNote }}</p>
             @elseif($cardReady ?? false)
-                <p>Pay an open invoice by card. A small card fee may apply.</p>
+                <p>Pay an open invoice by card.{{ $cardFeeNote }}</p>
             @elseif($rentBank ?? null)
                 <p>Pay an open invoice by bank transfer using the details below.</p>
             @else
@@ -30,7 +31,7 @@
     @endif
 
     @if($cardPaused ?? false)
-        <p class="tp-banner" data-card-paused="1">Card payments are paused because this account is suspended or cancelled. Bank transfer is still available.</p>
+        <p class="tp-banner" data-card-paused="1">Card payments are paused because this account is suspended or cancelled. {{ ($rentBank ?? null) ? 'Bank transfer is still available.' : 'Contact your landlord to arrange payment.' }}</p>
     @endif
 
     <div class="tp-card">

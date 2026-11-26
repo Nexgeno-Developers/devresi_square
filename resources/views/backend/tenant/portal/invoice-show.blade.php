@@ -111,7 +111,7 @@
 
     @if($invoice->isOpen() && (($rentBank ?? null) || ! $cardReady))
         @if($cardPaused ?? false)
-            <p class="tp-banner" data-card-paused="1">Card payments are paused because this account is suspended or cancelled. Bank transfer is still available.</p>
+            <p class="tp-banner" data-card-paused="1">Card payments are paused because this account is suspended or cancelled. {{ ($rentBank ?? null) ? 'Bank transfer is still available.' : 'Contact your landlord to arrange payment.' }}</p>
         @endif
         @include('backend.tenant.portal._bank-transfer', ['rentBank' => $rentBank ?? null, 'invoice' => $invoice])
     @endif

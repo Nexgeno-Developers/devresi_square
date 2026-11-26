@@ -111,6 +111,12 @@ class StripeWebhookService
             return;
         }
 
+        // Closing Checkout is not a cancellation: a trial runs on (accounts:expire-trials ends it) and a
+        // past-due account stays past due. Only a plan marked active without ever being paid is ended.
+        if ($subscription->status !== 'active') {
+            return;
+        }
+
         $subscription->forceFill([
             'status' => 'expired',
             'cancelled_at' => $subscription->cancelled_at ?: now(),
@@ -242,11 +248,40 @@ class StripeWebhookService
         $mappedStatus = $this->mapStripeStatus($stripeStatus);
         $priceId = $this->subscriptionPriceId($stripeSubscription);
 
+        $ended = in_array($subscription->status, ['cancelled', 'expired'], true);
+        $live = in_array($mappedStatus, ['trialing', 'active'], true);
+
+        // After buying again, late events about the old Stripe subscription still carry this record's
+        // metadata. Another subscription may only take the record over when it ended and the new one is live.
+        if ($subscription->stripe_subscription_id
+            && $subscription->stripe_subscription_id !== $stripeSubscriptionId
+            && ! ($ended && $live)) {
+            Log::info('Stripe subscription sync ignored: record belongs to another subscription', [
+                'stripe_subscription_id' => $stripeSubscriptionId,
+                'account_subscription_id' => $subscription->id,
+            ]);
+
+            return null;
+        }
+
         $updates = [
             'stripe_subscription_id' => $stripeSubscriptionId,
             'status' => $mappedStatus,
-            'cancel_at_period_end' => (bool) ($stripeSubscription->cancel_at_period_end ?? false),
+            // The billing portal schedules a cancellation with "cancel_at" and leaves the flag false.
+            'cancel_at_period_end' => (bool) ($stripeSubscription->cancel_at_period_end ?? false)
+                || ($mappedStatus !== 'cancelled' && ! empty($stripeSubscription->cancel_at ?? null)),
         ];
+
+        if ($ended && $live) {
+            $updates['cancelled_at'] = null;
+            if ($plan = $subscription->plan) {
+                $updates['price_at_signup_minor'] = $subscription->billing_cycle === 'annual'
+                    ? $plan->annual_price_minor
+                    : $plan->monthly_price_minor;
+                $updates['currency_at_signup'] = $plan->currency ?: 'GBP';
+                $updates['plan_name_at_signup'] = $plan->name;
+            }
+        }
 
         if ($priceId) {
             $updates['stripe_price_id'] = $priceId;
@@ -392,11 +427,13 @@ class StripeWebhookService
             default => null,
         };
 
-        // A Resisquare admin suspended this account. Billing events keep the subscription in step,
-        // but only an admin lifts the suspension; a renewal or a new checkout must not.
-        if ($accountStatus && $accountStatus !== 'cancelled'
-            && $subscription->account->status === 'suspended' && $subscription->account->status_changed_by) {
-            Log::info('Stripe webhook left an admin-suspended account suspended', [
+        // A Resisquare admin suspended or closed this account. Billing events keep the subscription in
+        // step, but only an admin lifts that; a renewal or a new checkout must not.
+        $adminLocked = in_array($subscription->account->status, ['suspended', 'cancelled'], true)
+            && $subscription->account->status_changed_by;
+
+        if ($accountStatus && $accountStatus !== 'cancelled' && $adminLocked) {
+            Log::info('Stripe webhook left an admin-locked account locked', [
                 'account_id' => $subscription->account_id,
                 'subscription_status' => $subscriptionStatus,
             ]);
@@ -411,6 +448,13 @@ class StripeWebhookService
             }
             if ($subscription->trial_ends_at) {
                 $accountUpdates['trial_ends_at'] = $subscription->trial_ends_at;
+            }
+            // Billing ended the subscription: drop an older admin marker so the owner can buy again.
+            // An account an admin has locked keeps it.
+            if ($accountStatus === 'cancelled' && ! $adminLocked) {
+                $accountUpdates['status_changed_by'] = null;
+                $accountUpdates['status_reason'] = null;
+                $accountUpdates['status_changed_at'] = now();
             }
 
             $subscription->account->forceFill($accountUpdates)->save();

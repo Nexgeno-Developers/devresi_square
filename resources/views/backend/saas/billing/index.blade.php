@@ -29,6 +29,9 @@
         default => 'idle',
     };
     $formatDate = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('j M Y') : '—';
+    $canResubscribe = $canResubscribe ?? false;
+    $trialEnded = $account->status === 'suspended' && ! $account->status_changed_by
+        && $account->status_reason === \App\Console\Commands\ExpireEndedTrials::REASON;
 @endphp
 
 <div class="container-fluid lw-page">
@@ -38,7 +41,9 @@
             <p>{{ $account->account_name ?: 'Your workspace plan' }}</p>
         </div>
         <div class="d-flex gap-2 flex-wrap align-items-center">
-            @if($status)
+            @if($trialEnded)
+                <x-lw.pill tone="bad">Trial ended</x-lw.pill>
+            @elseif($status)
                 <x-lw.pill :tone="$statusTone">{{ ucwords(str_replace('_', ' ', $status)) }}</x-lw.pill>
             @endif
             @if($canActivate)
@@ -47,6 +52,12 @@
                     <button type="submit" class="btn lw-btn-primary">
                         {{ $status === 'trialing' ? 'Activate subscription' : 'Pay / activate' }}
                     </button>
+                </form>
+            @endif
+            @if($canResubscribe)
+                <form method="POST" action="{{ route('backend.saas.subscription.checkout') }}" class="d-inline">
+                    @csrf
+                    <button type="submit" class="btn lw-btn-primary">Subscribe again</button>
                 </form>
             @endif
             @if($subscription?->stripe_subscription_id || $account->stripe_customer_id)
@@ -58,14 +69,23 @@
         </div>
     </div>
 
-    @if($subscription?->status === 'trialing' && $subscription->stripe_subscription_id)
+    @if($trialEnded)
+        <div class="alert alert-danger mb-3">Your free trial has ended. Activate your subscription to carry on. You are charged when you activate.</div>
+    @elseif(in_array($subscription?->status, ['cancelled', 'expired'], true))
+        <div class="alert alert-danger mb-3">
+            {{ $subscription->status === 'expired' ? 'Subscription ended.' : 'Subscription cancelled.' }}
+            @if($canResubscribe)
+                Choose Subscribe again to restore access. You are charged today.
+            @elseif($account->status === 'cancelled' && $account->status_changed_by)
+                Please contact support to restore access.
+            @endif
+        </div>
+    @elseif($subscription?->status === 'trialing' && $subscription->stripe_subscription_id)
         <div class="alert alert-lw mb-3">Your card is saved. The trial continues until {{ $formatDate($subscription->trial_ends_at) }}. The plan price is charged when the trial ends.</div>
     @elseif($subscription?->status === 'trialing' && ! $subscription->stripe_subscription_id)
         <div class="alert alert-lw mb-3">You are on a trial. Add a payment method before it ends to keep access.</div>
     @elseif($subscription?->status === 'past_due')
         <div class="alert alert-danger mb-3">Payment failed. Update your card in Manage billing.</div>
-    @elseif($subscription?->status === 'cancelled')
-        <div class="alert alert-danger mb-3">Subscription cancelled.</div>
     @elseif(! $subscription)
         <div class="alert alert-lw mb-3">No subscription is linked to this account yet.</div>
     @endif

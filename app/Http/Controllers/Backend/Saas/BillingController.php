@@ -16,7 +16,7 @@ class BillingController extends Controller
 {
     use AuthorizesBillingAccess;
 
-    public function index(Request $request, AccountLimitService $limitService)
+    public function index(Request $request, AccountLimitService $limitService, StripeCheckoutService $checkout)
     {
         $account = $this->billingAccount($request);
         $this->authorize('view', $account);
@@ -39,7 +39,10 @@ class BillingController extends Controller
             ? $subscription->accountSubscriptionAddons->where('status', 'active')
             : collect();
 
+        $canResubscribe = (bool) $checkout->renewableSubscription($account);
+
         return view('backend.saas.billing.index', compact(
+            'canResubscribe',
             'account',
             'subscription',
             'limitSummary',

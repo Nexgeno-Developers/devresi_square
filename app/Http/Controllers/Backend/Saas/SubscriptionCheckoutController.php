@@ -22,8 +22,13 @@ class SubscriptionCheckoutController extends Controller
             ->latest()
             ->first();
 
+        // A cancelled or expired owner buys the same plan again; there is no trial the second time.
+        $subscription ??= $service->renewableSubscription($account);
+
         if (! $subscription) {
-            flash('No current subscription was found for this account.')->error();
+            flash($account->status === 'cancelled' && $account->status_changed_by
+                ? 'This account was closed by Resisquare. Please contact support to restore access.'
+                : 'No current subscription was found for this account.')->error();
 
             return back();
         }

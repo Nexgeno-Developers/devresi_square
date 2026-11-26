@@ -402,6 +402,43 @@ class ComplianceBookingTest extends TestCase
         $this->assertSame('issued', $offer->invoice->fresh()->status);
         \DB::table('accounts')->where('id', $accountId)->update(['status' => 'trialing']);
 
+        // A second Pay click expires the first Checkout, so the invoice cannot be charged twice.
+        $fake = new class(app(\App\Services\Contractors\RepairJobPaymentService::class), app(\App\Services\Contractors\ContractorMail::class)) extends ComplianceJobPaymentService
+        {
+            public array $sessions = [];
+
+            public array $expired = [];
+
+            protected function createSession(array $sessionData): mixed
+            {
+                $id = 'cs_fake_'.uniqid();
+                $this->sessions[$id] = (object) [
+                    'id' => $id,
+                    'status' => 'open',
+                    'payment_status' => 'unpaid',
+                    'payment_intent' => 'pi_'.$id,
+                    'metadata' => $sessionData['metadata'],
+                ];
+
+                return (object) ['id' => $id, 'url' => 'https://checkout.stripe.com/c/pay/'.$id];
+            }
+
+            protected function retrieveSession(string $sessionId): mixed
+            {
+                return $this->sessions[$sessionId];
+            }
+
+            protected function expireSession(string $sessionId): void
+            {
+                $this->sessions[$sessionId]->status = 'expired';
+                $this->expired[] = $sessionId;
+            }
+        };
+        $fake->createCheckoutUrl($landlord, $offer->invoice->fresh());
+        $fake->createCheckoutUrl($landlord, $offer->invoice->fresh());
+        $this->assertSame([array_key_first($fake->sessions)], $fake->expired);
+        \App\Models\ComplianceJobPayment::query()->where('compliance_job_invoice_id', $offer->invoice->id)->delete();
+
         ContractorSettings::put([
             'job_commission_percent' => '10',
             'job_commission_bearer' => 'landlord',

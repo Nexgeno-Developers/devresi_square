@@ -23,7 +23,8 @@ class SecurityHeaders
             "base-uri 'self'",
             "object-src 'none'",
             "frame-ancestors 'self'",
-            "form-action 'self'",
+            // Chromium applies this to the redirect after a form post too, so Stripe's hosted pages must be listed.
+            "form-action 'self' https://checkout.stripe.com https://billing.stripe.com",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net http://cdn.jsdelivr.net https://cdn.skypack.dev",
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com http://cdn.jsdelivr.net https://fonts.googleapis.com",
             "font-src 'self' data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com",

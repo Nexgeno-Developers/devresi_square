@@ -14,7 +14,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
-use Stripe\Checkout\Session;
 use Stripe\Stripe;
 
 /**
@@ -24,6 +23,8 @@ use Stripe\Stripe;
  */
 class RepairJobPaymentService
 {
+    use ClosesPreviousCheckout;
+
     public function __construct(
         private readonly RepairJobOfferService $offers,
     ) {}
@@ -121,6 +122,11 @@ class RepairJobPaymentService
             ]);
         }
 
+        $this->closePreviousCheckout(
+            trim((string) RepairJobPayment::query()->where('repair_job_invoice_id', $invoice->id)->value('stripe_checkout_session_id')),
+            fn (): bool => $invoice->fresh()?->status === RepairJobInvoice::ISSUED,
+        );
+
         $payment = DB::transaction(function () use ($invoice, $landlord, $breakdown) {
             $locked = RepairJobInvoice::query()->whereKey($invoice->id)->lockForUpdate()->first();
             $existing = RepairJobPayment::query()
@@ -185,7 +191,7 @@ class RepairJobPaymentService
 
         $offer = $invoice->offer;
         $this->configureStripe();
-        $session = Session::create([
+        $session = $this->createSession([
             'mode' => 'payment',
             'customer_email' => $landlord->email,
             'line_items' => $lineItems,
@@ -213,7 +219,7 @@ class RepairJobPaymentService
     public function fulfillCheckoutSessionId(string $sessionId): ?RepairJobPayment
     {
         $this->configureStripe();
-        $session = Session::retrieve($sessionId);
+        $session = $this->retrieveSession($sessionId);
 
         return $this->fulfillSession($session);
     }

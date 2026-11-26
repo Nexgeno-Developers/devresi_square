@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
-use Stripe\Checkout\Session;
 use Stripe\Stripe;
 
 /**
@@ -23,6 +22,8 @@ use Stripe\Stripe;
  */
 class ComplianceJobPaymentService
 {
+    use ClosesPreviousCheckout;
+
     public function __construct(
         private readonly RepairJobPaymentService $repairs,
         private readonly ContractorMail $mail,
@@ -92,6 +93,11 @@ class ComplianceJobPaymentService
             ]);
         }
 
+        $this->closePreviousCheckout(
+            trim((string) ComplianceJobPayment::query()->where('compliance_job_invoice_id', $invoice->id)->value('stripe_checkout_session_id')),
+            fn (): bool => $invoice->fresh()?->status === ComplianceJobInvoice::ISSUED,
+        );
+
         $payment = DB::transaction(function () use ($invoice, $landlord, $breakdown) {
             $locked = ComplianceJobInvoice::query()->whereKey($invoice->id)->lockForUpdate()->first();
             $existing = ComplianceJobPayment::query()
@@ -157,7 +163,7 @@ class ComplianceJobPaymentService
         }
 
         $this->configureStripe();
-        $session = Session::create([
+        $session = $this->createSession([
             'mode' => 'payment',
             'customer_email' => $landlord->email,
             'line_items' => $lineItems,
@@ -189,7 +195,7 @@ class ComplianceJobPaymentService
     public function fulfillCheckoutSessionId(string $sessionId): ?ComplianceJobPayment
     {
         $this->configureStripe();
-        $session = Session::retrieve($sessionId);
+        $session = $this->retrieveSession($sessionId);
 
         return $this->fulfillSession($session);
     }

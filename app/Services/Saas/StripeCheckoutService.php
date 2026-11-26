@@ -60,7 +60,14 @@ class StripeCheckoutService
             && $subscription->trial_ends_at
             && $subscription->trial_ends_at->isFuture()
         ) {
-            $sessionData['subscription_data']['trial_end'] = $subscription->trial_ends_at->timestamp;
+            // Stripe only accepts an exact trial end at least 48 hours away. Closer than that, ask
+            // for whole days instead (rounded up) so the landlord is never charged early.
+            if ($subscription->trial_ends_at->gt(now()->addHours(48)->addMinutes(5))) {
+                $sessionData['subscription_data']['trial_end'] = $subscription->trial_ends_at->timestamp;
+            } else {
+                $daysLeft = (int) ceil(($subscription->trial_ends_at->timestamp - now()->timestamp) / 86400);
+                $sessionData['subscription_data']['trial_period_days'] = max(1, $daysLeft);
+            }
             $sessionData['subscription_data']['trial_settings'] = [
                 'end_behavior' => [
                     'missing_payment_method' => 'cancel',
@@ -68,7 +75,7 @@ class StripeCheckoutService
             ];
         }
 
-        $session = Session::create($sessionData);
+        $session = $this->createStripeSession($sessionData);
 
         if (! $session->url) {
             throw new RuntimeException('Stripe did not return a checkout URL.');
@@ -77,6 +84,27 @@ class StripeCheckoutService
         session(['billing_checkout_session_id' => (string) $session->id]);
 
         return (string) $session->url;
+    }
+
+    /**
+     * A cancelled or expired account that its owner may buy again from Billing.
+     * An account a Resisquare admin closed stays closed.
+     */
+    public function renewableSubscription(Account $account): ?AccountSubscription
+    {
+        if ($account->status !== 'cancelled' || $account->status_changed_by) {
+            return null;
+        }
+
+        // The latest subscription is the one billing events are allowed to move the account with.
+        $latest = $account->subscriptions()->with('plan')->latest()->first();
+
+        return $latest && in_array($latest->status, ['cancelled', 'expired'], true) ? $latest : null;
+    }
+
+    protected function createStripeSession(array $sessionData): mixed
+    {
+        return Session::create($sessionData);
     }
 
     public function createAddonCheckoutSession(Account $account, Addon $addon, int $quantity = 1): string
