@@ -127,7 +127,7 @@ class ChimnieClient
             return $cached;
         }
 
-        $response = $this->send('get', '/search/postcode/'.rawurlencode($postcode));
+        $response = $this->send('get', '/search/postcode/'.rawurlencode($postcode), [], $this->isSandbox($postcode));
 
         if ($response->status() === 404) {
             return [];
@@ -176,7 +176,7 @@ class ChimnieClient
             }
 
             try {
-                $response = $this->send('post', '/residential/address', $body);
+                $response = $this->send('post', '/residential/address', $body, $this->isSandbox((string) $row['postcode']));
             } catch (ValidationException) {
                 return $row + ['details_unavailable' => true];
             }
@@ -189,6 +189,13 @@ class ChimnieClient
             }
 
             $payload = $response->successful() ? (array) $response->json() : [];
+
+            // Chimnie fell back to a near match: its rooms would describe another property, so leave them for the landlord.
+            if (($payload['exact_match'] ?? true) === false) {
+                Log::warning('Chimnie returned an inexact match', ['address' => $row['label'], 'uprn' => $payload['id'] ?? null]);
+                $payload = [];
+            }
+
             Cache::put($cacheKey, $payload, now()->addDay());
         }
 
@@ -308,11 +315,12 @@ class ChimnieClient
     /**
      * @param  array<string, mixed>  $data
      */
-    private function send(string $method, string $path, array $data = []): Response
+    private function send(string $method, string $path, array $data = [], bool $sandbox = false): Response
     {
         $apiKey = (string) config('chimnie.api_key');
 
-        if ($apiKey === '') {
+        // The sandbox postcode is free and needs no key, so live mode can be tried before a key is added.
+        if ($apiKey === '' && ! $sandbox) {
             throw ValidationException::withMessages([
                 'postcode' => 'Chimnie live mode needs CHIMNIE_API_KEY, or turn CHIMNIE_TEST_MODE back on.',
             ]);
@@ -320,8 +328,10 @@ class ChimnieClient
 
         $url = rtrim((string) config('chimnie.base_url'), '/').$path;
         $request = Http::acceptJson()
-            ->timeout((int) config('chimnie.timeout', 12))
-            ->withToken($apiKey);
+            ->timeout((int) config('chimnie.timeout', 12));
+        if ($apiKey !== '') {
+            $request = $request->withToken($apiKey);
+        }
 
         try {
             return $method === 'post' ? $request->post($url, $data) : $request->get($url, $data);
@@ -332,6 +342,12 @@ class ChimnieClient
                 'postcode' => 'Chimnie did not respond. Try again in a moment.',
             ]);
         }
+    }
+
+    /** CH1 1MN is Chimnie's free test postcode with 30 synthetic properties. */
+    private function isSandbox(string $postcode): bool
+    {
+        return strtoupper(str_replace(' ', '', $postcode)) === 'CH11MN';
     }
 
     private function fail(Response $response, string $action): never

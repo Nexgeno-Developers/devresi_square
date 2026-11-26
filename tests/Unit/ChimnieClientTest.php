@@ -126,6 +126,45 @@ class ChimnieClientTest extends TestCase
         app(ChimnieClient::class)->searchByPostcode('CH1 1MN');
     }
 
+    public function test_sandbox_postcode_works_without_a_key_but_real_postcodes_do_not(): void
+    {
+        $this->useLiveChimnie();
+        config(['chimnie.api_key' => '']);
+        Http::fake(['api.propertydatagateway.com/search/postcode/*' => Http::response([
+            'addresses' => ['1 Chimnie Street, Chimnietown, Chimnieshire, CH1 1MN'],
+            'session' => 'ac-sandbox',
+        ])]);
+
+        $rows = app(ChimnieClient::class)->searchByPostcode('CH1 1MN');
+
+        $this->assertSame('1 Chimnie Street', $rows[0]['line_1']);
+        Http::assertSent(fn ($request) => ! $request->hasHeader('Authorization'));
+
+        $this->expectException(ValidationException::class);
+        app(ChimnieClient::class)->searchByPostcode('SW1A 2AA');
+    }
+
+    public function test_an_inexact_match_does_not_fill_the_rooms(): void
+    {
+        $this->useLiveChimnie();
+        Http::fake([
+            'api.propertydatagateway.com/search/postcode/*' => Http::response([
+                'addresses' => ['2 Chimnie Street, Chimnietown, CH1 1MN'],
+            ]),
+            'api.propertydatagateway.com/residential/address' => Http::response([
+                'id' => '999000000003',
+                'exact_match' => false,
+                'property' => ['attributes' => ['indoor' => ['bedrooms' => 5]]],
+            ]),
+        ]);
+
+        $client = app(ChimnieClient::class);
+        $record = $client->findById($client->searchByPostcode('CH1 1MN')[0]['id'], 'CH1 1MN');
+
+        $this->assertSame('', $record['bedroom']);
+        $this->assertTrue($record['details_unavailable']);
+    }
+
     private function useLiveChimnie(): void
     {
         config([
