@@ -78,6 +78,17 @@ class PaymentFlowFixesTest extends TestCase
         }
     }
 
+    public function test_an_ended_trial_never_reads_as_trialing_on_billing(): void
+    {
+        [$user, $account] = $this->landlordWithSubscription('trialing', ['trial_ends_at' => now()->subDay()], 'suspended');
+        $account->forceFill(['status_reason' => \App\Console\Commands\ExpireEndedTrials::REASON, 'status_changed_by' => null])->save();
+
+        $this->owner($user, $account)->get(route('backend.billing.index'))
+            ->assertOk()
+            ->assertSee('<tr><th>Status</th><td>Trial ended</td></tr>', false)
+            ->assertDontSee('Trialing', false);
+    }
+
     public function test_an_account_closed_by_an_admin_cannot_buy_itself_back(): void
     {
         $admin = User::create(['name' => 'Admin', 'email' => 'pay-admin-'.uniqid().'@resisquare.test', 'password' => bcrypt('password'), 'status' => 1]);

@@ -107,7 +107,7 @@
                                     —
                                 @endif
                             </td></tr>
-                            <tr><th>Status</th><td>{{ $status ? ucwords(str_replace('_', ' ', $status)) : '—' }}</td></tr>
+                            <tr><th>Status</th><td>{{ $trialEnded ? 'Trial ended' : ($status ? ucwords(str_replace('_', ' ', $status)) : '—') }}</td></tr>
                         </tbody>
                     </table>
                 </div>
