@@ -30,6 +30,8 @@
         <env name="DEBUGBAR_ENABLED" value="false"/>
         <env name="REGISTRATION_OTP_DEBUG" value="false"/>
         <env name="SMS_ENABLED" value="false"/>
+        <!-- Never call the paid Chimnie API from tests, whatever the local .env says. -->
+        <env name="CHIMNIE_TEST_MODE" value="true"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
