@@ -15,6 +15,13 @@
         </div>
     </div>
 
+    <div class="card mb-4" data-billing-banner>
+        <div class="card-body">
+            <h5 class="card-title mb-2">Trial &amp; purchase</h5>
+            <x-saas.billing-state :account="$account" />
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-lg-6 mb-4">
             <h5>Account info</h5>

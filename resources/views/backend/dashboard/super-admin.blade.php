@@ -156,7 +156,7 @@
                 <div class="card-body px-4">
                     @forelse($expiringTrials as $subscription)
                         <div class="d-flex justify-content-between gap-3 border-bottom py-3">
-                            <div><a class="fw-semibold text-decoration-none" href="{{ route('backend.saas.subscriptions.show', $subscription) }}">{{ $subscription->account?->account_name ?: 'Unnamed account' }}</a><div class="text-muted small">{{ $subscription->plan?->name }}</div></div>
+                            <div><a class="fw-semibold text-decoration-none" href="{{ route('backend.saas.subscriptions.show', $subscription) }}">{{ $subscription->account?->account_name ?: 'Unnamed account' }}</a><div class="text-muted small">{{ $subscription->plan?->name }}</div>@if($subscription->account)<x-saas.billing-state class="mt-1" :account="$subscription->account" :subscription="$subscription" />@endif</div>
                             <span class="small text-danger text-nowrap">{{ $subscription->trial_ends_at?->diffForHumans() }}</span>
                         </div>
                     @empty

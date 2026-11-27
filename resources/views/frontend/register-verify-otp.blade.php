@@ -34,6 +34,9 @@
                                     {{ $registration->billing_cycle === 'annual' ? $registration->plan->formattedAnnualPrice() . '/year' : $registration->plan->formattedMonthlyPrice() . '/month' }}
                                 </div>
                                 <div><strong>Trial:</strong> {{ $registration->plan->trial_days }} days</div>
+                                @if((int) $registration->plan->trial_days > 0)
+                                    <div class="mt-2 small" data-trial-next-step>Next you add your card on Stripe. £0.00 today; the price above is charged automatically after the free trial, until you cancel.</div>
+                                @endif
                             </div>
                         @endif
 

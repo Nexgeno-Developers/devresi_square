@@ -146,8 +146,15 @@
 
                                 </div>
 
+                                @if(($selectedPlan ?? null))
+                                    <p class="small text-muted text-start mt-3 mb-0">
+                                        {{ (int) $selectedPlan->trial_days > 0 ? 'Free for '.(int) $selectedPlan->trial_days.' days, then your card is charged automatically.' : 'Your card is charged automatically.' }}
+                                        <button type="button" class="btn btn-link btn-sm p-0 align-baseline" data-bs-toggle="modal" data-bs-target="#trial-terms-modal">Read the trial and payment terms</button>
+                                    </p>
+                                @endif
+
                                 <button type="submit" id="reg-submit-btn"
-                                        class="btn btn_secondary btn-lg w-100 mt-4 justify-content-center">
+                                        class="btn btn_secondary btn-lg w-100 mt-3 justify-content-center">
                                     Send Verification Code
                                 </button>
                             </form>
@@ -157,6 +164,12 @@
                         <div id="step-2" data-otp-restored="{{ $restoreOtpStep ? '1' : '0' }}" data-otp-seconds="{{ $restoreOtpStep ? $otpSecondsLeft : 0 }}" style="display:{{ $restoreOtpStep ? 'block' : 'none' }};">
                             <h2 class="fw-bold mb-1 text-uppercase">Enter OTP</h2>
                             <p class="mb-1 text-muted small" id="otp-sent-msg">@if($restoreOtpStep){{ $otpVia === 'phone' ? "We've sent a 6-digit code to your phone number." : "We've sent a 6-digit code to your email address." }}@endif</p>
+
+                            @if(($selectedPlan ?? null) && (int) $selectedPlan->trial_days > 0)
+                                <p class="alert alert-info small text-start mb-3" data-trial-next-step>
+                                    Next you add your card on Stripe. £0.00 today; {{ $selectedBillingCycle === 'annual' ? $selectedPlan->formattedAnnualPrice().' a year' : $selectedPlan->formattedMonthlyPrice().' a month' }} is charged automatically after your {{ (int) $selectedPlan->trial_days }}-day free trial.
+                                </p>
+                            @endif
 
                             {{-- 2-minute countdown --}}
                             <p class="mb-3" id="timer-wrap">
@@ -212,6 +225,10 @@
         </div>
     </div>
 </section>
+
+@if($selectedPlan ?? null)
+    @include('frontend.partials.trial-terms-modal', ['plan' => $selectedPlan, 'billingCycle' => $selectedBillingCycle])
+@endif
 
 <style>
 .step-dot { display:flex; flex-direction:column; align-items:center; gap:4px; }
@@ -349,10 +366,33 @@
         clearFieldErrors();
     }
 
+    // ── Trial and payment terms ────────────────────────────────────────────
+    // The code is only sent once the automatic-payment terms are accepted.
+    const termsEl     = document.getElementById('trial-terms-modal');
+    const termsCheck  = document.getElementById('trial-terms-accept');
+    const termsAgree  = document.getElementById('trial-terms-agree');
+    let termsAccepted = !termsEl;
+
+    if (termsEl) {
+        termsCheck.addEventListener('change', function () {
+            termsAgree.disabled = !termsCheck.checked;
+        });
+        termsAgree.addEventListener('click', function () {
+            termsAccepted = true;
+            bootstrap.Modal.getOrCreateInstance(termsEl).hide();
+            regForm.requestSubmit();
+        });
+    }
+
     // ── Register form submit ───────────────────────────────────────────────
     regForm.addEventListener('submit', function (e) {
         e.preventDefault();
         clearFieldErrors();
+
+        if (!termsAccepted) {
+            bootstrap.Modal.getOrCreateInstance(termsEl).show();
+            return;
+        }
 
         const formData = new FormData(regForm);
         const via      = formData.get('verify_via');

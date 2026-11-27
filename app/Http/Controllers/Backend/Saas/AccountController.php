@@ -9,6 +9,7 @@ use App\Models\Property;
 use App\Models\Staff;
 use App\Models\AccountSubscriptionAddon;
 use App\Services\Saas\AccountLimitService;
+use App\Support\SubscriptionBillingState;
 use App\Services\Saas\StripeCheckoutService;
 use App\Support\AuditTrail;
 use Illuminate\Http\Request;
@@ -31,10 +32,22 @@ class AccountController extends BaseSaasController
 
     public function index(Request $request)
     {
-        $filters = $request->only(['account_type', 'status', 'plan_id', 'search']);
+        $filters = $request->only(['account_type', 'status', 'plan_id', 'search', 'billing_state']);
+
+        // Trial and purchase state is worked out in PHP, so count and filter from the same answer.
+        $billingKeys = Account::query()
+            ->with(['currentSubscription.plan', 'latestSubscription.plan'])
+            ->get()
+            ->mapWithKeys(fn (Account $account) => [$account->id => SubscriptionBillingState::for($account)['key']]);
+        $billingGroups = collect(SubscriptionBillingState::GROUPS)->map(fn (array $group, string $key) => [
+            'label' => $group[0],
+            'ids' => $billingKeys->filter(fn (string $state) => in_array($state, $group[1], true))->keys(),
+        ]);
+        $selectedGroup = $billingGroups->get((string) $request->input('billing_state'));
 
         $accounts = Account::query()
             ->with(['owner', 'currentSubscription.plan', 'latestSubscription.plan'])
+            ->when($selectedGroup, fn ($query) => $query->whereIn('id', $selectedGroup['ids']))
             ->when($request->filled('account_type'), fn ($query) => $query->where('account_type', $request->account_type))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->status))
             ->when($request->filled('plan_id'), function ($query) use ($request) {
@@ -62,7 +75,7 @@ class AccountController extends BaseSaasController
         $accountTypes = self::ACCOUNT_TYPES;
         $statuses = self::STATUSES;
 
-        return view('backend.saas.accounts.index', compact('accounts', 'plans', 'accountTypes', 'statuses', 'filters'));
+        return view('backend.saas.accounts.index', compact('accounts', 'plans', 'accountTypes', 'statuses', 'filters', 'billingGroups'));
     }
 
     public function show(Account $account)

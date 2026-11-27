@@ -70,6 +70,7 @@
                     <th>Plan</th>
                     <th>Billing cycle</th>
                     <th>Status</th>
+                    <th>Trial &amp; purchase</th>
                     <th>Trial ends at</th>
                     <th>Current period start</th>
                     <th>Current period end</th>
@@ -89,6 +90,13 @@
                         <td data-label="Plan">{{ $subscription->plan?->name ?: '-' }}</td>
                         <td data-label="Billing cycle">{{ ucwords($subscription->billing_cycle) }}</td>
                         <td data-label="Status">{{ ucwords(str_replace('_', ' ', $subscription->status)) }}</td>
+                        <td data-label="Trial &amp; purchase" style="min-width: 220px;">
+                            @if($subscription->account)
+                                <x-saas.billing-state :account="$subscription->account" :subscription="$subscription" />
+                            @else
+                                -
+                            @endif
+                        </td>
                         <td data-label="Trial ends at">{{ $subscription->trial_ends_at ? $subscription->trial_ends_at->format('Y-m-d') : '-' }}</td>
                         <td data-label="Current period start">{{ $subscription->current_period_start ? $subscription->current_period_start->format('Y-m-d') : '-' }}</td>
                         <td data-label="Current period end">{{ $subscription->current_period_end ? $subscription->current_period_end->format('Y-m-d') : '-' }}</td>
@@ -102,7 +110,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="text-center">No subscriptions found.</td>
+                        <td colspan="12" class="text-center">No subscriptions found.</td>
                     </tr>
                 @endforelse
             </tbody>

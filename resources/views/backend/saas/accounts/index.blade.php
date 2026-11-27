@@ -6,7 +6,21 @@
         <h2 class="mb-0">SaaS Accounts</h2>
     </div>
 
+    <div class="d-flex flex-wrap gap-2 mb-3" data-billing-summary>
+        @foreach($billingGroups as $key => $group)
+            @php $active = ($filters['billing_state'] ?? '') === $key; @endphp
+            <a href="{{ route('backend.saas.accounts.index', $active ? [] : ['billing_state' => $key]) }}"
+               class="btn btn-sm {{ $active ? 'btn-primary' : 'btn-light border' }}" data-billing-group="{{ $key }}"
+               @if($active) aria-current="true" @endif>
+                {{ $group['label'] }} <strong class="ms-1">{{ $group['ids']->count() }}</strong>
+            </a>
+        @endforeach
+    </div>
+
     <form method="GET" action="{{ route('backend.saas.accounts.index') }}" class="row g-2 mb-3">
+        @if(filled($filters['billing_state'] ?? null))
+            <input type="hidden" name="billing_state" value="{{ $filters['billing_state'] }}">
+        @endif
         <div class="col-md-2">
             <select name="account_type" class="form-select">
                 <option value="">All account types</option>
@@ -56,6 +70,7 @@
                 <tr>
                     <th>#</th>
                     <th>Account name</th>
+                    <th>Trial &amp; purchase</th>
                     <th>Account type</th>
                     <th>Owner user</th>
                     <th>Billing email</th>
@@ -83,6 +98,7 @@
                     <tr>
                         <td data-label="#">{{ $accounts->firstItem() + $loop->index }}</td>
                         <td data-label="Account name" class="rs-stack-title">{{ $accountLabel }}</td>
+                        <td data-label="Trial &amp; purchase" style="min-width: 220px;"><x-saas.billing-state :account="$account" /></td>
                         <td data-label="Account type">{{ ucwords(str_replace('_', ' ', $account->account_type)) }}</td>
                         <td data-label="Owner user">
                             {{ $ownerName }}<br>
@@ -110,7 +126,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="11" class="text-center">No accounts found.</td>
+                        <td colspan="12" class="text-center">No accounts found.</td>
                     </tr>
                 @endforelse
             </tbody>

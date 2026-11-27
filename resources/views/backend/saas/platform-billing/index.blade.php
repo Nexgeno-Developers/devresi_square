@@ -53,6 +53,7 @@
                     <th>Plan</th>
                     <th>Cycle</th>
                     <th>Status</th>
+                    <th>Trial &amp; purchase</th>
                     <th>Price at signup</th>
                     <th>Trial ends</th>
                     <th>Stripe subscription</th>
@@ -69,6 +70,13 @@
                         <td data-label="Plan">{{ $subscription->plan?->name ?: ($subscription->plan_name_at_signup ?: '-') }}</td>
                         <td data-label="Cycle">{{ ucwords($subscription->billing_cycle) }}</td>
                         <td data-label="Status">{{ ucwords(str_replace('_', ' ', $subscription->status)) }}</td>
+                        <td data-label="Trial &amp; purchase" style="min-width: 220px;">
+                            @if($subscription->account)
+                                <x-saas.billing-state :account="$subscription->account" :subscription="$subscription" />
+                            @else
+                                -
+                            @endif
+                        </td>
                         <td data-label="Price at signup">{{ $subscription->formattedSignupPrice() }}</td>
                         <td data-label="Trial ends">{{ $subscription->trial_ends_at?->format('Y-m-d') ?: '-' }}</td>
                         <td data-label="Stripe subscription">{{ $subscription->stripe_subscription_id ?: '-' }}</td>
@@ -81,7 +89,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="text-center">No SaaS subscriptions yet.</td>
+                        <td colspan="9" class="text-center">No SaaS subscriptions yet.</td>
                     </tr>
                 @endforelse
             </tbody>

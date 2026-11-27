@@ -32,6 +32,9 @@
             <table class="table table-bordered">
                 <tr><th width="35%">Billing cycle</th><td>{{ ucwords($subscription->billing_cycle) }}</td></tr>
                 <tr><th>Status</th><td>{{ ucwords(str_replace('_', ' ', $subscription->status)) }}</td></tr>
+                @if($subscription->account)
+                    <tr><th>Trial &amp; purchase</th><td><x-saas.billing-state :account="$subscription->account" :subscription="$subscription" /></td></tr>
+                @endif
                 <tr><th>Plan at signup</th><td>{{ $subscription->plan_name_at_signup ?: '-' }}</td></tr>
                 <tr><th>Price at signup</th><td>{{ $subscription->price_at_signup_minor !== null ? $subscription->formattedSignupPrice() : '-' }}</td></tr>
                 <tr><th>Trial period</th><td>{{ $subscription->trial_started_at ? $subscription->trial_started_at->format('Y-m-d') : '-' }} to {{ $subscription->trial_ends_at ? $subscription->trial_ends_at->format('Y-m-d') : '-' }}</td></tr>
